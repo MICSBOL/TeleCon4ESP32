@@ -1,5 +1,6 @@
 package com.example.emitterapp.ui.bluetooth
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,13 +17,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.emitterapp.domain.bluetooth.BluetoothDevice
 
 @Composable
 fun BluetoothScreen(
     state: BluetoothUiState,
     onStartScan: () -> Unit,
-    onStopScan: () -> Unit
+    onStopScan: () -> Unit,
+    onStartServer:() -> Unit,
+    onDeviceClick: (BluetoothDevice) -> Unit,
+    navController: NavController
 ) {
 
     Column(
@@ -31,7 +36,7 @@ fun BluetoothScreen(
         BluetoothDeviceList(
             pairedDevices = state.pairedDevices,
             scannedDevices = state.scannedDevices,
-            onClick = {},
+            onClick = onDeviceClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -78,7 +83,9 @@ fun BluetoothDeviceList(
                 text = device.name ?: "(No name)",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onClick(device) }
+                    .clickable { onClick(device)
+                        Log.d("BluetoothScreen", "Clicked device: ${device.name}")
+                    }
                     .padding(16.dp)
             )
         }
@@ -99,7 +106,9 @@ fun BluetoothDeviceList(
                 text = device.name ?: "(No name)",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onClick(device) }
+                    .clickable {
+                        onClick(device)
+                    }
                     .padding(16.dp)
             )
         }
