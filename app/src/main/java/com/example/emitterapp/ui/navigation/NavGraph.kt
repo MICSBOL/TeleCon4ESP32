@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.emitterapp.ui.bluetooth.BluetoothScreen
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.home.HomeScreen
+import com.example.emitterapp.ui.rc_screen.RcScreen
 import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
 import com.example.emitterapp.ui.splash.SplashScreen
 
@@ -53,6 +54,10 @@ fun AppNavGraph() {
                 onDisconnect = viewModel::disconnectFromDevice,
                 onSendTestPacket = viewModel::sendTextRcPacket
             )
+        }
+        composable(Screen.RcScreen.route) {
+            val viewModel = hiltViewModel<BluetoothViewModel>()
+            RcScreen(bluetoothViewModel = viewModel)
         }
     }
 }

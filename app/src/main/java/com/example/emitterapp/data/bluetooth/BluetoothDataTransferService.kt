@@ -1,18 +1,38 @@
 package com.example.emitterapp.data.bluetooth
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothSocket
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
-import com.example.emitterapp.domain.bluetooth.TransferFailedException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.io.IOException
 
+@SuppressLint("MissingPermission")
 class BluetoothDataTransferService(
     private val socket: BluetoothSocket
 ) {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val sendChannel = Channel<ByteArray>(Channel.UNLIMITED)
+    private val senderJob = serviceScope.launch {
+        for (data in sendChannel) {
+            try {
+                if (socket.isConnected) {
+                    socket.outputStream.write(data)
+                    delay(10L)
+                }
+            } catch (e: IOException) {
+                break
+            }
+        }
+    }
+
     fun listenForIncomingMessages(): Flow<BluetoothMessage> {
         return flow {
             if (!socket.isConnected) {
@@ -23,28 +43,31 @@ class BluetoothDataTransferService(
                 val byteCount = try {
                     socket.inputStream.read(buffer)
                 } catch (e: IOException) {
-                    throw TransferFailedException()
+                    break
                 }
+                if (byteCount <= 0) continue
+
                 emit(
-                    buffer.decodeToString(
-                        endIndex = byteCount
-                    ).toBluetoothMessage(
+                    BluetoothMessage(
+                        message = String(buffer, 0, byteCount),
+                        senderName = socket.remoteDevice?.name ?: "ESP32",
                         isFromLocalUser = false
                     )
                 )
             }
-        }.flowOn(Dispatchers.IO)
+        }
     }
 
-    suspend fun sendMessage(byte: ByteArray): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                socket.outputStream.write(byte)
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@withContext false
-            }
-            true
+    fun sendMessage(data: ByteArray): Boolean {
+        if (!socket.isConnected || sendChannel.isClosedForSend) return false
+        return sendChannel.trySend(data).isSuccess
+    }
+
+    fun close() {
+        try {
+            serviceScope.cancel()
+            socket.close()
+        } catch (e: IOException) {
         }
     }
 }

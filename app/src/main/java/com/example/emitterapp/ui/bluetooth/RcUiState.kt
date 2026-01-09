@@ -14,5 +14,7 @@ data class RcUiState(
     val switch5: Boolean = false,
     val switch6: Boolean = false,
     val switch7: Boolean = false,
-    val switch8: Boolean = false
+    val switch8: Boolean = false,
+    val leftKnobValue: Int = 512 ,
+    val rightKnobValue: Int = 512,
 )

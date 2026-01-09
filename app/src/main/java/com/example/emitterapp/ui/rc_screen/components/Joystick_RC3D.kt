@@ -7,9 +7,12 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import androidx.compose.animation.core.copy
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -27,7 +31,13 @@ import com.example.emitterapp.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
+
 /**
  * A highly customizable and realistic 3D RC-style joystick component.
  *
@@ -55,19 +65,33 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun Joystick_RC3D(
-    mode: JoystickMode = JoystickMode.Spring()
+    mode: JoystickMode = JoystickMode.Spring(),
+    onMove: (x: Float, y: Float) -> Unit
 ) {
     val frames = remember {
         (1..169).map {
             val number = it.toString().padStart(4, '0')
             val resourceName = "joy_rc_$number"
-            Log.d("Joystick_RC3D", "resourceName: $resourceName")
             R.drawable::class.java.getField(resourceName).getInt(null)
         }
     }
 
-
     val centerFrameIndex = 84
+
+    val initialPositionNormalized = remember(mode) {
+        val initialGridPos = when (mode) {
+            is JoystickMode.Spring -> mode.initialPosition
+            is JoystickMode.Hold -> mode.initialPosition
+            is JoystickMode.VerticalSpring -> mode.initialPosition
+            is JoystickMode.VerticalHold -> mode.initialPosition
+            is JoystickMode.HorizontalSpring -> mode.initialPosition
+            is JoystickMode.HorizontalHold -> mode.initialPosition
+        }
+        val (gridX, gridY) = initialGridPos
+        val initialX = (gridX - 6) / 6f
+        val initialY = -(gridY - 6) / 6f
+        Pair(initialX, initialY)
+    }
 
     val initialFrame = remember(mode) {
 
@@ -106,7 +130,8 @@ fun Joystick_RC3D(
     val coroutineScope = rememberCoroutineScope()
     var releaseAnimationJob by remember { mutableStateOf<Job?>(null) }
 
-    fun onRelease(targetFrame: Int, joystickMode: JoystickMode) {
+    fun playReleaseAnimation(targetFrame: Int, joystickMode: JoystickMode) {
+
         releaseAnimationJob?.cancel()
         releaseAnimationJob = coroutineScope.launch {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -168,8 +193,6 @@ fun Joystick_RC3D(
         }
     }
 
-    var lastDragVector by remember { mutableStateOf(Offset.Zero) }
-
     Image(
         painter = painterResource(id = frames[frame]),
         contentDescription = "RC Joystick",
@@ -183,11 +206,38 @@ fun Joystick_RC3D(
                 awaitPointerEventScope {
                     while (true) {
                         val down = awaitFirstDown()
+
+                        val currentGridX = frame % 13
+                        val currentGridY = frame / 13
+                        val normalizedX_0_to_1 = currentGridX / 12f
+                        val normalizedY_0_to_1 = currentGridY / 12f
+                        val halfSquare = dragSquareSize / 2f
+                        val stickHeadX = (normalizedX_0_to_1 * dragSquareSize) - halfSquare
+                        val stickHeadY = (normalizedY_0_to_1 * dragSquareSize) - halfSquare
+
+                        val stickBasePosition = Offset(stickHeadX, stickHeadY) + center
+
+                        val touchRadius = size.width * 0.15f
+
+                        val perspectiveOffsetY = touchRadius * 1f
+
+                        val stickHeadPosition =
+                            stickBasePosition.copy(y = stickBasePosition.y - perspectiveOffsetY)
+
+                        val distance = sqrt(
+                            (down.position.x - stickHeadPosition.x).pow(2) + (down.position.y - stickHeadPosition.y).pow(
+                                2
+                            )
+                        )
+
+                        if (distance > touchRadius) {
+                            continue
+                        }
+
+                        val touchOffsetFromStick = down.position - stickBasePosition
                         down.consume()
                         releaseAnimationJob?.cancel()
                         val dragPointerId = down.id
-
-                        lastDragVector = Offset.Zero
 
                         while (true) {
                             val event = awaitPointerEvent()
@@ -198,16 +248,26 @@ fun Joystick_RC3D(
                                     is JoystickMode.Spring,
                                     is JoystickMode.VerticalSpring,
                                     is JoystickMode.HorizontalSpring -> {
-                                        Log.d("Joystick_RC3D", "Initial frame: $initialFrame")
-                                        onRelease(initialFrame, mode)
+                                        onMove(
+                                            initialPositionNormalized.first,
+                                            initialPositionNormalized.second
+                                        )
+                                        playReleaseAnimation(initialFrame, mode)
                                     }
 
-                                    else -> {}
+                                    else -> {
+                                        val gridX = frame % 13
+                                        val gridY = frame / 13
+                                        val finalNormX = (gridX - 6) / 6f
+                                        val finalNormY = -(gridY - 6) / 6f
+                                        onMove(finalNormX, finalNormY)
+                                    }
                                 }
                                 break
                             }
 
-                            var dragVector = dragEvent.position - center
+//                            var dragVector = dragEvent.position - center
+                            var dragVector = (dragEvent.position - touchOffsetFromStick) - center
 
                             when (mode) {
                                 is JoystickMode.VerticalSpring,
@@ -223,14 +283,6 @@ fun Joystick_RC3D(
 
                                 else -> {}
                             }
-                            lastDragVector = dragVector
-
-//                            if (dragVector.x.absoluteValue < 15f && dragVector.y.absoluteValue < 15f) {
-//                                if (frame != centerFrameIndex) {
-//                                    frame = centerFrameIndex
-//                                }
-//                                continue
-//                            }
 
                             val halfSquare = dragSquareSize / 2f
                             val clampedX = dragVector.x.coerceIn(-halfSquare, halfSquare)
@@ -238,6 +290,270 @@ fun Joystick_RC3D(
 
                             val normalizedX = (clampedX + halfSquare) / dragSquareSize
                             val normalizedY = (clampedY + halfSquare) / dragSquareSize
+
+                            val finalNormalizedX = normalizedX * 2f - 1f
+                            val finalNormalizedY = -(normalizedY * 2f - 1f)
+
+                            onMove(finalNormalizedX, finalNormalizedY)
+
+                            val gridX = (normalizedX * 12).roundToInt().coerceIn(0, 12)
+                            val gridY = (normalizedY * 12).roundToInt().coerceIn(0, 12)
+
+                            val finalFrameIndex = gridY * 13 + gridX
+                            if (frame != finalFrameIndex) {
+                                frame = finalFrameIndex
+                            }
+                        }
+                    }
+                }
+            }
+    )
+}
+
+@Composable
+fun Joystick_RC3D_C(
+    modifier: Modifier = Modifier,
+    mode: JoystickMode = JoystickMode.Spring(),
+    onMove: (x: Float, y: Float) -> Unit
+) {
+    val frames = remember {
+        (1..169).map {
+            val number = it.toString().padStart(4, '0')
+            val resourceName = "joy_rc_$number"
+            R.drawable::class.java.getField(resourceName).getInt(null)
+        }
+    }
+
+    val centerFrameIndex = 84
+
+    val initialPositionNormalized = remember(mode) {
+        val initialGridPos = when (mode) {
+            is JoystickMode.Spring -> mode.initialPosition
+            is JoystickMode.Hold -> mode.initialPosition
+            is JoystickMode.VerticalSpring -> mode.initialPosition
+            is JoystickMode.VerticalHold -> mode.initialPosition
+            is JoystickMode.HorizontalSpring -> mode.initialPosition
+            is JoystickMode.HorizontalHold -> mode.initialPosition
+        }
+        val (gridX, gridY) = initialGridPos
+        val initialX = (gridX - 6) / 6f
+        val initialY = -(gridY - 6) / 6f
+        Pair(initialX, initialY)
+    }
+
+    val initialFrame = remember(mode) {
+
+        val initialPosition = when (mode) {
+            is JoystickMode.Spring -> mode.initialPosition
+            is JoystickMode.Hold -> mode.initialPosition
+            is JoystickMode.VerticalSpring -> mode.initialPosition
+            is JoystickMode.VerticalHold -> mode.initialPosition
+            is JoystickMode.HorizontalSpring -> mode.initialPosition
+            is JoystickMode.HorizontalHold -> mode.initialPosition
+        }
+
+        val (gridX, gridY) = initialPosition
+        val clampedX = gridX.coerceIn(0, 12)
+        val clampedY = gridY.coerceIn(0, 12)
+        clampedY * 13 + clampedX
+    }
+
+    var frame by remember { mutableStateOf(initialFrame) }
+
+    var center by remember { mutableStateOf(Offset.Zero) }
+    var dragRadius by remember { mutableStateOf(0f) }
+
+    val context = LocalContext.current
+    val vibrator = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager =
+                context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    var releaseAnimationJob by remember { mutableStateOf<Job?>(null) }
+
+    fun playReleaseAnimation(targetFrame: Int, joystickMode: JoystickMode) {
+
+        releaseAnimationJob?.cancel()
+        releaseAnimationJob = coroutineScope.launch {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val timings = longArrayOf(0, 50, 30, 40, 30, 20)
+                val amplitudes = intArrayOf(0, 180, 0, 120, 0, 70)
+                val vibrationEffect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+                vibrator.vibrate(vibrationEffect)
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(100)
+            }
+            when (mode) {
+                is JoystickMode.VerticalSpring -> {
+                    val wiggleFrame = if (targetFrame > 13) {
+                        targetFrame - 13
+                    } else {
+                        targetFrame + 13
+                    }
+                    delay(50)
+                    frame = wiggleFrame
+                    delay(60)
+                    frame = targetFrame
+                    delay(40)
+                    frame = wiggleFrame
+                    delay(50)
+                    frame = targetFrame
+                }
+
+                is JoystickMode.HorizontalSpring -> {
+                    val wiggleFrame = if ((targetFrame % 10) == 0) {
+                        targetFrame - 1
+                    } else {
+                        targetFrame + 1
+                    }
+                    delay(50)
+                    frame = wiggleFrame
+                    delay(60)
+                    frame = targetFrame
+                    delay(40)
+                    frame = wiggleFrame
+                    delay(50)
+                    frame = targetFrame
+                }
+
+                is JoystickMode.Spring -> {
+                    val wiggleFrame = centerFrameIndex - 14
+                    delay(50)
+                    frame = wiggleFrame
+                    delay(60)
+                    frame = centerFrameIndex
+                    delay(40)
+                    frame = wiggleFrame
+                    delay(50)
+                    frame = centerFrameIndex
+                }
+
+                else -> {}
+            }
+        }
+    }
+
+    Image(
+        painter = painterResource(id = frames[frame]),
+        contentDescription = "RC Joystick",
+        modifier = modifier
+            .clip(CircleShape) // 1. Clip the visual shape to a circle
+            .padding(10.dp) // Apply padding as requested
+            .onSizeChanged { size ->
+                center = Offset(size.width / 2f, size.height / 2f)
+                // The drag radius is half the smaller of width or height
+                dragRadius =
+                    kotlin.math.min(size.width.toFloat(), size.height.toFloat()) / 2f
+            }
+            .pointerInput(mode) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val down = awaitFirstDown()
+
+                        val currentGridX = frame % 13
+                        val currentGridY = frame / 13
+                        // To map from grid to pixels, we now use the circular dragRadius
+                        val normalizedX_minus1_to_1 = (currentGridX - 6) / 6f
+                        val normalizedY_minus1_to_1 = -(currentGridY - 6) / 6f
+                        val stickBaseX = normalizedX_minus1_to_1 * dragRadius
+                        val stickBaseY =
+                            -normalizedY_minus1_to_1 * dragRadius // Re-invert for UI coordinates
+                        val stickBasePosition = Offset(stickBaseX, stickBaseY) + center
+                        val touchRadius = size.width * 0.25f
+                        val perspectiveOffsetY = touchRadius * 1f
+                        val stickHeadPosition =
+                            stickBasePosition.copy(y = stickBasePosition.y - perspectiveOffsetY)
+
+                        val distanceToHead = sqrt(
+                            (down.position.x - stickHeadPosition.x).pow(2) + (down.position.y - stickHeadPosition.y).pow(
+                                2
+                            )
+                        )
+                        if (distanceToHead > touchRadius) {
+                            continue
+                        }
+
+                        val touchOffsetFromStick = down.position - stickBasePosition
+                        down.consume()
+                        releaseAnimationJob?.cancel()
+                        val dragPointerId = down.id
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val dragEvent = event.changes.firstOrNull { it.id == dragPointerId }
+
+                            if (dragEvent == null || !dragEvent.pressed) {
+                                when (mode) {
+                                    is JoystickMode.Spring,
+                                    is JoystickMode.VerticalSpring,
+                                    is JoystickMode.HorizontalSpring -> {
+                                        onMove(
+                                            initialPositionNormalized.first,
+                                            initialPositionNormalized.second
+                                        )
+                                        playReleaseAnimation(initialFrame, mode)
+                                    }
+
+                                    else -> {
+                                        val gridX = frame % 13
+                                        val gridY = frame / 13
+                                        val finalNormX = (gridX - 6) / 6f
+                                        val finalNormY = -(gridY - 6) / 6f
+                                        onMove(finalNormX, finalNormY)
+                                    }
+                                }
+                                break
+                            }
+
+                            var dragVector = (dragEvent.position - touchOffsetFromStick) - center
+
+                            // --- START OF CIRCULAR BOUNDS LOGIC ---
+
+                            // 2. Calculate the distance of the drag vector from the center
+                            val dragDistance = sqrt(dragVector.x.pow(2) + dragVector.y.pow(2))
+                            var clampedVector = dragVector
+
+                            // 3. If the drag is outside the radius, clamp it to the edge of the circle
+                            if (dragDistance > dragRadius) {
+                                val angle = atan2(dragVector.y, dragVector.x)
+                                clampedVector = Offset(
+                                    dragRadius * cos(angle),
+                                    dragRadius * sin(angle)
+                                )
+                            }
+
+                            // --- END OF CIRCULAR BOUNDS LOGIC ---
+
+                            when (mode) {
+                                is JoystickMode.VerticalSpring,
+                                is JoystickMode.VerticalHold -> {
+                                    clampedVector = Offset(0f, clampedVector.y)
+                                }
+
+                                is JoystickMode.HorizontalSpring,
+                                is JoystickMode.HorizontalHold -> {
+                                    clampedVector = Offset(clampedVector.x, 0f)
+                                }
+
+                                else -> {}
+                            }
+
+                            // Use the clamped vector to derive normalized values
+                            val normalizedX = (clampedVector.x + dragRadius) / (dragRadius * 2f)
+                            val normalizedY = (clampedVector.y + dragRadius) / (dragRadius * 2f)
+
+                            val finalNormalizedX = normalizedX * 2f - 1f
+                            val finalNormalizedY = -(normalizedY * 2f - 1f)
+
+                            onMove(finalNormalizedX, finalNormalizedY)
 
                             val gridX = (normalizedX * 12).roundToInt().coerceIn(0, 12)
                             val gridY = (normalizedY * 12).roundToInt().coerceIn(0, 12)
