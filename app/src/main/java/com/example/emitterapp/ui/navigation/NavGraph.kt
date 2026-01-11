@@ -52,7 +52,7 @@ fun AppNavGraph() {
             val viewModel = hiltViewModel<BluetoothViewModel>()
             TestBluetoothScreen(
                 onDisconnect = viewModel::disconnectFromDevice,
-                onSendTestPacket = viewModel::sendTextRcPacket
+                onSendTestPacket = {}
             )
         }
         composable(Screen.RcScreen.route) {

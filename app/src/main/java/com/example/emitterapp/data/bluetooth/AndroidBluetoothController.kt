@@ -1,25 +1,20 @@
 package com.example.emitterapp.data.bluetooth
 
 
-
-
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
+import com.example.emitterapp.domain.bluetooth.TelemetryState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,21 +22,68 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.UUID
+import kotlin.experimental.and
 
 @SuppressLint("MissingPermission")
 class AndroidBluetoothController(
     private val context: Context
 ) : BluetoothController {
+
+    private val _telemetryState = MutableStateFlow(TelemetryState())
+    override val telemetryState: StateFlow<TelemetryState>
+        get() = _telemetryState.asStateFlow()
+
+    private fun parseTelemetryPacket(bytes: ByteArray) {
+        if (bytes.size < 8) return
+        if (bytes[0] != 0xCC.toByte() || bytes[1] != 0xDD.toByte()) return
+
+        val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val leftValue = buffer.getShort(2).toInt()
+        val rightValue = buffer.getShort(4).toInt()
+        val panelStates = buffer.get(6)
+        val checksum = buffer.get(7)
+
+        var calculatedChecksum = 0
+        calculatedChecksum += bytes[2].toInt() and 0xFF
+        calculatedChecksum += bytes[3].toInt() and 0xFF
+        calculatedChecksum += bytes[4].toInt() and 0xFF
+        calculatedChecksum += bytes[5].toInt() and 0xFF
+        calculatedChecksum += panelStates.toInt() and 0xFF
+
+        if ((calculatedChecksum and 0xFF).toByte() != checksum) {
+            return
+        }
+
+        val leftOn = (panelStates.toInt() and (1 shl 0)) != 0
+        val rightOn = (panelStates.toInt() and (1 shl 1)) != 0
+        val leftColorIsGreen = (panelStates.toInt() and (1 shl 2)) != 0
+        val rightColorIsGreen = (panelStates.toInt() and (1 shl 3)) != 0
+
+        _telemetryState.update {
+            it.copy(
+                leftPanelValue = leftValue,
+                rightPanelValue = rightValue,
+                leftPanelOn = leftOn,
+                rightPanelOn = rightOn,
+                leftPanelColor = if (leftColorIsGreen) Color.Green else Color.Red,
+                rightPanelColor = if (rightColorIsGreen) Color.Green else Color.Red
+            )
+        }
+    }
 
     private val bluetoothManager by lazy {
         context.getSystemService(BluetoothManager::class.java)
@@ -83,7 +125,8 @@ class AndroidBluetoothController(
                 foundDeviceReceiver,
                 IntentFilter(BluetoothDevice.ACTION_FOUND)
             )
-        } catch (e: Exception) { /* Already registered */ }
+        } catch (e: Exception) { /* Already registered */
+        }
         updatePairedDevices()
         bluetoothAdapter?.startDiscovery()
     }
@@ -96,7 +139,8 @@ class AndroidBluetoothController(
     override fun release() {
         try {
             context.unregisterReceiver(foundDeviceReceiver)
-        } catch (e: Exception) { /* Not registered */ }
+        } catch (e: Exception) { /* Not registered */
+        }
         closeConnection()
     }
 
@@ -104,7 +148,6 @@ class AndroidBluetoothController(
         return flow {
             if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) throw SecurityException("No BLUETOOTH_CONNECT permission")
 
-            // Proactively close any old connection before starting a new one.
             closeConnection()
             stopDiscovery()
 
@@ -118,43 +161,34 @@ class AndroidBluetoothController(
 
             try {
                 socket?.connect()
-
                 if (socket != null) {
-                    // Atomically create and assign the service, then update state.
                     synchronized(this@AndroidBluetoothController) {
                         dataTransferService = BluetoothDataTransferService(socket)
                         _isConnected.update { true }
                     }
                     emit(ConnectionResult.ConnectionEstablished)
-
-                    // Start listening for messages using the new, valid service.
-                    emitAll(
-                        dataTransferService!!.listenForIncomingMessages()
-                            .map { ConnectionResult.TransferSucceeded(it) }
-                    )
+                    dataTransferService!!.listenForRawBytes()
+                        .collect { byteArray ->
+                            parseTelemetryPacket(byteArray)
+                        }
                 }
             } catch (e: IOException) {
                 emit(ConnectionResult.Error("Connection failed: ${e.message}"))
                 socket?.close()
             }
         }.onCompletion {
-            // This is crucial: ensures cleanup happens even if the flow is cancelled.
             closeConnection()
         }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    // The server implementation would follow the same robust pattern.
     override fun startBluetoothServer(): Flow<ConnectionResult> = emptyFlow()
 
 
     override suspend fun trySendData(data: ByteArray): Boolean? {
         if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
-
-        // This is now guaranteed to call the single, active service instance's queueing method.
         return dataTransferService?.sendMessage(data)
     }
 
-    // This is the single, thread-safe source of truth for cleanup.
     override fun closeConnection() {
         synchronized(this) {
             dataTransferService?.close()
@@ -181,7 +215,6 @@ class AndroidBluetoothController(
         const val SERVICE_UUID = "00001101-0000-1000-8000-00805F9B34FB"
     }
 }
-
 
 
 //
@@ -338,8 +371,6 @@ class AndroidBluetoothController(
 //        const val SERVICE_UUID = "00001101-0000-1000-8000-00805F9B34FB"
 //    }
 //}
-
-
 
 
 //@SuppressLint("MissingPermission")

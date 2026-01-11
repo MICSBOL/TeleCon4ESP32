@@ -17,14 +17,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.example.emitterapp.R
+import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.bluetooth.ButtonEvent
 import com.example.emitterapp.ui.bluetooth.RcUiState
@@ -50,6 +54,7 @@ import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D_C
 import com.example.emitterapp.ui.rc_screen.components.Knob3D
 import com.example.emitterapp.ui.rc_screen.components.PushButtonSide
+import com.example.emitterapp.ui.rc_screen.components.SevenSegmentedPanel
 import com.example.emitterapp.ui.rc_screen.components.Switch3DButton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -61,6 +66,14 @@ import kotlin.math.sin
 fun RcScreen(
     bluetoothViewModel: BluetoothViewModel?
 ) {
+    if (bluetoothViewModel == null) {
+        // You can show a loading indicator, an error message, or just an empty screen.
+        // This prevents the rest of the Composable from executing with a null ViewModel.
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            // Or a more descriptive Text("Bluetooth not available")
+        }
+        return
+    }
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         val activity = context as? ComponentActivity ?: return@LaunchedEffect
@@ -69,6 +82,10 @@ fun RcScreen(
             navigationBarStyle = SystemBarStyle.dark(Color.Transparent.toArgb())
         )
     }
+
+    val state by bluetoothViewModel.state.collectAsState()
+    val telemetry = state?.telemetryState ?: TelemetryState()
+
 
     var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
     var rightStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -112,11 +129,8 @@ fun RcScreen(
         centerContent = {
             CenterDisplay(
                 modifier = Modifier.fillMaxSize(),
-                // The Top-Left button in the UI should send the TOP_LEFT event.
                 onTopLeftPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
                 onTopRightPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
-
-                // The Bottom-Left button in the UI should send the BOTTOM_LEFT event.
                 onBottomLeftPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
                 onBottomRightPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) }
             )
@@ -136,7 +150,10 @@ fun RcScreen(
                     leftSwitches = leftSwitches.toMutableList().also { it[index] = newState }
                 },
                 knobValue = lefKnobValue,
-                onKnobValueChange = { newValue -> lefKnobValue = newValue }
+                onKnobValueChange = { newValue -> lefKnobValue = newValue },
+                panelNumber = telemetry.leftPanelValue,
+                panelOn = telemetry.leftPanelOn,
+                panelColor = telemetry.leftPanelColor
             )
         },
         rightSideContent = {
@@ -154,7 +171,10 @@ fun RcScreen(
                     rightSwitches = rightSwitches.toMutableList().also { it[index] = newState }
                 },
                 knobValue = rightKnobValue,
-                onKnobValueChange = { newValue -> rightKnobValue = newValue }
+                onKnobValueChange = { newValue -> rightKnobValue = newValue },
+                panelNumber = telemetry.rightPanelValue,
+                panelOn = telemetry.rightPanelOn,
+                panelColor = telemetry.rightPanelColor
             )
         }
     )
@@ -170,7 +190,6 @@ fun CenterDisplay(
 ) {
     Box(
         modifier = modifier
-//            .padding(vertical = 16.dp)
             .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
@@ -235,11 +254,13 @@ fun ControllerSide(
     switchStates: List<Boolean>,
     onSwitchStateChange: (index: Int, inOn: Boolean) -> Unit,
     knobValue: Float,
-    onKnobValueChange: (Float) -> Unit
+    onKnobValueChange: (Float) -> Unit,
+    panelNumber: Int,
+    panelOn: Boolean,
+    panelColor: Color
 ) {
     BoxWithConstraints(
         modifier = modifier,
-//            .padding(8.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         val baseSize = min(maxWidth, maxHeight)
@@ -266,15 +287,18 @@ fun ControllerSide(
             )
             val angles = if (side == Side.RIGHT) {
                 listOf(90f, 125f, 160f)
-//                listOf(92f, 117f, 142f)
             } else {
                 listOf(20f, 55f, 90f)
-//                listOf(42f, 67f, 92f)
             }
 
             val knobAngle = if (side == Side.RIGHT) 50f else 130f
             val radius = joystickSize * 0.45f
             val knobRadius = joystickSize * 0.55f
+
+            val panelAngle = if (side == Side.RIGHT) 72f else 108f
+            val panelRadius = joystickSize * .85f
+            val panelWidth = joystickSize * 0.5f
+            val panelHeight = joystickSize * 0.5f
 
             angles.forEachIndexed { index, angle ->
                 val angleInRadians = Math.toRadians(angle.toDouble())
@@ -312,6 +336,24 @@ fun ControllerSide(
                     onValueChange = onKnobValueChange
                 )
             }
+
+            val panelAngleRadians = Math.toRadians(panelAngle.toDouble())
+            val panelXOffset = (panelRadius.value * cos(panelAngleRadians)).dp
+            val panelYOffset = (panelRadius.value * sin(panelAngleRadians)).dp
+            Box(
+                modifier = Modifier
+                    .width(panelWidth)
+                    .height(panelHeight)
+                    .align(Alignment.Center)
+                    .offset(x = -panelXOffset, y = -panelYOffset)
+            ) {
+                SevenSegmentedPanel(
+                    width = panelWidth,
+                    number = panelNumber,
+                    on = panelOn,
+                    onColor = panelColor
+                )
+            }
         }
     }
 }
@@ -326,7 +368,6 @@ fun ErgonomicRow(
     SubcomposeLayout(modifier = modifier) { constraints ->
 
         val sideMaxWidth = (constraints.maxWidth * 0.7f).toInt()
-//        val sideMaxWidth = (constraints.maxWidth * 0.35f).toInt()
         val sideConstraints = constraints.copy(minWidth = 0, maxWidth = sideMaxWidth)
         val leftPlaceable =
             subcompose("left") { leftSideContent() }.first().measure(sideConstraints)

@@ -6,8 +6,6 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.util.Log
-import androidx.compose.animation.core.copy
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.padding
@@ -445,11 +443,10 @@ fun Joystick_RC3D_C(
         painter = painterResource(id = frames[frame]),
         contentDescription = "RC Joystick",
         modifier = modifier
-            .clip(CircleShape) // 1. Clip the visual shape to a circle
-            .padding(10.dp) // Apply padding as requested
+            .clip(CircleShape)
+            .padding(10.dp)
             .onSizeChanged { size ->
                 center = Offset(size.width / 2f, size.height / 2f)
-                // The drag radius is half the smaller of width or height
                 dragRadius =
                     kotlin.math.min(size.width.toFloat(), size.height.toFloat()) / 2f
             }
@@ -460,12 +457,11 @@ fun Joystick_RC3D_C(
 
                         val currentGridX = frame % 13
                         val currentGridY = frame / 13
-                        // To map from grid to pixels, we now use the circular dragRadius
                         val normalizedX_minus1_to_1 = (currentGridX - 6) / 6f
                         val normalizedY_minus1_to_1 = -(currentGridY - 6) / 6f
                         val stickBaseX = normalizedX_minus1_to_1 * dragRadius
                         val stickBaseY =
-                            -normalizedY_minus1_to_1 * dragRadius // Re-invert for UI coordinates
+                            -normalizedY_minus1_to_1 * dragRadius
                         val stickBasePosition = Offset(stickBaseX, stickBaseY) + center
                         val touchRadius = size.width * 0.25f
                         val perspectiveOffsetY = touchRadius * 1f
@@ -515,13 +511,9 @@ fun Joystick_RC3D_C(
 
                             var dragVector = (dragEvent.position - touchOffsetFromStick) - center
 
-                            // --- START OF CIRCULAR BOUNDS LOGIC ---
-
-                            // 2. Calculate the distance of the drag vector from the center
                             val dragDistance = sqrt(dragVector.x.pow(2) + dragVector.y.pow(2))
                             var clampedVector = dragVector
 
-                            // 3. If the drag is outside the radius, clamp it to the edge of the circle
                             if (dragDistance > dragRadius) {
                                 val angle = atan2(dragVector.y, dragVector.x)
                                 clampedVector = Offset(
@@ -529,8 +521,6 @@ fun Joystick_RC3D_C(
                                     dragRadius * sin(angle)
                                 )
                             }
-
-                            // --- END OF CIRCULAR BOUNDS LOGIC ---
 
                             when (mode) {
                                 is JoystickMode.VerticalSpring,
@@ -546,7 +536,6 @@ fun Joystick_RC3D_C(
                                 else -> {}
                             }
 
-                            // Use the clamped vector to derive normalized values
                             val normalizedX = (clampedVector.x + dragRadius) / (dragRadius * 2f)
                             val normalizedY = (clampedVector.y + dragRadius) / (dragRadius * 2f)
 

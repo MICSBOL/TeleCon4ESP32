@@ -8,7 +8,7 @@ interface BluetoothController {
     val isConnected: StateFlow<Boolean>
     val scannedDevices: StateFlow<List<BluetoothDevice>>
     val pairedDevices: StateFlow<List<BluetoothDevice>>
-
+    val telemetryState: StateFlow<TelemetryState>
     val error: SharedFlow<String>
     fun startDiscovery()
     fun stopDiscovery()

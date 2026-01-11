@@ -28,38 +28,25 @@ class BluetoothViewModel @Inject constructor(
 ) : ViewModel() {
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
-    private val testRcState = RcUiState(
-        leftStickX = 200,   // Pushing right
-        leftStickY = 50,    // Pushing down
-        rightStickX = 127,  // Centered
-        rightStickY = 127,  // Centered
-        leftKnob = 255,     // Max
-        rightKnob = 0,      // Min
-        switch1 = true,     // ON
-        switch2 = false,    // OFF
-        switch3 = true      // ON
-    )
     private val _state = MutableStateFlow(BluetoothUiState())
     val state = combine(
         bluetoothController.scannedDevices,
         bluetoothController.pairedDevices,
+        bluetoothController.telemetryState,
         _state
-    ) { scannedDevices, pairedDevices, state ->
+    ) { scannedDevices, pairedDevices, telemetry, state ->
         Log.d(
             "BluetoothViewModel",
-            "State updated. Scanned Devices: ${scannedDevices.size}, Paired Devices: ${pairedDevices.size}"
+            "State updated. Scanned Devices: ${scannedDevices.size}, Paired Devices: ${pairedDevices.size}, Telemetry: ${telemetry.rightPanelColor}"
         )
         state.copy(
             scannedDevices = scannedDevices,
-            pairedDevices = pairedDevices
+            pairedDevices = pairedDevices,
+            telemetryState = telemetry
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
 
     private var deviceConnectionJob: Job? = null
-
-    init {
-
-    }
 
     fun connectToDevice(device: BluetoothDeviceDomain) {
         Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
@@ -119,7 +106,6 @@ class BluetoothViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
-//                    _navigateToScreen.send("test_bluetooth")
                     _navigateToScreen.send("rc_screen")
                 }
 
@@ -150,11 +136,6 @@ class BluetoothViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
-    fun sendTextRcPacket() {
-        sendRcControlData(testRcState)
-        Log.d("BluetoothViewModel", "Sent TEST RC Packet: $testRcState")
-    }
-
     fun sendRcControlData(currentState: RcUiState) {
         viewModelScope.launch {
             val packet = ByteArray(18)
@@ -166,8 +147,8 @@ class BluetoothViewModel @Inject constructor(
             val rightStickX_12bit = (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
             val rightStickY_12bit = (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
 
-            packet[2] = (leftStickX_12bit and 0xFF).toByte()          // Low Byte
-            packet[3] = ((leftStickX_12bit shr 8) and 0xFF).toByte()  // High Byte
+            packet[2] = (leftStickX_12bit and 0xFF).toByte()
+            packet[3] = ((leftStickX_12bit shr 8) and 0xFF).toByte()
 
             packet[4] = (leftStickY_12bit and 0xFF).toByte()
             packet[5] = ((leftStickY_12bit shr 8) and 0xFF).toByte()
@@ -178,21 +159,21 @@ class BluetoothViewModel @Inject constructor(
             packet[8] = (rightStickY_12bit and 0xFF).toByte()
             packet[9] = ((rightStickY_12bit shr 8) and 0xFF).toByte()
 
-            packet[10] = (currentState.leftKnobValue and 0xFF).toByte()          // Low Byte
-            packet[11] = ((currentState.leftKnobValue shr 8) and 0xFF).toByte()  // High Byte
+            packet[10] = (currentState.leftKnobValue and 0xFF).toByte()
+            packet[11] = ((currentState.leftKnobValue shr 8) and 0xFF).toByte()
 
-            packet[12] = (currentState.rightKnobValue and 0xFF).toByte()         // Low Byte
-            packet[13] = ((currentState.rightKnobValue shr 8) and 0xFF).toByte() // High Byte
+            packet[12] = (currentState.rightKnobValue and 0xFF).toByte()
+            packet[13] = ((currentState.rightKnobValue shr 8) and 0xFF).toByte()
 
             var switchByte = 0
-            if (currentState.switch1) switchByte = switchByte or (1 shl 0) // Bit 0
-            if (currentState.switch2) switchByte = switchByte or (1 shl 1) // Bit 1
-            if (currentState.switch3) switchByte = switchByte or (1 shl 2) // Bit 2
-            if (currentState.switch4) switchByte = switchByte or (1 shl 3) // Bit 3
-            if (currentState.switch5) switchByte = switchByte or (1 shl 4) // Bit 4
-            if (currentState.switch6) switchByte = switchByte or (1 shl 5) // Bit 5
-            if (currentState.switch7) switchByte = switchByte or (1 shl 6) // Bit 6
-            if (currentState.switch8) switchByte = switchByte or (1 shl 7) // Bit 7)
+            if (currentState.switch1) switchByte = switchByte or (1 shl 0)
+            if (currentState.switch2) switchByte = switchByte or (1 shl 1)
+            if (currentState.switch3) switchByte = switchByte or (1 shl 2)
+            if (currentState.switch4) switchByte = switchByte or (1 shl 3)
+            if (currentState.switch5) switchByte = switchByte or (1 shl 4)
+            if (currentState.switch6) switchByte = switchByte or (1 shl 5)
+            if (currentState.switch7) switchByte = switchByte or (1 shl 6)
+            if (currentState.switch8) switchByte = switchByte or (1 shl 7)
 
             packet[14] = switchByte.toByte()
             var checksum = 0;
@@ -200,8 +181,8 @@ class BluetoothViewModel @Inject constructor(
                 checksum += packet[i].toInt() and 0xFF
             }
             packet[15] = (checksum and 0xFF).toByte()
-            packet[16] = 0x0D.toByte() // End Byte 1 (Example)
-            packet[17] = 0x0A.toByte() // End Byte 2 (Example)
+            packet[16] = 0x0D.toByte()
+            packet[17] = 0x0A.toByte()
             bluetoothController.trySendData(packet)
         }
     }

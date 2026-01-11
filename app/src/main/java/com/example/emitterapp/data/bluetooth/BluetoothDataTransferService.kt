@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -58,6 +59,25 @@ class BluetoothDataTransferService(
         }
     }
 
+    fun listenForRawBytes(): Flow<ByteArray> {
+        return flow {
+            if(!socket.isConnected){
+                return@flow
+            }
+            val buffer = ByteArray(1024)
+            while (serviceScope.isActive){
+                val byteCount = try {
+                    socket.inputStream.read(buffer)
+                } catch (e: IOException) {
+                    break
+                }
+                if(byteCount > 0){
+                    val receivedBytes = buffer.copyOf(byteCount)
+                    emit(receivedBytes)
+                }
+            }
+        }
+    }
     fun sendMessage(data: ByteArray): Boolean {
         if (!socket.isConnected || sendChannel.isClosedForSend) return false
         return sendChannel.trySend(data).isSuccess
