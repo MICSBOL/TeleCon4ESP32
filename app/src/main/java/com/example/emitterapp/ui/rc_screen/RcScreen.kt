@@ -13,17 +13,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -49,6 +50,8 @@ import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.bluetooth.ButtonEvent
 import com.example.emitterapp.ui.bluetooth.RcUiState
+import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
+import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D_C
@@ -67,11 +70,7 @@ fun RcScreen(
     bluetoothViewModel: BluetoothViewModel?
 ) {
     if (bluetoothViewModel == null) {
-        // You can show a loading indicator, an error message, or just an empty screen.
-        // This prevents the rest of the Composable from executing with a null ViewModel.
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            // Or a more descriptive Text("Bluetooth not available")
-        }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {}
         return
     }
     val context = LocalContext.current
@@ -84,7 +83,7 @@ fun RcScreen(
     }
 
     val state by bluetoothViewModel.state.collectAsState()
-    val telemetry = state?.telemetryState ?: TelemetryState()
+    val telemetry = state.telemetryState
 
 
     var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -129,16 +128,16 @@ fun RcScreen(
         centerContent = {
             CenterDisplay(
                 modifier = Modifier.fillMaxSize(),
-                onTopLeftPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
-                onTopRightPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
-                onBottomLeftPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
-                onBottomRightPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) }
+                onTopLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
+                onTopRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
+                onBottomLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
+                onBottomRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) }
             )
         },
         leftSideContent = {
             ControllerSide(
                 modifier = Modifier
-                    .fillMaxHeight()
+                    .wrapContentHeight()
                     .padding(8.dp),
                 side = Side.LEFT,
                 mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
@@ -153,13 +152,16 @@ fun RcScreen(
                 onKnobValueChange = { newValue -> lefKnobValue = newValue },
                 panelNumber = telemetry.leftPanelValue,
                 panelOn = telemetry.leftPanelOn,
-                panelColor = telemetry.leftPanelColor
+                panelColor = telemetry.leftPanelColor,
+                topExtraContent = { modifier ->
+                    AnalogIndicator(modifier = modifier, value = telemetry.analogIndicatorValue)
+                }
             )
         },
         rightSideContent = {
             ControllerSide(
                 modifier = Modifier
-                    .fillMaxHeight()
+                    .wrapContentHeight()
                     .padding(8.dp),
                 side = Side.RIGHT,
                 mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
@@ -174,7 +176,13 @@ fun RcScreen(
                 onKnobValueChange = { newValue -> rightKnobValue = newValue },
                 panelNumber = telemetry.rightPanelValue,
                 panelOn = telemetry.rightPanelOn,
-                panelColor = telemetry.rightPanelColor
+                panelColor = telemetry.rightPanelColor,
+                topExtraContent = { modifier ->
+                    BatteryStatus(
+                        level = telemetry.batteryLevel,
+                        modifier = modifier
+                    )
+                }
             )
         }
     )
@@ -257,10 +265,12 @@ fun ControllerSide(
     onKnobValueChange: (Float) -> Unit,
     panelNumber: Int,
     panelOn: Boolean,
-    panelColor: Color
+    panelColor: Color,
+    topExtraContent: (@Composable (modifier: Modifier) -> Unit)? = null
 ) {
+
     BoxWithConstraints(
-        modifier = modifier,
+        modifier = modifier.fillMaxHeight(),
         contentAlignment = Alignment.BottomCenter
     ) {
         val baseSize = min(maxWidth, maxHeight)
@@ -274,9 +284,14 @@ fun ControllerSide(
         val joystickSize = baseSize * sizePercentage
         val knobSize = joystickSize * 0.4f
         val switchSize = joystickSize * 0.4f
+
+        val extraContentSizeBattery = joystickSize * 0.35f
+        val extraContentSizeAnalogIndicator = joystickSize * 0.3f
+
+        val panelWidth = joystickSize * 0.5f
         Box(
             modifier = Modifier.size(joystickSize),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Joystick_RC3D_C(
                 modifier = Modifier
@@ -295,15 +310,10 @@ fun ControllerSide(
             val radius = joystickSize * 0.45f
             val knobRadius = joystickSize * 0.55f
 
-            val panelAngle = if (side == Side.RIGHT) 72f else 108f
-            val panelRadius = joystickSize * .85f
-            val panelWidth = joystickSize * 0.5f
-            val panelHeight = joystickSize * 0.5f
-
             angles.forEachIndexed { index, angle ->
                 val angleInRadians = Math.toRadians(angle.toDouble())
-                val xOffset = (radius.value * cos(angleInRadians)).dp
-                val yOffset = (radius.value * sin(angleInRadians)).dp
+                val xOffset = (radius.value * cos(angleInRadians)).dp - 8.dp
+                val yOffset = (radius.value * sin(angleInRadians)).dp + 24.dp
 
                 Box(
                     modifier = Modifier
@@ -336,17 +346,25 @@ fun ControllerSide(
                     onValueChange = onKnobValueChange
                 )
             }
-
-            val panelAngleRadians = Math.toRadians(panelAngle.toDouble())
-            val panelXOffset = (panelRadius.value * cos(panelAngleRadians)).dp
-            val panelYOffset = (panelRadius.value * sin(panelAngleRadians)).dp
-            Box(
-                modifier = Modifier
-                    .width(panelWidth)
-                    .height(panelHeight)
-                    .align(Alignment.Center)
-                    .offset(x = -panelXOffset, y = -panelYOffset)
-            ) {
+        }
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (side == Side.RIGHT) {
+                SevenSegmentedPanel(
+                    width = panelWidth,
+                    number = panelNumber,
+                    on = panelOn,
+                    onColor = panelColor
+                )
+                Spacer(modifier = Modifier.size(10.dp))
+                topExtraContent?.invoke(Modifier.size(extraContentSizeBattery))
+            } else {
+                topExtraContent?.invoke(Modifier.size(extraContentSizeAnalogIndicator))
+                Spacer(modifier = Modifier.size(10.dp))
                 SevenSegmentedPanel(
                     width = panelWidth,
                     number = panelNumber,
@@ -355,6 +373,7 @@ fun ControllerSide(
                 )
             }
         }
+
     }
 }
 
@@ -406,6 +425,87 @@ enum class Side {
     LEFT, RIGHT
 }
 
+@Composable
+fun RcScreenStaticPreview() {
+    val telemetry = TelemetryState(
+        leftPanelValue = 1234,
+        rightPanelValue = 5678,
+        leftPanelOn = true,
+        rightPanelOn = true,
+        leftPanelColor = Color.Green,
+        rightPanelColor = Color.Red
+    )
+
+    var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
+    var rightStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
+    var leftSwitches by remember { mutableStateOf(listOf(true, false, true)) }
+    var rightSwitches by remember { mutableStateOf(listOf(false, true, false)) }
+    var lefKnobValue by remember { mutableStateOf(0.25f) }
+    var rightKnobValue by remember { mutableStateOf(0.75f) }
+
+    ErgonomicRow(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.DarkGray)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+        centerContent = {
+            CenterDisplay(
+                modifier = Modifier.fillMaxSize(),
+                onTopLeftPress = {},
+                onTopRightPress = {},
+                onBottomLeftPress = {},
+                onBottomRightPress = {}
+            )
+        },
+        leftSideContent = {
+            ControllerSide(
+                modifier = Modifier
+                    .wrapContentHeight()
+                    .padding(8.dp),
+                side = Side.LEFT,
+                mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
+                onMove = { x, y -> leftStickPosition = Pair(x, y) },
+                switchStates = leftSwitches,
+                onSwitchStateChange = { index, newState ->
+                    leftSwitches = leftSwitches.toMutableList().also { it[index] = newState }
+                },
+                knobValue = lefKnobValue,
+                onKnobValueChange = { newValue -> lefKnobValue = newValue },
+                panelNumber = telemetry.leftPanelValue,
+                panelOn = telemetry.leftPanelOn,
+                panelColor = telemetry.leftPanelColor,
+                topExtraContent = { modifier ->
+                    AnalogIndicator(modifier = modifier, value = 50)
+                }
+            )
+        },
+        rightSideContent = {
+            ControllerSide(
+                modifier = Modifier
+                    .wrapContentHeight()
+                    .padding(8.dp),
+                side = Side.RIGHT,
+                mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
+                onMove = { x, y -> rightStickPosition = Pair(x, y) },
+                switchStates = rightSwitches,
+                onSwitchStateChange = { index, newState ->
+                    rightSwitches = rightSwitches.toMutableList().also { it[index] = newState }
+                },
+                knobValue = rightKnobValue,
+                onKnobValueChange = { newValue -> rightKnobValue = newValue },
+                panelNumber = telemetry.rightPanelValue,
+                panelOn = telemetry.rightPanelOn,
+                panelColor = telemetry.rightPanelColor,
+                topExtraContent = { modifier ->
+                    BatteryStatus(
+                        level = 100,
+                        modifier = modifier
+                    )
+                }
+            )
+        }
+    )
+}
 
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Preview(device = "spec:width=800dp,height=600dp,dpi=240")
@@ -418,5 +518,5 @@ enum class Side {
 @Preview(device = "spec:width=2048px,height=1536px,dpi=320")
 @Composable
 fun RcScreenPreview() {
-    RcScreen(null)
+    RcScreenStaticPreview()
 }

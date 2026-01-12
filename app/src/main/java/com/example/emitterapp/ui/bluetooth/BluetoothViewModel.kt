@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class BluetoothViewModel @Inject constructor(
+open class BluetoothViewModel @Inject constructor(
     private val bluetoothController: BluetoothController
 ) : ViewModel() {
     private val _navigateToScreen = Channel<String>()

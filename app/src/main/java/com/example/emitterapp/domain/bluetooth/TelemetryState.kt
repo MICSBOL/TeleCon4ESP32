@@ -8,5 +8,7 @@ data class TelemetryState(
     val leftPanelOn: Boolean = false,
     val rightPanelOn: Boolean = false,
     val leftPanelColor: Color = Color.Green,
-    val rightPanelColor: Color = Color.Green
+    val rightPanelColor: Color = Color.Green,
+    val analogIndicatorValue: Int = 0,
+    val batteryLevel: Int = 0
 )
