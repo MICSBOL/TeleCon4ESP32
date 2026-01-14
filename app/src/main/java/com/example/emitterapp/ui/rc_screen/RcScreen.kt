@@ -195,45 +195,79 @@ fun CenterDisplay(
     onTopRightPress: () -> Unit,
     onBottomLeftPress: () -> Unit,
     onBottomRightPress: () -> Unit,
+    screenAspectRatio: Float = 0f
 ) {
+    val isWideScreen = screenAspectRatio > 1.7f
+    val is4Over3 = screenAspectRatio == 4 / 3f
     Box(
         modifier = modifier
-            .background(Color.Black),
+            .background(Color.Transparent)
+            .padding(top = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            Image(
-                painter = painterResource(id = R.drawable.car_bouncing01),
-                contentDescription = "Center Screen",
-                contentScale = ContentScale.Crop,
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(bottom = 10.dp)
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                PushButtonSide(
-                    modifier = Modifier.size(50.dp),
-                    side = ButtonSide.RIGHT,
-                    onPress = onTopRightPress
+                Image(
+                    painter = painterResource(id = R.drawable.center_frame_blue),
+                    contentDescription = "Center Display Frame",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds
                 )
-                PushButtonSide(
-                    modifier = Modifier.size(50.dp),
-                    side = ButtonSide.LEFT,
-                    onPress = onTopLeftPress
-                )
+                if (!isWideScreen) { //&& !is4Over3){
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        PushButtonSide(
+                            modifier = Modifier.size(70.dp),
+                            side = ButtonSide.RIGHT,
+                            onPress = onTopRightPress
+                        )
+                        PushButtonSide(
+                            modifier = Modifier.size(70.dp),
+                            side = ButtonSide.LEFT,
+                            onPress = onTopLeftPress
+                        )
+                    }
+                }
             }
+
+            if (isWideScreen) {  //|| is4Over3) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset(y = (-20).dp)
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    PushButtonSide(
+                        modifier = Modifier.size(50.dp),
+                        side = ButtonSide.RIGHT,
+                        onPress = onTopRightPress
+                    )
+                    PushButtonSide(
+                        modifier = Modifier.size(50.dp),
+                        side = ButtonSide.LEFT,
+                        onPress = onTopLeftPress
+                    )
+                }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .offset(y = if (isWideScreen) (-20).dp else 0.dp)
                     .padding(horizontal = 26.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -425,6 +459,7 @@ enum class Side {
     LEFT, RIGHT
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun RcScreenStaticPreview() {
     val telemetry = TelemetryState(
@@ -443,68 +478,80 @@ fun RcScreenStaticPreview() {
     var lefKnobValue by remember { mutableStateOf(0.25f) }
     var rightKnobValue by remember { mutableStateOf(0.75f) }
 
-    ErgonomicRow(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.DarkGray)
-            .windowInsetsPadding(WindowInsets.safeDrawing),
-        centerContent = {
-            CenterDisplay(
-                modifier = Modifier.fillMaxSize(),
-                onTopLeftPress = {},
-                onTopRightPress = {},
-                onBottomLeftPress = {},
-                onBottomRightPress = {}
-            )
-        },
-        leftSideContent = {
-            ControllerSide(
-                modifier = Modifier
-                    .wrapContentHeight()
-                    .padding(8.dp),
-                side = Side.LEFT,
-                mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
-                onMove = { x, y -> leftStickPosition = Pair(x, y) },
-                switchStates = leftSwitches,
-                onSwitchStateChange = { index, newState ->
-                    leftSwitches = leftSwitches.toMutableList().also { it[index] = newState }
-                },
-                knobValue = lefKnobValue,
-                onKnobValueChange = { newValue -> lefKnobValue = newValue },
-                panelNumber = telemetry.leftPanelValue,
-                panelOn = telemetry.leftPanelOn,
-                panelColor = telemetry.leftPanelColor,
-                topExtraContent = { modifier ->
-                    AnalogIndicator(modifier = modifier, value = 50)
-                }
-            )
-        },
-        rightSideContent = {
-            ControllerSide(
-                modifier = Modifier
-                    .wrapContentHeight()
-                    .padding(8.dp),
-                side = Side.RIGHT,
-                mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
-                onMove = { x, y -> rightStickPosition = Pair(x, y) },
-                switchStates = rightSwitches,
-                onSwitchStateChange = { index, newState ->
-                    rightSwitches = rightSwitches.toMutableList().also { it[index] = newState }
-                },
-                knobValue = rightKnobValue,
-                onKnobValueChange = { newValue -> rightKnobValue = newValue },
-                panelNumber = telemetry.rightPanelValue,
-                panelOn = telemetry.rightPanelOn,
-                panelColor = telemetry.rightPanelColor,
-                topExtraContent = { modifier ->
-                    BatteryStatus(
-                        level = 100,
-                        modifier = modifier
-                    )
-                }
-            )
-        }
-    )
+    var sidePanelAspectRatio by remember { mutableStateOf(4 / 3f) }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenAspectRatio = maxWidth / maxHeight
+        Image(
+            painter = painterResource(id = R.drawable.plastic_background), // <-- REPLACE with your background image
+            contentDescription = "Background",
+            contentScale = ContentScale.Crop, // Or ContentScale.FillBounds
+            modifier = Modifier.fillMaxSize()
+        )
+
+        ErgonomicRow(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+            centerContent = {
+                CenterDisplay(
+                    modifier = Modifier.fillMaxSize(),
+                    onTopLeftPress = {},
+                    onTopRightPress = {},
+                    onBottomLeftPress = {},
+                    onBottomRightPress = {},
+                    screenAspectRatio = screenAspectRatio
+                )
+            },
+            leftSideContent = {
+                ControllerSide(
+                    modifier = Modifier
+                        .wrapContentHeight()
+                        .padding(8.dp),
+                    side = Side.LEFT,
+                    mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
+                    onMove = { x, y -> leftStickPosition = Pair(x, y) },
+                    switchStates = leftSwitches,
+                    onSwitchStateChange = { index, newState ->
+                        leftSwitches = leftSwitches.toMutableList().also { it[index] = newState }
+                    },
+                    knobValue = lefKnobValue,
+                    onKnobValueChange = { newValue -> lefKnobValue = newValue },
+                    panelNumber = telemetry.leftPanelValue,
+                    panelOn = telemetry.leftPanelOn,
+                    panelColor = telemetry.leftPanelColor,
+                    topExtraContent = { modifier ->
+                        AnalogIndicator(modifier = modifier, value = 50)
+                    }
+                )
+            },
+            rightSideContent = {
+                ControllerSide(
+                    modifier = Modifier
+                        .wrapContentHeight()
+                        .padding(8.dp),
+                    side = Side.RIGHT,
+                    mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
+                    onMove = { x, y -> rightStickPosition = Pair(x, y) },
+                    switchStates = rightSwitches,
+                    onSwitchStateChange = { index, newState ->
+                        rightSwitches = rightSwitches.toMutableList().also { it[index] = newState }
+                    },
+                    knobValue = rightKnobValue,
+                    onKnobValueChange = { newValue -> rightKnobValue = newValue },
+                    panelNumber = telemetry.rightPanelValue,
+                    panelOn = telemetry.rightPanelOn,
+                    panelColor = telemetry.rightPanelColor,
+                    topExtraContent = { modifier ->
+                        BatteryStatus(
+                            level = 100,
+                            modifier = modifier
+                        )
+                    }
+                )
+            }
+        )
+    }
 }
 
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
