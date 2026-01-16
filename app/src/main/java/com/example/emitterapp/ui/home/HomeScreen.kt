@@ -46,15 +46,6 @@ import com.example.emitterapp.ui.theme.titanOneRegular
 @Composable
 fun HomeScreen(navController: NavHostController? = null) {
 
-    val savedStateHandle = navController?.currentBackStackEntry?.savedStateHandle
-
-//    LaunchedEffect(savedStateHandle) {
-//        savedStateHandle?.getLiveData<ConnectionResult>("bt_connection_result")
-//            ?.observeForever { result ->
-//                savedStateHandle.remove<ConnectionResult>("bt_connection_result")
-//            }
-//    }
-
     Scaffold(
         topBar = {
             TopAppBar(

@@ -81,7 +81,7 @@ fun Switch3DButton(
     Image(
         painter = painterResource(id = frames[frame]),
         contentDescription = if (isOn) "On" else "Off",
-        modifier = Modifier
+        modifier = modifier
             .size(70.dp)
             .pointerInput(isBusy, isOn) {
                 detectDragGestures { change, dragAmount ->

@@ -10,20 +10,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.emitterapp.ui.bluetooth.BluetoothScreen
-import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.navigation.AppNavGraph
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -75,20 +61,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             EmitterAppTheme {
                 AppNavGraph()
-//                val viewModel = hiltViewModel<BluetoothViewModel>()
-//                val state by viewModel.state.collectAsState()
-//
-//                Surface(
-//                    color = MaterialTheme.colorScheme.background,
-//                    modifier = Modifier.fillMaxSize()
-//                ) {
-//                    BluetoothScreen(
-//                        state = state,
-//                        onStartScan = viewModel::startScan,
-//                        onStopScan = viewModel::stopScan,
-////                    navController
-//                    )
-//                }
             }
         }
     }

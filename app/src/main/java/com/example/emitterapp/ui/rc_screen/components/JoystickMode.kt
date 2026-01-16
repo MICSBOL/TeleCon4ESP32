@@ -1,14 +1,5 @@
 package com.example.emitterapp.ui.rc_screen.components
 
-//enum class JoystickMode {
-//    CENTER_SPRING,
-//    HOLD_POSITION,
-//    VERTICAL_SPRING,
-//    VERTICAL_HOLD,
-//    HORIZONTAL_SPRING,
-//    HORIZONTAL_HOLD
-//}
-
 sealed class JoystickMode{
 
     data class Spring(val initialPosition: Pair<Int, Int> = CENTER) : JoystickMode()

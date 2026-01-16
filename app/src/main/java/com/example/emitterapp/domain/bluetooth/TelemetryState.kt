@@ -10,5 +10,11 @@ data class TelemetryState(
     val leftPanelColor: Color = Color.Green,
     val rightPanelColor: Color = Color.Green,
     val analogIndicatorValue: Int = 0,
-    val batteryLevel: Int = 0
+    val batteryLevel: Int = 0,
+    val plotSeries: List<PlotData> = emptyList()
+)
+
+data class PlotData(
+    val dataPoints: List<Float> = emptyList(),
+    val color: Color = Color.White
 )

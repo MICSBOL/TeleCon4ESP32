@@ -93,10 +93,9 @@ fun SplashScreen(navController: NavHostController) {
                 .offset(y = topDomeOffset)
         ) {
             val domeHeight =
-                size.height * 0.7f // Adjust the height of the domes (20% of screen height)
+                size.height * 0.7f
             val canvasWidth = size.width * 2f
 
-            // Draw the top dome
             drawArc(
                 color = backgroundPurple,
                 startAngle = 0f,
@@ -117,7 +116,6 @@ fun SplashScreen(navController: NavHostController) {
             val canvasWidth = size.width * 2f
             val canvasHeight = size.height
 
-            // Draw the bottom dome
             drawArc(
                 color = backgroundPurple,
                 startAngle = 180f,

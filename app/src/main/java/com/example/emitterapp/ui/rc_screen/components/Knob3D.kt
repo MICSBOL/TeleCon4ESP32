@@ -68,7 +68,7 @@ fun Knob3D(
     Image(
         painter = painterResource(id = frames[frame]),
         contentDescription = "3D Knob",
-        modifier = Modifier
+        modifier = modifier
             .size(200.dp)
             .onSizeChanged { newSize ->
                 center = Offset(newSize.width / 2f, newSize.height / 2f)

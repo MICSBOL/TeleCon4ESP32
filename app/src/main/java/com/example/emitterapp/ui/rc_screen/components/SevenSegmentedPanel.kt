@@ -101,7 +101,6 @@ fun SevenSegmentedPanel(
 
                 decimalPoints.forEachIndexed { index, isPointOn ->
                     if (index <= 3 && isPointOn && on) {
-                        // Calculate position for the point (between digits)
                         val pointX = startX + (index + 1) * digitWidth + (index * digitSpacing) + (digitSpacing / 2)
                         val pointCenter = Offset(pointX, pointY)
 
@@ -255,13 +254,8 @@ fun UnitDisplay(
     val textToDraw = unit.text
 
     BoxWithConstraints(
-        // Use the same aspect ratio as the panel for consistency
         modifier = modifier.size(width, width * 0.66f)
     ) {
-        // 1. Draw the Image frame first so it's in the background
-
-
-        // 2. This Box is the "screen"
         Box(
             modifier = Modifier
                 .width(maxWidth * 0.3f)
@@ -269,14 +263,10 @@ fun UnitDisplay(
                 .background(Color.Transparent)
                 .align(Alignment.BottomEnd)
                 .padding(end = maxWidth * 0.2f, bottom =  maxHeight * 0.05f)
-            , // Dark background for the text
-//            contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                // Determine which color to use
                 val currentColor = if (on) onColor else offColor
 
-                // Setup the paint for the text glow
                 val glowPaint = Paint().asFrameworkPaint().apply {
                     isAntiAlias = true
                     style = android.graphics.Paint.Style.FILL
@@ -288,7 +278,6 @@ fun UnitDisplay(
                     maskFilter = BlurMaskFilter(textSize * 0.4f, BlurMaskFilter.Blur.NORMAL)
                 }
 
-                // Setup the paint for the solid text core
                 val textPaint = Paint().asFrameworkPaint().apply {
                     isAntiAlias = true
                     style = android.graphics.Paint.Style.FILL
@@ -299,17 +288,13 @@ fun UnitDisplay(
                         Typeface.BOLD)
                 }
 
-                // Calculate position to center the text
                 val textBounds = android.graphics.Rect()
                 textPaint.getTextBounds(textToDraw, 0, textToDraw.length, textBounds)
                 val xPos = size.width / 2f
                 val yPos = (size.height / 2f) + (textBounds.height() / 2f)
 
-                // Draw the text onto the canvas
                 drawIntoCanvas { canvas ->
-                    // Draw the glow first
                     canvas.nativeCanvas.drawText(textToDraw, xPos, yPos, glowPaint)
-                    // Draw the solid text on top
                     canvas.nativeCanvas.drawText(textToDraw, xPos, yPos, textPaint)
                 }
             }
