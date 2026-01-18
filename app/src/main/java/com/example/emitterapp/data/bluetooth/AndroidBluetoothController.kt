@@ -9,11 +9,16 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
+import com.example.emitterapp.domain.bluetooth.IndicatorState
+import com.example.emitterapp.domain.bluetooth.PanelState
+import com.example.emitterapp.domain.bluetooth.PlotData
+import com.example.emitterapp.domain.bluetooth.PlotState
 import com.example.emitterapp.domain.bluetooth.TelemetryState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,53 +41,121 @@ import java.util.UUID
 class AndroidBluetoothController(
     private val context: Context
 ) : BluetoothController {
+    private val _panelState = MutableStateFlow(PanelState())
+    override val panelState: StateFlow<PanelState> = _panelState.asStateFlow()
 
-    private val _telemetryState = MutableStateFlow(TelemetryState())
-    override val telemetryState: StateFlow<TelemetryState>
-        get() = _telemetryState.asStateFlow()
+    private val _indicatorState = MutableStateFlow(IndicatorState())
+    override val indicatorState: StateFlow<IndicatorState> = _indicatorState.asStateFlow()
 
-    private fun parseTelemetryPacket(bytes: ByteArray) {
-        if (bytes.size < 10) return
-        if (bytes[0] != 0xCC.toByte() || bytes[1] != 0xDD.toByte()) return
+    private val _plotState = MutableStateFlow(PlotState())
+    override val plotState: StateFlow<PlotState> = _plotState.asStateFlow()
+
+    private val plotColors =
+        listOf(Color.Cyan, Color.Red, Color.Green, Color.Yellow, Color.Magenta, Color.White)
+
+    private fun parseIncomingPacket(bytes: ByteArray) {
+        if (bytes.size < 3) return
+
+        when {
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x11.toByte() -> parsePanelPacket(bytes)
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x22.toByte() -> parseIndicatorPacket(bytes)
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x33.toByte() -> parsePlotPacket(bytes)
+        }
+    }
+
+    private fun parsePanelPacket(bytes: ByteArray) {
+        if (bytes.size != 8) return
+
+        val checksum = (bytes[2].toInt() and 0xFF) +
+                (bytes[3].toInt() and 0xFF) +
+                (bytes[4].toInt() and 0xFF) +
+                (bytes[5].toInt() and 0xFF) +
+                (bytes[6].toInt() and 0xFF)
+
+        if ((checksum and 0xFF).toByte() != bytes[7]) {
+            return
+        }
 
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val leftValue = buffer.getShort(2).toInt()
         val rightValue = buffer.getShort(4).toInt()
         val panelStates = buffer.get(6)
-
-        val analogValue = buffer.get(7).toInt() and 0xFF
-        val batteryValue = buffer.get(8).toInt() and 0xFF
-
-        val checksum = buffer.get(9)
-
-        var calculatedChecksum = 0
-        for(i in 2..8){
-            calculatedChecksum += bytes[i].toInt() and 0xFF
-        }
-
-        if ((calculatedChecksum and 0xFF).toByte() != checksum) {
-            return
-        }
-
         val leftOn = (panelStates.toInt() and (1 shl 0)) != 0
         val rightOn = (panelStates.toInt() and (1 shl 1)) != 0
         val leftColorIsGreen = (panelStates.toInt() and (1 shl 2)) != 0
         val rightColorIsGreen = (panelStates.toInt() and (1 shl 3)) != 0
 
-        _telemetryState.update {
+        _panelState.update {
             it.copy(
-                leftPanelValue = leftValue,
-                rightPanelValue = rightValue,
-                leftPanelOn = leftOn,
-                rightPanelOn = rightOn,
-                leftPanelColor = if (leftColorIsGreen) Color.Green else Color.Red,
-                rightPanelColor = if (rightColorIsGreen) Color.Green else Color.Red,
-                analogIndicatorValue = analogValue,
+                leftValue = leftValue,
+                rightValue = rightValue,
+                leftOn = leftOn,
+                rightOn = rightOn,
+                leftColor = if (leftColorIsGreen) Color.Green else Color.Red,
+                rightColor = if (rightColorIsGreen) Color.Green else Color.Red
+            )
+        }
+    }
+
+    private fun parseIndicatorPacket(bytes: ByteArray) {
+        if (bytes.size != 5) return
+
+        val checksum = (bytes[2].toInt() and 0xFF) + (bytes[3].toInt() and 0xFF)
+
+        if ((checksum and 0xFF).toByte() != bytes[4]) {
+            return
+        }
+
+        val analogValue = bytes[2].toInt() and 0xFF
+        val batteryValue = bytes[3].toInt() and 0xFF
+
+        _indicatorState.update {
+            it.copy(
+                analogValue = analogValue,
                 batteryLevel = batteryValue
             )
         }
     }
 
+    private fun parsePlotPacket(bytes: ByteArray) {
+        if (bytes.size < 4) return
+        val numPlots = bytes[2].toInt() and 0xFF
+        if (bytes.size != 4 + numPlots) return
+
+        var checksum = bytes[2].toInt() and 0xFF
+        for (i in 0 until numPlots) {
+            checksum += bytes[3 + i].toInt() and 0xFF
+        }
+        if ((checksum and 0xFF).toByte() != bytes.last()) {
+            return
+        }
+
+        val newPlotValues = (0 until numPlots).map { (bytes[3 + it].toInt() and 0xFF) / 255f }
+
+        _plotState.update { currentState ->
+            val updatedSeries = currentState.series.toMutableList()
+            newPlotValues.forEachIndexed { index, value ->
+                if (index < updatedSeries.size) {
+                    val oldPoints = updatedSeries[index].dataPoints.toMutableList()
+                    oldPoints.add(value)
+                    while (oldPoints.size > 100) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                            oldPoints.removeFirst()
+                        }
+                    }
+                    updatedSeries[index] = updatedSeries[index].copy(dataPoints = oldPoints)
+                } else {
+                    updatedSeries.add(
+                        PlotData(
+                            dataPoints = mutableListOf(value),
+                            color = plotColors.getOrElse(index) { Color.White }
+                        )
+                    )
+                }
+            }
+            currentState.copy(series = updatedSeries)
+        }
+    }
     private val bluetoothManager by lazy {
         context.getSystemService(BluetoothManager::class.java)
     }
@@ -167,7 +240,7 @@ class AndroidBluetoothController(
                     emit(ConnectionResult.ConnectionEstablished)
                     dataTransferService!!.listenForRawBytes()
                         .collect { byteArray ->
-                            parseTelemetryPacket(byteArray)
+                            parseIncomingPacket(byteArray)
                         }
                 }
             } catch (e: IOException) {

@@ -11,5 +11,5 @@ data class BluetoothUiState(
     val isConnecting: Boolean = false,
     val errorMessage: String? = null,
     val messages: List<BluetoothMessage> = emptyList(),
-    val telemetryState: TelemetryState = TelemetryState()
+    val telemetryState: TelemetryState? = null
 )

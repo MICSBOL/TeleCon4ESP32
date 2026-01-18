@@ -33,28 +33,28 @@ import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun RcScreenStaticPreview() {
-    val telemetry = TelemetryState(
-        leftPanelValue = 1234,
-        rightPanelValue = 5678,
-        leftPanelOn = true,
-        rightPanelOn = true,
-        leftPanelColor = Color.Green,
-        rightPanelColor = Color.Red
-    )
+//    val telemetry = TelemetryState(
+//        leftPanelValue = 1234,
+//        rightPanelValue = 5678,
+//        leftPanelOn = true,
+//        rightPanelOn = true,
+//        leftPanelColor = Color.Green,
+//        rightPanelColor = Color.Red
+//    )
 
     val plotData = remember { mutableStateListOf<Float>() }
     val maxDataPoints = 100
 
-    LaunchedEffect(telemetry) {
-        val normalizedValue = (telemetry.analogIndicatorValue / 100f).coerceIn(0f, 1f)
-        plotData.add(normalizedValue)
-
-        while (plotData.size > maxDataPoints) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                plotData.removeFirst()
-            }
-        }
-    }
+//    LaunchedEffect(telemetry) {
+//        val normalizedValue = (telemetry.analogIndicatorValue / 100f).coerceIn(0f, 1f)
+//        plotData.add(normalizedValue)
+//
+//        while (plotData.size > maxDataPoints) {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+//                plotData.removeFirst()
+//            }
+//        }
+//    }
 
 
     var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -69,9 +69,9 @@ fun RcScreenStaticPreview() {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenAspectRatio = maxWidth / maxHeight
         Image(
-            painter = painterResource(id = R.drawable.plastic_background), // <-- REPLACE with your background image
+            painter = painterResource(id = R.drawable.plastic_background),
             contentDescription = "Background",
-            contentScale = ContentScale.Crop, // Or ContentScale.FillBounds
+            contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -103,9 +103,9 @@ fun RcScreenStaticPreview() {
                     },
                     knobValue = lefKnobValue,
                     onKnobValueChange = { newValue -> lefKnobValue = newValue },
-                    panelNumber = telemetry.leftPanelValue,
-                    panelOn = telemetry.leftPanelOn,
-                    panelColor = telemetry.leftPanelColor,
+                    panelNumber = 100,
+                    panelOn = true,
+                    panelColor = Color.Red,
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = 50)
                     }
@@ -125,9 +125,9 @@ fun RcScreenStaticPreview() {
                     },
                     knobValue = rightKnobValue,
                     onKnobValueChange = { newValue -> rightKnobValue = newValue },
-                    panelNumber = telemetry.rightPanelValue,
-                    panelOn = telemetry.rightPanelOn,
-                    panelColor = telemetry.rightPanelColor,
+                    panelNumber = 100,
+                    panelOn = true,
+                    panelColor = Color.Green,
                     topExtraContent = { modifier ->
                         BatteryStatus(
                             level = 100,

@@ -60,8 +60,9 @@ fun RcScreen(
         )
     }
 
-    val state by bluetoothViewModel.state.collectAsState()
-    val telemetry = state.telemetryState
+    val panelState by bluetoothViewModel.panelState.collectAsState()
+    val indicatorState by bluetoothViewModel.indicatorState.collectAsState()
+    val plotState by bluetoothViewModel.plotState.collectAsState()
 
 
     var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -109,7 +110,6 @@ fun RcScreen(
         ErgonomicRow(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.DarkGray)
                 .windowInsetsPadding(WindowInsets.safeDrawing),
             centerContent = {
                 CenterDisplay(
@@ -119,6 +119,7 @@ fun RcScreen(
                     onBottomLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
                     onBottomRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
                     screenAspectRatio = screenAspectRatio,
+                    series = plotState.series
                 )
             },
             leftSideContent = {
@@ -137,11 +138,11 @@ fun RcScreen(
                     },
                     knobValue = lefKnobValue,
                     onKnobValueChange = { newValue -> lefKnobValue = newValue },
-                    panelNumber = telemetry.leftPanelValue,
-                    panelOn = telemetry.leftPanelOn,
-                    panelColor = telemetry.leftPanelColor,
+                    panelNumber = panelState.leftValue,
+                    panelOn = panelState.leftOn,
+                    panelColor = panelState.leftColor,
                     topExtraContent = { modifier ->
-                        AnalogIndicator(modifier = modifier, value = telemetry.analogIndicatorValue)
+                        AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
                     }
                 )
             },
@@ -161,12 +162,12 @@ fun RcScreen(
                     },
                     knobValue = rightKnobValue,
                     onKnobValueChange = { newValue -> rightKnobValue = newValue },
-                    panelNumber = telemetry.rightPanelValue,
-                    panelOn = telemetry.rightPanelOn,
-                    panelColor = telemetry.rightPanelColor,
+                    panelNumber = panelState.rightValue,
+                    panelOn = panelState.rightOn,
+                    panelColor = panelState.rightColor,
                     topExtraContent = { modifier ->
                         BatteryStatus(
-                            level = telemetry.batteryLevel,
+                            level = indicatorState.batteryLevel,
                             modifier = modifier
                         )
                     }

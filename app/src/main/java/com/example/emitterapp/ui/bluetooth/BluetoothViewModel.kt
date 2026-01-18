@@ -6,12 +6,16 @@ import androidx.lifecycle.viewModelScope
 import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
+import com.example.emitterapp.domain.bluetooth.IndicatorState
+import com.example.emitterapp.domain.bluetooth.PanelState
+import com.example.emitterapp.domain.bluetooth.PlotState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
@@ -29,20 +33,22 @@ open class BluetoothViewModel @Inject constructor(
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
     private val _state = MutableStateFlow(BluetoothUiState())
+
+    val panelState: StateFlow<PanelState> = bluetoothController.panelState
+    val indicatorState: StateFlow<IndicatorState> = bluetoothController.indicatorState
+    val plotState: StateFlow<PlotState> = bluetoothController.plotState
     val state = combine(
         bluetoothController.scannedDevices,
         bluetoothController.pairedDevices,
-        bluetoothController.telemetryState,
         _state
-    ) { scannedDevices, pairedDevices, telemetry, state ->
+    ) { scannedDevices, pairedDevices, state ->
         Log.d(
             "BluetoothViewModel",
-            "State updated. Scanned Devices: ${scannedDevices.size}, Paired Devices: ${pairedDevices.size}, Telemetry: ${telemetry.rightPanelColor}"
+            "State updated. Scanned Devices: ${scannedDevices.size}, Paired Devices: ${pairedDevices.size}"
         )
         state.copy(
             scannedDevices = scannedDevices,
             pairedDevices = pairedDevices,
-            telemetryState = telemetry
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
 
