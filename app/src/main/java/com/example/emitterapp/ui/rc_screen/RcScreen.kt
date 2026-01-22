@@ -3,11 +3,11 @@ package com.example.emitterapp.ui.rc_screen
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.emitterapp.R
@@ -99,6 +100,14 @@ fun RcScreen(
 
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        LaunchedEffect(Unit) {
+            val dpWidth = with(density) { maxWidth }
+            val dpHeight = with(density) { maxHeight }
+            val dpi = density.density * 160
+            Log.d("DeviceMetrics", "Width: ${dpWidth}, Height: ${dpHeight}, DPI: $dpi")
+        }
+
         val screenAspectRatio = maxWidth / maxHeight
         Image(
             painter = painterResource(id = R.drawable.plastic_background),
@@ -128,6 +137,7 @@ fun RcScreen(
                         .wrapContentHeight()
                         .padding(8.dp),
                     side = Side.LEFT,
+                    aspectRatio = screenAspectRatio,
                     mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
                     onMove = { x, y ->
                         leftStickPosition = Pair(x, y)
@@ -152,6 +162,7 @@ fun RcScreen(
                         .wrapContentHeight()
                         .padding(8.dp),
                     side = Side.RIGHT,
+                    aspectRatio = screenAspectRatio,
                     mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
                     onMove = { x, y ->
                         rightStickPosition = Pair(x, y)

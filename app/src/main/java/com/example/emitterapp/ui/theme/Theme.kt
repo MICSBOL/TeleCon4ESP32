@@ -32,12 +32,36 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
+private val AppDarkColorScheme = darkColorScheme(
+    primary = AccentBlue,
+    secondary = AccentGreen,
+    tertiary = PlotMagenta,
+    background = DarkBackground,
+    surface = DarkSurface,
+    onPrimary = DarkBackground,
+    onSecondary = DarkBackground,
+    onTertiary = DarkBackground,
+    onBackground = DarkOnBackground,
+    onSurface = DarkOnSurface
+)
+
+private val AppLightColorScheme = lightColorScheme(
+    primary = AccentBlue,
+    secondary = AccentGreen,
+    tertiary = PlotMagenta,
+    background = LightBackground,
+    surface = LightSurface,
+    onPrimary = LightSurface,
+    onSecondary = LightSurface,
+    onTertiary = LightSurface,
+    onBackground = LightOnBackground,
+    onSurface = LightOnSurface
+)
 
 @Composable
 fun EmitterAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -46,8 +70,8 @@ fun EmitterAppTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> AppDarkColorScheme
+        else -> AppLightColorScheme
     }
 
     MaterialTheme(

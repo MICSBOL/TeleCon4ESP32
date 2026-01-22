@@ -1,3 +1,21 @@
 <resources>
     <string name="app_name">EmitterApp</string>
+    <!-- HomeScreen Strings -->
+    <string name="home_title">RC-Emitter</string>
+    <string name="home_help">Help</string>
+    <string name="home_item_rc_control">RC Control</string>
+    <string name="home_item_select_ui">Select UI</string>
+    <string name="home_item_personalize">Personalize</string>
+    <string name="home_item_bluetooth">Bluetooth</string>
+    <string name="home_item_tutorial">Tutorial</string>
+    <string name="home_start_button">Start</string>
+    <string name="home_upgrade_pro">Upgrade to pro</string>
+    <string name="home_version_info">v1.0.2 - About this App</string>
+    <string name="home_car_image_description">Bouncing car illustration</string>
+
+    <!-- SplashScreen Strings -->
+    <string name="splash_title">RC - EMITTER</string>
+    <string name="splash_logo_content_description">Splash Screen Logo</string>
+    <string name="splash_get_started">Get Started</string>
+    <string name="splash_subtitle">Control your projects in one place.</string>
 </resources>

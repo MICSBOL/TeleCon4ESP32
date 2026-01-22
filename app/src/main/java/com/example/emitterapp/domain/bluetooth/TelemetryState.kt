@@ -28,6 +28,7 @@ data class TelemetryState(
 )
 
 data class PlotData(
+    val name: String = "",
     val dataPoints: List<Float> = emptyList(),
     val color: Color = Color.White
 )

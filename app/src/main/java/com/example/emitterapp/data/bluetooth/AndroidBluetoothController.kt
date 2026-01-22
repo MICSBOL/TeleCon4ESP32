@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
@@ -53,6 +54,37 @@ class AndroidBluetoothController(
     private val plotColors =
         listOf(Color.Cyan, Color.Red, Color.Green, Color.Yellow, Color.Magenta, Color.White)
 
+    private val plotNameMap = mutableMapOf<Int, String>()
+
+    private fun parseConfigPacket(bytes: ByteArray) {
+        if (bytes.size < 4) return
+        val numPlots = bytes[2].toInt() and 0xFF
+
+        plotNameMap.clear()
+
+        var currentIndex = 3
+        for (i in 0 until numPlots) {
+            if (currentIndex >= bytes.size) {
+                Log.e("BluetoothController", "Config packet parsing error: index out of bounds for name length.")
+                return
+            }
+            val nameLength = bytes[currentIndex].toInt() and 0xFF
+            currentIndex++
+
+            if (currentIndex + nameLength > bytes.size) {
+                Log.e("BluetoothController", "Config packet parsing error: index out of bounds for name bytes.")
+                return
+            }
+            val nameBytes = bytes.sliceArray(currentIndex until currentIndex + nameLength)
+            val name = String(nameBytes, Charsets.UTF_8)
+            plotNameMap[i] = name
+
+            currentIndex += nameLength
+        }
+
+        Log.d("BluetoothController", "Parsed config, names updated: $plotNameMap")
+    }
+
     private fun parseIncomingPacket(bytes: ByteArray) {
         if (bytes.size < 3) return
 
@@ -60,6 +92,8 @@ class AndroidBluetoothController(
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x11.toByte() -> parsePanelPacket(bytes)
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x22.toByte() -> parseIndicatorPacket(bytes)
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x33.toByte() -> parsePlotPacket(bytes)
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x44.toByte() -> parseConfigPacket(bytes)
+
         }
     }
 
@@ -147,6 +181,7 @@ class AndroidBluetoothController(
                 } else {
                     updatedSeries.add(
                         PlotData(
+                            name = plotNameMap.getOrDefault(index, "Plot ${index + 1}"),
                             dataPoints = mutableListOf(value),
                             color = plotColors.getOrElse(index) { Color.White }
                         )
