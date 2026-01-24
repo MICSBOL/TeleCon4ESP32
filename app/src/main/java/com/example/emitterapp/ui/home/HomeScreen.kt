@@ -58,21 +58,18 @@ data class HomeItem(
 @Composable
 fun HomeScreen(navController: NavHostController? = null ) {
 
-    // List of items to display in the cards
     val homeItems = listOf(
         HomeItem(Icons.Default.RocketLaunch, stringResource(R.string.home_item_rc_control), Screen.RcScreen.route),
-        HomeItem(Icons.Default.Style, stringResource(R.string.home_item_select_ui), ""), // Add routes as needed
-        HomeItem(Icons.Default.Settings, stringResource(R.string.home_item_personalize), ""),
+        HomeItem(Icons.Default.Style, stringResource(R.string.home_item_select_ui), ""),
+        HomeItem(Icons.Default.Settings, stringResource(R.string.home_item_settings), Screen.RcStettingScreen.route),
         HomeItem(Icons.Default.Bluetooth, stringResource(R.string.home_item_bluetooth), Screen.Bluetooth.route),
         HomeItem(Icons.Default.VideoLibrary, stringResource(R.string.home_item_tutorial), ""),
-//        HomeItem(Icons.Default.Help, "Help", "")
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(text = "RC-Emitter") },
-                // --- MODIFICATION: Use theme colors ---
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -83,28 +80,25 @@ fun HomeScreen(navController: NavHostController? = null ) {
                         Icon(
                             imageVector = Icons.Default.Help,
                             contentDescription = stringResource(R.string.home_help)
-                            // Tint is now inherited from actionIconContentColor
                         )
                     }
                 }
             )
         },
-        // --- MODIFICATION: Apply background color to the Scaffold itself ---
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(8.dp), // Add horizontal padding for the whole screen
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Use LazyColumn for a scrollable and performant list of cards
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f), // Allow the list to take up available space
-                verticalArrangement = Arrangement.spacedBy(12.dp) // Space between cards
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(homeItems) { item ->
                     HomeItemCard(
@@ -119,19 +113,15 @@ fun HomeScreen(navController: NavHostController? = null ) {
                 }
             }
 
-            // Bottom section with image and button
-//            Spacer(modifier = Modifier.height(16.dp))
             Image(
                 painter = painterResource(R.drawable.car_bouncing01),
                 contentDescription = "car",
                 modifier = Modifier
                     .weight(0.4f)
-//                    .size(150.dp) // Use a fixed size for better layout control
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { /* TODO: Define Start action */ },
-                // --- MODIFICATION: Use theme colors ---
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -141,7 +131,6 @@ fun HomeScreen(navController: NavHostController? = null ) {
             ) {
                 Text(
                     text = stringResource(R.string.home_start_button),
-                    // --- MODIFICATION: Use theme typography ---
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                 )
             }
@@ -151,17 +140,15 @@ fun HomeScreen(navController: NavHostController? = null ) {
             ) {
                 Text(
                     text = stringResource(R.string.home_upgrade_pro),
-                    // --- MODIFICATION: Use theme typography ---
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary, // Use accent color to draw attention
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { /* TODO */ }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.home_version_info),
-                    // --- MODIFICATION: Use theme typography ---
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) // Subdued color
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -179,7 +166,6 @@ fun HomeItemCard(
             .fillMaxWidth()
             .height(70.dp)
             .clickable(onClick = onClick),
-        // --- MODIFICATION: Use theme colors ---
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),

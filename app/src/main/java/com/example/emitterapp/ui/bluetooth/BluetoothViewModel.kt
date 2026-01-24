@@ -3,12 +3,15 @@ package com.example.emitterapp.ui.bluetooth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.emitterapp.data.repository.SettingsRepository
 import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.IndicatorState
 import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.bluetooth.PlotState
+import com.example.emitterapp.ui.rc_settings.SettingsState
+import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -28,7 +32,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 open class BluetoothViewModel @Inject constructor(
-    private val bluetoothController: BluetoothController
+    private val bluetoothController: BluetoothController,
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
@@ -37,6 +42,20 @@ open class BluetoothViewModel @Inject constructor(
     val panelState: StateFlow<PanelState> = bluetoothController.panelState
     val indicatorState: StateFlow<IndicatorState> = bluetoothController.indicatorState
     val plotState: StateFlow<PlotState> = bluetoothController.plotState
+
+    val settingsState: StateFlow<SettingsUiState> = settingsRepository.settingsFlow
+        .map<SettingsState, SettingsUiState> { settings ->
+            SettingsUiState.Success(settings)
+        }
+        .catch {
+            emit(SettingsUiState.Error(it.message ?: "Failed to load settings"))
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SettingsUiState.Loading
+        )
+
     val state = combine(
         bluetoothController.scannedDevices,
         bluetoothController.pairedDevices,
@@ -148,10 +167,14 @@ open class BluetoothViewModel @Inject constructor(
             packet[0] = 0xAA.toByte()
             packet[1] = 0x55.toByte()
 
-            val leftStickX_12bit = (((currentState.leftStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-            val leftStickY_12bit = (((currentState.leftStickY + 100) * 4095) / 200).coerceIn(0, 4095)
-            val rightStickX_12bit = (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-            val rightStickY_12bit = (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
+            val leftStickX_12bit =
+                (((currentState.leftStickX + 100) * 4095) / 200).coerceIn(0, 4095)
+            val leftStickY_12bit =
+                (((currentState.leftStickY + 100) * 4095) / 200).coerceIn(0, 4095)
+            val rightStickX_12bit =
+                (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
+            val rightStickY_12bit =
+                (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
 
             packet[2] = (leftStickX_12bit and 0xFF).toByte()
             packet[3] = ((leftStickX_12bit shr 8) and 0xFF).toByte()

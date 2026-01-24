@@ -5,7 +5,7 @@
     <string name="home_help">Help</string>
     <string name="home_item_rc_control">RC Control</string>
     <string name="home_item_select_ui">Select UI</string>
-    <string name="home_item_personalize">Personalize</string>
+    <string name="home_item_settings">RC - Settings</string>
     <string name="home_item_bluetooth">Bluetooth</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Start</string>

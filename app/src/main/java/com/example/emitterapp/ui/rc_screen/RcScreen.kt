@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -39,7 +41,7 @@ import com.example.emitterapp.ui.bluetooth.ButtonEvent
 import com.example.emitterapp.ui.bluetooth.RcUiState
 import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -64,7 +66,7 @@ fun RcScreen(
     val panelState by bluetoothViewModel.panelState.collectAsState()
     val indicatorState by bluetoothViewModel.indicatorState.collectAsState()
     val plotState by bluetoothViewModel.plotState.collectAsState()
-
+    val settingsUiState by bluetoothViewModel.settingsState.collectAsState()
 
     var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
     var rightStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -74,7 +76,19 @@ fun RcScreen(
 
     var lefKnobValue by remember { mutableStateOf(0.5f) }
     var rightKnobValue by remember { mutableStateOf(0.5f) }
-
+    LaunchedEffect(settingsUiState) {
+        if (settingsUiState is SettingsUiState.Success) {
+            fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
+                val x = (pos.first - 6) / 6f
+                val y = (pos.second - 6) / -6f
+                return Pair(x, y)
+            }
+            leftStickPosition =
+                toNormalized((settingsUiState as SettingsUiState.Success).settings.leftStickMode.initialPosition)
+            rightStickPosition =
+                toNormalized((settingsUiState as SettingsUiState.Success).settings.rightStickMode.initialPosition)
+        }
+    }
     LaunchedEffect(Unit) {
         while (isActive) {
             val currentState = RcUiState(
@@ -99,93 +113,114 @@ fun RcScreen(
     }
 
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val density = LocalDensity.current
-        LaunchedEffect(Unit) {
-            val dpWidth = with(density) { maxWidth }
-            val dpHeight = with(density) { maxHeight }
-            val dpi = density.density * 160
-            Log.d("DeviceMetrics", "Width: ${dpWidth}, Height: ${dpHeight}, DPI: $dpi")
+    when (val state = settingsUiState) {
+        is SettingsUiState.Loading -> {
+            // Show a loading indicator in the center while settings are loading
+            CircularProgressIndicator()
         }
 
-        val screenAspectRatio = maxWidth / maxHeight
-        Image(
-            painter = painterResource(id = R.drawable.plastic_background),
-            contentDescription = "Background",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        is SettingsUiState.Error -> {
+            // Show an error message
+            Text("Error: ${state.message}")
+        }
 
-        ErgonomicRow(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing),
-            centerContent = {
-                CenterDisplay(
-                    modifier = Modifier.fillMaxSize(),
-                    onTopLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
-                    onTopRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
-                    onBottomLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
-                    onBottomRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
-                    screenAspectRatio = screenAspectRatio,
-                    series = plotState.series
+        is SettingsUiState.Success -> {
+            // Once settings are loaded successfully, draw the main UI
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val density = LocalDensity.current
+                LaunchedEffect(Unit) {
+                    val dpWidth = with(density) { maxWidth }
+                    val dpHeight = with(density) { maxHeight }
+                    val dpi = density.density * 160
+                    Log.d("DeviceMetrics", "Width: ${dpWidth}, Height: ${dpHeight}, DPI: $dpi")
+                }
+
+                val screenAspectRatio = maxWidth / maxHeight
+                Image(
+                    painter = painterResource(id = R.drawable.plastic_background),
+                    contentDescription = "Background",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
-            },
-            leftSideContent = {
-                ControllerSide(
+
+                ErgonomicRow(
                     modifier = Modifier
-                        .wrapContentHeight()
-                        .padding(8.dp),
-                    side = Side.LEFT,
-                    aspectRatio = screenAspectRatio,
-                    mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
-                    onMove = { x, y ->
-                        leftStickPosition = Pair(x, y)
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing),
+                    centerContent = {
+                        CenterDisplay(
+                            modifier = Modifier.fillMaxSize(),
+                            onTopLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
+                            onTopRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
+                            onBottomLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
+                            onBottomRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
+                            screenAspectRatio = screenAspectRatio,
+                            series = plotState.series
+                        )
                     },
-                    switchStates = leftSwitches,
-                    onSwitchStateChange = { index, newState ->
-                        leftSwitches = leftSwitches.toMutableList().also { it[index] = newState }
+                    leftSideContent = {
+                        ControllerSide(
+                            modifier = Modifier
+                                .wrapContentHeight()
+                                .padding(8.dp),
+                            side = Side.LEFT,
+                            aspectRatio = screenAspectRatio,
+                            mode = state.settings.leftStickMode,
+                            onMove = { x, y ->
+                                leftStickPosition = Pair(x, y)
+                            },
+                            switchStates = leftSwitches,
+                            onSwitchStateChange = { index, newState ->
+                                leftSwitches =
+                                    leftSwitches.toMutableList().also { it[index] = newState }
+                            },
+                            knobValue = lefKnobValue,
+                            onKnobValueChange = { newValue -> lefKnobValue = newValue },
+                            panelNumber = panelState.leftValue,
+                            panelOn = panelState.leftOn,
+                            panelColor = panelState.leftColor,
+                            topExtraContent = { modifier ->
+                                AnalogIndicator(
+                                    modifier = modifier,
+                                    value = indicatorState.analogValue
+                                )
+                            }
+                        )
                     },
-                    knobValue = lefKnobValue,
-                    onKnobValueChange = { newValue -> lefKnobValue = newValue },
-                    panelNumber = panelState.leftValue,
-                    panelOn = panelState.leftOn,
-                    panelColor = panelState.leftColor,
-                    topExtraContent = { modifier ->
-                        AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
-                    }
-                )
-            },
-            rightSideContent = {
-                ControllerSide(
-                    modifier = Modifier
-                        .wrapContentHeight()
-                        .padding(8.dp),
-                    side = Side.RIGHT,
-                    aspectRatio = screenAspectRatio,
-                    mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
-                    onMove = { x, y ->
-                        rightStickPosition = Pair(x, y)
-                    },
-                    switchStates = rightSwitches,
-                    onSwitchStateChange = { index, newState ->
-                        rightSwitches = rightSwitches.toMutableList().also { it[index] = newState }
-                    },
-                    knobValue = rightKnobValue,
-                    onKnobValueChange = { newValue -> rightKnobValue = newValue },
-                    panelNumber = panelState.rightValue,
-                    panelOn = panelState.rightOn,
-                    panelColor = panelState.rightColor,
-                    topExtraContent = { modifier ->
-                        BatteryStatus(
-                            level = indicatorState.batteryLevel,
-                            modifier = modifier
+                    rightSideContent = {
+                        ControllerSide(
+                            modifier = Modifier
+                                .wrapContentHeight()
+                                .padding(8.dp),
+                            side = Side.RIGHT,
+                            aspectRatio = screenAspectRatio,
+                            mode = state.settings.rightStickMode,
+                            onMove = { x, y ->
+                                rightStickPosition = Pair(x, y)
+                            },
+                            switchStates = rightSwitches,
+                            onSwitchStateChange = { index, newState ->
+                                rightSwitches =
+                                    rightSwitches.toMutableList().also { it[index] = newState }
+                            },
+                            knobValue = rightKnobValue,
+                            onKnobValueChange = { newValue -> rightKnobValue = newValue },
+                            panelNumber = panelState.rightValue,
+                            panelOn = panelState.rightOn,
+                            panelColor = panelState.rightColor,
+                            topExtraContent = { modifier ->
+                                BatteryStatus(
+                                    level = indicatorState.batteryLevel,
+                                    modifier = modifier
+                                )
+                            }
                         )
                     }
                 )
             }
-        )
+        }
     }
+
 }
 
 @Composable

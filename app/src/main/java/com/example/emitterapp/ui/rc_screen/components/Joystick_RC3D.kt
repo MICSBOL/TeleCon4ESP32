@@ -455,29 +455,31 @@ fun Joystick_RC3D_C(
                     while (true) {
                         val down = awaitFirstDown()
 
+                        // Calculate the PHYSICAL base position of the stick
                         val currentGridX = frame % 13
                         val currentGridY = frame / 13
                         val normalizedX_minus1_to_1 = (currentGridX - 6) / 6f
                         val normalizedY_minus1_to_1 = -(currentGridY - 6) / 6f
                         val stickBaseX = normalizedX_minus1_to_1 * dragRadius
-                        val stickBaseY =
-                            -normalizedY_minus1_to_1 * dragRadius
+                        val stickBaseY = -normalizedY_minus1_to_1 * dragRadius
                         val stickBasePosition = Offset(stickBaseX, stickBaseY) + center
-                        val touchRadius = size.width * 0.25f
-                        val perspectiveOffsetY = touchRadius * 1f
-                        val stickHeadPosition =
-                            stickBasePosition.copy(y = stickBasePosition.y - perspectiveOffsetY)
 
-                        val distanceToHead = sqrt(
-                            (down.position.x - stickHeadPosition.x).pow(2) + (down.position.y - stickHeadPosition.y).pow(
-                                2
-                            )
+                        // --- START OF DEFINITIVE FIX ---
+                        // Validate the touch against the PHYSICAL base of the stick, NOT the visual head.
+                        val touchRadius = size.width * 0.35f // A generous touch radius
+                        val distanceToBase = sqrt(
+                            (down.position.x - stickBasePosition.x).pow(2) + (down.position.y - stickBasePosition.y).pow(2)
                         )
-                        if (distanceToHead > touchRadius) {
+
+                        // If the finger is too far from the physical stick base, ignore the touch.
+                        if (distanceToBase > touchRadius) {
                             continue
                         }
 
+                        // The offset for dragging should also be relative to the PHYSICAL base.
                         val touchOffsetFromStick = down.position - stickBasePosition
+                        // --- END OF DEFINITIVE FIX ---
+
                         down.consume()
                         releaseAnimationJob?.cancel()
                         val dragPointerId = down.id
@@ -487,6 +489,7 @@ fun Joystick_RC3D_C(
                             val dragEvent = event.changes.firstOrNull { it.id == dragPointerId }
 
                             if (dragEvent == null || !dragEvent.pressed) {
+                                // ... (Release logic is correct) ...
                                 when (mode) {
                                     is JoystickMode.Spring,
                                     is JoystickMode.VerticalSpring,
@@ -497,7 +500,6 @@ fun Joystick_RC3D_C(
                                         )
                                         playReleaseAnimation(initialFrame, mode)
                                     }
-
                                     else -> {
                                         val gridX = frame % 13
                                         val gridY = frame / 13
@@ -509,8 +511,8 @@ fun Joystick_RC3D_C(
                                 break
                             }
 
+                            // ... (The rest of your drag logic is correct) ...
                             var dragVector = (dragEvent.position - touchOffsetFromStick) - center
-
                             val dragDistance = sqrt(dragVector.x.pow(2) + dragVector.y.pow(2))
                             var clampedVector = dragVector
 
@@ -527,26 +529,20 @@ fun Joystick_RC3D_C(
                                 is JoystickMode.VerticalHold -> {
                                     clampedVector = Offset(0f, clampedVector.y)
                                 }
-
                                 is JoystickMode.HorizontalSpring,
                                 is JoystickMode.HorizontalHold -> {
                                     clampedVector = Offset(clampedVector.x, 0f)
                                 }
-
                                 else -> {}
                             }
 
                             val normalizedX = (clampedVector.x + dragRadius) / (dragRadius * 2f)
                             val normalizedY = (clampedVector.y + dragRadius) / (dragRadius * 2f)
-
                             val finalNormalizedX = normalizedX * 2f - 1f
                             val finalNormalizedY = -(normalizedY * 2f - 1f)
-
                             onMove(finalNormalizedX, finalNormalizedY)
-
                             val gridX = (normalizedX * 12).roundToInt().coerceIn(0, 12)
                             val gridY = (normalizedY * 12).roundToInt().coerceIn(0, 12)
-
                             val finalFrameIndex = gridY * 13 + gridX
                             if (frame != finalFrameIndex) {
                                 frame = finalFrameIndex

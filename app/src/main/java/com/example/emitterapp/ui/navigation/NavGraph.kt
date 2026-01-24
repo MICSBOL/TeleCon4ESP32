@@ -13,6 +13,8 @@ import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.home.HomeScreen
 import com.example.emitterapp.ui.rc_screen.RcScreen
 import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
+import com.example.emitterapp.ui.rc_settings.RcSettingsScreen
+import com.example.emitterapp.ui.rc_settings.SettingsViewModel
 import com.example.emitterapp.ui.splash.SplashScreen
 
 @Composable
@@ -58,6 +60,10 @@ fun AppNavGraph() {
         composable(Screen.RcScreen.route) {
             val viewModel = hiltViewModel<BluetoothViewModel>()
             RcScreen(bluetoothViewModel = viewModel)
+        }
+        composable(Screen.RcStettingScreen.route) {
+            val viewModel = hiltViewModel<SettingsViewModel>()
+            RcSettingsScreen(navController = navController, viewModel = viewModel)
         }
     }
 }
