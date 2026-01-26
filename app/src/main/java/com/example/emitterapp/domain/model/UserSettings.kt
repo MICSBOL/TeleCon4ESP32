@@ -1,8 +1,8 @@
-package com.example.emitterapp.ui.rc_settings
+package com.example.emitterapp.domain.model
 
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 
-data class SettingsState(
+data class UserSettings(
     val leftStickMode: JoystickMode = JoystickMode.Spring(),
     val rightStickMode: JoystickMode = JoystickMode.Spring(),
     val switchInitialStates: Map<Int, Boolean> = (0..5).associateWith { false },

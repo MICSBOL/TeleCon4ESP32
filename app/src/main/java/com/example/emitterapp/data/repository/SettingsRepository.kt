@@ -8,7 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode.Companion.toStringRepresentation
-import com.example.emitterapp.ui.rc_settings.SettingsState
+import com.example.emitterapp.domain.model.UserSettings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -28,7 +28,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
 
-    val settingsFlow: Flow<SettingsState> = context.dataStore.data.map { preferences ->
+    val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { preferences ->
         val leftModeString = preferences[PreferencesKeys.LEFT_STICK_MODE]
         val rightModeString = preferences[PreferencesKeys.RIGHT_STICK_MODE]
         val switchStatesString = preferences[PreferencesKeys.SWITCH_STATES]
@@ -39,7 +39,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             index to (s.toBooleanStrictOrNull() ?: false)
         }?.toMap() ?: (0..5).associateWith { false }
 
-        SettingsState(
+        UserSettings(
             leftStickMode = JoystickMode.fromString(leftModeString),
             rightStickMode = JoystickMode.fromString(rightModeString),
             switchInitialStates = switchStatesMap,

@@ -27,12 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,12 +41,9 @@ import androidx.compose.ui.unit.dp
 import com.example.emitterapp.R
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.bluetooth.ButtonEvent
-import com.example.emitterapp.ui.bluetooth.RcUiState
 import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 
 @SuppressLint("RestrictedApi", "UnusedBoxWithConstraintsScope")
 @Composable
@@ -74,83 +67,19 @@ fun RcScreen(
     val panelState by bluetoothViewModel.panelState.collectAsState()
     val indicatorState by bluetoothViewModel.indicatorState.collectAsState()
     val plotState by bluetoothViewModel.plotState.collectAsState()
-    val settingsUiState by bluetoothViewModel.settingsState.collectAsState()
+    val settingsUiState by bluetoothViewModel.userSettings.collectAsState()
     val rcControlState by bluetoothViewModel.rcControlState.collectAsState()
-
-//    var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
-//    var rightStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
-
-//    var leftSwitches by remember { mutableStateOf(listOf(false, false, false)) }
-//    var rightSwitches by remember { mutableStateOf(listOf(false, false, false)) }
-//
-//    var leftKnobValue by remember { mutableStateOf(0.5f) }
-//    var rightKnobValue by remember { mutableStateOf(0.5f) }
-//    LaunchedEffect(settingsUiState) {
-//        if (settingsUiState is SettingsUiState.Success) {
-//            val loadedSettings = (settingsUiState as SettingsUiState.Success).settings
-//            fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
-//                val x = (pos.first - 6) / 6f
-//                val y = (pos.second - 6) / -6f
-//                return Pair(x, y)
-//            }
-//            leftStickPosition =
-//                toNormalized((settingsUiState as SettingsUiState.Success).settings.leftStickMode.initialPosition)
-//            rightStickPosition =
-//                toNormalized((settingsUiState as SettingsUiState.Success).settings.rightStickMode.initialPosition)
-//
-//            leftKnobValue = loadedSettings.leftKnobInitialValue
-//            rightKnobValue = loadedSettings.rightKnobInitialValue
-//            val switchMap = loadedSettings.switchInitialStates
-//
-//            leftSwitches = listOf(
-//                switchMap[0] ?: false,
-//                switchMap[1] ?: false,
-//                switchMap[2] ?: false
-//            )
-//            rightSwitches = listOf(
-//                switchMap[3] ?: false,
-//                switchMap[4] ?: false,
-//                switchMap[5] ?: false
-//            )
-//        }
-//    }
-//    LaunchedEffect(Unit) {
-//        while (isActive) {
-//            val currentState = RcUiState(
-//                leftStickX = (leftStickPosition.first * 100).toInt(),
-//                leftStickY = (leftStickPosition.second * 100).toInt(),
-//                rightStickX = (rightStickPosition.first * 100).toInt(),
-//                rightStickY = (rightStickPosition.second * 100).toInt(),
-//                switch1 = leftSwitches[0],
-//                switch2 = leftSwitches[1],
-//                switch3 = leftSwitches[2],
-//                switch4 = rightSwitches[0],
-//                switch5 = rightSwitches[1],
-//                switch6 = rightSwitches[2],
-//                leftKnobValue = (leftKnobValue * 1023).toInt().coerceIn(0, 1023),
-//                rightKnobValue = (rightKnobValue * 1023).toInt().coerceIn(0, 1023)
-//            )
-//
-//            bluetoothViewModel.sendRcControlData(currentState)
-////            delay(50L)
-//            delay(1000L)
-//        }
-//    }
-
 
     when (val state = settingsUiState) {
         is SettingsUiState.Loading -> {
-            // Show a loading indicator in the center while settings are loading
             CircularProgressIndicator()
         }
 
         is SettingsUiState.Error -> {
-            // Show an error message
             Text("Error: ${state.message}")
         }
 
         is SettingsUiState.Success -> {
-            // Once settings are loaded successfully, draw the main UI
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val density = LocalDensity.current
                 LaunchedEffect(Unit) {
@@ -238,7 +167,6 @@ fun RcScreen(
 }
 
 
-// --- START OF NEW COMPOSABLE ---
 @Composable
 fun KnobSettingsSliders(
     leftValue: Float,
@@ -247,13 +175,12 @@ fun KnobSettingsSliders(
     onRightChange: (Float) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Slider for the Left Knob
         Text("Left Knob", style = MaterialTheme.typography.bodyLarge)
         Slider(
             value = leftValue,
             onValueChange = onLeftChange,
-            valueRange = 0f..1f, // Standard range for a normalized value
-            steps = 9 // This creates 10 steps (0.0, 0.1, 0.2, ...) for finer control
+            valueRange = 0f..1f,
+            steps = 9
         )
 
         // Spacer between the two sliders
@@ -269,7 +196,6 @@ fun KnobSettingsSliders(
         )
     }
 }
-// --- END OF NEW COMPOSABLE ---
 
 @Composable
 fun LockScreenOrientation(orientation: Int) {
@@ -279,7 +205,6 @@ fun LockScreenOrientation(orientation: Int) {
         val originalOrientation = activity.requestedOrientation
         activity.requestedOrientation = orientation
         onDispose {
-            // This block is called when RcScreen leaves the composition
             activity.requestedOrientation = originalOrientation
         }
     }

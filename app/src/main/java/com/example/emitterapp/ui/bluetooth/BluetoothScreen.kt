@@ -1,7 +1,6 @@
 package com.example.emitterapp.ui.bluetooth
 
 import android.content.res.Configuration
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,13 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,7 +42,6 @@ fun BluetoothScreen(
     onStopScan: () -> Unit,
     onDeviceClick: (BluetoothDevice) -> Unit,
 ) {
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,13 +53,11 @@ fun BluetoothScreen(
                 ),
                 actions = {
                     if (state.isScanning) {
-                        // 1. Show a progress indicator to signify scanning is active.
                         CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp), // A good size for an app bar
-                            color = MaterialTheme.colorScheme.onPrimary, // Match the icon color
-                            strokeWidth = 3.dp // A slightly thicker line
+                            modifier = Modifier.size(28.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 3.dp
                         )
-                        // 2. Also show the button to stop the scan.
                         IconButton(onClick = onStopScan) {
                             Icon(
                                 imageVector = Icons.Default.Close,
@@ -74,7 +65,6 @@ fun BluetoothScreen(
                             )
                         }
                     } else {
-                        // When not scanning, just show the button to start.
                         IconButton(onClick = onStartScan) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
@@ -100,7 +90,7 @@ fun BluetoothScreen(
         }
 
         if (state.isScanning) {
-            if (state.scannedDevices.isEmpty()) {
+            if (state.pairedDevices.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -153,24 +143,22 @@ fun DeviceListItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp) // Add spacing between cards
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable { onClick(device) },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Add a subtle shadow
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp), // Internal padding for the content
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Bluetooth,
                 contentDescription = "Bluetooth Device",
-                // Use a prominent color like primary for the icon
                 tint = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = device.name ?: "(No name)",
                 style = MaterialTheme.typography.bodyLarge,
-                // This color will automatically adapt to light/dark mode
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 16.dp)
             )

@@ -10,7 +10,7 @@ import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.IndicatorState
 import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.bluetooth.PlotState
-import com.example.emitterapp.ui.rc_settings.SettingsState
+import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -43,8 +43,8 @@ open class BluetoothViewModel @Inject constructor(
     val indicatorState: StateFlow<IndicatorState> = bluetoothController.indicatorState
     val plotState: StateFlow<PlotState> = bluetoothController.plotState
 
-    val settingsState: StateFlow<SettingsUiState> = settingsRepository.settingsFlow
-        .map<SettingsState, SettingsUiState> { settings ->
+    val userSettings: StateFlow<SettingsUiState> = settingsRepository.settingsFlow
+        .map<UserSettings, SettingsUiState> { settings ->
             SettingsUiState.Success(settings)
         }
         .catch {
@@ -77,7 +77,7 @@ open class BluetoothViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            settingsState.collect { settingsUiState ->
+            userSettings.collect { settingsUiState ->
                 if (settingsUiState is SettingsUiState.Success) {
                     val loadedSettings = settingsUiState.settings
                     fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
