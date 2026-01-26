@@ -4,6 +4,7 @@ import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,18 +53,32 @@ import com.example.emitterapp.ui.theme.EmitterAppTheme
 data class HomeItem(
     val icon: ImageVector,
     val title: String,
-    val route: String
+    val route: String,
+    val icon2: ImageVector?,
+    val route2: String
 )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavHostController? = null ) {
+fun HomeScreen(navController: NavHostController? = null) {
 
     val homeItems = listOf(
-        HomeItem(Icons.Default.RocketLaunch, stringResource(R.string.home_item_rc_control), Screen.RcScreen.route),
-        HomeItem(Icons.Default.Style, stringResource(R.string.home_item_select_ui), ""),
-        HomeItem(Icons.Default.Settings, stringResource(R.string.home_item_settings), Screen.RcStettingScreen.route),
-        HomeItem(Icons.Default.Bluetooth, stringResource(R.string.home_item_bluetooth), Screen.Bluetooth.route),
-        HomeItem(Icons.Default.VideoLibrary, stringResource(R.string.home_item_tutorial), ""),
+        HomeItem(
+            Icons.Default.RocketLaunch,
+            stringResource(R.string.home_item_rc_control),
+            Screen.RcScreen.route,
+            Icons.Default.Settings,
+            Screen.RcStettingScreen.route
+        ),
+        HomeItem(Icons.Default.Style, stringResource(R.string.home_item_select_ui), "", null, ""),
+        HomeItem(
+            Icons.Default.Bluetooth,
+            stringResource(R.string.home_item_bluetooth),
+            Screen.Bluetooth.route,
+            null,
+            ""
+        ),
+        HomeItem(Icons.Default.VideoLibrary, stringResource(R.string.home_item_tutorial), "", null,""),
     )
 
     Scaffold(
@@ -107,6 +122,12 @@ fun HomeScreen(navController: NavHostController? = null ) {
                         onClick = {
                             if (item.route.isNotEmpty()) {
                                 navController?.navigate(item.route)
+                            }
+                        },
+                        icon2 = item.icon2,
+                        onClick2 = {
+                            if (item.route2.isNotEmpty()) {
+                                navController?.navigate(item.route2)
                             }
                         }
                     )
@@ -155,42 +176,76 @@ fun HomeScreen(navController: NavHostController? = null ) {
         }
     }
 }
+
 @Composable
 fun HomeItemCard(
     icon: ImageVector,
     title: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    icon2: ImageVector? = null,
+    onClick2: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(70.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
+    Row {
+
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .height(70.dp)
+                .clickable(onClick = onClick),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(36.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
+        if (icon2 != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Card(
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .size(70.dp)
+                    .clickable(onClick = onClick2),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ){
+                    Icon(
+                        imageVector = icon2,
+                        contentDescription = title,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(36.dp)
+                    )
+                }
+            }
+        }
+
     }
 }
 
