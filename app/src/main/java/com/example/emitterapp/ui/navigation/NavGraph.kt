@@ -16,6 +16,7 @@ import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
 import com.example.emitterapp.ui.rc_settings.RcSettingsScreen
 import com.example.emitterapp.ui.rc_settings.SettingsViewModel
 import com.example.emitterapp.ui.splash.SplashScreen
+import com.example.emitterapp.ui.tutorial.TutorialScreen
 
 @Composable
 fun AppNavGraph() {
@@ -62,6 +63,9 @@ fun AppNavGraph() {
         composable(Screen.RcStettingScreen.route) {
             val viewModel = hiltViewModel<SettingsViewModel>()
             RcSettingsScreen(navController = navController, viewModel = viewModel)
+        }
+        composable(Screen.Tutorial.route) {
+            TutorialScreen(navController = navController)
         }
     }
 }

@@ -78,7 +78,13 @@ fun HomeScreen(navController: NavHostController? = null) {
             null,
             ""
         ),
-        HomeItem(Icons.Default.VideoLibrary, stringResource(R.string.home_item_tutorial), "", null,""),
+        HomeItem(
+            Icons.Default.VideoLibrary,
+            stringResource(R.string.home_item_tutorial),
+            Screen.Tutorial.route,
+            null,
+            ""
+        ),
     )
 
     Scaffold(
@@ -234,7 +240,7 @@ fun HomeItemCard(
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
-                ){
+                ) {
                     Icon(
                         imageVector = icon2,
                         contentDescription = title,
