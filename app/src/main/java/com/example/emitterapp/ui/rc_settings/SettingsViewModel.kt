@@ -26,4 +26,22 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.saveRightStickMode(newMode)
         }
     }
+
+    fun onSwitchInitialStateChange(index: Int, inOn: Boolean){
+        viewModelScope.launch {
+            settingsRepository.saveSwitchState(index, inOn)
+        }
+    }
+
+    fun onLeftKnobInitialValueChange(value: Float){
+        viewModelScope.launch {
+            settingsRepository.saveLeftKnobValue(value)
+        }
+    }
+
+    fun onRightKnobInitialValueChange(value: Float){
+        viewModelScope.launch {
+            settingsRepository.saveRightKnobValue(value)
+        }
+    }
 }

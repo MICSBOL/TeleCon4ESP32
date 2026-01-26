@@ -3,6 +3,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
@@ -17,6 +18,9 @@ import javax.inject.Singleton
 private object PreferencesKeys {
     val LEFT_STICK_MODE = stringPreferencesKey("left_stick_mode")
     val RIGHT_STICK_MODE = stringPreferencesKey("right_stick_mode")
+    val SWITCH_STATES = stringPreferencesKey("switch_states")
+    val LEFT_KNOB_VALUE = floatPreferencesKey("left_knob_value")
+    val RIGHT_KNOB_VALUE = floatPreferencesKey("right_knob_value")
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
@@ -27,10 +31,20 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     val settingsFlow: Flow<SettingsState> = context.dataStore.data.map { preferences ->
         val leftModeString = preferences[PreferencesKeys.LEFT_STICK_MODE]
         val rightModeString = preferences[PreferencesKeys.RIGHT_STICK_MODE]
+        val switchStatesString = preferences[PreferencesKeys.SWITCH_STATES]
+        val leftKnobValue = preferences[PreferencesKeys.LEFT_KNOB_VALUE] ?: 0.5f
+        val rightKnobValue = preferences[PreferencesKeys.RIGHT_KNOB_VALUE] ?: 0.5f
+
+        val switchStatesMap = switchStatesString?.split(",")?.mapIndexed { index, s ->
+            index to (s.toBooleanStrictOrNull() ?: false)
+        }?.toMap() ?: (0..5).associateWith { false }
 
         SettingsState(
             leftStickMode = JoystickMode.fromString(leftModeString),
-            rightStickMode = JoystickMode.fromString(rightModeString)
+            rightStickMode = JoystickMode.fromString(rightModeString),
+            switchInitialStates = switchStatesMap,
+            leftKnobInitialValue = leftKnobValue,
+            rightKnobInitialValue = rightKnobValue
         )
     }
 
@@ -43,6 +57,29 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun saveRightStickMode(mode: JoystickMode) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.RIGHT_STICK_MODE] = mode.toStringRepresentation()
+        }
+    }
+
+    suspend fun saveSwitchState(index: Int, isOn: Boolean) {
+        context.dataStore.edit { preferences ->
+            val currentStateString = preferences[PreferencesKeys.SWITCH_STATES] ?: "false,false,false,false,false,false"
+            val states = currentStateString.split(",").toMutableList()
+
+            if (index in states.indices) {
+                states[index] = isOn.toString()
+            }
+            preferences[PreferencesKeys.SWITCH_STATES] = states.joinToString(",")
+        }
+    }
+
+    suspend fun saveLeftKnobValue(value: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LEFT_KNOB_VALUE] = value
+        }
+    }
+    suspend fun saveRightKnobValue(value: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RIGHT_KNOB_VALUE] = value
         }
     }
 }

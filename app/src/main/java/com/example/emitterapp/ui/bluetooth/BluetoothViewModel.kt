@@ -71,7 +71,46 @@ open class BluetoothViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
 
+    private val _rcControlState = MutableStateFlow(RcControlState())
+    val rcControlState: StateFlow<RcControlState> = _rcControlState
     private var deviceConnectionJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            settingsState.collect { settingsUiState ->
+                if (settingsUiState is SettingsUiState.Success) {
+                    val loadedSettings = settingsUiState.settings
+                    fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
+                        val x = (pos.first - 6) / 6f
+                        val y = (pos.second - 6) / -6f
+                        return Pair(x, y)
+                    }
+
+                    Log.d("BluetoothViewModel", "Loading saved settings into RcControlState.")
+
+                    _rcControlState.update {
+                        it.copy(
+                            leftStickPosition = toNormalized(loadedSettings.leftStickMode.initialPosition),
+                            rightStickPosition = toNormalized(loadedSettings.rightStickMode.initialPosition),
+                            leftKnobValue = loadedSettings.leftKnobInitialValue,
+                            rightKnobValue = loadedSettings.rightKnobInitialValue,
+                            leftSwitches = listOf(
+                                loadedSettings.switchInitialStates[0] ?: false,
+                                loadedSettings.switchInitialStates[1] ?: false,
+                                loadedSettings.switchInitialStates[2] ?: false
+                            ),
+                            rightSwitches = listOf(
+                                loadedSettings.switchInitialStates[3] ?: false,
+                                loadedSettings.switchInitialStates[4] ?: false,
+                                loadedSettings.switchInitialStates[5] ?: false
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
 
     fun connectToDevice(device: BluetoothDeviceDomain) {
         Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
@@ -113,10 +152,12 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     fun startScan() {
+        _state.update { it.copy(isScanning = true) }
         bluetoothController.startDiscovery()
     }
 
     fun stopScan() {
+        _state.update { it.copy(isScanning = false) }
         bluetoothController.stopDiscovery()
     }
 
@@ -226,4 +267,42 @@ open class BluetoothViewModel @Inject constructor(
             bluetoothController.trySendData(eventPacket)
         }
     }
+    fun onLeftStickChanged(x: Float, y: Float) {
+        _rcControlState.update { it.copy(leftStickPosition = Pair(x, y)) }
+    }
+
+    fun onRightStickChanged(x: Float, y: Float) {
+        _rcControlState.update { it.copy(rightStickPosition = Pair(x, y)) }
+    }
+
+    fun onLeftSwitchChanged(index: Int, newState: Boolean) {
+        _rcControlState.update {
+            val newSwitches = it.leftSwitches.toMutableList().also { list -> list[index] = newState }
+            it.copy(leftSwitches = newSwitches)
+        }
+    }
+
+    fun onRightSwitchChanged(index: Int, newState: Boolean) {
+        _rcControlState.update {
+            val newSwitches = it.rightSwitches.toMutableList().also { list -> list[index] = newState }
+            it.copy(rightSwitches = newSwitches)
+        }
+    }
+
+    fun onLeftKnobChanged(newValue: Float) {
+        _rcControlState.update { it.copy(leftKnobValue = newValue) }
+    }
+
+    fun onRightKnobChanged(newValue: Float) {
+        _rcControlState.update { it.copy(rightKnobValue = newValue) }
+    }
 }
+
+data class RcControlState(
+    val leftStickPosition: Pair<Float, Float> = Pair(0f, 0f),
+    val rightStickPosition: Pair<Float, Float> = Pair(0f, 0f),
+    val leftSwitches: List<Boolean> = List(3) { false },
+    val rightSwitches: List<Boolean> = List(3) { false },
+    val leftKnobValue: Float = 0.5f,
+    val rightKnobValue: Float = 0.5f
+)
