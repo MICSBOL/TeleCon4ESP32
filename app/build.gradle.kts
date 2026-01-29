@@ -71,6 +71,8 @@ dependencies {
     implementation("com.google.protobuf:protobuf-javalite:3.25.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
+
+    implementation("androidx.compose.foundation:foundation:1.10.1")
 }
 kapt {
     correctErrorTypes = true

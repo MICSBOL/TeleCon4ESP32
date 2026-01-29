@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Settings
@@ -75,6 +76,13 @@ fun HomeScreen(navController: NavHostController? = null) {
             Icons.Default.Bluetooth,
             stringResource(R.string.home_item_bluetooth),
             Screen.Bluetooth.route,
+            null,
+            ""
+        ),
+        HomeItem(
+            Icons.Default.Code,
+            "Codes",
+            Screen.Codes.route,
             null,
             ""
         ),

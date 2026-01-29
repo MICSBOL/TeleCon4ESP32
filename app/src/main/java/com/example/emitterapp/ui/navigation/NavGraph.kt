@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.emitterapp.ui.bluetooth.BluetoothScreen
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
+import com.example.emitterapp.ui.codes.CodesScreen
 import com.example.emitterapp.ui.home.HomeScreen
 import com.example.emitterapp.ui.rc_screen.RcScreen
 import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
@@ -66,6 +67,9 @@ fun AppNavGraph() {
         }
         composable(Screen.Tutorial.route) {
             TutorialScreen(navController = navController)
+        }
+        composable(Screen.Codes.route){
+            CodesScreen()
         }
     }
 }

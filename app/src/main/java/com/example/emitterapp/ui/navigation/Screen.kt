@@ -8,4 +8,5 @@ sealed class Screen(val route: String) {
     object TestBluetooth: Screen("test_bluetooth")
     object RcStettingScreen: Screen("rc_settings")
     object Tutorial: Screen("tutorial")
+    object Codes: Screen("codes")
 }
