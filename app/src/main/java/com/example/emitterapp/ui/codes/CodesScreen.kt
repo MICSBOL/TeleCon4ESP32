@@ -7,7 +7,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
@@ -48,7 +44,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,17 +57,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import okio.IOException
 import java.io.File
 import java.io.FileOutputStream
 import androidx.core.graphics.createBitmap
-import com.example.emitterapp.ui.theme.EmitterAppTheme
 
 private data class PdfInfo(
     val title: String,
@@ -80,26 +71,23 @@ private data class PdfInfo(
     val assetFileName: String
 )
 
-// 2. Create a list of the available documents
 private val availablePdfs = listOf(
     PdfInfo(
         title = "ESP32",
         icon = Icons.Default.Memory,
-        assetFileName = "FirebaseAndroid.pdf" // Make sure you have this file in assets
+        assetFileName = "FirebaseAndroid.pdf"
     ),
     PdfInfo(
         title = "Kotlin Notes",
         icon = Icons.Default.Code,
         assetFileName = "KotlinNotesForProfessionals.pdf"
     )
-    // Add more documents here as needed
 )
 
 @Composable
 fun CodesScreen() {
     var selectedPdf by remember { mutableStateOf<String?>(null) }
 
-    // Based on the state, show either the grid or the viewer
     if (selectedPdf == null) {
         PdfGrid(
             onPdfClick = { fileName ->
@@ -110,7 +98,6 @@ fun CodesScreen() {
         PdfViewer(
             assetFileName = selectedPdf!!,
             onBack = {
-                // Setting the state to null will navigate back to the grid
                 selectedPdf = null
             }
         )
@@ -239,23 +226,19 @@ private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
                 CircularProgressIndicator()
             }
         } else {
-            // 1. A Box now wraps the LazyColumn to handle the zoom gestures.
             Box(
                 modifier = Modifier
                     .padding(paddingValues)
                     .clipToBounds()
                     .background(Color.Gray)
                     .pointerInput(Unit) {
-                        // 2. This gesture detector is now ONLY for zooming and panning.
                         detectTransformGestures { centroid, pan, zoom, _ ->
                             val oldScale = scale
                             val newScale = (scale * zoom).coerceIn(1f, 5f)
                             scale = newScale
 
-                            // Calculate the offset to zoom around the user's fingers
                             offset = (offset + centroid - centroid * newScale / oldScale) + pan
 
-                            // Boundary checks to prevent panning the content out of view
                             val maxPanX = (size.width / 2) * (scale - 1)
                             val maxPanY = (size.height / 2) * (scale - 1)
                             offset = Offset(
@@ -267,12 +250,9 @@ private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
             ) {
                 LazyColumn(
                     state = lazyListState,
-                    // 3. THIS IS THE KEY: The LazyColumn is now enabled, but ONLY when not zoomed.
-                    //    This allows it to use its own built-in fling physics.
                     userScrollEnabled = scale == 1f,
                     modifier = Modifier
                         .fillMaxSize()
-                        // The graphicsLayer is still used to apply the transformations
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
@@ -294,12 +274,10 @@ private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
     }
 }
 
-// The PdfPage is now much simpler. It has no state and no gesture handling.
 @Composable
 private fun PdfPage(renderer: PdfRenderer, pageIndex: Int) {
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    // This effect renders the bitmap. It now runs only once per page.
     LaunchedEffect(key1 = renderer, key2 = pageIndex) {
         launch(Dispatchers.IO) {
             val currentPage = renderer.openPage(pageIndex)
@@ -324,7 +302,6 @@ private fun PdfPage(renderer: PdfRenderer, pageIndex: Int) {
                 .aspectRatio(imageBitmap.width.toFloat() / imageBitmap.height.toFloat())
         )
     } else {
-        // Placeholder with correct aspect ratio while the page loads
         Box(
             modifier = Modifier
                 .fillMaxWidth()
