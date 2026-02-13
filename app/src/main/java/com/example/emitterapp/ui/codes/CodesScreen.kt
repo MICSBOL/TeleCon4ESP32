@@ -64,6 +64,7 @@ import okio.IOException
 import java.io.File
 import java.io.FileOutputStream
 import androidx.core.graphics.createBitmap
+import kotlinx.coroutines.delay
 
 private data class PdfInfo(
     val title: String,
@@ -75,12 +76,22 @@ private val availablePdfs = listOf(
     PdfInfo(
         title = "ESP32",
         icon = Icons.Default.Memory,
-        assetFileName = "FirebaseAndroid.pdf"
+        assetFileName = "SecondDocumentation.pdf"
     ),
     PdfInfo(
         title = "Kotlin Notes",
         icon = Icons.Default.Code,
-        assetFileName = "KotlinNotesForProfessionals.pdf"
+        assetFileName = "FirstDocumentation.pdf"
+    ),
+    PdfInfo(
+        title = "ESP32_EN",
+        icon = Icons.Default.Memory,
+        assetFileName = "C_arduino_documentation.pdf"
+    ),
+    PdfInfo(
+        title = "ESP32_ES",
+        icon = Icons.Default.Code,
+        assetFileName = "ESP32_C_Documentation_ES.pdf"
     )
 )
 
@@ -137,7 +148,7 @@ private fun PdfGrid(onPdfClick: (String) -> Unit) {
 private fun PdfGridItem(pdfInfo: PdfInfo, onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .aspectRatio(1f) // Make it a square
+            .aspectRatio(1f)
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -163,6 +174,7 @@ private fun PdfGridItem(pdfInfo: PdfInfo, onClick: () -> Unit) {
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
@@ -173,6 +185,18 @@ private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
     val lazyListState = rememberLazyListState()
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+
+    var debouncedScale by remember { mutableStateOf(1f) }
+
+    LaunchedEffect(scale) {
+        if(scale == 1f){
+            debouncedScale = 1f
+            return@LaunchedEffect
+        }
+
+        delay(200L)
+        debouncedScale = scale
+    }
 
     LaunchedEffect(assetFileName) {
         try {
@@ -265,7 +289,8 @@ private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
                     items(pageCount) { pageIndex ->
                         PdfPage(
                             renderer = pdfRenderer!!,
-                            pageIndex = pageIndex
+                            pageIndex = pageIndex,
+                            scale = debouncedScale
                         )
                     }
                 }
@@ -275,14 +300,18 @@ private fun PdfViewer(assetFileName: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun PdfPage(renderer: PdfRenderer, pageIndex: Int) {
+private fun PdfPage(renderer: PdfRenderer, pageIndex: Int, scale: Float) {
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(key1 = renderer, key2 = pageIndex) {
+    LaunchedEffect(key1 = renderer, key2 = pageIndex, key3 = scale) {
         launch(Dispatchers.IO) {
             val currentPage = renderer.openPage(pageIndex)
+
+            val width = (currentPage.width * scale).toInt()
+            val height = (currentPage.height * scale).toInt()
+
             val newBitmap = createBitmap(
-                currentPage.width, currentPage.height, Bitmap.Config.ARGB_8888
+                width, height, Bitmap.Config.ARGB_8888
             )
             currentPage.render(newBitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             currentPage.close()
@@ -299,14 +328,26 @@ private fun PdfPage(renderer: PdfRenderer, pageIndex: Int) {
             modifier = Modifier
                 .background(Color.White)
                 .fillMaxWidth()
-                .aspectRatio(imageBitmap.width.toFloat() / imageBitmap.height.toFloat())
+                .aspectRatio(
+                    (renderer.getPageWidth(pageIndex).toFloat()) / (renderer.getPageHeight(pageIndex).toFloat())
+                )
         )
     } else {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f / 1.41f) // Approx A4 paper ratio
+                .aspectRatio(1f / 1.41f)
                 .background(Color.LightGray)
-        )
+        ){
+            CircularProgressIndicator()
+        }
     }
+}
+
+private fun PdfRenderer.getPageWidth(pageIndex: Int): Int {
+    return openPage(pageIndex).use { it.width }
+}
+
+private fun PdfRenderer.getPageHeight(pageIndex: Int): Int {
+    return openPage(pageIndex).use { it.height }
 }

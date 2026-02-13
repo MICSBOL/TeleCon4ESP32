@@ -15,6 +15,7 @@ import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -107,6 +109,31 @@ open class BluetoothViewModel @Inject constructor(
                         )
                     }
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            while (isActive) {
+                val currentState = rcControlState.value
+                val rcUiState = RcUiState(
+                    leftStickX = (currentState.leftStickPosition.first * 100).toInt(),
+                    leftStickY = (currentState.leftStickPosition.second * 100).toInt(),
+                    rightStickX = (currentState.rightStickPosition.first * 100).toInt(),
+                    rightStickY = (currentState.rightStickPosition.second * 100).toInt(),
+                    switch1 = currentState.leftSwitches[0],
+                    switch2 = currentState.leftSwitches[1],
+                    switch3 = currentState.leftSwitches[2],
+                    switch4 = currentState.rightSwitches[0],
+                    switch5 = currentState.rightSwitches[1],
+                    switch6 = currentState.rightSwitches[2],
+                    switch7 = false,
+                    switch8 = false,
+                    leftKnobValue = (currentState.leftKnobValue * 1023).toInt().coerceIn(0, 1023),
+                    rightKnobValue = (currentState.rightKnobValue * 1023).toInt().coerceIn(0, 1023)
+                )
+
+                sendRcControlData(rcUiState)
+                delay(500L)
             }
         }
     }
