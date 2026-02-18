@@ -8,21 +8,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -55,6 +49,15 @@ fun RcScreen(
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {}
         return
     }
+
+    DisposableEffect(bluetoothViewModel) {
+        bluetoothViewModel.startSendingRcData()
+
+        onDispose {
+            bluetoothViewModel.stopSendingRcData()
+        }
+    }
+
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         val activity = context as? ComponentActivity ?: return@LaunchedEffect
@@ -165,38 +168,6 @@ fun RcScreen(
         }
     }
 }
-
-
-@Composable
-fun KnobSettingsSliders(
-    leftValue: Float,
-    rightValue: Float,
-    onLeftChange: (Float) -> Unit,
-    onRightChange: (Float) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Left Knob", style = MaterialTheme.typography.bodyLarge)
-        Slider(
-            value = leftValue,
-            onValueChange = onLeftChange,
-            valueRange = 0f..1f,
-            steps = 9
-        )
-
-        // Spacer between the two sliders
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Slider for the Right Knob
-        Text("Right Knob", style = MaterialTheme.typography.bodyLarge)
-        Slider(
-            value = rightValue,
-            onValueChange = onRightChange,
-            valueRange = 0f..1f,
-            steps = 9
-        )
-    }
-}
-
 @Composable
 fun LockScreenOrientation(orientation: Int) {
     val context = LocalContext.current
@@ -209,7 +180,6 @@ fun LockScreenOrientation(orientation: Int) {
         }
     }
 }
-
 enum class Side {
     LEFT, RIGHT
 }

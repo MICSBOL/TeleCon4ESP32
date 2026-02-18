@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -40,11 +42,9 @@ open class BluetoothViewModel @Inject constructor(
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
     private val _state = MutableStateFlow(BluetoothUiState())
-
     val panelState: StateFlow<PanelState> = bluetoothController.panelState
     val indicatorState: StateFlow<IndicatorState> = bluetoothController.indicatorState
     val plotState: StateFlow<PlotState> = bluetoothController.plotState
-
     val userSettings: StateFlow<SettingsUiState> = settingsRepository.settingsFlow
         .map<UserSettings, SettingsUiState> { settings ->
             SettingsUiState.Success(settings)
@@ -63,56 +63,56 @@ open class BluetoothViewModel @Inject constructor(
         bluetoothController.pairedDevices,
         _state
     ) { scannedDevices, pairedDevices, state ->
-        Log.d(
-            "BluetoothViewModel",
-            "State updated. Scanned Devices: ${scannedDevices.size}, Paired Devices: ${pairedDevices.size}"
-        )
         state.copy(
             scannedDevices = scannedDevices,
             pairedDevices = pairedDevices,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
-
     private val _rcControlState = MutableStateFlow(RcControlState())
     val rcControlState: StateFlow<RcControlState> = _rcControlState
     private var deviceConnectionJob: Job? = null
+    private var sendingJob: Job? = null
 
     init {
         viewModelScope.launch {
-            userSettings.collect { settingsUiState ->
-                if (settingsUiState is SettingsUiState.Success) {
-                    val loadedSettings = settingsUiState.settings
-                    fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
-                        val x = (pos.first - 6) / 6f
-                        val y = (pos.second - 6) / -6f
-                        return Pair(x, y)
-                    }
+            val initialSettings = userSettings
+                .filterIsInstance<SettingsUiState.Success>()
+                .first()
+                .settings
 
-                    Log.d("BluetoothViewModel", "Loading saved settings into RcControlState.")
-
-                    _rcControlState.update {
-                        it.copy(
-                            leftStickPosition = toNormalized(loadedSettings.leftStickMode.initialPosition),
-                            rightStickPosition = toNormalized(loadedSettings.rightStickMode.initialPosition),
-                            leftKnobValue = loadedSettings.leftKnobInitialValue,
-                            rightKnobValue = loadedSettings.rightKnobInitialValue,
-                            leftSwitches = listOf(
-                                loadedSettings.switchInitialStates[0] ?: false,
-                                loadedSettings.switchInitialStates[1] ?: false,
-                                loadedSettings.switchInitialStates[2] ?: false
-                            ),
-                            rightSwitches = listOf(
-                                loadedSettings.switchInitialStates[3] ?: false,
-                                loadedSettings.switchInitialStates[4] ?: false,
-                                loadedSettings.switchInitialStates[5] ?: false
-                            )
+            if (_rcControlState.value == RcControlState()) {
+                fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
+                    val x = (pos.first - 6) / 6f
+                    val y = (pos.second - 6) / -6f
+                    return Pair(x, y)
+                }
+                Log.d("BluetoothViewModel", "Applying initial saved settings to pristine RcControlState.")
+                _rcControlState.update {
+                    it.copy(
+                        leftStickPosition = toNormalized(initialSettings.leftStickMode.initialPosition),
+                        rightStickPosition = toNormalized(initialSettings.rightStickMode.initialPosition),
+                        leftKnobValue = initialSettings.leftKnobInitialValue,
+                        rightKnobValue = initialSettings.rightKnobInitialValue,
+                        leftSwitches = listOf(
+                            initialSettings.switchInitialStates[0] ?: false,
+                            initialSettings.switchInitialStates[1] ?: false,
+                            initialSettings.switchInitialStates[2] ?: false
+                        ),
+                        rightSwitches = listOf(
+                            initialSettings.switchInitialStates[3] ?: false,
+                            initialSettings.switchInitialStates[4] ?: false,
+                            initialSettings.switchInitialStates[5] ?: false
                         )
-                    }
+                    )
                 }
             }
         }
+    }
+    fun startSendingRcData() {
+        if (sendingJob?.isActive == true) return
 
-        viewModelScope.launch {
+        sendingJob = viewModelScope.launch {
+            Log.d("BluetoothViewModel", "Starting RC data sending loop.")
             while (isActive) {
                 val currentState = rcControlState.value
                 val rcUiState = RcUiState(
@@ -131,14 +131,21 @@ open class BluetoothViewModel @Inject constructor(
                     leftKnobValue = (currentState.leftKnobValue * 1023).toInt().coerceIn(0, 1023),
                     rightKnobValue = (currentState.rightKnobValue * 1023).toInt().coerceIn(0, 1023)
                 )
-
                 sendRcControlData(rcUiState)
-                delay(500L)
+                delay(50L)
             }
         }
     }
+    fun stopSendingRcData() {
+        Log.d("BluetoothViewModel", "Stopping RC data sending loop.")
+        sendingJob?.cancel()
+        sendingJob = null
+    }
 
-
+    override fun onCleared() {
+        super.onCleared()
+        stopSendingRcData()
+    }
     fun connectToDevice(device: BluetoothDeviceDomain) {
         Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
         _state.update { it.copy(isConnecting = true) }
@@ -229,59 +236,59 @@ open class BluetoothViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
-    fun sendRcControlData(currentState: RcUiState) {
-        viewModelScope.launch {
-            val packet = ByteArray(18)
-            packet[0] = 0xAA.toByte()
-            packet[1] = 0x55.toByte()
+    private suspend fun sendRcControlData(currentState: RcUiState) {
+        Log.d("BluetoothViewModel", "Sending RC data... ${currentState.rightKnobValue}")
+        val packet = ByteArray(18)
+        packet[0] = 0xAA.toByte()
+        packet[1] = 0x55.toByte()
 
-            val leftStickX_12bit =
-                (((currentState.leftStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-            val leftStickY_12bit =
-                (((currentState.leftStickY + 100) * 4095) / 200).coerceIn(0, 4095)
-            val rightStickX_12bit =
-                (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-            val rightStickY_12bit =
-                (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
+        val leftStickX_12bit =
+            (((currentState.leftStickX + 100) * 4095) / 200).coerceIn(0, 4095)
+        val leftStickY_12bit =
+            (((currentState.leftStickY + 100) * 4095) / 200).coerceIn(0, 4095)
+        val rightStickX_12bit =
+            (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
+        val rightStickY_12bit =
+            (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
 
-            packet[2] = (leftStickX_12bit and 0xFF).toByte()
-            packet[3] = ((leftStickX_12bit shr 8) and 0xFF).toByte()
+        packet[2] = (leftStickX_12bit and 0xFF).toByte()
+        packet[3] = ((leftStickX_12bit shr 8) and 0xFF).toByte()
 
-            packet[4] = (leftStickY_12bit and 0xFF).toByte()
-            packet[5] = ((leftStickY_12bit shr 8) and 0xFF).toByte()
+        packet[4] = (leftStickY_12bit and 0xFF).toByte()
+        packet[5] = ((leftStickY_12bit shr 8) and 0xFF).toByte()
 
-            packet[6] = (rightStickX_12bit and 0xFF).toByte()
-            packet[7] = ((rightStickX_12bit shr 8) and 0xFF).toByte()
+        packet[6] = (rightStickX_12bit and 0xFF).toByte()
+        packet[7] = ((rightStickX_12bit shr 8) and 0xFF).toByte()
 
-            packet[8] = (rightStickY_12bit and 0xFF).toByte()
-            packet[9] = ((rightStickY_12bit shr 8) and 0xFF).toByte()
+        packet[8] = (rightStickY_12bit and 0xFF).toByte()
+        packet[9] = ((rightStickY_12bit shr 8) and 0xFF).toByte()
 
-            packet[10] = (currentState.leftKnobValue and 0xFF).toByte()
-            packet[11] = ((currentState.leftKnobValue shr 8) and 0xFF).toByte()
+        packet[10] = (currentState.leftKnobValue and 0xFF).toByte()
+        packet[11] = ((currentState.leftKnobValue shr 8) and 0xFF).toByte()
 
-            packet[12] = (currentState.rightKnobValue and 0xFF).toByte()
-            packet[13] = ((currentState.rightKnobValue shr 8) and 0xFF).toByte()
+        packet[12] = (currentState.rightKnobValue and 0xFF).toByte()
+        packet[13] = ((currentState.rightKnobValue shr 8) and 0xFF).toByte()
 
-            var switchByte = 0
-            if (currentState.switch1) switchByte = switchByte or (1 shl 0)
-            if (currentState.switch2) switchByte = switchByte or (1 shl 1)
-            if (currentState.switch3) switchByte = switchByte or (1 shl 2)
-            if (currentState.switch4) switchByte = switchByte or (1 shl 3)
-            if (currentState.switch5) switchByte = switchByte or (1 shl 4)
-            if (currentState.switch6) switchByte = switchByte or (1 shl 5)
-            if (currentState.switch7) switchByte = switchByte or (1 shl 6)
-            if (currentState.switch8) switchByte = switchByte or (1 shl 7)
+        var switchByte = 0
+        if (currentState.switch1) switchByte = switchByte or (1 shl 0)
+        if (currentState.switch2) switchByte = switchByte or (1 shl 1)
+        if (currentState.switch3) switchByte = switchByte or (1 shl 2)
+        if (currentState.switch4) switchByte = switchByte or (1 shl 3)
+        if (currentState.switch5) switchByte = switchByte or (1 shl 4)
+        if (currentState.switch6) switchByte = switchByte or (1 shl 5)
+        if (currentState.switch7) switchByte = switchByte or (1 shl 6)
+        if (currentState.switch8) switchByte = switchByte or (1 shl 7)
 
-            packet[14] = switchByte.toByte()
-            var checksum = 0;
-            for (i in 2..14) {
-                checksum += packet[i].toInt() and 0xFF
-            }
-            packet[15] = (checksum and 0xFF).toByte()
-            packet[16] = 0x0D.toByte()
-            packet[17] = 0x0A.toByte()
-            bluetoothController.trySendData(packet)
+        packet[14] = switchByte.toByte()
+        var checksum = 0;
+        for (i in 2..14) {
+            checksum += packet[i].toInt() and 0xFF
         }
+        packet[15] = (checksum and 0xFF).toByte()
+        packet[16] = 0x0D.toByte()
+        packet[17] = 0x0A.toByte()
+
+        bluetoothController.trySendData(packet)
     }
 
     fun sendButtonEvent(event: ButtonEvent) {
@@ -294,6 +301,7 @@ open class BluetoothViewModel @Inject constructor(
             bluetoothController.trySendData(eventPacket)
         }
     }
+
     fun onLeftStickChanged(x: Float, y: Float) {
         _rcControlState.update { it.copy(leftStickPosition = Pair(x, y)) }
     }
@@ -304,14 +312,16 @@ open class BluetoothViewModel @Inject constructor(
 
     fun onLeftSwitchChanged(index: Int, newState: Boolean) {
         _rcControlState.update {
-            val newSwitches = it.leftSwitches.toMutableList().also { list -> list[index] = newState }
+            val newSwitches =
+                it.leftSwitches.toMutableList().also { list -> list[index] = newState }
             it.copy(leftSwitches = newSwitches)
         }
     }
 
     fun onRightSwitchChanged(index: Int, newState: Boolean) {
         _rcControlState.update {
-            val newSwitches = it.rightSwitches.toMutableList().also { list -> list[index] = newState }
+            val newSwitches =
+                it.rightSwitches.toMutableList().also { list -> list[index] = newState }
             it.copy(rightSwitches = newSwitches)
         }
     }

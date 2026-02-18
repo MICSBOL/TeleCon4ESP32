@@ -1,6 +1,5 @@
 package com.example.emitterapp.ui.rc_settings
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +48,6 @@ fun RcSettingsScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-//    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val uiState: SettingsUiState by viewModel.uiState.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
@@ -77,7 +75,6 @@ fun RcSettingsScreen(
             }
             is SettingsUiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Log.d("RcSettingsScreen", "Error: ${state.message}")
                     Text(
                         text = state.message,
                         color = MaterialTheme.colorScheme.error,

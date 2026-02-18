@@ -47,23 +47,15 @@ fun ControllerSide(
         contentAlignment = Alignment.BottomCenter
     ) {
         val baseSize = min(maxWidth, maxHeight)
-//        val aspectRatio = maxWidth / maxHeight
         var joystickSize = 0.dp
-//        val sizePercentage = when {
         when {
-//            aspectRatio > 2.1f -> 0.65f // Special size for your "Medium Phone Emu"
-//            aspectRatio > 2.0f -> 0.7f
-//            aspectRatio > 1.7f -> 0.8f
-//            aspectRatio > 1.4f -> 0.6f
-//            else -> 0.3f
+
             aspectRatio > 2.1f -> { joystickSize = maxHeight * 0.6f }
             aspectRatio > 2.0f -> { joystickSize = maxHeight * 0.6f }
             aspectRatio > 1.7f -> { joystickSize = maxHeight * 0.6f }
             aspectRatio > 1.4f -> { joystickSize = maxHeight * 0.6f }
             else -> {joystickSize = baseSize * 0.3f}
         }
-//        val joystickSize = baseSize * sizePercentage
-//        val joystickSize = maxHeight * 0.65f
         val knobSize = joystickSize * 0.4f
         val switchSize = joystickSize * 0.4f
 
