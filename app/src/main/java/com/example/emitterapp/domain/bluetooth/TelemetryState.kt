@@ -9,12 +9,16 @@ data class PanelState(
     val leftOn: Boolean = false,
     val rightOn: Boolean = false,
     val leftColor: Color = Color.Green,
-    val rightColor: Color = Color.Green
+    val rightColor: Color = Color.Green,
+    val leftTitle: String =  "",
+    val rightTitle: String = ""
 )
 
 data class IndicatorState(
     val analogValue: Int = 0,
-    val batteryLevel: Int = 0
+    val batteryLevel: Int = 0,
+    val analogTitle: String = "",
+    val batteryTitle: String = ""
 )
 
 data class PlotState(

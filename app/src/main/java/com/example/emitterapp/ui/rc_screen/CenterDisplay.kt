@@ -3,7 +3,6 @@ package com.example.emitterapp.ui.rc_screen
 import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,12 +41,9 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.PlotData
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
@@ -72,17 +68,17 @@ fun CenterDisplay(
     screenAspectRatio: Float = 0f,
     series: List<PlotData> = emptyList()
 ) {
-    var plotType by remember { mutableStateOf(PlotType.CARTESIAN) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5000)
-            plotType = when (plotType) {
-                PlotType.CARTESIAN -> PlotType.COMPLEX_CIRCULAR
-                PlotType.COMPLEX_CIRCULAR -> PlotType.BAR_GRAPH
-                PlotType.BAR_GRAPH -> PlotType.CARTESIAN
-            }
-        }
-    }
+//    var plotType by remember { mutableStateOf(PlotType.CARTESIAN) }
+//    LaunchedEffect(Unit) {
+//        while (true) {
+//            delay(5000)
+//            plotType = when (plotType) {
+//                PlotType.CARTESIAN -> PlotType.COMPLEX_CIRCULAR
+//                PlotType.COMPLEX_CIRCULAR -> PlotType.BAR_GRAPH
+//                PlotType.BAR_GRAPH -> PlotType.CARTESIAN
+//            }
+//        }
+//    }
     val isWideScreen = screenAspectRatio > 1.7f
     val is4Over3 = screenAspectRatio == 4 / 3f
     Box(
@@ -110,7 +106,7 @@ fun CenterDisplay(
 //                            shape = RoundedCornerShape(8.dp)
                         )
                 ) {
-                    when (plotType) {
+                    when (PlotType.CARTESIAN) {
                         PlotType.CARTESIAN -> {
                             CartesianPlot(
                                 modifier = Modifier.align(Alignment.TopCenter),
