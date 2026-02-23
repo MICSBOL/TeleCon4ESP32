@@ -41,7 +41,7 @@ fun SevenSegmentedPanel(
     modifier: Modifier = Modifier,
     width: Dp = 400.dp,
     decimalPoints: List<Boolean> = listOf(false, true, false, false),
-    unit: DisplayUnit = DisplayUnit.RPM
+    title: String = "",
 ) {
     val offColor = onColor.copy(alpha = 0.1f)
     val clampedNumber = number.coerceIn(0, 9999)
@@ -116,7 +116,7 @@ fun SevenSegmentedPanel(
                 }
             }
             UnitDisplay(
-                unit = unit,
+                title = title,
                 on = true,
                 onColor = Color.Green,
                 width = width,
@@ -218,6 +218,7 @@ private fun getSegmentPaths(
 @Composable
 private fun SevenSegmentedPanelPreview() {
     SevenSegmentedPanel(
+        title = "RPM",
         number = 1234,
         on = true,
         onColor = Color.Green
@@ -244,25 +245,25 @@ private val digitToSegment = mapOf(
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun UnitDisplay(
-    unit: DisplayUnit,
+    title: String,
     on: Boolean,
     onColor: Color,
     modifier: Modifier = Modifier,
     width: Dp = 150.dp,
 ){
     val offColor = onColor.copy(alpha = 0.1f)
-    val textToDraw = unit.text
+    val textToDraw = title
 
     BoxWithConstraints(
         modifier = modifier.size(width, width * 0.66f)
     ) {
         Box(
             modifier = Modifier
-                .width(maxWidth * 0.3f)
+                .width(maxWidth * 1f)
                 .height(maxHeight * 0.3f)
                 .background(Color.Transparent)
                 .align(Alignment.BottomEnd)
-                .padding(end = maxWidth * 0.2f, bottom =  maxHeight * 0.05f)
+                .padding(end = maxWidth * 0.1f, bottom =  maxHeight * 0.05f)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val currentColor = if (on) onColor else offColor
@@ -270,7 +271,7 @@ fun UnitDisplay(
                 val glowPaint = Paint().asFrameworkPaint().apply {
                     isAntiAlias = true
                     style = android.graphics.Paint.Style.FILL
-                    textAlign = android.graphics.Paint.Align.CENTER
+                    textAlign = android.graphics.Paint.Align.LEFT
                     textSize = size.height * 0.6f // Responsive text size
                     color = currentColor.toArgb()
                     typeface = Typeface.create(Typeface.MONOSPACE,
@@ -281,8 +282,8 @@ fun UnitDisplay(
                 val textPaint = Paint().asFrameworkPaint().apply {
                     isAntiAlias = true
                     style = android.graphics.Paint.Style.FILL
-                    textAlign = android.graphics.Paint.Align.CENTER
-                    textSize = size.height * 0.6f
+                    textAlign = android.graphics.Paint.Align.LEFT
+                    textSize = size.height * 0.5f
                     color = currentColor.toArgb()
                     typeface = Typeface.create(Typeface.MONOSPACE,
                         Typeface.BOLD)
@@ -290,7 +291,7 @@ fun UnitDisplay(
 
                 val textBounds = android.graphics.Rect()
                 textPaint.getTextBounds(textToDraw, 0, textToDraw.length, textBounds)
-                val xPos = size.width / 2f
+                val xPos = size.width - (textBounds.width() * 1.2f)
                 val yPos = (size.height / 2f) + (textBounds.height() / 2f)
 
                 drawIntoCanvas { canvas ->
@@ -305,7 +306,7 @@ fun UnitDisplay(
 @Composable
 private fun UnitDisplayPreview() {
     UnitDisplay(
-        unit = DisplayUnit.RPM,
+        title  = "RPMs",
         on = true,
         onColor = Color.Green
     )

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -17,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.sp
+import com.example.emitterapp.ui.rc_screen.components.IndicatorTitle
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
-import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D_C
+import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D
 import com.example.emitterapp.ui.rc_screen.components.Knob3D
 import com.example.emitterapp.ui.rc_screen.components.SevenSegmentedPanel
 import com.example.emitterapp.ui.rc_screen.components.Switch3DButton
@@ -39,6 +42,8 @@ fun ControllerSide(
     panelNumber: Int,
     panelOn: Boolean,
     panelColor: Color,
+    panelTitle: String,
+    indicatorTitle: String,
     topExtraContent: (@Composable (modifier: Modifier) -> Unit)? = null,
     aspectRatio: Float
 ) {
@@ -67,7 +72,7 @@ fun ControllerSide(
             modifier = Modifier.size(joystickSize),
             contentAlignment = Alignment.Center,
         ) {
-            Joystick_RC3D_C(
+            Joystick_RC3D(
                 modifier = Modifier
                     .padding(16.dp)
                     .fillMaxSize(),
@@ -132,18 +137,40 @@ fun ControllerSide(
                     width = panelWidth,
                     number = panelNumber,
                     on = panelOn,
-                    onColor = panelColor
+                    onColor = panelColor,
+                    title = panelTitle
                 )
                 Spacer(modifier = Modifier.size(10.dp))
-                topExtraContent?.invoke(Modifier.size(extraContentSizeBattery))
+                Column {
+                    topExtraContent?.invoke(Modifier.size(extraContentSizeBattery))
+                    IndicatorTitle(
+                        modifier = Modifier.padding(2.dp),
+                        text = indicatorTitle,
+                        textColor = Color(0xFFFFA500), // Orange
+                        glowColor = Color(0xFFFFA500).copy(alpha = 0.5f),
+                        textSize = 10.sp,
+                        showFrame = true // Preview without the frame
+                    )
+                }
             } else {
-                topExtraContent?.invoke(Modifier.size(extraContentSizeAnalogIndicator))
+                Column {
+                    topExtraContent?.invoke(Modifier.size(extraContentSizeAnalogIndicator))
+                    IndicatorTitle(
+                        modifier = Modifier.padding(2.dp),
+                        text = indicatorTitle,
+                        textColor = Color(0xFFFFA500), // Orange
+                        glowColor = Color(0xFFFFA500).copy(alpha = 0.5f),
+                        textSize = 10.sp,
+                        showFrame = true // Preview without the frame
+                    )
+                }
                 Spacer(modifier = Modifier.size(10.dp))
                 SevenSegmentedPanel(
                     width = panelWidth,
                     number = panelNumber,
                     on = panelOn,
-                    onColor = panelColor
+                    onColor = panelColor,
+                    title = panelTitle
                 )
             }
         }

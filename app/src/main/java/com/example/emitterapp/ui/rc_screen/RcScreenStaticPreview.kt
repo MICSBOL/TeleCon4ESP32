@@ -28,7 +28,6 @@ import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.IndicatorState
 import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.bluetooth.PlotData
-import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
@@ -38,28 +37,10 @@ import kotlin.random.Random
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun RcScreenStaticPreview() {
-//    val telemetry = TelemetryState(
-//        leftPanelValue = 1234,
-//        rightPanelValue = 5678,
-//        leftPanelOn = true,
-//        rightPanelOn = true,
-//        leftPanelColor = Color.Green,
-//        rightPanelColor = Color.Red
-//    )
+
 
     val plotData = remember { mutableStateListOf<Float>() }
     val maxDataPoints = 100
-
-//    LaunchedEffect(telemetry) {
-//        val normalizedValue = (telemetry.analogIndicatorValue / 100f).coerceIn(0f, 1f)
-//        plotData.add(normalizedValue)
-//
-//        while (plotData.size > maxDataPoints) {
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-//                plotData.removeFirst()
-//            }
-//        }
-//    }
 
 
     var leftStickPosition by remember { mutableStateOf(Pair(0f, 0f)) }
@@ -112,6 +93,8 @@ fun RcScreenStaticPreview() {
                     panelNumber = 100,
                     panelOn = true,
                     panelColor = Color.Red,
+                    panelTitle = "RPM",
+                    indicatorTitle = "SPEED",
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = 50)
                     }
@@ -135,6 +118,8 @@ fun RcScreenStaticPreview() {
                     panelNumber = 100,
                     panelOn = true,
                     panelColor = Color.Green,
+                    panelTitle = "RPM",
+                    indicatorTitle = "BATTERY",
                     topExtraContent = { modifier ->
                         BatteryStatus(
                             level = 100,
@@ -229,6 +214,8 @@ fun RcScreenPreview2() {
                         panelNumber = panelState.leftValue,
                         panelOn = panelState.leftOn,
                         panelColor = panelState.leftColor,
+                        panelTitle = "RPM",
+                        indicatorTitle = "SPEED",
                         topExtraContent = { modifier ->
                             AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
                         }
@@ -250,6 +237,8 @@ fun RcScreenPreview2() {
                         panelNumber = panelState.rightValue,
                         panelOn = panelState.rightOn,
                         panelColor = panelState.rightColor,
+                        panelTitle = "RPM",
+                        indicatorTitle = "BATTERY",
                         topExtraContent = { modifier ->
                             BatteryStatus(
                                 level = indicatorState.batteryLevel,
@@ -319,6 +308,8 @@ fun RcScreenStaticLayout(
                     panelNumber = panelState.leftValue,
                     panelOn = panelState.leftOn,
                     panelColor = panelState.leftColor,
+                    panelTitle = "RPM",
+                    indicatorTitle = "SPEED",
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
                     }
@@ -342,6 +333,8 @@ fun RcScreenStaticLayout(
                     panelNumber = panelState.rightValue,
                     panelOn = panelState.rightOn,
                     panelColor = panelState.rightColor,
+                    panelTitle = "RPM",
+                    indicatorTitle = "BATTERY",
                     topExtraContent = { modifier ->
                         BatteryStatus(
                             level = indicatorState.batteryLevel,

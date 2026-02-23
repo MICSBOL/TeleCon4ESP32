@@ -7,9 +7,7 @@ import com.example.emitterapp.data.repository.SettingsRepository
 import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
-import com.example.emitterapp.domain.bluetooth.IndicatorState
-import com.example.emitterapp.domain.bluetooth.PanelState
-import com.example.emitterapp.domain.bluetooth.PlotState
+import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,9 +40,6 @@ open class BluetoothViewModel @Inject constructor(
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
     private val _state = MutableStateFlow(BluetoothUiState())
-    val panelState: StateFlow<PanelState> = bluetoothController.panelState
-    val indicatorState: StateFlow<IndicatorState> = bluetoothController.indicatorState
-    val plotState: StateFlow<PlotState> = bluetoothController.plotState
     val userSettings: StateFlow<SettingsUiState> = settingsRepository.settingsFlow
         .map<UserSettings, SettingsUiState> { settings ->
             SettingsUiState.Success(settings)
@@ -58,6 +53,7 @@ open class BluetoothViewModel @Inject constructor(
             initialValue = SettingsUiState.Loading
         )
 
+    val telemetryState: StateFlow<TelemetryState> = bluetoothController.telemetryState
     val state = combine(
         bluetoothController.scannedDevices,
         bluetoothController.pairedDevices,

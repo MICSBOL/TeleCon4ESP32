@@ -67,9 +67,7 @@ fun RcScreen(
         )
     }
 
-    val panelState by bluetoothViewModel.panelState.collectAsState()
-    val indicatorState by bluetoothViewModel.indicatorState.collectAsState()
-    val plotState by bluetoothViewModel.plotState.collectAsState()
+    val telemetryState by bluetoothViewModel.telemetryState.collectAsState()
     val settingsUiState by bluetoothViewModel.userSettings.collectAsState()
     val rcControlState by bluetoothViewModel.rcControlState.collectAsState()
 
@@ -112,7 +110,7 @@ fun RcScreen(
                             onBottomLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
                             onBottomRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
                             screenAspectRatio = screenAspectRatio,
-                            series = plotState.series
+                            series = telemetryState.plotState.series
                         )
                     },
                     leftSideContent = {
@@ -128,13 +126,15 @@ fun RcScreen(
                             onSwitchStateChange = bluetoothViewModel::onLeftSwitchChanged,
                             knobValue = rcControlState.leftKnobValue,
                             onKnobValueChange = bluetoothViewModel::onLeftKnobChanged,
-                            panelNumber = panelState.leftValue,
-                            panelOn = panelState.leftOn,
-                            panelColor = panelState.leftColor,
+                            panelNumber = telemetryState.panelState.leftValue,
+                            panelOn = telemetryState.panelState.leftOn,
+                            panelColor = telemetryState.panelState.leftColor,
+                            panelTitle = telemetryState.panelState.leftTitle,
+                            indicatorTitle = telemetryState.indicatorState.analogTitle,
                             topExtraContent = { modifier ->
                                 AnalogIndicator(
                                     modifier = modifier,
-                                    value = indicatorState.analogValue
+                                    value = telemetryState.indicatorState.analogValue
                                 )
                             }
                         )
@@ -152,12 +152,14 @@ fun RcScreen(
                             onSwitchStateChange = bluetoothViewModel::onRightSwitchChanged,
                             knobValue = rcControlState.rightKnobValue,
                             onKnobValueChange = bluetoothViewModel::onRightKnobChanged,
-                            panelNumber = panelState.rightValue,
-                            panelOn = panelState.rightOn,
-                            panelColor = panelState.rightColor,
+                            panelNumber = telemetryState.panelState.rightValue,
+                            panelOn = telemetryState.panelState.rightOn,
+                            panelColor = telemetryState.panelState.rightColor,
+                            panelTitle = telemetryState.panelState.rightTitle,
+                            indicatorTitle = telemetryState.indicatorState.batteryTitle,
                             topExtraContent = { modifier ->
                                 BatteryStatus(
-                                    level = indicatorState.batteryLevel,
+                                    level = telemetryState.indicatorState.batteryLevel,
                                     modifier = modifier
                                 )
                             }

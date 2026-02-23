@@ -26,9 +26,9 @@ data class PlotState(
 )
 
 data class TelemetryState(
-    val panelState: StateFlow<PanelState>,
-    val indicatorState: StateFlow<IndicatorState>,
-    val plotState: StateFlow<PlotState>
+    val panelState: PanelState = PanelState(),
+    val indicatorState: IndicatorState = IndicatorState(),
+    val plotState: PlotState = PlotState()
 )
 
 data class PlotData(

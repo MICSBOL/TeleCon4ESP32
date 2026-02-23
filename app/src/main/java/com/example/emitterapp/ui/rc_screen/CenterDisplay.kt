@@ -249,7 +249,8 @@ fun CartesianPlot(
                     Box {
                         Text(
                             text = plotData.name,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.LightGray,
                         )
                     }
                     Box(
@@ -278,6 +279,7 @@ fun CartesianPlot(
             Text(
                 text = "Time (s)",
                 style = MaterialTheme.typography.labelSmall,
+                color = Color.LightGray,
                 textAlign = TextAlign.End,
                 modifier = Modifier.fillMaxWidth()
             )

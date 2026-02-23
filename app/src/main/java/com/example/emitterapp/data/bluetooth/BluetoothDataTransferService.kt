@@ -69,80 +69,63 @@ class BluetoothDataTransferService(
 
             try {
                 while (serviceScope.isActive) {
-                    // 1. Hunt for the first header byte (0xCC)
                     val header1 = inputStream.read()
-                    if (header1 == -1) break // End of stream, connection lost
-                    if (header1.toByte() != 0xCC.toByte()) continue // Not our packet, keep looking
+                    if (header1 == -1) break
+                    if (header1.toByte() != 0xCC.toByte()) continue
 
-                    // 2. Found 0xCC, now read the second header byte to identify the packet
                     val header2 = inputStream.read()
                     if (header2 == -1) break
 
                     when (header2.toByte()) {
-                        // --- New Config Packet (Variable Length) ---
-                        0x44.toByte() -> {
-                            val payloadLength = inputStream.read()
-                            if (payloadLength == -1) break
+                        // THIS IS THE MAIN FIX: Handling the new variable-length format
+                        0x44.toByte(), 0x33.toByte() -> { // Assuming plot packet (0x33) will also adopt this format
+                            // 1. Read the two bytes for the length
+                            val len1 = inputStream.read()
+                            val len2 = inputStream.read()
+                            if (len1 == -1 || len2 == -1) break
 
-                            // Total packet size = Header(2) + Length(1) + Payload
-                            val fullPacketSize = 3 + payloadLength
-                            val packet = ByteArray(fullPacketSize)
-                            packet[0] = 0xCC.toByte()
-                            packet[1] = 0x44.toByte()
-                            packet[2] = payloadLength.toByte()
+                            // 2. Reconstruct the 16-bit little-endian length
+                            val payloadLength = (len1 and 0xFF) or ((len2 and 0xFF) shl 8)
 
-                            // Read the entire payload into the rest of the buffer
+                            // 3. Read the entire rest of the packet (payload + checksum)
+                            val bytesToRead = payloadLength + 1 // +1 for the checksum byte
+                            val payloadAndChecksum = ByteArray(bytesToRead)
                             var bytesRead = 0
-                            while (bytesRead < payloadLength) {
-                                val readResult = inputStream.read(
-                                    packet,
-                                    3 + bytesRead,
-                                    payloadLength - bytesRead
-                                )
-                                if (readResult == -1) throw IOException("Stream ended while reading config payload")
+                            while (bytesRead < bytesToRead) {
+                                val readResult = inputStream.read(payloadAndChecksum, bytesRead, bytesToRead - bytesRead)
+                                if (readResult == -1) throw IOException("Stream ended while reading payload")
                                 bytesRead += readResult
                             }
-                            emit(packet)
+
+                            // 4. Assemble the complete packet to be sent for parsing
+                            val fullPacket = ByteArray(4 + bytesToRead)
+                            fullPacket[0] = 0xCC.toByte()
+                            fullPacket[1] = header2.toByte()
+                            fullPacket[2] = len1.toByte()
+                            fullPacket[3] = len2.toByte()
+                            payloadAndChecksum.copyInto(fullPacket, 4)
+
+                            emit(fullPacket)
                         }
 
-                        // --- Old Fixed-Size Packets ---
-                        0x11.toByte() -> { // Panel Packet (8 bytes total)
+                        // Your fixed-size packets remain the same
+                        0x11.toByte() -> {
                             val packet = ByteArray(8)
                             packet[0] = 0xCC.toByte()
                             packet[1] = 0x11.toByte()
-                            inputStream.read(packet, 2, 6) // Read remaining 6 bytes
+                            inputStream.read(packet, 2, 6)
                             emit(packet)
                         }
-
-                        0x22.toByte() -> { // Indicator Packet (5 bytes total)
+                        0x22.toByte() -> {
                             val packet = ByteArray(5)
                             packet[0] = 0xCC.toByte()
                             packet[1] = 0x22.toByte()
-                            inputStream.read(packet, 2, 3) // Read remaining 3 bytes
+                            inputStream.read(packet, 2, 3)
                             emit(packet)
                         }
 
-                        // IMPORTANT NOTE: Your Plot Packet (0x33) is also variable-length but lacks a length field.
-                        // This new reader will likely fail to parse it correctly. You should update your
-                        // ESP32 code to send the plot packet with a length field, just like the config packet.
-                        0x33.toByte() -> {
-                            // This is a temporary, best-effort read for the plot packet.
-                            // It is not robust and should be updated.
-                            val tempBuffer = ByteArray(1024)
-                            tempBuffer[0] = 0xCC.toByte()
-                            tempBuffer[1] = 0x33.toByte()
-                            // Try to read a reasonable number of bytes
-                            val bytesRead = inputStream.read(tempBuffer, 2, 256)
-                            if (bytesRead > 0) {
-                                emit(tempBuffer.copyOf(bytesRead + 2))
-                            }
-                        }
-
                         else -> {
-                            Log.w(
-                                "DataTransferService",
-                                "Unknown second header byte: ${header2.toByte()}"
-                            )
+                            Log.w("DataTransferService", "Unknown second header byte: ${header2.toByte()}")
                         }
                     }
                 }
