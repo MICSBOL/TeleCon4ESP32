@@ -17,6 +17,7 @@ data class PanelState(
 data class IndicatorState(
     val analogValue: Int = 0,
     val batteryLevel: Int = 0,
+    val ledValues: Byte = 0b00000000,
     val analogTitle: String = "",
     val batteryTitle: String = ""
 )

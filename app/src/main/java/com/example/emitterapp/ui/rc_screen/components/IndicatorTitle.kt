@@ -91,7 +91,7 @@ fun IndicatorTitle(
 
         // The glowing text (for the blur effect)
         Text(
-            text = text,
+            text = "  $text  ",
             color = glowColor,
             // 2. Apply the new text style here.
             style = textStyle,
@@ -100,7 +100,7 @@ fun IndicatorTitle(
 
         // The crisp foreground text
         Text(
-            text = text,
+            text = "  $text  ",
             color = textColor,
             // 3. Apply the new text style here as well.
             style = textStyle

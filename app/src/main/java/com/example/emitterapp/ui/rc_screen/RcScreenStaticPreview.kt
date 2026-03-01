@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
@@ -94,7 +95,6 @@ fun RcScreenStaticPreview() {
                     panelOn = true,
                     panelColor = Color.Red,
                     panelTitle = "RPM",
-                    indicatorTitle = "SPEED",
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = 50)
                     }
@@ -119,7 +119,6 @@ fun RcScreenStaticPreview() {
                     panelOn = true,
                     panelColor = Color.Green,
                     panelTitle = "RPM",
-                    indicatorTitle = "BATTERY",
                     topExtraContent = { modifier ->
                         BatteryStatus(
                             level = 100,
@@ -215,7 +214,6 @@ fun RcScreenPreview2() {
                         panelOn = panelState.leftOn,
                         panelColor = panelState.leftColor,
                         panelTitle = "RPM",
-                        indicatorTitle = "SPEED",
                         topExtraContent = { modifier ->
                             AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
                         }
@@ -238,7 +236,6 @@ fun RcScreenPreview2() {
                         panelOn = panelState.rightOn,
                         panelColor = panelState.rightColor,
                         panelTitle = "RPM",
-                        indicatorTitle = "BATTERY",
                         topExtraContent = { modifier ->
                             BatteryStatus(
                                 level = indicatorState.batteryLevel,
@@ -294,7 +291,7 @@ fun RcScreenStaticLayout(
                 ControllerSide(
                     modifier = Modifier
                         .wrapContentHeight()
-                        .padding(8.dp),
+                        .padding(0.dp),
                     side = Side.LEFT,
                     aspectRatio = screenAspectRatio,
                     mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
@@ -309,7 +306,6 @@ fun RcScreenStaticLayout(
                     panelOn = panelState.leftOn,
                     panelColor = panelState.leftColor,
                     panelTitle = "RPM",
-                    indicatorTitle = "SPEED",
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
                     }
@@ -319,7 +315,7 @@ fun RcScreenStaticLayout(
                 ControllerSide(
                     modifier = Modifier
                         .wrapContentHeight()
-                        .padding(8.dp),
+                        .padding(0.dp),
                     side = Side.RIGHT,
                     aspectRatio = screenAspectRatio,
                     mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
@@ -334,7 +330,6 @@ fun RcScreenStaticLayout(
                     panelOn = panelState.rightOn,
                     panelColor = panelState.rightColor,
                     panelTitle = "RPM",
-                    indicatorTitle = "BATTERY",
                     topExtraContent = { modifier ->
                         BatteryStatus(
                             level = indicatorState.batteryLevel,

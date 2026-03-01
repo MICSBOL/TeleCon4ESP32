@@ -68,19 +68,7 @@ fun CenterDisplay(
     screenAspectRatio: Float = 0f,
     series: List<PlotData> = emptyList()
 ) {
-//    var plotType by remember { mutableStateOf(PlotType.CARTESIAN) }
-//    LaunchedEffect(Unit) {
-//        while (true) {
-//            delay(5000)
-//            plotType = when (plotType) {
-//                PlotType.CARTESIAN -> PlotType.COMPLEX_CIRCULAR
-//                PlotType.COMPLEX_CIRCULAR -> PlotType.BAR_GRAPH
-//                PlotType.BAR_GRAPH -> PlotType.CARTESIAN
-//            }
-//        }
-//    }
     val isWideScreen = screenAspectRatio > 1.7f
-    val is4Over3 = screenAspectRatio == 4 / 3f
     Box(
         modifier = modifier
             .background(Color.Transparent)
@@ -103,7 +91,6 @@ fun CenterDisplay(
                         .padding(bottom = 28.dp)
                         .background(
                             Color(0xFF0A0F1A),
-//                            shape = RoundedCornerShape(8.dp)
                         )
                 ) {
                     when (PlotType.CARTESIAN) {
@@ -123,7 +110,6 @@ fun CenterDisplay(
                                     .fillMaxSize()
                                     .padding(24.dp),
                                 points = listOf(
-                                    // Create a ComplexPlotData point from the last known values of "Volts" and "Amps"
                                     ComplexPlotData(
                                         real = realPart,
                                         imaginary = imagPart,
@@ -151,7 +137,7 @@ fun CenterDisplay(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.FillBounds
                 )
-                if (!isWideScreen) { //&& !is4Over3){
+                if (!isWideScreen) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -173,7 +159,7 @@ fun CenterDisplay(
                 }
             }
 
-            if (isWideScreen) {  //|| is4Over3) {
+            if (isWideScreen) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -230,7 +216,7 @@ fun CartesianPlot(
     Row(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 4.dp, horizontal = 4.dp), // Padding inside the frame
+            .padding(vertical = 4.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
@@ -455,8 +441,6 @@ fun HistogramPlot(
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 private fun HistogramPlotPreview() {
-    // 1. In a real app, this data would be collected and processed.
-    // 2. For a preview, we just provide static, pre-calculated bin counts.
     val sampleBinCounts = listOf(
         10,
         25,
@@ -494,9 +478,7 @@ private fun HistogramPlotPreview() {
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 fun DynamicHistogramPreview() {
-    // This list holds the raw data points we collect over time
     val historicalData = remember { mutableStateListOf<Float>() }
-    // This list holds the processed bin counts that the UI will draw
     val binCounts = remember { mutableStateListOf<Int>() }
 
     val numBins = 20 // The number of bars to display in the histogram
@@ -504,27 +486,21 @@ fun DynamicHistogramPreview() {
 
     LaunchedEffect(Unit) {
         while (true) {
-            // 1. Generate new data points rapidly, simulating a sensor reading
-            // We use a sine wave with some random noise to make it more realistic
             val newDataPoint = (sin(System.currentTimeMillis() / 2000f * 2 * PI.toFloat()) + Random.nextFloat() * 0.5f).coerceIn(-1f, 1f)
             historicalData.add((newDataPoint + 1f) / 2f) // Normalize to 0-1 range
 
-            // Keep the historical data list constrained to the last 1000 samples
             if (historicalData.size > maxHistorySize) {
                 historicalData.removeFirst()
             }
 
-            // 2. Process the data into bins only when we have a full set of data
             if (historicalData.size == maxHistorySize) {
                 val newBins = IntArray(numBins) { 0 } // Create an array of zeros
 
-                // For each data point, figure out which bin it belongs to and increment that bin's count
                 historicalData.forEach { value ->
                     val binIndex = (value * (numBins - 1)).toInt().coerceIn(0, numBins - 1)
                     newBins[binIndex]++
                 }
 
-                // Update the state that the UI observes
                 binCounts.clear()
                 binCounts.addAll(newBins.toList())
             }
@@ -533,7 +509,6 @@ fun DynamicHistogramPreview() {
         }
     }
 
-    // Call the HistogramPlot with the dynamically updated bin counts
     HistogramPlot(
         modifier = Modifier
             .width(400.dp)
@@ -551,17 +526,14 @@ fun ComplexCircularPlotPreview() {
     var complexPoint2 by remember { mutableStateOf(ComplexPlotData(0f, 0f, Color.Yellow)) }
     var time by remember { mutableStateOf(0f) }
 
-    // 2. Simulate the data changing over time
     LaunchedEffect(Unit) {
         while (true) {
-            // Point 1 (e.g., Volts/Amps) - Rotates steadily with a large magnitude
             val magnitude1 = 0.8f
             complexPoint1 = complexPoint1.copy(
                 real = magnitude1 * cos(time * 1.5f),
                 imaginary = magnitude1 * sin(time * 1.5f)
             )
 
-            // Point 2 (e.g., RPM/Temp) - Rotates faster with a smaller, fluctuating magnitude
             val magnitude2 = 0.3f + (sin(time * 0.5f) * 0.2f)
             complexPoint2 = complexPoint2.copy(
                 real = magnitude2 * cos(time * 3f),
@@ -573,7 +545,6 @@ fun ComplexCircularPlotPreview() {
         }
     }
 
-    // 3. Call the ComplexCircularPlot composable with the simulated data
     ComplexCircularPlot(
         modifier = Modifier
             .size(300.dp)
@@ -682,11 +653,9 @@ fun ScrollingBarPlot(
         horizontalArrangement = Arrangement.spacedBy(1.dp), // Bars are very close
         verticalAlignment = Alignment.Bottom
     ) {
-        // We only draw up to the last 100 samples
         val last100Points = dataPoints.takeLast(100)
 
         last100Points.forEach { point ->
-            // The height of each bar is the individual data point's value
             val barHeight = point.coerceIn(0f, 1f)
 
             GlowingBar(
@@ -702,17 +671,14 @@ fun ScrollingBarPlot(
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 fun ScrollingBarPlotPreview() {
-    // This list holds the raw data points as they are generated
     val dataStream = remember { mutableStateListOf<Float>() }
     val maxSamples = 100 // We want to display 100 bars
     var time by remember {mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         while (true) {
-            // Generate a new data point using a sine wave
             val newDataPoint = (sin(time * 2 * PI.toFloat()) + 1f) / 2f
             dataStream.add(newDataPoint)
 
-            // Keep the list constrained to the last 100 samples
             while (dataStream.size > maxSamples) {
                 dataStream.removeFirst()
             }
@@ -721,7 +687,6 @@ fun ScrollingBarPlotPreview() {
         }
     }
 
-    // Call the ScrollingBarPlot with the dynamically updating list of data points
     ScrollingBarPlot(
         modifier = Modifier
             .width(400.dp)

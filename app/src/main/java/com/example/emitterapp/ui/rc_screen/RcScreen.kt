@@ -130,13 +130,14 @@ fun RcScreen(
                             panelOn = telemetryState.panelState.leftOn,
                             panelColor = telemetryState.panelState.leftColor,
                             panelTitle = telemetryState.panelState.leftTitle,
-                            indicatorTitle = telemetryState.indicatorState.analogTitle,
                             topExtraContent = { modifier ->
                                 AnalogIndicator(
                                     modifier = modifier,
-                                    value = telemetryState.indicatorState.analogValue
+                                    value = telemetryState.indicatorState.analogValue,
+                                    title = telemetryState.indicatorState.analogTitle
                                 )
-                            }
+                            },
+                            ledValues = telemetryState.indicatorState.ledValues
                         )
                     },
                     rightSideContent = {
@@ -156,13 +157,14 @@ fun RcScreen(
                             panelOn = telemetryState.panelState.rightOn,
                             panelColor = telemetryState.panelState.rightColor,
                             panelTitle = telemetryState.panelState.rightTitle,
-                            indicatorTitle = telemetryState.indicatorState.batteryTitle,
                             topExtraContent = { modifier ->
                                 BatteryStatus(
                                     level = telemetryState.indicatorState.batteryLevel,
-                                    modifier = modifier
+                                    modifier = modifier,
+                                    title =  telemetryState.indicatorState.batteryTitle
                                 )
-                            }
+                            },
+                            ledValues = telemetryState.indicatorState.ledValues
                         )
                     }
                 )

@@ -13,16 +13,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
-import androidx.compose.ui.unit.sp
-import com.example.emitterapp.ui.rc_screen.components.IndicatorTitle
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D
 import com.example.emitterapp.ui.rc_screen.components.Knob3D
+import com.example.emitterapp.ui.rc_screen.components.LedIndicator
 import com.example.emitterapp.ui.rc_screen.components.SevenSegmentedPanel
 import com.example.emitterapp.ui.rc_screen.components.Switch3DButton
 import kotlin.math.cos
@@ -43,10 +43,29 @@ fun ControllerSide(
     panelOn: Boolean,
     panelColor: Color,
     panelTitle: String,
-    indicatorTitle: String,
     topExtraContent: (@Composable (modifier: Modifier) -> Unit)? = null,
-    aspectRatio: Float
+    aspectRatio: Float,
+    ledValues: Byte = 0x00
 ) {
+    val ledStates = remember(ledValues) {
+        if (side == Side.LEFT) {
+            // Use the first 4 bits (0, 1, 2, 3) for the Left side
+            listOf(
+                (ledValues.toInt() and 0b00000001) != 0, // Check bit 0
+                (ledValues.toInt() and 0b00000010) != 0, // Check bit 1
+                (ledValues.toInt() and 0b00000100) != 0, // Check bit 2
+                (ledValues.toInt() and 0b00001000) != 0  // Check bit 3
+            )
+        } else { // Side.RIGHT
+            // Use the next 4 bits (4, 5, 6, 7) for the Right side
+            listOf(
+                (ledValues.toInt() and 0b00010000) != 0, // Check bit 4
+                (ledValues.toInt() and 0b00100000) != 0, // Check bit 5
+                (ledValues.toInt() and 0b01000000) != 0, // Check bit 6
+                (ledValues.toInt() and 0b10000000) != 0  // Check bit 7
+            )
+        }
+    }
     BoxWithConstraints(
         modifier = modifier.fillMaxHeight(),
         contentAlignment = Alignment.BottomCenter
@@ -55,21 +74,36 @@ fun ControllerSide(
         var joystickSize = 0.dp
         when {
 
-            aspectRatio > 2.1f -> { joystickSize = maxHeight * 0.6f }
-            aspectRatio > 2.0f -> { joystickSize = maxHeight * 0.6f }
-            aspectRatio > 1.7f -> { joystickSize = maxHeight * 0.6f }
-            aspectRatio > 1.4f -> { joystickSize = maxHeight * 0.6f }
-            else -> {joystickSize = baseSize * 0.3f}
+            aspectRatio > 2.1f -> {
+                joystickSize = maxHeight * 0.6f
+            }
+
+            aspectRatio > 2.0f -> {
+                joystickSize = maxHeight * 0.6f
+            }
+
+            aspectRatio > 1.7f -> {
+                joystickSize = maxHeight * 0.6f
+            }
+
+            aspectRatio > 1.4f -> {
+                joystickSize = maxHeight * 0.6f
+            }
+
+            else -> {
+                joystickSize = baseSize * 0.3f
+            }
         }
         val knobSize = joystickSize * 0.4f
         val switchSize = joystickSize * 0.4f
 
-        val extraContentSizeBattery = joystickSize * 0.35f
+        val extraContentSizeBattery = joystickSize * 0.3f
         val extraContentSizeAnalogIndicator = joystickSize * 0.3f
 
         val panelWidth = joystickSize * 0.5f
         Box(
-            modifier = Modifier.size(joystickSize),
+            modifier = Modifier
+                .size(joystickSize),
             contentAlignment = Alignment.Center,
         ) {
             Joystick_RC3D(
@@ -133,6 +167,11 @@ fun ControllerSide(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (side == Side.RIGHT) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ledStates.forEach { isOn ->
+                        LedIndicator(isOn = isOn, size = 14.dp)
+                    }
+                }
                 SevenSegmentedPanel(
                     width = panelWidth,
                     number = panelNumber,
@@ -140,31 +179,10 @@ fun ControllerSide(
                     onColor = panelColor,
                     title = panelTitle
                 )
-                Spacer(modifier = Modifier.size(10.dp))
-                Column {
-                    topExtraContent?.invoke(Modifier.size(extraContentSizeBattery))
-                    IndicatorTitle(
-                        modifier = Modifier.padding(2.dp),
-                        text = indicatorTitle,
-                        textColor = Color(0xFFFFA500), // Orange
-                        glowColor = Color(0xFFFFA500).copy(alpha = 0.5f),
-                        textSize = 10.sp,
-                        showFrame = true // Preview without the frame
-                    )
-                }
+                topExtraContent?.invoke(Modifier.size(extraContentSizeBattery))
+
             } else {
-                Column {
-                    topExtraContent?.invoke(Modifier.size(extraContentSizeAnalogIndicator))
-                    IndicatorTitle(
-                        modifier = Modifier.padding(2.dp),
-                        text = indicatorTitle,
-                        textColor = Color(0xFFFFA500), // Orange
-                        glowColor = Color(0xFFFFA500).copy(alpha = 0.5f),
-                        textSize = 10.sp,
-                        showFrame = true // Preview without the frame
-                    )
-                }
-                Spacer(modifier = Modifier.size(10.dp))
+                topExtraContent?.invoke(Modifier.size(extraContentSizeAnalogIndicator))
                 SevenSegmentedPanel(
                     width = panelWidth,
                     number = panelNumber,
@@ -172,6 +190,11 @@ fun ControllerSide(
                     onColor = panelColor,
                     title = panelTitle
                 )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ledStates.forEach { isOn ->
+                        LedIndicator(isOn = isOn, size = 14.dp)
+                    }
+                }
             }
         }
 

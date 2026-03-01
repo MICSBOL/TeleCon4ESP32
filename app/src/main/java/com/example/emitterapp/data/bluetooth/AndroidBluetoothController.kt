@@ -1,6 +1,5 @@
 package com.example.emitterapp.data.bluetooth
 
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
@@ -9,7 +8,6 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothController
@@ -49,27 +47,22 @@ class AndroidBluetoothController(
     private val plotNameMap = mutableMapOf<Int, String>()
 
     private fun parseConfigPacket(bytes: ByteArray) {
-        // Minimum size: Header(2) + Length(2) + NumSections(1) + Checksum(1) = 6 bytes
         if (bytes.size < 6) {
             Log.e("BluetoothController", "Config packet too short for full header.")
             return
         }
 
         try {
-            // 1. Read the 2-byte little-endian payload length from indices 2 and 3.
             val payloadLength = (bytes[2].toInt() and 0xFF) or ((bytes[3].toInt() and 0xFF) shl 8)
             val headerAndLengthSize = 4
             val payloadStart = headerAndLengthSize
 
-            // Total packet size = Header(2) + Length(2) + Payload(N) + Checksum(1)
             val expectedPacketSize = headerAndLengthSize + payloadLength + 1
             if (bytes.size != expectedPacketSize) {
                 Log.e("BluetoothController", "Config packet size mismatch. Expected $expectedPacketSize, but got ${bytes.size}")
                 return
             }
 
-            // 2. Verify Checksum.
-            // ESP32 checksum is from index 2 up to the byte BEFORE the checksum.
             val checksumIndex = bytes.size - 1
             val receivedChecksum = bytes[checksumIndex]
             var calculatedChecksum = 0
@@ -82,7 +75,6 @@ class AndroidBluetoothController(
                 return
             }
 
-            // 3. Start parsing the payload if checksum is valid.
             var currentIndex = payloadStart
             val numSections = bytes[currentIndex++].toInt() and 0xFF
 
@@ -93,7 +85,7 @@ class AndroidBluetoothController(
                 val itemCount = bytes[currentIndex++].toInt() and 0xFF
 
                 when (sectionId) {
-                    0x01 -> { // PLOT SECTION
+                    0x01 -> {
                         val plotNames = (0 until itemCount).map {
                             if (currentIndex >= checksumIndex) throw IOException("Incomplete plot name length")
                             val nameLength = bytes[currentIndex++].toInt() and 0xFF
@@ -104,7 +96,7 @@ class AndroidBluetoothController(
                         }
                         updatePlotNames(plotNames)
                     }
-                    0x02 -> { // PANEL SECTION
+                    0x02 -> {
                         val panelNames = (0 until itemCount).map {
                             if (currentIndex >= checksumIndex) throw IOException("Incomplete panel name length")
                             val nameLength = bytes[currentIndex++].toInt() and 0xFF
@@ -122,7 +114,7 @@ class AndroidBluetoothController(
                             )
                         }
                     }
-                    0x03 -> { // INDICATOR SECTION
+                    0x03 -> {
                         val indicatorNames = (0 until itemCount).map {
                             if (currentIndex >= checksumIndex) throw IOException("Incomplete indicator name length")
                             val nameLength = bytes[currentIndex++].toInt() and 0xFF
@@ -158,19 +150,12 @@ class AndroidBluetoothController(
         }
 
         _telemetryState.update { currentState ->
-            val updatedSeries = currentState.plotState.series.mapIndexed { index, plotData ->
-                val newName = plotNameMap[index]
-                if (newName != null && plotData.name != newName) {
-                    plotData.copy(name = newName)
-                } else {
-                    plotData
-                }
+            val updatedSeries = newNames.mapIndexed { index, name ->
+                val existingData = currentState.plotState.series.getOrNull(index)?.dataPoints ?: emptyList()
+                val color = plotColors.getOrElse(index) { Color.White }
+                PlotData(name = name, dataPoints = existingData, color = color)
             }
-
-            currentState.copy(
-                plotState = currentState.plotState.copy(
-                series = updatedSeries)
-            )
+            currentState.copy(plotState = currentState.plotState.copy(series = updatedSeries))
         }
     }
 
@@ -179,7 +164,10 @@ class AndroidBluetoothController(
 
         when {
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x11.toByte() -> parsePanelPacket(bytes)
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x22.toByte() -> parseIndicatorPacket(bytes)
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x22.toByte() -> {
+                Log.d("BluetoothController_config", "Parsed indicator packet")
+                parseIndicatorPacket(bytes)
+            }
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x33.toByte() -> parsePlotPacket(bytes)
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x44.toByte() -> {
                 Log.d("BluetoothController_config", "Parsed config packet")
@@ -226,50 +214,49 @@ class AndroidBluetoothController(
     }
 
     private fun parseIndicatorPacket(bytes: ByteArray) {
-        if (bytes.size != 5) return
+        if (bytes.size != 6) return
 
-        val checksum = (bytes[2].toInt() and 0xFF) + (bytes[3].toInt() and 0xFF)
+        var calculatedChecksum = 0
+        for (i in 2 until bytes.size - 1) {
+            calculatedChecksum += bytes[i].toInt() and 0xFF
+        }
 
-        if ((checksum and 0xFF).toByte() != bytes[4]) {
+        if ((calculatedChecksum and 0xFF).toByte() != bytes[5]) {
+            Log.e("Indicator", "Checksum mismatch")
             return
         }
 
-        val analogValue = bytes[2].toInt() and 0xFF
+        val analogValue  = bytes[2].toInt() and 0xFF
         val batteryValue = bytes[3].toInt() and 0xFF
+        val ledValues    = bytes[4]
 
         _telemetryState.update { currentState ->
             currentState.copy(
                 indicatorState = currentState.indicatorState.copy(
                     analogValue = analogValue,
-                    batteryLevel = batteryValue
+                    batteryLevel = batteryValue,
+                    ledValues = ledValues
                 )
             )
-
         }
-
     }
 
     private fun parsePlotPacket(bytes: ByteArray) {
-        // Minimum size: Header(2) + Length(2) + Count(1) + Checksum(1) = 6 bytes
         if (bytes.size < 6) {
             Log.e("BluetoothController", "Plot packet too short for full header.")
             return
         }
 
         try {
-            // 1. Read the 2-byte little-endian payload length from indices 2 and 3.
             val payloadLength = (bytes[2].toInt() and 0xFF) or ((bytes[3].toInt() and 0xFF) shl 8)
             val headerAndLengthSize = 4
 
-            // Total packet size = Header(2) + Length(2) + Payload(N) + Checksum(1)
             val expectedPacketSize = headerAndLengthSize + payloadLength + 1
             if (bytes.size != expectedPacketSize) {
                 Log.e("BluetoothController", "Plot packet size mismatch. Expected $expectedPacketSize, but got ${bytes.size}")
                 return
             }
 
-            // 2. Verify Checksum.
-            // The ESP32 checksum is from index 2 up to the byte BEFORE the checksum.
             val checksumIndex = bytes.size - 1
             val receivedChecksum = bytes[checksumIndex]
             var calculatedChecksum = 0
@@ -282,38 +269,30 @@ class AndroidBluetoothController(
                 return
             }
 
-            // 3. Start parsing the payload if checksum is valid.
             val payloadStart = headerAndLengthSize
             var currentIndex = payloadStart
             val numPlots = bytes[currentIndex++].toInt() and 0xFF
 
-            // Sanity check: the number of plots should match the remaining payload length
-            if (payloadLength != 1 + numPlots) { // 1 byte for the 'count' field + N bytes for plot values
+            if (payloadLength != 1 + numPlots) { 
                 Log.e("BluetoothController", "Plot packet payload length does not match plot count.")
                 return
             }
 
             val newPlotValues = (0 until numPlots).map {
-                // Normalize the 8-bit value (0-255) to a Float (0.0-1.0)
                 (bytes[currentIndex++].toInt() and 0xFF) / 255f
             }
 
-            // 4. Update the single telemetry state
             _telemetryState.update { currentState ->
                 val updatedSeries = currentState.plotState.series.toMutableList()
                 newPlotValues.forEachIndexed { index, value ->
                     if (index < updatedSeries.size) {
                         val oldPoints = updatedSeries[index].dataPoints.toMutableList()
                         oldPoints.add(value)
-                        // Keep the list constrained to a max size
                         while (oldPoints.size > 100) {
-                            // Use removeFirstOrNull() for safety, though removeFirst() is also fine here.
-                            // Your original check for VANILLA_ICE_CREAM can be simplified.
                             oldPoints.removeAt(0)
                         }
                         updatedSeries[index] = updatedSeries[index].copy(dataPoints = oldPoints)
                     } else {
-                        // This case is important for when the plot series haven't been named by the config packet yet
                         updatedSeries.add(
                             PlotData(
                                 name = plotNameMap.getOrDefault(index, "Plot ${index + 1}"),
@@ -372,7 +351,7 @@ class AndroidBluetoothController(
                 foundDeviceReceiver,
                 IntentFilter(BluetoothDevice.ACTION_FOUND)
             )
-        } catch (e: Exception) { /* Already registered */
+        } catch (e: Exception) { 
         }
         updatePairedDevices()
         bluetoothAdapter?.startDiscovery()
@@ -386,7 +365,7 @@ class AndroidBluetoothController(
     override fun release() {
         try {
             context.unregisterReceiver(foundDeviceReceiver)
-        } catch (e: Exception) { /* Not registered */
+        } catch (e: Exception) { 
         }
         closeConnection()
     }
@@ -429,7 +408,6 @@ class AndroidBluetoothController(
     }
 
     override fun startBluetoothServer(): Flow<ConnectionResult> = emptyFlow()
-
 
     override suspend fun trySendData(data: ByteArray): Boolean? {
         if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null

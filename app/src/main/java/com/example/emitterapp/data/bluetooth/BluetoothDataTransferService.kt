@@ -77,18 +77,13 @@ class BluetoothDataTransferService(
                     if (header2 == -1) break
 
                     when (header2.toByte()) {
-                        // THIS IS THE MAIN FIX: Handling the new variable-length format
-                        0x44.toByte(), 0x33.toByte() -> { // Assuming plot packet (0x33) will also adopt this format
-                            // 1. Read the two bytes for the length
+                        0x44.toByte(), 0x33.toByte() -> {
                             val len1 = inputStream.read()
                             val len2 = inputStream.read()
                             if (len1 == -1 || len2 == -1) break
 
-                            // 2. Reconstruct the 16-bit little-endian length
                             val payloadLength = (len1 and 0xFF) or ((len2 and 0xFF) shl 8)
-
-                            // 3. Read the entire rest of the packet (payload + checksum)
-                            val bytesToRead = payloadLength + 1 // +1 for the checksum byte
+                            val bytesToRead = payloadLength + 1
                             val payloadAndChecksum = ByteArray(bytesToRead)
                             var bytesRead = 0
                             while (bytesRead < bytesToRead) {
@@ -97,7 +92,6 @@ class BluetoothDataTransferService(
                                 bytesRead += readResult
                             }
 
-                            // 4. Assemble the complete packet to be sent for parsing
                             val fullPacket = ByteArray(4 + bytesToRead)
                             fullPacket[0] = 0xCC.toByte()
                             fullPacket[1] = header2.toByte()
@@ -108,7 +102,6 @@ class BluetoothDataTransferService(
                             emit(fullPacket)
                         }
 
-                        // Your fixed-size packets remain the same
                         0x11.toByte() -> {
                             val packet = ByteArray(8)
                             packet[0] = 0xCC.toByte()
@@ -117,10 +110,18 @@ class BluetoothDataTransferService(
                             emit(packet)
                         }
                         0x22.toByte() -> {
-                            val packet = ByteArray(5)
+                            val packet = ByteArray(6)
+
                             packet[0] = 0xCC.toByte()
                             packet[1] = 0x22.toByte()
-                            inputStream.read(packet, 2, 3)
+
+                            var bytesRead = 0
+                            while (bytesRead < 4) {
+                                val result = inputStream.read(packet, 2 + bytesRead, 4 - bytesRead)
+                                if (result == -1) throw IOException("Stream ended while reading indicator packet")
+                                bytesRead += result
+                            }
+
                             emit(packet)
                         }
 
