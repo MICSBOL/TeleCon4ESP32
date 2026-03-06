@@ -35,8 +35,10 @@ import androidx.compose.ui.unit.dp
 import com.example.emitterapp.R
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.bluetooth.ButtonEvent
+import com.example.emitterapp.ui.rc_screen.components.AdBanner
 import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
+import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 
 @SuppressLint("RestrictedApi", "UnusedBoxWithConstraintsScope")
@@ -105,10 +107,6 @@ fun RcScreen(
                     centerContent = {
                         CenterDisplay(
                             modifier = Modifier.fillMaxSize(),
-                            onTopLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
-                            onTopRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
-                            onBottomLeftPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
-                            onBottomRightPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
                             screenAspectRatio = screenAspectRatio,
                             series = telemetryState.plotState.series
                         )
@@ -118,7 +116,7 @@ fun RcScreen(
                             modifier = Modifier
                                 .wrapContentHeight()
                                 .padding(8.dp),
-                            side = Side.LEFT,
+                            side = ButtonSide.LEFT,
                             aspectRatio = screenAspectRatio,
                             mode = state.settings.leftStickMode,
                             onMove = bluetoothViewModel::onLeftStickChanged,
@@ -137,7 +135,9 @@ fun RcScreen(
                                     title = telemetryState.indicatorState.analogTitle
                                 )
                             },
-                            ledValues = telemetryState.indicatorState.ledValues
+                            ledValues = telemetryState.indicatorState.ledValues,
+                            onTopPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
+                            onBottomPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
                         )
                     },
                     rightSideContent = {
@@ -145,7 +145,7 @@ fun RcScreen(
                             modifier = Modifier
                                 .wrapContentHeight()
                                 .padding(8.dp),
-                            side = Side.RIGHT,
+                            side = ButtonSide.RIGHT,
                             aspectRatio = screenAspectRatio,
                             mode = state.settings.rightStickMode,
                             onMove = bluetoothViewModel::onRightStickChanged,
@@ -164,7 +164,9 @@ fun RcScreen(
                                     title =  telemetryState.indicatorState.batteryTitle
                                 )
                             },
-                            ledValues = telemetryState.indicatorState.ledValues
+                            ledValues = telemetryState.indicatorState.ledValues,
+                            onTopPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
+                            onBottomPress = { bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
                         )
                     }
                 )
@@ -183,7 +185,4 @@ fun LockScreenOrientation(orientation: Int) {
             activity.requestedOrientation = originalOrientation
         }
     }
-}
-enum class Side {
-    LEFT, RIGHT
 }

@@ -73,6 +73,8 @@ dependencies {
     implementation("io.coil-kt:coil-gif:2.7.0")
 
     implementation("androidx.compose.foundation:foundation:1.10.1")
+
+    implementation("com.google.android.gms:play-services-ads:23.1.0")
 }
 kapt {
     correctErrorTypes = true

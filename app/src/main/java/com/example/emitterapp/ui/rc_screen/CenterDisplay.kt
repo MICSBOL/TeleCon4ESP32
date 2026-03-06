@@ -3,13 +3,16 @@ package com.example.emitterapp.ui.rc_screen
 import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,9 +46,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.PlotData
+import com.example.emitterapp.ui.rc_screen.components.AdBanner
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.ui.rc_screen.components.PushButtonSide
 import com.example.emitterapp.ui.rc_screen.components.RealTimePlot
@@ -61,10 +66,6 @@ import kotlin.random.Random
 @Composable
 fun CenterDisplay(
     modifier: Modifier = Modifier,
-    onTopLeftPress: () -> Unit,
-    onTopRightPress: () -> Unit,
-    onBottomLeftPress: () -> Unit,
-    onBottomRightPress: () -> Unit,
     screenAspectRatio: Float = 0f,
     series: List<PlotData> = emptyList()
 ) {
@@ -86,49 +87,57 @@ fun CenterDisplay(
                 contentAlignment = Alignment.Center
             ) {
 
-                Box(
+                Column(
                     modifier = Modifier
-                        .padding(bottom = 28.dp)
+                        .padding(bottom = 18.dp)
                         .background(
                             Color(0xFF0A0F1A),
                         )
                 ) {
-                    when (PlotType.CARTESIAN) {
-                        PlotType.CARTESIAN -> {
-                            CartesianPlot(
-                                modifier = Modifier.align(Alignment.TopCenter),
-                                series = series
-                            )
-                        }
+                    // 1. The plot area is now wrapped in a Box that fills the available space
+                    Box(modifier = Modifier.weight(1f)) {
+                        when (PlotType.CARTESIAN) {
+                            PlotType.CARTESIAN -> {
+                                CartesianPlot(
+                                    modifier = Modifier,
+                                    series = series
+                                )
+                            }
 
-                        PlotType.COMPLEX_CIRCULAR -> {
-                            val realPart = series.getOrNull(0)?.dataPoints?.lastOrNull() ?: 0f
-                            val imagPart = series.getOrNull(1)?.dataPoints?.lastOrNull() ?: 0f
-                            ComplexCircularPlot(
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .fillMaxSize()
-                                    .padding(24.dp),
-                                points = listOf(
-                                    ComplexPlotData(
-                                        real = realPart,
-                                        imaginary = imagPart,
-                                        color = Color.Magenta
+                            PlotType.COMPLEX_CIRCULAR -> {
+                                val realPart = series.getOrNull(0)?.dataPoints?.lastOrNull() ?: 0f
+                                val imagPart = series.getOrNull(1)?.dataPoints?.lastOrNull() ?: 0f
+                                ComplexCircularPlot(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(24.dp),
+                                    points = listOf(
+                                        ComplexPlotData(
+                                            real = realPart,
+                                            imaginary = imagPart,
+                                            color = Color.Magenta
+                                        )
                                     )
                                 )
-                            )
-                        }
+                            }
 
-                        PlotType.BAR_GRAPH -> {
-                            BarGraph(
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .fillMaxSize()
-                                    .padding(horizontal = 32.dp, vertical = 34.dp),
-                                series = series,
-                            )
+                            PlotType.BAR_GRAPH -> {
+                                BarGraph(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 32.dp, vertical = 34.dp),
+                                    series = series,
+                                )
+                            }
                         }
                     }
+
+                    AdBanner(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+//                            .fillMaxHeight(0.2f) // Reduced height for better fit
+                    )
+
                 }
 
                 Image(
@@ -137,68 +146,38 @@ fun CenterDisplay(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.FillBounds
                 )
-                if (!isWideScreen) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        PushButtonSide(
-                            modifier = Modifier.size(70.dp),
-                            side = ButtonSide.RIGHT,
-                            onPress = onTopRightPress
-                        )
-                        PushButtonSide(
-                            modifier = Modifier.size(70.dp),
-                            side = ButtonSide.LEFT,
-                            onPress = onTopLeftPress
-                        )
-                    }
-                }
-            }
-
-            if (isWideScreen) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset(y = (-20).dp)
-                        .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    PushButtonSide(
-                        modifier = Modifier.size(50.dp),
-                        side = ButtonSide.RIGHT,
-                        onPress = onTopRightPress
-                    )
-                    PushButtonSide(
-                        modifier = Modifier.size(50.dp),
-                        side = ButtonSide.LEFT,
-                        onPress = onTopLeftPress
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = if (isWideScreen) (-20).dp else 0.dp)
-                    .padding(horizontal = 26.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                PushButtonSide(
-                    modifier = Modifier.size(60.dp),
-                    side = ButtonSide.RIGHT,
-                    onPress = onBottomRightPress
-                )
-                PushButtonSide(
-                    modifier = Modifier.size(60.dp),
-                    side = ButtonSide.LEFT,
-                    onPress = onBottomLeftPress
-                )
             }
         }
+    }
+}
+
+@Composable
+fun RowScope.ButtonColumn(
+    onTopPress: () -> Unit,
+    onBottomPress: () -> Unit,
+    side: ButtonSide,
+    isWideScreen: Boolean
+) {
+    Column(
+//        modifier = Modifier.weight(0.2f), // Give button columns a smaller weight
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+//        val topButtonSize = if (isWideScreen) 50.dp else 70.dp
+
+        val bottomButtonSize = 40.dp
+
+        PushButtonSide(
+            modifier = Modifier.size(bottomButtonSize * .9f),
+            side = if (side == ButtonSide.LEFT) ButtonSide.LEFT else ButtonSide.RIGHT,
+            onPress = onTopPress
+        )
+//        Spacer(modifier = Modifier.height(2.dp))
+        PushButtonSide(
+            modifier = Modifier.size(bottomButtonSize),
+            side = if (side == ButtonSide.LEFT) ButtonSide.LEFT else ButtonSide.RIGHT,
+            onPress = onBottomPress
+        )
     }
 }
 
@@ -438,6 +417,50 @@ fun HistogramPlot(
     }
 }
 
+@Composable
+fun AdBanner(modifier: Modifier = Modifier) {
+    // This is a placeholder that simulates the space an ad banner would take.
+    // It allows the preview to render correctly without the real ads SDK.
+    Box(
+        modifier = modifier
+            .background(Color.DarkGray.copy(alpha = 0.5f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Ad Banner",
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@Composable
+fun ButtonColumn(
+    modifier: Modifier = Modifier,
+    onTopPress: () -> Unit,
+    onBottomPress: () -> Unit,
+    side: ButtonSide,
+    buttonSize: Dp = 50.dp,
+    isWideScreen: Boolean
+) {
+    // This placeholder just draws two simple boxes to represent the buttons.
+//    val buttonSize = if (isWideScreen) 50.dp else 70.dp
+    Column(
+        modifier = modifier.padding(bottom = 8.dp),
+        horizontalAlignment =
+            if (side == ButtonSide.RIGHT) Alignment.Start else Alignment.End,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        PushButtonSide(
+            modifier = Modifier.size(buttonSize * 0.7f),
+            side = side,
+            onPress = onTopPress
+        )
+        PushButtonSide(modifier = Modifier.size(buttonSize), side = side, onPress = onBottomPress)
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 private fun HistogramPlotPreview() {
@@ -475,6 +498,8 @@ private fun HistogramPlotPreview() {
         binCounts = sampleBinCounts
     )
 }
+
+@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 fun DynamicHistogramPreview() {
@@ -486,7 +511,11 @@ fun DynamicHistogramPreview() {
 
     LaunchedEffect(Unit) {
         while (true) {
-            val newDataPoint = (sin(System.currentTimeMillis() / 2000f * 2 * PI.toFloat()) + Random.nextFloat() * 0.5f).coerceIn(-1f, 1f)
+            val newDataPoint =
+                (sin(System.currentTimeMillis() / 2000f * 2 * PI.toFloat()) + Random.nextFloat() * 0.5f).coerceIn(
+                    -1f,
+                    1f
+                )
             historicalData.add((newDataPoint + 1f) / 2f) // Normalize to 0-1 range
 
             if (historicalData.size > maxHistorySize) {
@@ -518,6 +547,7 @@ fun DynamicHistogramPreview() {
         binCounts = binCounts
     )
 }
+
 @Preview(showBackground = true, backgroundColor = 0xFF444444)
 @Composable
 fun ComplexCircularPlotPreview() {
@@ -628,10 +658,6 @@ fun InteractiveCenterDisplayPreview() {
 
     CenterDisplay(
         modifier = Modifier.size(width = 800.dp, height = 400.dp),
-        onTopLeftPress = {},
-        onTopRightPress = {},
-        onBottomLeftPress = {},
-        onBottomRightPress = {},
         screenAspectRatio = 800f / 400f,
         series = listOf(
             PlotData(name = "Volts", dataPoints = voltsData, color = Color.Cyan),
@@ -668,12 +694,13 @@ fun ScrollingBarPlot(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 fun ScrollingBarPlotPreview() {
     val dataStream = remember { mutableStateListOf<Float>() }
     val maxSamples = 100 // We want to display 100 bars
-    var time by remember {mutableStateOf(0f) }
+    var time by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         while (true) {
             val newDataPoint = (sin(time * 2 * PI.toFloat()) + 1f) / 2f

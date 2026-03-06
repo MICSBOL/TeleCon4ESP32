@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -29,8 +30,10 @@ import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.IndicatorState
 import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.bluetooth.PlotData
+import com.example.emitterapp.ui.rc_screen.components.AdBanner
 import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
+import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 import kotlin.random.Random
@@ -69,10 +72,6 @@ fun RcScreenStaticPreview() {
             centerContent = {
                 CenterDisplay(
                     modifier = Modifier.fillMaxSize(),
-                    onTopLeftPress = {},
-                    onTopRightPress = {},
-                    onBottomLeftPress = {},
-                    onBottomRightPress = {},
                     screenAspectRatio = screenAspectRatio,
                 )
             },
@@ -81,7 +80,7 @@ fun RcScreenStaticPreview() {
                     modifier = Modifier
                         .wrapContentHeight()
                         .padding(8.dp),
-                    side = Side.LEFT,
+                    side = ButtonSide.LEFT,
                     aspectRatio = screenAspectRatio,
                     mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
                     onMove = { x, y -> leftStickPosition = Pair(x, y) },
@@ -97,7 +96,10 @@ fun RcScreenStaticPreview() {
                     panelTitle = "RPM",
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = 50)
-                    }
+                    },
+                    ledValues = 0x00,
+                    onTopPress = {},
+                    onBottomPress = {}
                 )
             },
             rightSideContent = {
@@ -105,7 +107,7 @@ fun RcScreenStaticPreview() {
                     modifier = Modifier
                         .wrapContentHeight()
                         .padding(8.dp),
-                    side = Side.RIGHT,
+                    side = ButtonSide.RIGHT,
                     aspectRatio = screenAspectRatio,
                     mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
                     onMove = { x, y -> rightStickPosition = Pair(x, y) },
@@ -124,9 +126,15 @@ fun RcScreenStaticPreview() {
                             level = 100,
                             modifier = modifier
                         )
-                    }
+                    },
+                    ledValues = 0x00,
+                    onTopPress = {},
+                    onBottomPress = {}
                 )
             }
+        )
+        AdBanner(
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
 }
@@ -189,10 +197,6 @@ fun RcScreenPreview2() {
                 centerContent = {
                     CenterDisplay(
                         modifier = Modifier.fillMaxSize(),
-                        onTopLeftPress = { },
-                        onTopRightPress = { },
-                        onBottomLeftPress = { },
-                        onBottomRightPress = { },
                         screenAspectRatio = screenAspectRatio,
                         series = previewPlotData
                     )
@@ -202,7 +206,7 @@ fun RcScreenPreview2() {
                         modifier = Modifier
                             .wrapContentHeight()
                             .padding(8.dp),
-                        side = Side.LEFT,
+                        side = ButtonSide.LEFT,
                         aspectRatio = screenAspectRatio,
                         mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
                         onMove = { _, _ -> },
@@ -216,7 +220,10 @@ fun RcScreenPreview2() {
                         panelTitle = "RPM",
                         topExtraContent = { modifier ->
                             AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
-                        }
+                        },
+                        ledValues = 0x00,
+                        onTopPress = { },
+                        onBottomPress = { }
                     )
                 },
                 rightSideContent = {
@@ -224,7 +231,7 @@ fun RcScreenPreview2() {
                         modifier = Modifier
                             .wrapContentHeight()
                             .padding(8.dp),
-                        side = Side.RIGHT,
+                        side = ButtonSide.RIGHT,
                         aspectRatio = screenAspectRatio,
                         mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
                         onMove = { _, _ -> },
@@ -241,7 +248,10 @@ fun RcScreenPreview2() {
                                 level = indicatorState.batteryLevel,
                                 modifier = modifier
                             )
-                        }
+                        },
+                        ledValues = 0x00,
+                        onTopPress = { },
+                        onBottomPress = { }
                     )
                 }
             )
@@ -279,10 +289,6 @@ fun RcScreenStaticLayout(
             centerContent = {
                 CenterDisplay(
                     modifier = Modifier.fillMaxSize(),
-                    onTopLeftPress = {},
-                    onTopRightPress = {},
-                    onBottomLeftPress = {},
-                    onBottomRightPress = {},
                     screenAspectRatio = screenAspectRatio,
                     series = series
                 )
@@ -292,7 +298,7 @@ fun RcScreenStaticLayout(
                     modifier = Modifier
                         .wrapContentHeight()
                         .padding(0.dp),
-                    side = Side.LEFT,
+                    side = ButtonSide.LEFT,
                     aspectRatio = screenAspectRatio,
                     mode = JoystickMode.HorizontalHold(initialPosition = JoystickMode.LEFT),
                     onMove = { x, y -> leftStickPosition = Pair(x, y) },
@@ -308,7 +314,10 @@ fun RcScreenStaticLayout(
                     panelTitle = "RPM",
                     topExtraContent = { modifier ->
                         AnalogIndicator(modifier = modifier, value = indicatorState.analogValue)
-                    }
+                    },
+                    ledValues = 0x00,
+                    onTopPress = {},
+                    onBottomPress = {}
                 )
             },
             rightSideContent = {
@@ -316,7 +325,7 @@ fun RcScreenStaticLayout(
                     modifier = Modifier
                         .wrapContentHeight()
                         .padding(0.dp),
-                    side = Side.RIGHT,
+                    side = ButtonSide.RIGHT,
                     aspectRatio = screenAspectRatio,
                     mode = JoystickMode.Spring(initialPosition = JoystickMode.CENTER),
                     onMove = { x, y -> rightStickPosition = Pair(x, y) },
@@ -335,7 +344,10 @@ fun RcScreenStaticLayout(
                             level = indicatorState.batteryLevel,
                             modifier = modifier
                         )
-                    }
+                    },
+                    ledValues = 0x00,
+                    onTopPress = {},
+                    onBottomPress = {}
                 )
             }
         )
