@@ -45,6 +45,7 @@ fun IndicatorTitle(
 ) {
     // 1. Define a text style that disables the font's built-in vertical padding.
     val textStyle = TextStyle(
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         fontSize = textSize,
         platformStyle = PlatformTextStyle(
             includeFontPadding = false
@@ -57,7 +58,9 @@ fun IndicatorTitle(
         contentAlignment = Alignment.Center
     ) {
         // This part for the background and frame is correct.
-        Canvas(modifier = Modifier.matchParentSize()) {
+        Canvas(modifier = Modifier
+            .align(alignment = Alignment.Center)
+            .matchParentSize()) {
             drawRoundRect(
                 color = Color.Black.copy(alpha = 0.4f),
                 style = androidx.compose.ui.graphics.drawscope.Fill,
@@ -89,23 +92,36 @@ fun IndicatorTitle(
             }
         }
 
-        // The glowing text (for the blur effect)
-        Text(
+        HorizontalTextAnimation(
             text = "  $text  ",
-            color = glowColor,
-            // 2. Apply the new text style here.
             style = textStyle,
-            modifier = Modifier.blur(radius = glowRadius)
+            color = glowColor,
+            modifier = Modifier
+                .align(alignment = Alignment.Center)
+                .blur(radius = glowRadius),
+            characterThreshold = 10
+        )
+        HorizontalTextAnimation(
+            text = "  $text  ",
+            style = textStyle,
+            color = textColor,
+            modifier = Modifier
+                .align(alignment = Alignment.Center),
+            characterThreshold = 10
         )
 
-        // The crisp foreground text
-        Text(
-            text = "  $text  ",
-            color = textColor,
-            // 3. Apply the new text style here as well.
-            style = textStyle
-            // The incorrect modifier usage has been removed from this Text composable.
-        )
+//        Text(
+//            text = "  $text  ",
+//            color = glowColor,
+//            style = textStyle,
+//            modifier = Modifier.blur(radius = glowRadius)
+//        )
+//
+//        Text(
+//            text = "  $text  ",
+//            color = textColor,
+//            style = textStyle
+//        )
     }
 }
 

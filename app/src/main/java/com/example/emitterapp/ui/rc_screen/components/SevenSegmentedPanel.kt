@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,26 +36,28 @@ import com.example.emitterapp.R
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun SevenSegmentedPanel(
-    number: Int,
+    value: Float,
     on: Boolean,
     onColor: Color,
     modifier: Modifier = Modifier,
     width: Dp = 400.dp,
-    decimalPoints: List<Boolean> = listOf(false, true, false, false),
     title: String = "",
 ) {
     val offColor = onColor.copy(alpha = 0.1f)
-    val clampedNumber = number.coerceIn(0, 9999)
-    val digits = clampedNumber.toString().padStart(4, '0')
+
+    val clampedValue = value.coerceIn(0f, 9999.9f)
+    val formatted = String.format(java.util.Locale.US, "%06.1f", clampedValue)
+    val digits = formatted.replace(".", "")
+    val autoDecimalPoints = listOf(false, false, false, true, false)
 
     BoxWithConstraints(
-        modifier = modifier.size(width, width * 0.66f),
+        modifier = modifier.size(height = width * 0.66f, width = width),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = modifier
-                .width(maxWidth * 0.85f)
-                .height(maxHeight * 0.9f)
+                .width(maxWidth * 0.9f)
+                .height(maxHeight * 0.7f)
                 .background(Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
@@ -63,26 +66,30 @@ fun SevenSegmentedPanel(
                     .fillMaxSize()
                     .background(Color.DarkGray)
             ) {
-                val digitWidth = (size.width * 0.05f)*3f
-                val digitHeight = (size.width * 0.0875f)*3f
-                val digitSpacing = (size.width * 0.125f)*0.4f
+                val numDigits = 5
+                val digitWidth = size.width * 0.13f
+                val digitHeight = digitWidth * 2f
+                val digitSpacing = size.width * 0.03f
+                val totalWidth = (numDigits * digitWidth) + ((numDigits - 1) * digitSpacing)
+                val startX = (size.width - totalWidth) / 2
+                val startY = (size.height - digitHeight) / 3
 
-                val totalWidth = (3 * digitWidth) + (2 * digitSpacing)
-
-                val startX = (size.width - totalWidth) / 4
-                val startY = (size.height - digitHeight) / 2
-
-                digits.forEachIndexed { index, digitChar ->
+                digits.take(numDigits).forEachIndexed { index, digitChar ->
                     val digitTopLeft = Offset(
                         x = startX + index * (digitWidth + digitSpacing),
                         y = startY
                     )
+
+                    val isLeadingZero = index < 3 && 
+                                        digitChar == '0' && 
+                                        digits.substring(0, index + 1).all { it == '0' }
+
                     drawDigit(
                         digit = digitChar,
                         topLeft = digitTopLeft,
                         width = digitWidth,
                         height = digitHeight,
-                        on = on,
+                        on = on && !isLeadingZero,
                         onColor = onColor,
                         offColor = offColor,
                         blurRadius = 20f
@@ -91,7 +98,6 @@ fun SevenSegmentedPanel(
 
                 val pointRadius = digitWidth / 14f
                 val pointY = startY + digitHeight - pointRadius
-
                 val glowPointPaint = Paint().asFrameworkPaint().apply {
                     isAntiAlias = true
                     style = android.graphics.Paint.Style.FILL
@@ -99,31 +105,27 @@ fun SevenSegmentedPanel(
                     maskFilter = BlurMaskFilter(pointRadius * 2, BlurMaskFilter.Blur.NORMAL)
                 }
 
-                decimalPoints.forEachIndexed { index, isPointOn ->
-                    if (index <= 3 && isPointOn && on) {
+                autoDecimalPoints.forEachIndexed { index, isPointOn ->
+                    if (isPointOn && on) {
                         val pointX = startX + (index + 1) * digitWidth + (index * digitSpacing) + (digitSpacing / 2)
                         val pointCenter = Offset(pointX, pointY)
 
                         drawIntoCanvas { canvas ->
                             canvas.nativeCanvas.drawCircle(pointCenter.x, pointCenter.y, pointRadius, glowPointPaint)
                         }
-                        drawCircle(
-                            color = onColor,
-                            radius = pointRadius,
-                            center = pointCenter
-                        )
+                        drawCircle(color = onColor, radius = pointRadius, center = pointCenter)
                     }
                 }
             }
             UnitDisplay(
                 title = title,
                 on = true,
-                onColor = Color.Green,
+                onColor = onColor,
                 width = width,
             )
         }
         Image(
-            painter = painterResource(id = R.drawable.panel_background),
+            painter = painterResource(id = R.drawable.panel_background_extended),
             contentDescription = "Panel Background",
             modifier = Modifier.fillMaxSize()
         )
@@ -217,12 +219,20 @@ private fun getSegmentPaths(
 @Preview(showBackground = true)
 @Composable
 private fun SevenSegmentedPanelPreview() {
-    SevenSegmentedPanel(
-        title = "RPM",
-        number = 1234,
-        on = true,
-        onColor = Color.Green
-    )
+    Column {
+        SevenSegmentedPanel(
+            title = "RPM",
+            value = 1234.5f,
+            on = true,
+            onColor = Color.Cyan
+        )
+        SevenSegmentedPanel(
+            title = "VOLTS",
+            value = 12.3f,
+            on = true,
+            onColor = Color.Green
+        )
+    }
 }
 
 private enum class Segment {
@@ -242,6 +252,7 @@ private val digitToSegment = mapOf(
     '9' to listOf(Segment.A, Segment.B, Segment.C, Segment.D, Segment.F, Segment.G),
     ' ' to emptyList()
 )
+
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun UnitDisplay(
@@ -263,7 +274,7 @@ fun UnitDisplay(
                 .height(maxHeight * 0.3f)
                 .background(Color.Transparent)
                 .align(Alignment.BottomEnd)
-                .padding(end = maxWidth * 0.1f, bottom =  maxHeight * 0.05f)
+                .padding(end = maxWidth * 0.1f, bottom = maxHeight * 0.05f)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val currentColor = if (on) onColor else offColor
@@ -272,10 +283,9 @@ fun UnitDisplay(
                     isAntiAlias = true
                     style = android.graphics.Paint.Style.FILL
                     textAlign = android.graphics.Paint.Align.LEFT
-                    textSize = size.height * 0.6f // Responsive text size
+                    textSize = size.height * 0.6f
                     color = currentColor.toArgb()
-                    typeface = Typeface.create(Typeface.MONOSPACE,
-                        Typeface.BOLD)
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
                     maskFilter = BlurMaskFilter(textSize * 0.4f, BlurMaskFilter.Blur.NORMAL)
                 }
 
@@ -285,8 +295,7 @@ fun UnitDisplay(
                     textAlign = android.graphics.Paint.Align.LEFT
                     textSize = size.height * 0.5f
                     color = currentColor.toArgb()
-                    typeface = Typeface.create(Typeface.MONOSPACE,
-                        Typeface.BOLD)
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
                 }
 
                 val textBounds = android.graphics.Rect()
@@ -302,6 +311,7 @@ fun UnitDisplay(
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 private fun UnitDisplayPreview() {
@@ -310,18 +320,4 @@ private fun UnitDisplayPreview() {
         on = true,
         onColor = Color.Green
     )
-}
-enum class DisplayUnit(val text: String){
-    RPM("RPM"),
-    VOLTS("V"),
-    AMPS("A"),
-    OHMS("Ω"), // Using the Ohm symbol
-    METERS_PER_SECOND("m/s"),
-    KILOMETERS_PER_HOUR("km/h"),
-    PERCENT("%"),
-    CELSIUS("°C"),
-    FAHRENHEIT("°F"),
-    BAR("BAR"),
-    PSI("PSI"),
-    NONE("")
 }

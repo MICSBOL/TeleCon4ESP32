@@ -102,7 +102,7 @@ fun ControllerSide(
         val extraContentSizeBattery = joystickSize * 0.3f
         val extraContentSizeAnalogIndicator = joystickSize * 0.3f
 
-        val panelWidth = joystickSize * 0.5f
+        val panelWidth = joystickSize * 0.6f
         Box(
             modifier = Modifier
                 .size(joystickSize),
@@ -188,7 +188,7 @@ fun ControllerSide(
                 }
                 SevenSegmentedPanel(
                     width = panelWidth,
-                    number = panelNumber,
+                    value = panelNumber / 10f,
                     on = panelOn,
                     onColor = panelColor,
                     title = panelTitle
@@ -198,8 +198,9 @@ fun ControllerSide(
             } else {
                 topExtraContent?.invoke(Modifier.size(extraContentSizeAnalogIndicator))
                 SevenSegmentedPanel(
+//                    modifier = Modifier.weight(1f),
                     width = panelWidth,
-                    number = panelNumber,
+                    value = panelNumber / 10f,
                     on = panelOn,
                     onColor = panelColor,
                     title = panelTitle
@@ -211,6 +212,5 @@ fun ControllerSide(
                 }
             }
         }
-
     }
 }

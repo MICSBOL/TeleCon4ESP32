@@ -52,6 +52,7 @@ import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.PlotData
 import com.example.emitterapp.ui.rc_screen.components.AdBanner
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
+import com.example.emitterapp.ui.rc_screen.components.HorizontalTextAnimation
 import com.example.emitterapp.ui.rc_screen.components.PushButtonSide
 import com.example.emitterapp.ui.rc_screen.components.RealTimePlot
 import kotlinx.coroutines.delay
@@ -212,7 +213,7 @@ fun CartesianPlot(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Box {
-                        Text(
+                        HorizontalTextAnimation(
                             text = plotData.name,
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.LightGray,
