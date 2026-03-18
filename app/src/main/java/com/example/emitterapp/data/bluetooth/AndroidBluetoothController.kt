@@ -336,9 +336,6 @@ class AndroidBluetoothController @Inject constructor(
     private val _isConnected = MutableStateFlow(false)
     override val isConnected: StateFlow<Boolean> get() = _isConnected.asStateFlow()
 
-    private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
-    val scannedDevices: StateFlow<List<BluetoothDeviceDomain>> get() = _scannedDevices.asStateFlow()
-
     private val _errors = MutableSharedFlow<String>()
     override val error: SharedFlow<String> get() = _errors.asSharedFlow()
 
@@ -346,11 +343,6 @@ class AndroidBluetoothController @Inject constructor(
     private var isReceiverRegistered = false
 
     private val foundDeviceReceiver = FoundDeviceReceiver { device ->
-        _scannedDevices.update { devices ->
-            val newDevice = device.toBluetoothDeviceDomain()
-            if (newDevice in devices) devices else devices + newDevice
-        }
-        // Also update the public discoveredDevices state flow
         _discoveredDevices.update { devices ->
             val newDevice = device.toBluetoothDeviceDomain()
             if (newDevice in devices) devices else devices + newDevice
