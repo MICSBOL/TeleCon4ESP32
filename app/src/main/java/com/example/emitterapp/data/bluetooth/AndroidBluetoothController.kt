@@ -8,7 +8,9 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
@@ -25,7 +27,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
@@ -360,6 +361,7 @@ class AndroidBluetoothController @Inject constructor(
         updatePairedDevices()
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun startDiscovery() {
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             Log.e("BluetoothController", "Missing BLUETOOTH_SCAN permission")
@@ -422,7 +424,6 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     override fun connect(device: RemoteDevice): Flow<ConnectionResult> {
-        val bluetoothDevice = device as? BluetoothDeviceDomain
         return flow {
             if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) throw SecurityException("No BLUETOOTH_CONNECT permission")
 
