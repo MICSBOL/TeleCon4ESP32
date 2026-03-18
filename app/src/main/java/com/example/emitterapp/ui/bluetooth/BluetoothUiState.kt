@@ -1,6 +1,5 @@
 package com.example.emitterapp.ui.bluetooth
 
-import com.example.emitterapp.domain.bluetooth.BluetoothDevice
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
 import com.example.emitterapp.domain.bluetooth.RemoteDevice
 import com.example.emitterapp.domain.bluetooth.TelemetryState

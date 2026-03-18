@@ -463,9 +463,7 @@ class AndroidBluetoothController @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    fun startBluetoothServer(): Flow<ConnectionResult> = emptyFlow()
-
-    suspend fun trySendData(data: ByteArray): Boolean? {
+    fun trySendData(data: ByteArray): Boolean? {
         if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
         return dataTransferService?.sendMessage(data)
     }
@@ -478,7 +476,6 @@ class AndroidBluetoothController @Inject constructor(
         }
     }
 
-    suspend fun trySendMessage(message: String): BluetoothMessage? = null
 
     private fun updatePairedDevices() {
         if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {

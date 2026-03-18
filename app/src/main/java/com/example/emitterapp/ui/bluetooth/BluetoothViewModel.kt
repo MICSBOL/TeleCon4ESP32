@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.emitterapp.data.repository.SettingsRepository
-import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.RemoteController
 import com.example.emitterapp.domain.bluetooth.RemoteDevice
@@ -219,26 +218,26 @@ open class BluetoothViewModel @Inject constructor(
         packet[0] = 0xAA.toByte()
         packet[1] = 0x55.toByte()
 
-        val leftStickX_12bit =
+        val leftStickX12bit =
             (((currentState.leftStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-        val leftStickY_12bit =
+        val leftStickY12bit =
             (((currentState.leftStickY + 100) * 4095) / 200).coerceIn(0, 4095)
-        val rightStickX_12bit =
+        val rightStickX12bit =
             (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-        val rightStickY_12bit =
+        val rightStickY12bit =
             (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
 
-        packet[2] = (leftStickX_12bit and 0xFF).toByte()
-        packet[3] = ((leftStickX_12bit shr 8) and 0xFF).toByte()
+        packet[2] = (leftStickX12bit and 0xFF).toByte()
+        packet[3] = ((leftStickX12bit shr 8) and 0xFF).toByte()
 
-        packet[4] = (leftStickY_12bit and 0xFF).toByte()
-        packet[5] = ((leftStickY_12bit shr 8) and 0xFF).toByte()
+        packet[4] = (leftStickY12bit and 0xFF).toByte()
+        packet[5] = ((leftStickY12bit shr 8) and 0xFF).toByte()
 
-        packet[6] = (rightStickX_12bit and 0xFF).toByte()
-        packet[7] = ((rightStickX_12bit shr 8) and 0xFF).toByte()
+        packet[6] = (rightStickX12bit and 0xFF).toByte()
+        packet[7] = ((rightStickX12bit shr 8) and 0xFF).toByte()
 
-        packet[8] = (rightStickY_12bit and 0xFF).toByte()
-        packet[9] = ((rightStickY_12bit shr 8) and 0xFF).toByte()
+        packet[8] = (rightStickY12bit and 0xFF).toByte()
+        packet[9] = ((rightStickY12bit shr 8) and 0xFF).toByte()
 
         packet[10] = (currentState.leftKnobValue and 0xFF).toByte()
         packet[11] = ((currentState.leftKnobValue shr 8) and 0xFF).toByte()
@@ -257,7 +256,7 @@ open class BluetoothViewModel @Inject constructor(
         if (currentState.switch8) switchByte = switchByte or (1 shl 7)
 
         packet[14] = switchByte.toByte()
-        var checksum = 0;
+        var checksum = 0
         for (i in 2..14) {
             checksum += packet[i].toInt() and 0xFF
         }
