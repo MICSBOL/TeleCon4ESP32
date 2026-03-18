@@ -1,22 +1,20 @@
 package com.example.emitterapp.di
 
-import android.content.Context
 import com.example.emitterapp.data.bluetooth.AndroidBluetoothController
-import com.example.emitterapp.domain.bluetooth.BluetoothController
+import com.example.emitterapp.domain.bluetooth.RemoteController
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+abstract class AppModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideBluetoothController(@ApplicationContext context: Context): BluetoothController {
-        return AndroidBluetoothController(context)
-    }
+    abstract fun bindRemoteController(
+        impl: AndroidBluetoothController
+    ): RemoteController
 }

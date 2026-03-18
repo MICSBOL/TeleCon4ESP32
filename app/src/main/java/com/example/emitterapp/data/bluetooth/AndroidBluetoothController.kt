@@ -10,12 +10,14 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.ui.graphics.Color
-import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.PlotData
+import com.example.emitterapp.domain.bluetooth.RemoteController
+import com.example.emitterapp.domain.bluetooth.RemoteDevice
 import com.example.emitterapp.domain.bluetooth.TelemetryState
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,15 +34,24 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
+import javax.inject.Inject
 
 @SuppressLint("MissingPermission")
-class AndroidBluetoothController(
-    private val context: Context
-) : BluetoothController {
+class AndroidBluetoothController @Inject constructor(
+    @ApplicationContext private val context: Context
+) : RemoteController {
+
 
     private val _telemetryState = MutableStateFlow(TelemetryState())
     override val telemetryState: StateFlow<TelemetryState> = _telemetryState.asStateFlow()
+    // Internal state flows using the generic RemoteDevice interface
+    private val _discoveredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
+    override val discoveredDevices: StateFlow<List<RemoteDevice>> = _discoveredDevices.asStateFlow()
 
+    private val _savedDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
+    override val savedDevices: StateFlow<List<RemoteDevice>> = _savedDevices.asStateFlow()
+
+    // Remove the old scannedDevices and pairedDevices overrides
     private val plotColors =
         listOf(Color.Cyan, Color.Red, Color.Green, Color.Yellow, Color.Magenta, Color.White)
 
@@ -325,16 +336,21 @@ class AndroidBluetoothController(
     override val isConnected: StateFlow<Boolean> get() = _isConnected.asStateFlow()
 
     private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
-    override val scannedDevices: StateFlow<List<BluetoothDeviceDomain>> get() = _scannedDevices.asStateFlow()
-
-    private val _pairedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
-    override val pairedDevices: StateFlow<List<BluetoothDeviceDomain>> get() = _pairedDevices.asStateFlow()
+    val scannedDevices: StateFlow<List<BluetoothDeviceDomain>> get() = _scannedDevices.asStateFlow()
 
     private val _errors = MutableSharedFlow<String>()
     override val error: SharedFlow<String> get() = _errors.asSharedFlow()
 
+    @Volatile
+    private var isReceiverRegistered = false
+
     private val foundDeviceReceiver = FoundDeviceReceiver { device ->
         _scannedDevices.update { devices ->
+            val newDevice = device.toBluetoothDeviceDomain()
+            if (newDevice in devices) devices else devices + newDevice
+        }
+        // Also update the public discoveredDevices state flow
+        _discoveredDevices.update { devices ->
             val newDevice = device.toBluetoothDeviceDomain()
             if (newDevice in devices) devices else devices + newDevice
         }
@@ -345,32 +361,68 @@ class AndroidBluetoothController(
     }
 
     override fun startDiscovery() {
-        if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) return
-        try {
-            context.registerReceiver(
-                foundDeviceReceiver,
-                IntentFilter(BluetoothDevice.ACTION_FOUND)
-            )
-        } catch (e: Exception) { 
+        if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
+            Log.e("BluetoothController", "Missing BLUETOOTH_SCAN permission")
+            return
         }
+        
+        if (!isReceiverRegistered) {
+            try {
+                context.registerReceiver(
+                    foundDeviceReceiver,
+                    IntentFilter(BluetoothDevice.ACTION_FOUND),
+                    Context.RECEIVER_EXPORTED
+                )
+                isReceiverRegistered = true
+                Log.d("BluetoothController", "BroadcastReceiver registered successfully")
+            } catch (e: Exception) {
+                Log.e("BluetoothController", "Failed to register BroadcastReceiver: ${e.message}", e)
+            }
+        } else {
+            Log.d("BluetoothController", "BroadcastReceiver already registered")
+        }
+        
         updatePairedDevices()
-        bluetoothAdapter?.startDiscovery()
+        val startDiscoveryResult = bluetoothAdapter?.startDiscovery()
+        Log.d("BluetoothController", "startDiscovery() called, result: $startDiscoveryResult")
     }
 
     override fun stopDiscovery() {
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) return
+        
+        if (isReceiverRegistered) {
+            try {
+                context.unregisterReceiver(foundDeviceReceiver)
+                isReceiverRegistered = false
+                Log.d("BluetoothController", "BroadcastReceiver unregistered successfully")
+            } catch (e: Exception) {
+                Log.e("BluetoothController", "Failed to unregister BroadcastReceiver: ${e.message}", e)
+            }
+        }
+        
         bluetoothAdapter?.cancelDiscovery()
+        Log.d("BluetoothController", "Discovery cancelled")
+    }
+
+    override fun startServer(): Flow<ConnectionResult> {
+        TODO("Not yet implemented")
     }
 
     override fun release() {
-        try {
-            context.unregisterReceiver(foundDeviceReceiver)
-        } catch (e: Exception) { 
+        if (isReceiverRegistered) {
+            try {
+                context.unregisterReceiver(foundDeviceReceiver)
+                isReceiverRegistered = false
+                Log.d("BluetoothController", "BroadcastReceiver unregistered during release")
+            } catch (e: Exception) {
+                Log.w("BluetoothController", "Receiver was not registered or already unregistered: ${e.message}")
+            }
         }
         closeConnection()
     }
 
-    override fun connectToDevice(device: BluetoothDeviceDomain): Flow<ConnectionResult> {
+    override fun connect(device: RemoteDevice): Flow<ConnectionResult> {
+        val bluetoothDevice = device as? BluetoothDeviceDomain
         return flow {
             if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) throw SecurityException("No BLUETOOTH_CONNECT permission")
 
@@ -407,14 +459,18 @@ class AndroidBluetoothController(
         }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override fun startBluetoothServer(): Flow<ConnectionResult> = emptyFlow()
+    override suspend fun sendMessage(message: String): BluetoothMessage? {
+        TODO("Not yet implemented")
+    }
 
-    override suspend fun trySendData(data: ByteArray): Boolean? {
+    fun startBluetoothServer(): Flow<ConnectionResult> = emptyFlow()
+
+    suspend fun trySendData(data: ByteArray): Boolean? {
         if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
         return dataTransferService?.sendMessage(data)
     }
 
-    override fun closeConnection() {
+    fun closeConnection() {
         synchronized(this) {
             dataTransferService?.close()
             dataTransferService = null
@@ -422,18 +478,34 @@ class AndroidBluetoothController(
         }
     }
 
-    override suspend fun trySendMessage(message: String): BluetoothMessage? = null
+    suspend fun trySendMessage(message: String): BluetoothMessage? = null
 
     private fun updatePairedDevices() {
-        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return
+        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+            Log.e("BluetoothController", "Missing BLUETOOTH_CONNECT permission for paired devices")
+            return
+        }
         bluetoothAdapter
             ?.bondedDevices
             ?.map { it.toBluetoothDeviceDomain() }
-            ?.also { devices -> _pairedDevices.update { devices } }
+            ?.also { devices -> 
+                _savedDevices.update { devices }
+                Log.d("BluetoothController", "Updated paired/saved devices: ${devices.size} devices")
+            }
+            ?: run {
+                Log.w("BluetoothController", "No bonded devices found or bluetooth adapter unavailable")
+            }
     }
 
     private fun hasPermission(permission: String): Boolean {
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    }
+    override fun disconnect() { // Rename from closeConnection
+        closeConnection()
+    }
+
+    override suspend fun sendData(data: ByteArray): Boolean? { // Rename from trySendData
+        return trySendData(data)
     }
 
     companion object {

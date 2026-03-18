@@ -4,9 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.emitterapp.data.repository.SettingsRepository
-import com.example.emitterapp.domain.bluetooth.BluetoothController
 import com.example.emitterapp.domain.bluetooth.BluetoothDeviceDomain
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
+import com.example.emitterapp.domain.bluetooth.RemoteController
+import com.example.emitterapp.domain.bluetooth.RemoteDevice
 import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
@@ -34,7 +35,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 open class BluetoothViewModel @Inject constructor(
-    private val bluetoothController: BluetoothController,
+    private val remoteController: RemoteController,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _navigateToScreen = Channel<String>()
@@ -53,10 +54,10 @@ open class BluetoothViewModel @Inject constructor(
             initialValue = SettingsUiState.Loading
         )
 
-    val telemetryState: StateFlow<TelemetryState> = bluetoothController.telemetryState
+    val telemetryState: StateFlow<TelemetryState> = remoteController.telemetryState
     val state = combine(
-        bluetoothController.scannedDevices,
-        bluetoothController.pairedDevices,
+        remoteController.discoveredDevices,
+        remoteController.savedDevices,
         _state
     ) { scannedDevices, pairedDevices, state ->
         state.copy(
@@ -142,17 +143,17 @@ open class BluetoothViewModel @Inject constructor(
         super.onCleared()
         stopSendingRcData()
     }
-    fun connectToDevice(device: BluetoothDeviceDomain) {
+    fun connectToDevice(device: RemoteDevice) {
         Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
         _state.update { it.copy(isConnecting = true) }
-        deviceConnectionJob = bluetoothController
-            .connectToDevice(device)
+        deviceConnectionJob = remoteController
+            .connect(device)
             .listen()
     }
 
     fun disconnectFromDevice() {
         deviceConnectionJob?.cancel()
-        bluetoothController.closeConnection()
+        remoteController.disconnect()
         _state.update {
             it.copy(
                 isConnecting = false,
@@ -161,34 +162,14 @@ open class BluetoothViewModel @Inject constructor(
         }
     }
 
-    fun waitForIncomingConnections() {
-        _state.update { it.copy(isConnecting = true) }
-        deviceConnectionJob = bluetoothController
-            .startBluetoothServer()
-            .listen()
-    }
-
-    fun sendMessage(message: String) {
-        viewModelScope.launch {
-            val bluetoothMessage = bluetoothController.trySendMessage(message)
-            if (bluetoothMessage != null) {
-                _state.update {
-                    it.copy(
-                        messages = it.messages + bluetoothMessage
-                    )
-                }
-            }
-        }
-    }
-
     fun startScan() {
         _state.update { it.copy(isScanning = true) }
-        bluetoothController.startDiscovery()
+        remoteController.startDiscovery()
     }
 
     fun stopScan() {
         _state.update { it.copy(isScanning = false) }
-        bluetoothController.stopDiscovery()
+        remoteController.stopDiscovery()
     }
 
     private fun Flow<ConnectionResult>.listen(): Job {
@@ -222,7 +203,7 @@ open class BluetoothViewModel @Inject constructor(
                 }
             }
         }.catch { throwable ->
-            bluetoothController.closeConnection()
+            remoteController.disconnect()
             _state.update {
                 it.copy(
                     isConnected = false,
@@ -284,7 +265,7 @@ open class BluetoothViewModel @Inject constructor(
         packet[16] = 0x0D.toByte()
         packet[17] = 0x0A.toByte()
 
-        bluetoothController.trySendData(packet)
+        remoteController.sendData(packet)
     }
 
     fun sendButtonEvent(event: ButtonEvent) {
@@ -294,7 +275,7 @@ open class BluetoothViewModel @Inject constructor(
             eventPacket[1] = 0x66.toByte()
             eventPacket[2] = event.id
             eventPacket[3] = event.id
-            bluetoothController.trySendData(eventPacket)
+            remoteController.sendData(eventPacket)
         }
     }
 

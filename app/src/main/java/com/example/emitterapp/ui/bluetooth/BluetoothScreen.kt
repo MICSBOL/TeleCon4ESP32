@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.emitterapp.domain.bluetooth.BluetoothDevice
+import com.example.emitterapp.domain.bluetooth.RemoteDevice
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +41,7 @@ fun BluetoothScreen(
     state: BluetoothUiState,
     onStartScan: () -> Unit,
     onStopScan: () -> Unit,
-    onDeviceClick: (BluetoothDevice) -> Unit,
+    onDeviceClick: (RemoteDevice) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -104,9 +105,9 @@ fun BluetoothScreen(
 
 @Composable
 fun BluetoothDeviceList(
-    pairedDevices: List<BluetoothDevice>,
-    scannedDevices: List<BluetoothDevice>,
-    onClick: (BluetoothDevice) -> Unit,
+    pairedDevices: List<RemoteDevice>,
+    scannedDevices: List<RemoteDevice>,
+    onClick: (RemoteDevice) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
@@ -137,8 +138,8 @@ fun BluetoothDeviceList(
 
 @Composable
 fun DeviceListItem(
-    device: BluetoothDevice,
-    onClick: (BluetoothDevice) -> Unit
+    device: RemoteDevice,
+    onClick: (RemoteDevice) -> Unit
 ) {
     Card(
         modifier = Modifier

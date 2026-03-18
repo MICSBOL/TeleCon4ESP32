@@ -47,7 +47,9 @@ fun AppNavGraph() {
                 state = state,
                 onStartScan = viewModel::startScan,
                 onStopScan = viewModel::stopScan,
-                onDeviceClick = viewModel::connectToDevice
+                onDeviceClick = { device ->
+                    viewModel.connectToDevice(device)
+                }
             )
         }
         composable(Screen.TestBluetooth.route) {

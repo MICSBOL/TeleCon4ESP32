@@ -1,7 +1,6 @@
 package com.example.emitterapp.domain.bluetooth
 
 import androidx.compose.ui.graphics.Color
-import kotlinx.coroutines.flow.StateFlow
 
 data class PanelState(
     val leftValue: Int = 0,
