@@ -477,7 +477,7 @@ class AndroidBluetoothController @Inject constructor(
         bluetoothAdapter
             ?.bondedDevices
             ?.map { it.toBluetoothDeviceDomain() }
-            ?.also { devices -> 
+            ?.also { devices ->
                 _savedDevices.update { devices }
                 Log.d("BluetoothController", "Updated paired/saved devices: ${devices.size} devices")
             }

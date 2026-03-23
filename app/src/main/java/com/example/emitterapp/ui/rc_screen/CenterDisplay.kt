@@ -12,13 +12,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,10 +65,10 @@ import kotlin.random.Random
 @Composable
 fun CenterDisplay(
     modifier: Modifier = Modifier,
-    screenAspectRatio: Float = 0f,
+//    screenAspectRatio: Float = 0f,
     series: List<PlotData> = emptyList()
 ) {
-    val isWideScreen = screenAspectRatio > 1.7f
+//    val isWideScreen = screenAspectRatio > 1.7f
     Box(
         modifier = modifier
             .background(Color.Transparent)
@@ -95,7 +93,6 @@ fun CenterDisplay(
                             Color(0xFF0A0F1A),
                         )
                 ) {
-                    // 1. The plot area is now wrapped in a Box that fills the available space
                     Box(modifier = Modifier.weight(1f)) {
                         when (PlotType.CARTESIAN) {
                             PlotType.CARTESIAN -> {
@@ -132,13 +129,10 @@ fun CenterDisplay(
                             }
                         }
                     }
-
                     AdBanner(
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
-//                            .fillMaxHeight(0.2f) // Reduced height for better fit
                     )
-
                 }
 
                 Image(
@@ -149,36 +143,6 @@ fun CenterDisplay(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun RowScope.ButtonColumn(
-    onTopPress: () -> Unit,
-    onBottomPress: () -> Unit,
-    side: ButtonSide,
-    isWideScreen: Boolean
-) {
-    Column(
-//        modifier = Modifier.weight(0.2f), // Give button columns a smaller weight
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-//        val topButtonSize = if (isWideScreen) 50.dp else 70.dp
-
-        val bottomButtonSize = 40.dp
-
-        PushButtonSide(
-            modifier = Modifier.size(bottomButtonSize * .9f),
-            side = if (side == ButtonSide.LEFT) ButtonSide.LEFT else ButtonSide.RIGHT,
-            onPress = onTopPress
-        )
-//        Spacer(modifier = Modifier.height(2.dp))
-        PushButtonSide(
-            modifier = Modifier.size(bottomButtonSize),
-            side = if (side == ButtonSide.LEFT) ButtonSide.LEFT else ButtonSide.RIGHT,
-            onPress = onBottomPress
-        )
     }
 }
 
@@ -407,7 +371,6 @@ fun HistogramPlot(
         binCounts.forEach { count ->
             val barHeight = (count.toFloat() / maxCount.toFloat()).coerceIn(0f, 1f)
 
-            // You could use your GlowingBar or a simple Box
             GlowingBar(
                 modifier = Modifier
                     .weight(1f) // Each bar takes equal width
@@ -418,23 +381,6 @@ fun HistogramPlot(
     }
 }
 
-@Composable
-fun AdBanner(modifier: Modifier = Modifier) {
-    // This is a placeholder that simulates the space an ad banner would take.
-    // It allows the preview to render correctly without the real ads SDK.
-    Box(
-        modifier = modifier
-            .background(Color.DarkGray.copy(alpha = 0.5f))
-            .border(1.dp, Color.White.copy(alpha = 0.5f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Ad Banner",
-            color = Color.White.copy(alpha = 0.7f),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
 
 @Composable
 fun ButtonColumn(
@@ -442,11 +388,8 @@ fun ButtonColumn(
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
     side: ButtonSide,
-    buttonSize: Dp = 50.dp,
-    isWideScreen: Boolean
+    buttonSize: Dp = 50.dp
 ) {
-    // This placeholder just draws two simple boxes to represent the buttons.
-//    val buttonSize = if (isWideScreen) 50.dp else 70.dp
     Column(
         modifier = modifier.padding(bottom = 8.dp),
         horizontalAlignment =
@@ -454,7 +397,7 @@ fun ButtonColumn(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         PushButtonSide(
-            modifier = Modifier.size(buttonSize * 0.7f),
+            modifier = Modifier.size(buttonSize * 0.8f),
             side = side,
             onPress = onTopPress
         )
@@ -552,7 +495,6 @@ fun DynamicHistogramPreview() {
 @Preview(showBackground = true, backgroundColor = 0xFF444444)
 @Composable
 fun ComplexCircularPlotPreview() {
-    // 1. Create state holders for two complex numbers
     var complexPoint1 by remember { mutableStateOf(ComplexPlotData(0f, 0f, Color.Cyan)) }
     var complexPoint2 by remember { mutableStateOf(ComplexPlotData(0f, 0f, Color.Yellow)) }
     var time by remember { mutableStateOf(0f) }
@@ -593,8 +535,6 @@ fun BarGraphPreview() {
         PlotData(name = "RPM", dataPoints = listOf(0.90f), color = Color.Green),    // 90% height
         PlotData(name = "Temp", dataPoints = listOf(0.60f), color = Color.Yellow)    // 60% height
     )
-    val sampleLabels = listOf("Volts", "Amps", "RPM", "Temp")
-
     BarGraph(
         modifier = Modifier
             .width(400.dp)
@@ -659,7 +599,6 @@ fun InteractiveCenterDisplayPreview() {
 
     CenterDisplay(
         modifier = Modifier.size(width = 800.dp, height = 400.dp),
-        screenAspectRatio = 800f / 400f,
         series = listOf(
             PlotData(name = "Volts", dataPoints = voltsData, color = Color.Cyan),
             PlotData(name = "Amps", dataPoints = ampsData, color = Color.Red),

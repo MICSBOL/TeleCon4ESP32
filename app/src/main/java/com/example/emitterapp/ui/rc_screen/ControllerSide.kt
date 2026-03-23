@@ -16,8 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D
@@ -25,6 +26,8 @@ import com.example.emitterapp.ui.rc_screen.components.Knob3D
 import com.example.emitterapp.ui.rc_screen.components.LedIndicator
 import com.example.emitterapp.ui.rc_screen.components.SevenSegmentedPanel
 import com.example.emitterapp.ui.rc_screen.components.Switch3DButton
+import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
+import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -69,35 +72,18 @@ fun ControllerSide(
         }
     }
     BoxWithConstraints(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier.fillMaxHeight().padding(8.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        val baseSize = min(maxWidth, maxHeight)
-        var joystickSize = 0.dp
-        when {
-
-            aspectRatio > 2.1f -> {
-                joystickSize = maxHeight * 0.6f
-            }
-
-            aspectRatio > 2.0f -> {
-                joystickSize = maxHeight * 0.6f
-            }
-
-            aspectRatio > 1.7f -> {
-                joystickSize = maxHeight * 0.6f
-            }
-
-            aspectRatio > 1.4f -> {
-                joystickSize = maxHeight * 0.6f
-            }
-
-            else -> {
-                joystickSize = baseSize * 0.3f
-            }
-        }
-        val knobSize = joystickSize * 0.4f
-        val switchSize = joystickSize * 0.4f
+        val density = LocalDensity.current
+        val mmInDp = density.density * 160f / 25.4f
+        val targetMm = if (aspectRatio > 2.0f) 30f else 100f
+        val maxSize = if (aspectRatio > 2.0f) 200.dp else 250.dp
+        val joystickSize = (targetMm * mmInDp).dp.coerceIn(100.dp, maxSize)
+        val switchMultiplier = 0.27f
+        val knobSize = joystickSize * 0.35f
+        val switchSize = joystickSize * switchMultiplier
+        val switchStep = ((joystickSize - switchSize) / 3.5f).coerceAtLeast(0.dp)
 
         val extraContentSizeBattery = joystickSize * 0.3f
         val extraContentSizeAnalogIndicator = joystickSize * 0.3f
@@ -106,47 +92,51 @@ fun ControllerSide(
         Box(
             modifier = Modifier
                 .size(joystickSize),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.BottomEnd,
         ) {
             ButtonColumn(
                 modifier = Modifier
-//                    .size(joystickSize * 0.5f)
+                    .size(joystickSize * 0.4f)
                     .align(
                         if (side == ButtonSide.RIGHT) Alignment.BottomStart else Alignment.BottomEnd
                     ),
                 onTopPress = onTopPress,
                 onBottomPress = onBottomPress,
                 side = side,
-                isWideScreen = false,
                 buttonSize = joystickSize * 0.2f,
             )
             Joystick_RC3D(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .offset(x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f), y = (-joystickSize * 0.1f))
                     .fillMaxSize(),
                 mode = mode,
                 onMove = onMove
             )
-            val angles = if (side == ButtonSide.RIGHT) {
-                listOf(90f, 125f, 160f)
-            } else {
-                listOf(20f, 55f, 90f)
-            }
 
             val knobAngle = if (side == ButtonSide.RIGHT) 50f else 130f
-            val radius = joystickSize * 0.45f
-            val knobRadius = joystickSize * 0.55f
+            val radius = joystickSize * 0.35f
+            val knobRadius = joystickSize * 0.45f
 
-            angles.forEachIndexed { index, angle ->
-                val angleInRadians = Math.toRadians(angle.toDouble())
-                val xOffset = (radius.value * cos(angleInRadians)).dp - 8.dp
-                val yOffset = (radius.value * sin(angleInRadians)).dp + 24.dp
+            val switchPositions = if (side == ButtonSide.RIGHT) {
+                listOf(
+                    Pair(0.dp,          -joystickSize * 0.30f),
+                    Pair(switchStep,    -joystickSize * 0.22f),
+                    Pair(switchStep * 2f, -joystickSize * 0.10f)
+                )
+            } else {
+                listOf(
+                    Pair(0.dp,           -joystickSize * 0.30f),
+                    Pair(-switchStep,    -joystickSize * 0.22f),
+                    Pair(-switchStep * 2f, -joystickSize * 0.10f)
+                )
+            }
 
+            switchPositions.forEachIndexed { index, (xOffset, yOffset) ->
                 Box(
                     modifier = Modifier
                         .size(switchSize)
-                        .align(Alignment.Center)
-                        .offset(x = -xOffset, y = -yOffset)
+                        .align(Alignment.TopCenter)
+                        .offset(x = xOffset, y = yOffset)
                 ) {
                     if (switchStates.size > index) {
                         Switch3DButton(
@@ -166,7 +156,7 @@ fun ControllerSide(
                 modifier = Modifier
                     .size(knobSize)
                     .align(Alignment.Center)
-                    .offset(x = -knobXOffset, y = -knobYOffset - 10.dp)
+                    .offset(x = -knobXOffset, y = -knobYOffset - joystickSize * 0.25f)
             ) {
                 Knob3D(
                     value = knobValue,
@@ -213,4 +203,64 @@ fun ControllerSide(
             }
         }
     }
+}
+
+@Preview(showBackground = true, name = "ControllerSide Left")
+@Composable
+fun ControllerSideLeftPreview() {
+    val fakeViewModel = FakeBluetoothViewModel()
+    ControllerSide(
+        side = ButtonSide.LEFT,
+        mode = JoystickMode.Spring(),
+        onMove = { _, _ -> },
+        switchStates = listOf(false, false, false),
+        onSwitchStateChange = { _, _ -> },
+        knobValue = 0.5f,
+        onKnobValueChange = {},
+        panelNumber = 1234,
+        panelOn = true,
+        panelColor = Color.Red,
+        panelTitle = "RPM",
+        topExtraContent = { modifier ->
+            AnalogIndicator(
+                modifier = modifier,
+                value = 75,
+                title = "Analog"
+            )
+        },
+        aspectRatio = 2.2f,
+        ledValues = 0x0F.toByte(),
+        onTopPress = {},
+        onBottomPress = {}
+    )
+}
+
+@Preview(showBackground = true, name = "ControllerSide Right")
+@Composable
+fun ControllerSideRightPreview() {
+    val fakeViewModel = FakeBluetoothViewModel()
+    ControllerSide(
+        side = ButtonSide.RIGHT,
+        mode = JoystickMode.Spring(),
+        onMove = { _, _ -> },
+        switchStates = listOf(false, false, false),
+        onSwitchStateChange = { _, _ -> },
+        knobValue = 0.7f,
+        onKnobValueChange = {},
+        panelNumber = 5678,
+        panelOn = true,
+        panelColor = Color.Green,
+        panelTitle = "RPM",
+        topExtraContent = { modifier ->
+            BatteryStatus(
+                level = 98,
+                modifier = modifier,
+                title = "Battery"
+            )
+        },
+        aspectRatio = 2.2f,
+        ledValues = 0xF0.toByte(),
+        onTopPress = {},
+        onBottomPress = {}
+    )
 }
