@@ -261,13 +261,18 @@ fun JoystickModeSelector(
     onModeSelected: (JoystickMode) -> Unit
 ) {
     val initialPositions = remember {
-        mapOf(
+        listOf(
             "Center" to JoystickMode.CENTER,
             "Up" to JoystickMode.UP,
             "Down" to JoystickMode.DOWN,
             "Left" to JoystickMode.LEFT,
             "Right" to JoystickMode.RIGHT
         )
+    }
+    val allowedInitialPositions = remember(selectedMode) {
+        initialPositions.filter { (_, position) ->
+            isInitialPositionAllowedForMode(selectedMode, position)
+        }
     }
     var isModeExpanded by remember { mutableStateOf(false) }
     var isPositionExpanded by remember { mutableStateOf(false) }
@@ -306,14 +311,8 @@ fun JoystickModeSelector(
                         DropdownMenuItem(
                             text = { Text(text = mode::class.java.simpleName, color = MaterialTheme.colorScheme.onSurface) },
                             onClick = {
-                                val newMode = when (mode) {
-                                    is JoystickMode.Spring -> JoystickMode.Spring(selectedMode.initialPosition)
-                                    is JoystickMode.Hold -> JoystickMode.Hold(selectedMode.initialPosition)
-                                    is JoystickMode.VerticalSpring -> JoystickMode.VerticalSpring(selectedMode.initialPosition)
-                                    is JoystickMode.VerticalHold -> JoystickMode.VerticalHold(selectedMode.initialPosition)
-                                    is JoystickMode.HorizontalSpring -> JoystickMode.HorizontalSpring(selectedMode.initialPosition)
-                                    is JoystickMode.HorizontalHold -> JoystickMode.HorizontalHold(selectedMode.initialPosition)
-                                }
+                                val carriedPosition = sanitizeInitialPositionForMode(mode, selectedMode.initialPosition)
+                                val newMode = mode.withInitialPosition(carriedPosition)
                                 onModeSelected(newMode)
                                 isModeExpanded = false
                             },
@@ -332,7 +331,7 @@ fun JoystickModeSelector(
                 modifier = Modifier.weight(1f)
             ) {
                 OutlinedTextField(
-                    value = initialPositions.entries.firstOrNull { it.value == selectedMode.initialPosition }?.key ?: "Center",
+                    value = allowedInitialPositions.firstOrNull { it.second == selectedMode.initialPosition }?.first ?: "Center",
                     onValueChange = {},
                     readOnly = true,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
@@ -351,18 +350,11 @@ fun JoystickModeSelector(
                     onDismissRequest = { isPositionExpanded = false },
                     modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                 ) {
-                    initialPositions.forEach { (name, position) ->
+                    allowedInitialPositions.forEach { (name, position) ->
                         DropdownMenuItem(
                             text = { Text(text = name, color = MaterialTheme.colorScheme.onSurface)},
                             onClick = {
-                                val newMode = when (selectedMode) {
-                                    is JoystickMode.Spring -> JoystickMode.Spring(position)
-                                    is JoystickMode.Hold -> JoystickMode.Hold(position)
-                                    is JoystickMode.VerticalSpring -> JoystickMode.VerticalSpring(position)
-                                    is JoystickMode.VerticalHold -> JoystickMode.VerticalHold(position)
-                                    is JoystickMode.HorizontalSpring -> JoystickMode.HorizontalSpring(position)
-                                    is JoystickMode.HorizontalHold -> JoystickMode.HorizontalHold(position)
-                                }
+                                val newMode = selectedMode.withInitialPosition(position)
                                 onModeSelected(newMode)
                                 isPositionExpanded = false
                             },
@@ -378,3 +370,33 @@ fun JoystickModeSelector(
         }
     }
 }
+
+private fun isInitialPositionAllowedForMode(mode: JoystickMode, position: Pair<Int, Int>): Boolean {
+    return when (mode) {
+        is JoystickMode.Spring -> position == JoystickMode.CENTER
+
+        is JoystickMode.VerticalSpring,
+        is JoystickMode.VerticalHold -> position != JoystickMode.LEFT && position != JoystickMode.RIGHT
+
+        is JoystickMode.HorizontalSpring,
+        is JoystickMode.HorizontalHold -> position != JoystickMode.UP && position != JoystickMode.DOWN
+
+        is JoystickMode.Hold -> true
+    }
+}
+
+private fun sanitizeInitialPositionForMode(mode: JoystickMode, position: Pair<Int, Int>): Pair<Int, Int> {
+    return if (isInitialPositionAllowedForMode(mode, position)) position else JoystickMode.CENTER
+}
+
+private fun JoystickMode.withInitialPosition(position: Pair<Int, Int>): JoystickMode {
+    return when (this) {
+        is JoystickMode.Spring -> JoystickMode.Spring(position)
+        is JoystickMode.Hold -> JoystickMode.Hold(position)
+        is JoystickMode.VerticalSpring -> JoystickMode.VerticalSpring(position)
+        is JoystickMode.VerticalHold -> JoystickMode.VerticalHold(position)
+        is JoystickMode.HorizontalSpring -> JoystickMode.HorizontalSpring(position)
+        is JoystickMode.HorizontalHold -> JoystickMode.HorizontalHold(position)
+    }
+}
+
