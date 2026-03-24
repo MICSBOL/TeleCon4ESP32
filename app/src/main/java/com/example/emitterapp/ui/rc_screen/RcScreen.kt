@@ -21,7 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -108,6 +111,90 @@ fun RcScreen(
                 }
 
                 val screenAspectRatio = maxWidth / maxHeight
+
+                // ── Stable callbacks ───────────────────────────────────────────────────
+                // remember(bluetoothViewModel) means the same lambda object is reused on
+                // every recomposition, allowing Compose to skip ControllerSide entirely
+                // when only the joystick position (which is NOT a ControllerSide param)
+                // changes.
+                val onLeftMove: (Float, Float) -> Unit = remember(bluetoothViewModel) {
+                    { x, y -> bluetoothViewModel?.onLeftStickChanged(x, y) }
+                }
+                val onRightMove: (Float, Float) -> Unit = remember(bluetoothViewModel) {
+                    { x, y -> bluetoothViewModel?.onRightStickChanged(x, y) }
+                }
+                val onLeftSwitchChange: (Int, Boolean) -> Unit = remember(bluetoothViewModel) {
+                    { idx, v -> bluetoothViewModel?.onLeftSwitchChanged(idx, v) }
+                }
+                val onRightSwitchChange: (Int, Boolean) -> Unit = remember(bluetoothViewModel) {
+                    { idx, v -> bluetoothViewModel?.onRightSwitchChanged(idx, v) }
+                }
+                val onLeftKnobChange: (Float) -> Unit = remember(bluetoothViewModel) {
+                    { v -> bluetoothViewModel?.onLeftKnobChanged(v) }
+                }
+                val onRightKnobChange: (Float) -> Unit = remember(bluetoothViewModel) {
+                    { v -> bluetoothViewModel?.onRightKnobChanged(v) }
+                }
+                val onTopLeftPress: () -> Unit = remember(bluetoothViewModel) {
+                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) }
+                }
+                val onBottomLeftPress: () -> Unit = remember(bluetoothViewModel) {
+                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) }
+                }
+                val onTopRightPress: () -> Unit = remember(bluetoothViewModel) {
+                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) }
+                }
+                val onBottomRightPress: () -> Unit = remember(bluetoothViewModel) {
+                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) }
+                }
+
+                // ── Isolated state slices ──────────────────────────────────────────────
+                // derivedStateOf: when only leftStickPosition changes, leftSwitches/knob
+                // values don't change → their derived states don't change → composables
+                // reading them are NOT recomposed.
+                val leftSwitches by remember {
+                    derivedStateOf { SwitchStates.of(collectedRcControlState.leftSwitches) }
+                }
+                val rightSwitches by remember {
+                    derivedStateOf { SwitchStates.of(collectedRcControlState.rightSwitches) }
+                }
+                val leftKnobValue by remember {
+                    derivedStateOf { collectedRcControlState.leftKnobValue }
+                }
+                val rightKnobValue by remember {
+                    derivedStateOf { collectedRcControlState.rightKnobValue }
+                }
+
+                // ── Stable topExtraContent lambdas ─────────────────────────────────────
+                // rememberUpdatedState gives us a stable State<T> whose .value is always
+                // fresh. The lambdas below are created once (remember with no keys) so
+                // their references never change. Reading .value inside a @Composable lambda
+                // subscribes only that sub-scope to changes — ControllerSide itself stays
+                // skippable.
+                val analogValueState = rememberUpdatedState(collectedTelemetryState.indicatorState.analogValue)
+                val analogTitleState = rememberUpdatedState(collectedTelemetryState.indicatorState.analogTitle)
+                val batteryLevelState = rememberUpdatedState(collectedTelemetryState.indicatorState.batteryLevel)
+                val batteryTitleState = rememberUpdatedState(collectedTelemetryState.indicatorState.batteryTitle)
+
+                val leftTopContent: @Composable (Modifier) -> Unit = remember {
+                    { mod ->
+                        AnalogIndicator(
+                            modifier = mod,
+                            value = analogValueState.value,
+                            title = analogTitleState.value
+                        )
+                    }
+                }
+                val rightTopContent: @Composable (Modifier) -> Unit = remember {
+                    { mod ->
+                        BatteryStatus(
+                            level = batteryLevelState.value,
+                            modifier = mod,
+                            title = batteryTitleState.value
+                        )
+                    }
+                }
+
                 Image(
                     painter = painterResource(id = R.drawable.plastic_background),
                     contentDescription = "Background",
@@ -122,64 +209,49 @@ fun RcScreen(
                     centerContent = {
                         CenterDisplay(
                             modifier = Modifier.fillMaxSize(),
-//                            screenAspectRatio = screenAspectRatio,
                             series = collectedTelemetryState.plotState.series
                         )
                     },
                     leftSideContent = {
                         ControllerSide(
-                            modifier = Modifier
-                                .wrapContentHeight(),
+                            modifier = Modifier.wrapContentHeight(),
                             side = ButtonSide.LEFT,
                             aspectRatio = screenAspectRatio,
                             mode = state.settings.leftStickMode,
-                            onMove = { x, y -> bluetoothViewModel?.onLeftStickChanged(x, y) },
-                            switchStates = collectedRcControlState.leftSwitches,
-                            onSwitchStateChange = { index, newState -> bluetoothViewModel?.onLeftSwitchChanged(index, newState) },
-                            knobValue = collectedRcControlState.leftKnobValue,
-                            onKnobValueChange = { newValue -> bluetoothViewModel?.onLeftKnobChanged(newValue) },
+                            onMove = onLeftMove,
+                            switchStates = leftSwitches,
+                            onSwitchStateChange = onLeftSwitchChange,
+                            knobValue = leftKnobValue,
+                            onKnobValueChange = onLeftKnobChange,
                             panelNumber = collectedTelemetryState.panelState.leftValue,
                             panelOn = collectedTelemetryState.panelState.leftOn,
                             panelColor = collectedTelemetryState.panelState.leftColor,
                             panelTitle = collectedTelemetryState.panelState.leftTitle,
-                            topExtraContent = { modifier ->
-                                AnalogIndicator(
-                                    modifier = modifier,
-                                    value = collectedTelemetryState.indicatorState.analogValue,
-                                    title = collectedTelemetryState.indicatorState.analogTitle
-                                )
-                            },
+                            topExtraContent = leftTopContent,
                             ledValues = collectedTelemetryState.indicatorState.ledValues,
-                            onTopPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) },
-                            onBottomPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) },
+                            onTopPress = onTopLeftPress,
+                            onBottomPress = onBottomLeftPress,
                         )
                     },
                     rightSideContent = {
                         ControllerSide(
-                            modifier = Modifier
-                                .wrapContentHeight(),
+                            modifier = Modifier.wrapContentHeight(),
                             side = ButtonSide.RIGHT,
                             aspectRatio = screenAspectRatio,
                             mode = state.settings.rightStickMode,
-                            onMove = { x, y -> bluetoothViewModel?.onRightStickChanged(x, y) },
-                            switchStates = collectedRcControlState.rightSwitches,
-                            onSwitchStateChange = { index, newState -> bluetoothViewModel?.onRightSwitchChanged(index, newState) },
-                            knobValue = collectedRcControlState.rightKnobValue,
-                            onKnobValueChange = { newValue -> bluetoothViewModel?.onRightKnobChanged(newValue) },
+                            onMove = onRightMove,
+                            switchStates = rightSwitches,
+                            onSwitchStateChange = onRightSwitchChange,
+                            knobValue = rightKnobValue,
+                            onKnobValueChange = onRightKnobChange,
                             panelNumber = collectedTelemetryState.panelState.rightValue,
                             panelOn = collectedTelemetryState.panelState.rightOn,
                             panelColor = collectedTelemetryState.panelState.rightColor,
                             panelTitle = collectedTelemetryState.panelState.rightTitle,
-                            topExtraContent = { modifier ->
-                                BatteryStatus(
-                                    level = collectedTelemetryState.indicatorState.batteryLevel,
-                                    modifier = modifier,
-                                    title =  collectedTelemetryState.indicatorState.batteryTitle
-                                )
-                            },
+                            topExtraContent = rightTopContent,
                             ledValues = collectedTelemetryState.indicatorState.ledValues,
-                            onTopPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) },
-                            onBottomPress = { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) },
+                            onTopPress = onTopRightPress,
+                            onBottomPress = onBottomRightPress,
                         )
                     }
                 )
@@ -230,15 +302,15 @@ class FakeBluetoothViewModel {
         )
     )
 
-    fun startSendingRcData() {}
-    fun stopSendingRcData() {}
-    fun onLeftStickChanged(x: Float, y: Float) {}
-    fun onRightStickChanged(x: Float, y: Float) {}
-    fun onLeftSwitchChanged(index: Int, newState: Boolean) {}
-    fun onRightSwitchChanged(index: Int, newState: Boolean) {}
-    fun onLeftKnobChanged(newValue: Float) {}
-    fun onRightKnobChanged(newValue: Float) {}
-    fun sendButtonEvent(event: ButtonEvent) {}
+//    fun startSendingRcData() {}
+//    fun stopSendingRcData() {}
+//    fun onLeftStickChanged(x: Float, y: Float) {}
+//    fun onRightStickChanged(x: Float, y: Float) {}
+//    fun onLeftSwitchChanged(index: Int, newState: Boolean) {}
+//    fun onRightSwitchChanged(index: Int, newState: Boolean) {}
+//    fun onLeftKnobChanged(newValue: Float) {}
+//    fun onRightKnobChanged(newValue: Float) {}
+//    fun sendButtonEvent(event: ButtonEvent) {}
 }
 
 @Preview(showBackground = true, device = "spec:width=914dp,height=411dp,dpi=420", name = "RcScreen Landscape Phone")

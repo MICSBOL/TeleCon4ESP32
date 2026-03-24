@@ -1,5 +1,13 @@
 package com.example.emitterapp.ui.rc_screen.components
 
+import androidx.compose.runtime.Stable
+
+/**
+ * @Stable tells Compose to trust equals() on this sealed class hierarchy.
+ * Without it, Compose treats every JoystickMode parameter as potentially changed
+ * and forces recomposition even when the mode hasn't changed.
+ */
+@Stable
 sealed class JoystickMode{
     abstract val initialPosition: Pair<Int, Int>
     data class Spring(override val initialPosition: Pair<Int, Int> = CENTER) : JoystickMode()

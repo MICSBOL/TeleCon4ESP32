@@ -7,7 +7,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,10 +64,8 @@ import kotlin.random.Random
 @Composable
 fun CenterDisplay(
     modifier: Modifier = Modifier,
-//    screenAspectRatio: Float = 0f,
     series: List<PlotData> = emptyList()
 ) {
-//    val isWideScreen = screenAspectRatio > 1.7f
     Box(
         modifier = modifier
             .background(Color.Transparent)

@@ -10,7 +10,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
@@ -30,6 +29,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -352,20 +352,32 @@ class AndroidBluetoothController @Inject constructor(
         updatePairedDevices()
     }
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun startDiscovery() {
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             Log.e("BluetoothController", "Missing BLUETOOTH_SCAN permission")
             return
         }
+
+        if (bluetoothAdapter?.isEnabled != true) {
+            Log.e("BluetoothController", "Bluetooth adapter is disabled")
+            return
+        }
         
         if (!isReceiverRegistered) {
             try {
-                context.registerReceiver(
-                    foundDeviceReceiver,
-                    IntentFilter(BluetoothDevice.ACTION_FOUND),
-                    Context.RECEIVER_EXPORTED
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(
+                        foundDeviceReceiver,
+                        IntentFilter(BluetoothDevice.ACTION_FOUND),
+                        Context.RECEIVER_EXPORTED
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.registerReceiver(
+                        foundDeviceReceiver,
+                        IntentFilter(BluetoothDevice.ACTION_FOUND)
+                    )
+                }
                 isReceiverRegistered = true
                 Log.d("BluetoothController", "BroadcastReceiver registered successfully")
             } catch (e: Exception) {
@@ -373,6 +385,10 @@ class AndroidBluetoothController @Inject constructor(
             }
         } else {
             Log.d("BluetoothController", "BroadcastReceiver already registered")
+        }
+
+        if (bluetoothAdapter?.isDiscovering == true) {
+            bluetoothAdapter!!.cancelDiscovery()
         }
         
         updatePairedDevices()
@@ -420,32 +436,71 @@ class AndroidBluetoothController @Inject constructor(
 
             closeConnection()
             stopDiscovery()
+            // Several vendor Bluetooth stacks are timing-sensitive right after cancelDiscovery.
+            delay(250L)
 
             val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
-            val socket: BluetoothSocket? = try {
-                bluetoothDevice?.createRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
+            if (bluetoothDevice == null) {
+                emit(ConnectionResult.Error("Device not found for address: ${device.address}"))
+                return@flow
+            }
+
+            val secureSocket: BluetoothSocket = try {
+                bluetoothDevice.createRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
             } catch (e: IOException) {
                 emit(ConnectionResult.Error("Failed to create socket: ${e.message}"))
                 return@flow
             }
 
             try {
-                socket?.connect()
-                if (socket != null) {
+                secureSocket.connect()
+                synchronized(this@AndroidBluetoothController) {
+                    dataTransferService = BluetoothDataTransferService(secureSocket)
+                    _isConnected.update { true }
+                }
+            } catch (secureError: IOException) {
+                Log.w(
+                    "BluetoothController",
+                    "Secure RFCOMM failed, trying insecure fallback: ${secureError.message}"
+                )
+
+                try {
+                    secureSocket.close()
+                } catch (_: IOException) {
+                }
+
+                val insecureSocket = try {
+                    bluetoothDevice.createInsecureRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
+                } catch (e: IOException) {
+                    emit(ConnectionResult.Error("Secure and insecure socket creation failed: ${e.message}"))
+                    return@flow
+                }
+
+                try {
+                    insecureSocket.connect()
                     synchronized(this@AndroidBluetoothController) {
-                        dataTransferService = BluetoothDataTransferService(socket)
+                        dataTransferService = BluetoothDataTransferService(insecureSocket)
                         _isConnected.update { true }
                     }
-                    emit(ConnectionResult.ConnectionEstablished)
-                    dataTransferService!!.listenForRawBytes()
-                        .collect { byteArray ->
-                            parseIncomingPacket(byteArray)
-                        }
+                } catch (insecureError: IOException) {
+                    emit(
+                        ConnectionResult.Error(
+                            "Connection failed (secure/insecure): ${secureError.message}; ${insecureError.message}"
+                        )
+                    )
+                    try {
+                        insecureSocket.close()
+                    } catch (_: IOException) {
+                    }
+                    return@flow
                 }
-            } catch (e: IOException) {
-                emit(ConnectionResult.Error("Connection failed: ${e.message}"))
-                socket?.close()
             }
+
+            emit(ConnectionResult.ConnectionEstablished)
+            dataTransferService!!.listenForRawBytes()
+                .collect { byteArray ->
+                    parseIncomingPacket(byteArray)
+                }
         }.onCompletion {
             closeConnection()
         }.flowOn(kotlinx.coroutines.Dispatchers.IO)

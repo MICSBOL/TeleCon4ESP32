@@ -3,12 +3,14 @@ package com.example.emitterapp.ui.rc_screen.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,29 +30,18 @@ fun Knob3D(
     value: Float,
     onValueChange: (Float) -> Unit
 ) {
-    val frames = listOf(
-        R.drawable.knob_01,
-        R.drawable.knob_02,
-        R.drawable.knob_03,
-        R.drawable.knob_04,
-        R.drawable.knob_05,
-        R.drawable.knob_06,
-        R.drawable.knob_07,
-        R.drawable.knob_08,
-        R.drawable.knob_09,
-        R.drawable.knob_10,
-        R.drawable.knob_11,
-        R.drawable.knob_12,
-        R.drawable.knob_13,
-        R.drawable.knob_14,
-        R.drawable.knob_15,
-        R.drawable.knob_16,
-        R.drawable.knob_17,
-        R.drawable.knob_18,
-        R.drawable.knob_19,
-    )
-
-
+    // Remember the list so it is not allocated on every recomposition.
+    val frames = remember {
+        listOf(
+            R.drawable.knob_01, R.drawable.knob_02, R.drawable.knob_03,
+            R.drawable.knob_04, R.drawable.knob_05, R.drawable.knob_06,
+            R.drawable.knob_07, R.drawable.knob_08, R.drawable.knob_09,
+            R.drawable.knob_10, R.drawable.knob_11, R.drawable.knob_12,
+            R.drawable.knob_13, R.drawable.knob_14, R.drawable.knob_15,
+            R.drawable.knob_16, R.drawable.knob_17, R.drawable.knob_18,
+            R.drawable.knob_19,
+        )
+    }
 
     val minAngle = -135f
     val maxAngle = 135f
@@ -59,9 +50,14 @@ fun Knob3D(
     var dragStartAngle by remember { mutableStateOf(0f) }
     var center by remember { mutableStateOf(Offset.Zero) }
 
+    // Keep rotationAngle in sync when value is changed externally (e.g. initial load).
     LaunchedEffect(value) {
         rotationAngle = minAngle + (value * (maxAngle - minAngle))
     }
+
+    // Use rememberUpdatedState so the gesture handler always sees the latest callback
+    // without needing to restart (pointerInput key stays Unit).
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
 
     val frame = (value * (frames.size - 1)).roundToInt().coerceIn(0, frames.size - 1)
 
@@ -69,11 +65,13 @@ fun Knob3D(
         painter = painterResource(id = frames[frame]),
         contentDescription = "3D Knob",
         modifier = modifier
-            .size(200.dp)
+            // fillMaxSize() lets the parent Box (size = knobSize) control the actual size.
+            // The previous hardcoded size(200.dp) was overriding the parent constraint.
+            .fillMaxSize()
             .onSizeChanged { newSize ->
                 center = Offset(newSize.width / 2f, newSize.height / 2f)
             }
-            .pointerInput(Unit) {
+            .pointerInput(Unit) {      // Unit key: never restarts the handler
                 detectDragGestures(
                     onDragStart = { startPosition ->
                         val startVector = startPosition - center
@@ -96,7 +94,7 @@ fun Knob3D(
                         rotationAngle = (rotationAngle + angleDelta).coerceIn(minAngle, maxAngle)
 
                         val normalizedValue = (rotationAngle - minAngle) / (maxAngle - minAngle)
-                        onValueChange(normalizedValue)
+                        currentOnValueChange(normalizedValue)
 
                         dragStartAngle = currentDragAngle
                     }

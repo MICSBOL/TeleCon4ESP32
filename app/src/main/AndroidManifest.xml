@@ -3,8 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.VIBRATE"/>
 
+    <!--
+        BLUETOOTH must NOT be restricted to maxSdkVersion="30".
+        Xiaomi MIUI (Android 12+) still checks this legacy permission internally,
+        even though stock Android 12 only needs BLUETOOTH_CONNECT / BLUETOOTH_SCAN.
+        On AOSP Android 12+ it is a "normal" permission — auto-granted, no user dialog.
+    -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <!--
+        BLUETOOTH_ADMIN is the pre-12 guard for startDiscovery / cancelDiscovery.
+        Keep it for devices below API 31; replaced by BLUETOOTH_SCAN on API 31+.
+    -->
     <uses-permission
-        android:name="android.permission.BLUETOOTH"
+        android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission

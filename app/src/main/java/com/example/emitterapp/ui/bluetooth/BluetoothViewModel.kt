@@ -171,6 +171,10 @@ open class BluetoothViewModel @Inject constructor(
         remoteController.stopDiscovery()
     }
 
+    fun dismissError() {
+        _state.update { it.copy(errorMessage = null) }
+    }
+
     private fun Flow<ConnectionResult>.listen(): Job {
         return onEach { result ->
             when (result) {
@@ -206,7 +210,8 @@ open class BluetoothViewModel @Inject constructor(
             _state.update {
                 it.copy(
                     isConnected = false,
-                    isConnecting = false
+                    isConnecting = false,
+                    errorMessage = throwable.message ?: "Unknown connection error"
                 )
             }
         }.launchIn(viewModelScope)
