@@ -43,8 +43,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,6 +71,7 @@ data class HomeItem(
 fun HomeScreen(
     navController: NavHostController? = null,
     isConnecting: Boolean = false,
+    isBluetoothConnected: Boolean = false,
     errorMessage: String? = null,
     lastDeviceName: String? = null,
     onStartClick: () -> Unit = {},
@@ -145,6 +144,8 @@ fun HomeScreen(
                     HomeOptionsList(
                         homeItems = homeItems,
                         navController = navController,
+                        isConnecting = isConnecting,
+                        isBluetoothConnected = isBluetoothConnected,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize()
@@ -169,6 +170,8 @@ fun HomeScreen(
                     HomeOptionsList(
                         homeItems = homeItems,
                         navController = navController,
+                        isConnecting = isConnecting,
+                        isBluetoothConnected = isBluetoothConnected,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
@@ -221,8 +224,16 @@ fun HomeScreen(
 private fun HomeOptionsList(
     homeItems: List<HomeItem>,
     navController: NavHostController?,
+    isConnecting: Boolean,
+    isBluetoothConnected: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val bluetoothStatusText = when {
+        isConnecting -> stringResource(R.string.home_bluetooth_status_connecting)
+        isBluetoothConnected -> stringResource(R.string.home_bluetooth_status_connected)
+        else -> stringResource(R.string.home_bluetooth_status_disconnected)
+    }
+
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -236,6 +247,7 @@ private fun HomeOptionsList(
                         navController?.navigate(item.route)
                     }
                 },
+                subtitle = if (item.route == Screen.Bluetooth.route) bluetoothStatusText else null,
                 icon2 = item.icon2,
                 onClick2 = {
                     if (item.route2.isNotEmpty()) {
@@ -313,6 +325,7 @@ fun HomeItemCard(
     icon: ImageVector,
     title: String,
     onClick: () -> Unit,
+    subtitle: String? = null,
     icon2: ImageVector? = null,
     onClick2: () -> Unit
 ) {
@@ -342,11 +355,20 @@ fun HomeItemCard(
                     modifier = Modifier.size(36.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
             }
         }
         if (icon2 != null) {

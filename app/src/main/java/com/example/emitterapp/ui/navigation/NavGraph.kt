@@ -100,6 +100,7 @@ fun AppNavGraph() {
             HomeScreen(
                 navController = navController,
                 isConnecting = state.isConnecting,
+                isBluetoothConnected = state.isConnected,
                 errorMessage = state.errorMessage,
                 lastDeviceName = lastDeviceName,
                 onDismissError = viewModel::dismissError,
