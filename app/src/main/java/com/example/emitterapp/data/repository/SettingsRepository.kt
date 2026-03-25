@@ -21,6 +21,8 @@ private object PreferencesKeys {
     val SWITCH_STATES = stringPreferencesKey("switch_states")
     val LEFT_KNOB_VALUE = floatPreferencesKey("left_knob_value")
     val RIGHT_KNOB_VALUE = floatPreferencesKey("right_knob_value")
+    val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
+    val LAST_DEVICE_NAME = stringPreferencesKey("last_device_name")
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
@@ -46,6 +48,19 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             leftKnobInitialValue = leftKnobValue,
             rightKnobInitialValue = rightKnobValue
         )
+    }
+
+    val lastDeviceFlow: Flow<Pair<String, String?>?> = context.dataStore.data.map { preferences ->
+        val address = preferences[PreferencesKeys.LAST_DEVICE_ADDRESS] ?: return@map null
+        address to preferences[PreferencesKeys.LAST_DEVICE_NAME]
+    }
+
+    suspend fun saveLastDevice(address: String, name: String?) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_DEVICE_ADDRESS] = address
+            if (name != null) preferences[PreferencesKeys.LAST_DEVICE_NAME] = name
+            else preferences.remove(PreferencesKeys.LAST_DEVICE_NAME)
+        }
     }
 
     suspend fun saveLeftStickMode(mode: JoystickMode) {

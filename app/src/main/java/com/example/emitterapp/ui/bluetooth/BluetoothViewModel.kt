@@ -35,7 +35,7 @@ import javax.inject.Inject
 @HiltViewModel
 open class BluetoothViewModel @Inject constructor(
     private val remoteController: RemoteController,
-    settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
@@ -66,6 +66,10 @@ open class BluetoothViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
     private val _rcControlState = MutableStateFlow(RcControlState())
     val rcControlState: StateFlow<RcControlState> = _rcControlState
+    val lastDeviceName: StateFlow<String?> = settingsRepository.lastDeviceFlow
+        .map { it?.second }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    private var connectingDevice: RemoteDevice? = null
     private var deviceConnectionJob: Job? = null
     private var sendingJob: Job? = null
 
@@ -144,6 +148,7 @@ open class BluetoothViewModel @Inject constructor(
     }
     fun connectToDevice(device: RemoteDevice) {
         Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
+        connectingDevice = device
         _state.update { it.copy(isConnecting = true) }
         deviceConnectionJob = remoteController
             .connect(device)
@@ -175,10 +180,35 @@ open class BluetoothViewModel @Inject constructor(
         _state.update { it.copy(errorMessage = null) }
     }
 
+    fun quickConnect() {
+        viewModelScope.launch {
+            val lastDevice = settingsRepository.lastDeviceFlow.first()
+            if (lastDevice == null) {
+                Log.d("BluetoothViewModel", "No last device saved, navigating to Bluetooth screen.")
+                _navigateToScreen.send("bluetooth")
+                return@launch
+            }
+            val (address, _) = lastDevice
+            val savedDevice = remoteController.savedDevices.value.find { it.address == address }
+            if (savedDevice == null) {
+                Log.d("BluetoothViewModel", "Last device $address not in paired list, navigating to Bluetooth screen.")
+                _navigateToScreen.send("bluetooth")
+                return@launch
+            }
+            Log.d("BluetoothViewModel", "Quick connecting to last device: ${savedDevice.name}")
+            connectToDevice(savedDevice)
+        }
+    }
+
     private fun Flow<ConnectionResult>.listen(): Job {
         return onEach { result ->
             when (result) {
                 ConnectionResult.ConnectionEstablished -> {
+                    connectingDevice?.let { device ->
+                        viewModelScope.launch {
+                            settingsRepository.saveLastDevice(device.address, device.name)
+                        }
+                    }
                     _state.update {
                         it.copy(
                             isConnected = true,

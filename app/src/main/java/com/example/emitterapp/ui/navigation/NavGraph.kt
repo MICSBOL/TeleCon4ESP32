@@ -42,7 +42,73 @@ fun AppNavGraph() {
             SplashScreen(navController = navController)
         }
         composable(Screen.Home.route) {
-            HomeScreen(navController = navController)
+            val viewModel = hiltViewModel<BluetoothViewModel>()
+            val state by viewModel.state.collectAsState()
+            val lastDeviceName by viewModel.lastDeviceName.collectAsState()
+            val context = LocalContext.current
+            val activity = context as? ComponentActivity
+            val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
+            val bluetoothAdapter = bluetoothManager?.adapter
+
+            val enableBluetoothLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) {}
+
+            val permissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { perms ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val scanGranted = perms[Manifest.permission.BLUETOOTH_SCAN] == true
+                    val connectGranted = perms[Manifest.permission.BLUETOOTH_CONNECT] == true
+                    if (scanGranted && connectGranted && bluetoothAdapter?.isEnabled == false) {
+                        enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                    }
+                }
+            }
+
+            fun ensureBluetoothReadyBeforeAction(onReady: () -> Unit) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val scanGranted = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.BLUETOOTH_SCAN
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val connectGranted = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.BLUETOOTH_CONNECT
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (!scanGranted || !connectGranted) {
+                        permissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.BLUETOOTH_SCAN,
+                                Manifest.permission.BLUETOOTH_CONNECT
+                            )
+                        )
+                        return
+                    }
+                }
+                if (bluetoothAdapter?.isEnabled == false && activity != null) {
+                    enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                    return
+                }
+                onReady()
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.navigateToScreen.collect { route ->
+                    navController.navigate(route)
+                }
+            }
+
+            HomeScreen(
+                navController = navController,
+                isConnecting = state.isConnecting,
+                errorMessage = state.errorMessage,
+                lastDeviceName = lastDeviceName,
+                onDismissError = viewModel::dismissError,
+                onStartClick = {
+                    ensureBluetoothReadyBeforeAction {
+                        viewModel.quickConnect()
+                    }
+                }
+            )
         }
         composable(Screen.Bluetooth.route) {
             val viewModel = hiltViewModel<BluetoothViewModel>()

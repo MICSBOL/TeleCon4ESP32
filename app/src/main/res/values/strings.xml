@@ -3,7 +3,7 @@
     <!-- HomeScreen Strings -->
     <string name="home_title">RC-Emitter</string>
     <string name="home_help">Help</string>
-    <string name="home_item_rc_control">RC Control</string>
+    <string name="home_item_rc_control">RC Control Preview</string>
     <string name="home_item_select_ui">Select UI</string>
     <string name="home_item_settings">RC - Settings</string>
     <string name="home_item_bluetooth">Bluetooth</string>
