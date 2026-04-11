@@ -24,8 +24,11 @@ import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.codes.CodesScreen
 import com.example.emitterapp.ui.home.HomeScreen
 import com.example.emitterapp.ui.rc_screen.RcScreen
+import com.example.emitterapp.ui.rc_screen.RcScreenLedStyle
 import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
+import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.ui.rc_settings.RcSettingsScreen
+import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import com.example.emitterapp.ui.rc_settings.SettingsViewModel
 import com.example.emitterapp.ui.splash.SplashScreen
 import com.example.emitterapp.ui.tutorial.TutorialScreen
@@ -43,8 +46,12 @@ fun AppNavGraph() {
         }
         composable(Screen.Home.route) {
             val viewModel = hiltViewModel<BluetoothViewModel>()
+            val settingsViewModel = hiltViewModel<SettingsViewModel>()
             val state by viewModel.state.collectAsState()
             val lastDeviceName by viewModel.lastDeviceName.collectAsState()
+            val settingsUiState by settingsViewModel.uiState.collectAsState()
+            val rcScreenRoute = (settingsUiState as? SettingsUiState.Success)
+                ?.settings?.rcUiStyle?.toRoute() ?: Screen.RcScreen.route
             val context = LocalContext.current
             val activity = context as? ComponentActivity
             val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
@@ -103,6 +110,7 @@ fun AppNavGraph() {
                 isBluetoothConnected = state.isConnected,
                 errorMessage = state.errorMessage,
                 lastDeviceName = lastDeviceName,
+                rcScreenRoute = rcScreenRoute,
                 onDismissError = viewModel::dismissError,
                 onStartClick = {
                     ensureBluetoothReadyBeforeAction {
@@ -199,6 +207,11 @@ fun AppNavGraph() {
         composable(Screen.RcScreen.route) {
             val viewModel = hiltViewModel<BluetoothViewModel>()
             RcScreen(bluetoothViewModel = viewModel)
+        }
+
+        composable(Screen.RcScreenLedStyle.route) {
+            val viewModel = hiltViewModel<BluetoothViewModel>()
+            RcScreenLedStyle(bluetoothViewModel = viewModel)
         }
         composable(Screen.RcStettingScreen.route) {
             val viewModel = hiltViewModel<SettingsViewModel>()

@@ -3,10 +3,11 @@ package com.example.emitterapp.ui.bluetooth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.emitterapp.data.repository.SettingsRepository
+import com.example.emitterapp.data.repository.ISettingsRepository
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.RemoteController
 import com.example.emitterapp.domain.bluetooth.RemoteDevice
+import com.example.emitterapp.domain.bluetooth.RcPacketEncoder
 import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
@@ -35,7 +36,7 @@ import javax.inject.Inject
 @HiltViewModel
 open class BluetoothViewModel @Inject constructor(
     private val remoteController: RemoteController,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: ISettingsRepository
 ) : ViewModel() {
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
@@ -216,7 +217,9 @@ open class BluetoothViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
-                    _navigateToScreen.send("rc_screen")
+                    val route = (userSettings.value as? SettingsUiState.Success)
+                        ?.settings?.rcUiStyle?.toRoute() ?: "rc_screen"
+                    _navigateToScreen.send(route)
                 }
 
                 is ConnectionResult.TransferSucceeded -> {
@@ -249,67 +252,13 @@ open class BluetoothViewModel @Inject constructor(
 
     private suspend fun sendRcControlData(currentState: RcUiState) {
         Log.d("BluetoothViewModel", "Sending RC data... ${currentState.rightKnobValue}")
-        val packet = ByteArray(18)
-        packet[0] = 0xAA.toByte()
-        packet[1] = 0x55.toByte()
-
-        val leftStickX12bit =
-            (((currentState.leftStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-        val leftStickY12bit =
-            (((currentState.leftStickY + 100) * 4095) / 200).coerceIn(0, 4095)
-        val rightStickX12bit =
-            (((currentState.rightStickX + 100) * 4095) / 200).coerceIn(0, 4095)
-        val rightStickY12bit =
-            (((currentState.rightStickY + 100) * 4095) / 200).coerceIn(0, 4095)
-
-        packet[2] = (leftStickX12bit and 0xFF).toByte()
-        packet[3] = ((leftStickX12bit shr 8) and 0xFF).toByte()
-
-        packet[4] = (leftStickY12bit and 0xFF).toByte()
-        packet[5] = ((leftStickY12bit shr 8) and 0xFF).toByte()
-
-        packet[6] = (rightStickX12bit and 0xFF).toByte()
-        packet[7] = ((rightStickX12bit shr 8) and 0xFF).toByte()
-
-        packet[8] = (rightStickY12bit and 0xFF).toByte()
-        packet[9] = ((rightStickY12bit shr 8) and 0xFF).toByte()
-
-        packet[10] = (currentState.leftKnobValue and 0xFF).toByte()
-        packet[11] = ((currentState.leftKnobValue shr 8) and 0xFF).toByte()
-
-        packet[12] = (currentState.rightKnobValue and 0xFF).toByte()
-        packet[13] = ((currentState.rightKnobValue shr 8) and 0xFF).toByte()
-
-        var switchByte = 0
-        if (currentState.switch1) switchByte = switchByte or (1 shl 0)
-        if (currentState.switch2) switchByte = switchByte or (1 shl 1)
-        if (currentState.switch3) switchByte = switchByte or (1 shl 2)
-        if (currentState.switch4) switchByte = switchByte or (1 shl 3)
-        if (currentState.switch5) switchByte = switchByte or (1 shl 4)
-        if (currentState.switch6) switchByte = switchByte or (1 shl 5)
-        if (currentState.switch7) switchByte = switchByte or (1 shl 6)
-        if (currentState.switch8) switchByte = switchByte or (1 shl 7)
-
-        packet[14] = switchByte.toByte()
-        var checksum = 0
-        for (i in 2..14) {
-            checksum += packet[i].toInt() and 0xFF
-        }
-        packet[15] = (checksum and 0xFF).toByte()
-        packet[16] = 0x0D.toByte()
-        packet[17] = 0x0A.toByte()
-
+        val packet = RcPacketEncoder.buildRcPacket(currentState)
         remoteController.sendData(packet)
     }
 
     fun sendButtonEvent(event: ButtonEvent) {
         viewModelScope.launch {
-            val eventPacket = ByteArray(4)
-            eventPacket[0] = 0xBB.toByte()
-            eventPacket[1] = 0x66.toByte()
-            eventPacket[2] = event.id
-            eventPacket[3] = event.id
-            remoteController.sendData(eventPacket)
+            remoteController.sendData(RcPacketEncoder.buildButtonPacket(event))
         }
     }
 

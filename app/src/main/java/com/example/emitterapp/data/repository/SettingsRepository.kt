@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.example.emitterapp.domain.model.RcUiStyle
+// ...existing code...
 private object PreferencesKeys {
     val LEFT_STICK_MODE = stringPreferencesKey("left_stick_mode")
     val RIGHT_STICK_MODE = stringPreferencesKey("right_stick_mode")
@@ -23,19 +25,21 @@ private object PreferencesKeys {
     val RIGHT_KNOB_VALUE = floatPreferencesKey("right_knob_value")
     val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
     val LAST_DEVICE_NAME = stringPreferencesKey("last_device_name")
+    val RC_UI_STYLE = stringPreferencesKey("rc_ui_style")
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
 
 @Singleton
-class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
+class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) : ISettingsRepository {
 
-    val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { preferences ->
+    override val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { preferences ->
         val leftModeString = preferences[PreferencesKeys.LEFT_STICK_MODE]
         val rightModeString = preferences[PreferencesKeys.RIGHT_STICK_MODE]
         val switchStatesString = preferences[PreferencesKeys.SWITCH_STATES]
         val leftKnobValue = preferences[PreferencesKeys.LEFT_KNOB_VALUE] ?: 0.5f
         val rightKnobValue = preferences[PreferencesKeys.RIGHT_KNOB_VALUE] ?: 0.5f
+        val rcUiStyle = RcUiStyle.fromString(preferences[PreferencesKeys.RC_UI_STYLE])
 
         val switchStatesMap = switchStatesString?.split(",")?.mapIndexed { index, s ->
             index to (s.toBooleanStrictOrNull() ?: false)
@@ -46,16 +50,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             rightStickMode = JoystickMode.fromString(rightModeString),
             switchInitialStates = switchStatesMap,
             leftKnobInitialValue = leftKnobValue,
-            rightKnobInitialValue = rightKnobValue
+            rightKnobInitialValue = rightKnobValue,
+            rcUiStyle = rcUiStyle
         )
     }
 
-    val lastDeviceFlow: Flow<Pair<String, String?>?> = context.dataStore.data.map { preferences ->
+    override val lastDeviceFlow: Flow<Pair<String, String?>?> = context.dataStore.data.map { preferences ->
         val address = preferences[PreferencesKeys.LAST_DEVICE_ADDRESS] ?: return@map null
         address to preferences[PreferencesKeys.LAST_DEVICE_NAME]
     }
 
-    suspend fun saveLastDevice(address: String, name: String?) {
+    override suspend fun saveLastDevice(address: String, name: String?) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LAST_DEVICE_ADDRESS] = address
             if (name != null) preferences[PreferencesKeys.LAST_DEVICE_NAME] = name
@@ -95,6 +100,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun saveRightKnobValue(value: Float) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.RIGHT_KNOB_VALUE] = value
+        }
+    }
+
+    suspend fun saveRcUiStyle(style: RcUiStyle) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RC_UI_STYLE] = style.name
         }
     }
 }

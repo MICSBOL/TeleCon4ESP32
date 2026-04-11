@@ -74,6 +74,7 @@ fun HomeScreen(
     isBluetoothConnected: Boolean = false,
     errorMessage: String? = null,
     lastDeviceName: String? = null,
+    rcScreenRoute: String = Screen.RcScreen.route,
     onStartClick: () -> Unit = {},
     onDismissError: () -> Unit = {}
 ) {
@@ -83,7 +84,7 @@ fun HomeScreen(
         HomeItem(
             Icons.Default.RocketLaunch,
             stringResource(R.string.home_item_rc_control),
-            Screen.RcScreen.route,
+            rcScreenRoute,
             Icons.Default.Settings,
             Screen.RcStettingScreen.route
         ),

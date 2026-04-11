@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.rc_screen.components.JoystickMode
 
@@ -114,6 +115,14 @@ private fun SettingsContent(
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        item {
+            SettingsSection(title = "RC Screen Style") {
+                RcUiStyleSelector(
+                    selectedStyle = settings.rcUiStyle,
+                    onStyleSelected = { viewModel.onRcUiStyleChanged(it) }
+                )
+            }
+        }
         item {
             SettingsSection(title = "Joystick Settings") {
                 JoystickModeSelector(
@@ -366,6 +375,70 @@ fun JoystickModeSelector(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RcUiStyleSelector(
+    selectedStyle: RcUiStyle,
+    onStyleSelected: (RcUiStyle) -> Unit
+) {
+    val styleOptions = remember {
+        listOf(
+            RcUiStyle.SCREEN_3D  to "Screen 3D",
+            RcUiStyle.SCREEN_LED to "Screen LED"
+        )
+    }
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = styleOptions.first { it.first == selectedStyle }.second
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("UI Style") },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onSurface
+            ),
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                focusedBorderColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+        ) {
+            styleOptions.forEach { (style, label) ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = label,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (style == selectedStyle) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = {
+                        onStyleSelected(style)
+                        expanded = false
+                    },
+                    colors = MenuDefaults.itemColors(
+                        textColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
             }
         }
     }

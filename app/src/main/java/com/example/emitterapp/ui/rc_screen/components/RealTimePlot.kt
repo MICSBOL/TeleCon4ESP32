@@ -1,5 +1,6 @@
 package com.example.emitterapp.ui.rc_screen.components
 
+import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,8 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -102,13 +109,44 @@ fun RealTimePlot(
 
         paths.forEachIndexed { index, path ->
             val lineColor = series.getOrNull(index)?.color ?: Color.White
-            drawPath(
+            drawGlowPath(
                 path = path,
                 color = lineColor,
-                style = Stroke(width = 2.dp.toPx())
+                coreWidth = 2.dp.toPx(),
+                glowWidth = 6.dp.toPx(),
+                glowBlur = 14f
             )
         }
     }
+}
+
+private fun DrawScope.drawGlowPath(
+    path: Path,
+    color: Color,
+    coreWidth: Float,
+    glowWidth: Float,
+    glowBlur: Float,
+) {
+    // Soft outer blur to emulate light-emitter trails.
+    drawIntoCanvas { canvas ->
+        val glowPaint = Paint().asFrameworkPaint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.STROKE
+            strokeJoin = android.graphics.Paint.Join.ROUND
+            strokeCap = android.graphics.Paint.Cap.ROUND
+            strokeWidth = glowWidth
+            this.color = color.copy(alpha = 0.45f).toArgb()
+            maskFilter = BlurMaskFilter(glowBlur, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.nativeCanvas.drawPath(path.asAndroidPath(), glowPaint)
+    }
+
+    // Crisp core line above the glow.
+    drawPath(
+        path = path,
+        color = color,
+        style = Stroke(width = coreWidth)
+    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)

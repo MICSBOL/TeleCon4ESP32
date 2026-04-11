@@ -5,6 +5,7 @@ sealed class Screen(val route: String) {
     object Home: Screen("home")
     object Bluetooth: Screen("bluetooth")
     object RcScreen: Screen("rc_screen")
+    object RcScreenLedStyle: Screen("rc_screen_led_style")
     object TestBluetooth: Screen("test_bluetooth")
     object RcStettingScreen: Screen("rc_settings")
     object Tutorial: Screen("tutorial")
