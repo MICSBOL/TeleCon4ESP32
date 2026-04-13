@@ -35,10 +35,10 @@ import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
-import com.example.emitterapp.ui.bluetooth.ButtonEvent
+import com.example.emitterapp.domain.model.ButtonEvent
 import com.example.emitterapp.ui.bluetooth.RcControlState
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components_led_style.AnalogIndicatorLedStyle
 import com.example.emitterapp.ui.rc_screen.components_led_style.BatteryStatusLedStyle
 import com.example.emitterapp.ui.rc_settings.SettingsUiState

@@ -182,9 +182,9 @@ private fun CenterDisplayLedStylePreviewCartesian() {
     CenterDisplayLedStyle(
         modifier = Modifier.size(width = 900.dp, height = 380.dp),
         series = listOf(
-            PlotData(name = "Volts", dataPoints = List(80) { i -> (kotlin.math.sin(i * 0.12f) * 0.35f) + 0.55f }, color = Color.Cyan),
-            PlotData(name = "Amps", dataPoints = List(80) { i -> (kotlin.math.cos(i * 0.16f) * 0.2f) + 0.3f }, color = Color.Red),
-            PlotData(name = "Temp", dataPoints = List(80) { i -> (kotlin.math.sin(i * 0.08f) * 0.22f) + 0.6f }, color = Color.Yellow)
+            PlotData(name = "Volts", dataPoints = List(80) { i -> (kotlin.math.sin(i * 0.12f) * 0.35f) + 0.55f }, colorArgb = 0xFF00FFFF.toInt()),
+            PlotData(name = "Amps", dataPoints = List(80) { i -> (kotlin.math.cos(i * 0.16f) * 0.2f) + 0.3f }, colorArgb = 0xFFFF0000.toInt()),
+            PlotData(name = "Temp", dataPoints = List(80) { i -> (kotlin.math.sin(i * 0.08f) * 0.22f) + 0.6f }, colorArgb = 0xFFFFFF00.toInt())
         ),
         plotType = PlotType.CARTESIAN,
         showAdBanner = false
@@ -197,10 +197,10 @@ private fun CenterDisplayLedStylePreviewBars() {
     CenterDisplayLedStyle(
         modifier = Modifier.size(width = 900.dp, height = 380.dp),
         series = listOf(
-            PlotData(name = "Volts", dataPoints = listOf(0.7f), color = Color.Cyan),
-            PlotData(name = "Amps", dataPoints = listOf(0.4f), color = Color.Red),
-            PlotData(name = "RPM", dataPoints = listOf(0.9f), color = Color.Green),
-            PlotData(name = "Temp", dataPoints = listOf(0.6f), color = Color.Yellow)
+            PlotData(name = "Volts", dataPoints = listOf(0.7f), colorArgb = 0xFF00FFFF.toInt()),
+            PlotData(name = "Amps", dataPoints = listOf(0.4f), colorArgb = 0xFFFF0000.toInt()),
+            PlotData(name = "RPM", dataPoints = listOf(0.9f), colorArgb = 0xFF00FF00.toInt()),
+            PlotData(name = "Temp", dataPoints = listOf(0.6f), colorArgb = 0xFFFFFF00.toInt())
         ),
         plotType = PlotType.BAR_GRAPH,
         showAdBanner = false
@@ -213,8 +213,8 @@ private fun CenterDisplayLedStylePreviewComplex() {
     CenterDisplayLedStyle(
         modifier = Modifier.size(width = 900.dp, height = 380.dp),
         series = listOf(
-            PlotData(name = "Real", dataPoints = listOf(0.6f), color = Color.Cyan),
-            PlotData(name = "Imag", dataPoints = listOf(0.35f), color = Color.Magenta)
+            PlotData(name = "Real", dataPoints = listOf(0.6f), colorArgb = 0xFF00FFFF.toInt()),
+            PlotData(name = "Imag", dataPoints = listOf(0.35f), colorArgb = 0xFFFF00FF.toInt())
         ),
         plotType = PlotType.COMPLEX_CIRCULAR,
         showAdBanner = false

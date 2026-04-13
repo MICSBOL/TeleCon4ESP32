@@ -1,21 +1,12 @@
 package com.example.emitterapp.domain.bluetooth
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-
-interface BluetoothController {
-    val isConnected: StateFlow<Boolean>
-    val scannedDevices: StateFlow<List<BluetoothDevice>>
-    val pairedDevices: StateFlow<List<BluetoothDevice>>
-    val error: SharedFlow<String>
-    val telemetryState: StateFlow<TelemetryState>
-    fun startDiscovery()
-    fun stopDiscovery()
-    fun startBluetoothServer(): Flow<ConnectionResult>
-    fun connectToDevice(device: BluetoothDevice): Flow<ConnectionResult>
-    suspend fun trySendMessage(message: String): BluetoothMessage?
-    suspend fun trySendData(data: ByteArray): Boolean?
-    fun closeConnection()
-    fun release()
-}
+/**
+ * @deprecated This interface is dead code. [RemoteController] is the active abstraction.
+ * [AndroidBluetoothController] implements [RemoteController], not this interface.
+ * This file is kept only to avoid git blame confusion; it should be deleted.
+ */
+@Deprecated(
+    message = "Dead code. Use RemoteController instead.",
+    replaceWith = ReplaceWith("RemoteController", "com.example.emitterapp.domain.bluetooth.RemoteController")
+)
+interface BluetoothController

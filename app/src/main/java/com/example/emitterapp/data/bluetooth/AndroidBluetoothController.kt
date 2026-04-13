@@ -10,7 +10,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
-import androidx.compose.ui.graphics.Color
 import com.example.emitterapp.domain.bluetooth.BluetoothMessage
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.PlotData
@@ -52,8 +51,14 @@ class AndroidBluetoothController @Inject constructor(
     override val savedDevices: StateFlow<List<RemoteDevice>> = _savedDevices.asStateFlow()
 
     // Remove the old scannedDevices and pairedDevices overrides
-    private val plotColors =
-        listOf(Color.Cyan, Color.Red, Color.Green, Color.Yellow, Color.Magenta, Color.White)
+    private val plotColorArgbs = listOf(
+        0xFF00FFFF.toInt(), // Cyan
+        0xFFFF0000.toInt(), // Red
+        0xFF00FF00.toInt(), // Green
+        0xFFFFFF00.toInt(), // Yellow
+        0xFFFF00FF.toInt(), // Magenta
+        0xFFFFFFFF.toInt()  // White
+    )
 
     private val plotNameMap = mutableMapOf<Int, String>()
 
@@ -163,8 +168,8 @@ class AndroidBluetoothController @Inject constructor(
         _telemetryState.update { currentState ->
             val updatedSeries = newNames.mapIndexed { index, name ->
                 val existingData = currentState.plotState.series.getOrNull(index)?.dataPoints ?: emptyList()
-                val color = plotColors.getOrElse(index) { Color.White }
-                PlotData(name = name, dataPoints = existingData, color = color)
+                val colorArgb = plotColorArgbs.getOrElse(index) { 0xFFFFFFFF.toInt() }
+                PlotData(name = name, dataPoints = existingData, colorArgb = colorArgb)
             }
             currentState.copy(plotState = currentState.plotState.copy(series = updatedSeries))
         }
@@ -216,8 +221,8 @@ class AndroidBluetoothController @Inject constructor(
                     rightValue = rightValue,
                     leftOn = leftOn,
                     rightOn = rightOn,
-                    leftColor = if (leftColorIsGreen) Color.Green else Color.Red,
-                    rightColor = if (rightColorIsGreen) Color.Green else Color.Red
+                    leftColorArgb = if (leftColorIsGreen) 0xFF00FF00.toInt() else 0xFFFF0000.toInt(),
+                    rightColorArgb = if (rightColorIsGreen) 0xFF00FF00.toInt() else 0xFFFF0000.toInt()
                 )
             )
         }
@@ -308,7 +313,7 @@ class AndroidBluetoothController @Inject constructor(
                             PlotData(
                                 name = plotNameMap.getOrDefault(index, "Plot ${index + 1}"),
                                 dataPoints = mutableListOf(value),
-                                color = plotColors.getOrElse(index) { Color.White }
+                                colorArgb = plotColorArgbs.getOrElse(index) { 0xFFFFFFFF.toInt() }
                             )
                         )
                     }

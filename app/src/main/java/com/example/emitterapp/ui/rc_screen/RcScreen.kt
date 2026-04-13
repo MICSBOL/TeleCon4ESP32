@@ -40,12 +40,12 @@ import com.example.emitterapp.domain.bluetooth.IndicatorState
 import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
-import com.example.emitterapp.ui.bluetooth.ButtonEvent
+import com.example.emitterapp.domain.model.ButtonEvent
 import com.example.emitterapp.ui.bluetooth.RcControlState
 import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -225,7 +225,7 @@ fun RcScreen(
                             onKnobValueChange = onLeftKnobChange,
                             panelNumber = collectedTelemetryState.panelState.leftValue,
                             panelOn = collectedTelemetryState.panelState.leftOn,
-                            panelColor = collectedTelemetryState.panelState.leftColor,
+                            panelColor = Color(collectedTelemetryState.panelState.leftColorArgb),
                             panelTitle = collectedTelemetryState.panelState.leftTitle,
                             topExtraContent = leftTopContent,
                             ledValues = collectedTelemetryState.indicatorState.ledValues,
@@ -246,7 +246,7 @@ fun RcScreen(
                             onKnobValueChange = onRightKnobChange,
                             panelNumber = collectedTelemetryState.panelState.rightValue,
                             panelOn = collectedTelemetryState.panelState.rightOn,
-                            panelColor = collectedTelemetryState.panelState.rightColor,
+                            panelColor = Color(collectedTelemetryState.panelState.rightColorArgb),
                             panelTitle = collectedTelemetryState.panelState.rightTitle,
                             topExtraContent = rightTopContent,
                             ledValues = collectedTelemetryState.indicatorState.ledValues,
@@ -276,7 +276,7 @@ fun LockScreenOrientation(orientation: Int) {
 class FakeBluetoothViewModel {
     val telemetryState: StateFlow<TelemetryState> = MutableStateFlow(
         TelemetryState(
-            panelState = PanelState(1234, 5678, true, true, Color.Red, Color.Green, "RPM", "RPM"),
+            panelState = PanelState(1234, 5678, true, true, 0xFFFF0000.toInt(), 0xFF00FF00.toInt(), "RPM", "RPM"),
             indicatorState = IndicatorState(75, 98, 0x00.toByte(), "Analog", "Battery")
         )
     )

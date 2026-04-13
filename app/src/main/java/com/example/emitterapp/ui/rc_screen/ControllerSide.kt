@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 import com.example.emitterapp.ui.rc_screen.components.Joystick_RC3D
 import com.example.emitterapp.ui.rc_screen.components.Knob3D
 import com.example.emitterapp.ui.rc_screen.components.LedIndicator

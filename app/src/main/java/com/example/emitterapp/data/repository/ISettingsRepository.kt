@@ -1,15 +1,15 @@
+@file:Suppress("DEPRECATION")
 package com.example.emitterapp.data.repository
 
-import com.example.emitterapp.domain.model.UserSettings
-import kotlinx.coroutines.flow.Flow
-
 /**
- * Abstraction over the concrete DataStore-backed [SettingsRepository].
- * Allows unit tests to inject a lightweight fake without any Android context.
+ * @deprecated Moved to [com.example.emitterapp.domain.repository.ISettingsRepository].
+ * This typealias exists only for backward-compatibility during migration.
  */
-interface ISettingsRepository {
-    val settingsFlow: Flow<UserSettings>
-    val lastDeviceFlow: Flow<Pair<String, String?>?>
-    suspend fun saveLastDevice(address: String, name: String?)
-}
-
+@Deprecated(
+    message = "Use com.example.emitterapp.domain.repository.ISettingsRepository instead",
+    replaceWith = ReplaceWith(
+        "ISettingsRepository",
+        "com.example.emitterapp.domain.repository.ISettingsRepository"
+    )
+)
+typealias ISettingsRepository = com.example.emitterapp.domain.repository.ISettingsRepository

@@ -86,7 +86,7 @@ fun HomeScreen(
             stringResource(R.string.home_item_rc_control),
             rcScreenRoute,
             Icons.Default.Settings,
-            Screen.RcStettingScreen.route
+            Screen.RcSettingsScreen.route
         ),
         HomeItem(Icons.Default.Style, stringResource(R.string.home_item_select_ui), "", null, ""),
         HomeItem(

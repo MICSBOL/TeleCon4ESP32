@@ -26,10 +26,10 @@ import com.example.emitterapp.ui.home.HomeScreen
 import com.example.emitterapp.ui.rc_screen.RcScreen
 import com.example.emitterapp.ui.rc_screen.RcScreenLedStyle
 import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.ui.rc_settings.RcSettingsScreen
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import com.example.emitterapp.ui.rc_settings.SettingsViewModel
+// toRoute() is a top-level extension in this package — no extra import needed
 import com.example.emitterapp.ui.splash.SplashScreen
 import com.example.emitterapp.ui.tutorial.TutorialScreen
 
@@ -213,7 +213,7 @@ fun AppNavGraph() {
             val viewModel = hiltViewModel<BluetoothViewModel>()
             RcScreenLedStyle(bluetoothViewModel = viewModel)
         }
-        composable(Screen.RcStettingScreen.route) {
+        composable(Screen.RcSettingsScreen.route) {
             val viewModel = hiltViewModel<SettingsViewModel>()
             RcSettingsScreen(navController = navController, viewModel = viewModel)
         }

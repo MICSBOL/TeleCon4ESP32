@@ -1,6 +1,6 @@
 package com.example.emitterapp.domain.bluetooth
-import com.example.emitterapp.ui.bluetooth.ButtonEvent
-import com.example.emitterapp.ui.bluetooth.RcUiState
+import com.example.emitterapp.domain.model.ButtonEvent
+import com.example.emitterapp.domain.model.RcState
 /**
  * Pure, stateless packet encoder.
  * Keeping all bit-packing logic here makes it easy to unit-test
@@ -26,7 +26,7 @@ object RcPacketEncoder {
     const val HEADER_1: Byte = 0x55.toByte()
     const val FOOTER_CR: Byte = 0x0D.toByte()
     const val FOOTER_LF: Byte = 0x0A.toByte()
-    fun buildRcPacket(state: RcUiState): ByteArray {
+    fun buildRcPacket(state: RcState): ByteArray {
         val packet = ByteArray(PACKET_SIZE)
         packet[0] = HEADER_0
         packet[1] = HEADER_1

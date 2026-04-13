@@ -1,55 +1,11 @@
+@file:Suppress("DEPRECATION")
 package com.example.emitterapp.ui.rc_screen.components
 
-import androidx.compose.runtime.Stable
-
 /**
- * @Stable tells Compose to trust equals() on this sealed class hierarchy.
- * Without it, Compose treats every JoystickMode parameter as potentially changed
- * and forces recomposition even when the mode hasn't changed.
+ * @deprecated Moved to [com.example.emitterapp.domain.model.JoystickMode].
  */
-@Stable
-sealed class JoystickMode{
-    abstract val initialPosition: Pair<Int, Int>
-    data class Spring(override val initialPosition: Pair<Int, Int> = CENTER) : JoystickMode()
-    data class Hold(override val initialPosition: Pair<Int, Int> = CENTER): JoystickMode()
-    data class VerticalSpring(override val initialPosition: Pair<Int, Int> = CENTER) : JoystickMode()
-    data class VerticalHold(override val initialPosition: Pair<Int, Int> = CENTER): JoystickMode()
-    data class HorizontalSpring(override val initialPosition: Pair<Int, Int> = CENTER) : JoystickMode()
-    data class HorizontalHold(override val initialPosition: Pair<Int, Int> = CENTER): JoystickMode()
-    companion object{
-        val CENTER = Pair(6, 6)
-        val UP = Pair(6, 0)
-        val DOWN = Pair(6, 12)
-        val LEFT = Pair(0, 6)
-        val RIGHT = Pair(12, 6)
-
-
-        fun JoystickMode.toStringRepresentation(): String {
-            val modeName = this::class.java.simpleName
-            val posX = this.initialPosition.first
-            val posY = this.initialPosition.second
-            return "$modeName,$posX,$posY"
-        }
-
-        fun fromString(savedString: String?): JoystickMode {
-            if (savedString == null) return Spring() // Default value
-
-            val parts = savedString.split(',')
-            if (parts.size != 3) return Spring() // Corrupted data, return default
-
-            val modeName = parts[0]
-            val posX = parts[1].toIntOrNull() ?: 6
-            val posY = parts[2].toIntOrNull() ?: 6
-            val position = Pair(posX, posY)
-
-            return when (modeName) {
-                "Hold" -> Hold(position)
-                "VerticalSpring" -> VerticalSpring(position)
-                "VerticalHold" -> VerticalHold(position)
-                "HorizontalSpring" -> HorizontalSpring(position)
-                "HorizontalHold" -> HorizontalHold(position)
-                else -> Spring(position)
-            }
-        }
-    }
-}
+@Deprecated(
+    message = "Use com.example.emitterapp.domain.model.JoystickMode instead",
+    replaceWith = ReplaceWith("JoystickMode", "com.example.emitterapp.domain.model.JoystickMode")
+)
+typealias JoystickMode = com.example.emitterapp.domain.model.JoystickMode

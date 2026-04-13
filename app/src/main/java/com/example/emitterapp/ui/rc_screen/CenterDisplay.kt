@@ -184,7 +184,7 @@ fun CartesianPlot(
                         modifier = Modifier
                             .width(10.dp)
                             .height(2.dp)
-                            .background(plotData.color)
+                            .background(Color(plotData.colorArgb))
                     )
                 }
             }
@@ -308,7 +308,7 @@ fun BarGraph(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight(currentValue),
-                        color = plotData.color
+                        color = Color(plotData.colorArgb)
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -527,10 +527,10 @@ fun ComplexCircularPlotPreview() {
 @Composable
 fun BarGraphPreview() {
     val sampleSeries = listOf(
-        PlotData(name = "Volts", dataPoints = listOf(0.75f), color = Color.Cyan),     // 75% height
-        PlotData(name = "Amps", dataPoints = listOf(0.40f), color = Color.Red),      // 40% height
-        PlotData(name = "RPM", dataPoints = listOf(0.90f), color = Color.Green),    // 90% height
-        PlotData(name = "Temp", dataPoints = listOf(0.60f), color = Color.Yellow)    // 60% height
+        PlotData(name = "Volts", dataPoints = listOf(0.75f), colorArgb = 0xFF00FFFF.toInt()),
+        PlotData(name = "Amps", dataPoints = listOf(0.40f), colorArgb = 0xFFFF0000.toInt()),
+        PlotData(name = "RPM", dataPoints = listOf(0.90f), colorArgb = 0xFF00FF00.toInt()),
+        PlotData(name = "Temp", dataPoints = listOf(0.60f), colorArgb = 0xFFFFFF00.toInt())
     )
     BarGraph(
         modifier = Modifier
@@ -597,10 +597,10 @@ fun InteractiveCenterDisplayPreview() {
     CenterDisplay(
         modifier = Modifier.size(width = 800.dp, height = 400.dp),
         series = listOf(
-            PlotData(name = "Volts", dataPoints = voltsData, color = Color.Cyan),
-            PlotData(name = "Amps", dataPoints = ampsData, color = Color.Red),
-            PlotData(name = "RMP", dataPoints = rpmData, color = Color.Green),
-            PlotData(name = "Temp", dataPoints = tempData, color = Color.Yellow)
+            PlotData(name = "Volts", dataPoints = voltsData, colorArgb = 0xFF00FFFF.toInt()),
+            PlotData(name = "Amps", dataPoints = ampsData, colorArgb = 0xFFFF0000.toInt()),
+            PlotData(name = "RMP", dataPoints = rpmData, colorArgb = 0xFF00FF00.toInt()),
+            PlotData(name = "Temp", dataPoints = tempData, colorArgb = 0xFFFFFF00.toInt())
         )
     )
 }

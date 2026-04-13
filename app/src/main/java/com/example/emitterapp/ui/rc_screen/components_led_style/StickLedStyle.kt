@@ -33,7 +33,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.atan2

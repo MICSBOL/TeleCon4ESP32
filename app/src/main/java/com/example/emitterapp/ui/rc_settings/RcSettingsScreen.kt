@@ -41,7 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

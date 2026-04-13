@@ -6,7 +6,7 @@ import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
 import com.example.emitterapp.domain.use_case.SaveSettingsUseCases
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

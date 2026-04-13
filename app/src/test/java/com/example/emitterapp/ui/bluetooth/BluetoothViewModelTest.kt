@@ -1,6 +1,9 @@
 package com.example.emitterapp.ui.bluetooth
 import app.cash.turbine.test
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
+import com.example.emitterapp.domain.use_case.GetLastDeviceUseCase
+import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
+import com.example.emitterapp.domain.use_case.SaveLastDeviceUseCase
 import com.example.emitterapp.util.FakeRemoteController
 import com.example.emitterapp.util.FakeRemoteDevice
 import com.example.emitterapp.util.FakeSettingsRepository
@@ -32,7 +35,12 @@ class BluetoothViewModelTest {
     fun setUp() {
         fakeController = FakeRemoteController()
         fakeSettings = FakeSettingsRepository()
-        viewModel = BluetoothViewModel(fakeController, fakeSettings)
+        viewModel = BluetoothViewModel(
+            remoteController = fakeController,
+            getUserSettings  = GetUserSettingsUseCase(fakeSettings),
+            getLastDevice    = GetLastDeviceUseCase(fakeSettings),
+            saveLastDevice   = SaveLastDeviceUseCase(fakeSettings),
+        )
     }
     // ── Initial state ─────────────────────────────────────────────────────────
     @Test

@@ -108,7 +108,7 @@ fun RealTimePlot(
         }
 
         paths.forEachIndexed { index, path ->
-            val lineColor = series.getOrNull(index)?.color ?: Color.White
+            val lineColor = series.getOrNull(index)?.colorArgb?.let { Color(it) } ?: Color.White
             drawGlowPath(
                 path = path,
                 color = lineColor,
@@ -165,8 +165,8 @@ private fun RealTimePlotMultiLinePreview() {
             .height(200.dp)
             .width(400.dp),
         series = listOf(
-            PlotData(dataPoints = sampleData1, color = Color.Cyan),
-            PlotData(dataPoints = sampleData2, color = Color.Red)
+            PlotData(dataPoints = sampleData1, colorArgb = 0xFF00FFFF.toInt()),
+            PlotData(dataPoints = sampleData2, colorArgb = 0xFFFF0000.toInt())
         )
     )
 }

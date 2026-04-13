@@ -1,6 +1,6 @@
 package com.example.emitterapp.domain.model
 
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode
 
 data class UserSettings(
     val leftStickMode: JoystickMode = JoystickMode.Spring(),

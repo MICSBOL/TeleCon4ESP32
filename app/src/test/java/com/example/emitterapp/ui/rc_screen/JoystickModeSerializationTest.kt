@@ -1,7 +1,7 @@
 package com.example.emitterapp.ui.rc_screen
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode.Companion.fromString
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode.Companion.toStringRepresentation
+import com.example.emitterapp.domain.model.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode.Companion.fromString
+import com.example.emitterapp.domain.model.JoystickMode.Companion.toStringRepresentation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

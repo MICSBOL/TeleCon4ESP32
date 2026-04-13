@@ -28,6 +28,7 @@ import com.example.emitterapp.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.emitterapp.domain.model.JoystickMode
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow

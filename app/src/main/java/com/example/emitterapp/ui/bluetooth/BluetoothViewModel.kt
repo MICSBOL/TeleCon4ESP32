@@ -3,14 +3,19 @@ package com.example.emitterapp.ui.bluetooth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.emitterapp.data.repository.ISettingsRepository
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.RemoteController
 import com.example.emitterapp.domain.bluetooth.RemoteDevice
 import com.example.emitterapp.domain.bluetooth.RcPacketEncoder
 import com.example.emitterapp.domain.bluetooth.TelemetryState
+import com.example.emitterapp.domain.model.ButtonEvent
+import com.example.emitterapp.domain.model.RcState
 import com.example.emitterapp.domain.model.UserSettings
+import com.example.emitterapp.domain.use_case.GetLastDeviceUseCase
+import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
+import com.example.emitterapp.domain.use_case.SaveLastDeviceUseCase
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
+import com.example.emitterapp.ui.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -36,12 +41,16 @@ import javax.inject.Inject
 @HiltViewModel
 open class BluetoothViewModel @Inject constructor(
     private val remoteController: RemoteController,
-    private val settingsRepository: ISettingsRepository
+    private val getUserSettings: GetUserSettingsUseCase,
+    private val getLastDevice: GetLastDeviceUseCase,
+    private val saveLastDevice: SaveLastDeviceUseCase,
 ) : ViewModel() {
+
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
     private val _state = MutableStateFlow(BluetoothUiState())
-    val userSettings: StateFlow<SettingsUiState> = settingsRepository.settingsFlow
+
+    val userSettings: StateFlow<SettingsUiState> = getUserSettings()
         .map<UserSettings, SettingsUiState> { settings ->
             SettingsUiState.Success(settings)
         }
@@ -55,6 +64,7 @@ open class BluetoothViewModel @Inject constructor(
         )
 
     val telemetryState: StateFlow<TelemetryState> = remoteController.telemetryState
+
     val state = combine(
         remoteController.discoveredDevices,
         remoteController.savedDevices,
@@ -65,11 +75,14 @@ open class BluetoothViewModel @Inject constructor(
             pairedDevices = pairedDevices,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
+
     private val _rcControlState = MutableStateFlow(RcControlState())
     val rcControlState: StateFlow<RcControlState> = _rcControlState
-    val lastDeviceName: StateFlow<String?> = settingsRepository.lastDeviceFlow
+
+    val lastDeviceName: StateFlow<String?> = getLastDevice()
         .map { it?.second }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     private var connectingDevice: RemoteDevice? = null
     private var deviceConnectionJob: Job? = null
     private var sendingJob: Job? = null
@@ -109,14 +122,14 @@ open class BluetoothViewModel @Inject constructor(
             }
         }
     }
+
     fun startSendingRcData() {
         if (sendingJob?.isActive == true) return
-
         sendingJob = viewModelScope.launch {
             Log.d("BluetoothViewModel", "Starting RC data sending loop.")
             while (isActive) {
                 val currentState = rcControlState.value
-                val rcUiState = RcUiState(
+                val rcState = RcState(
                     leftStickX = (currentState.leftStickPosition.first * 100).toInt(),
                     leftStickY = (currentState.leftStickPosition.second * 100).toInt(),
                     rightStickX = (currentState.rightStickPosition.first * 100).toInt(),
@@ -132,11 +145,12 @@ open class BluetoothViewModel @Inject constructor(
                     leftKnobValue = (currentState.leftKnobValue * 1023).toInt().coerceIn(0, 1023),
                     rightKnobValue = (currentState.rightKnobValue * 1023).toInt().coerceIn(0, 1023)
                 )
-                sendRcControlData(rcUiState)
+                remoteController.sendData(RcPacketEncoder.buildRcPacket(rcState))
                 delay(50L)
             }
         }
     }
+
     fun stopSendingRcData() {
         Log.d("BluetoothViewModel", "Stopping RC data sending loop.")
         sendingJob?.cancel()
@@ -147,24 +161,18 @@ open class BluetoothViewModel @Inject constructor(
         super.onCleared()
         stopSendingRcData()
     }
+
     fun connectToDevice(device: RemoteDevice) {
         Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
         connectingDevice = device
         _state.update { it.copy(isConnecting = true) }
-        deviceConnectionJob = remoteController
-            .connect(device)
-            .listen()
+        deviceConnectionJob = remoteController.connect(device).listen()
     }
 
     fun disconnectFromDevice() {
         deviceConnectionJob?.cancel()
         remoteController.disconnect()
-        _state.update {
-            it.copy(
-                isConnecting = false,
-                isConnected = false
-            )
-        }
+        _state.update { it.copy(isConnecting = false, isConnected = false) }
     }
 
     fun startScan() {
@@ -183,7 +191,7 @@ open class BluetoothViewModel @Inject constructor(
 
     fun quickConnect() {
         viewModelScope.launch {
-            val lastDevice = settingsRepository.lastDeviceFlow.first()
+            val lastDevice = getLastDevice().first()
             if (lastDevice == null) {
                 Log.d("BluetoothViewModel", "No last device saved, navigating to Bluetooth screen.")
                 _navigateToScreen.send("bluetooth")
@@ -207,34 +215,22 @@ open class BluetoothViewModel @Inject constructor(
                 ConnectionResult.ConnectionEstablished -> {
                     connectingDevice?.let { device ->
                         viewModelScope.launch {
-                            settingsRepository.saveLastDevice(device.address, device.name)
+                            saveLastDevice(device.address, device.name)
                         }
                     }
                     _state.update {
-                        it.copy(
-                            isConnected = true,
-                            isConnecting = false,
-                            errorMessage = null
-                        )
+                        it.copy(isConnected = true, isConnecting = false, errorMessage = null)
                     }
                     val route = (userSettings.value as? SettingsUiState.Success)
                         ?.settings?.rcUiStyle?.toRoute() ?: "rc_screen"
                     _navigateToScreen.send(route)
                 }
-
                 is ConnectionResult.TransferSucceeded -> {
-                    _state.update {
-                        it.copy(messages = it.messages + result.message)
-                    }
+                    _state.update { it.copy(messages = it.messages + result.message) }
                 }
-
                 is ConnectionResult.Error -> {
                     _state.update {
-                        it.copy(
-                            isConnected = false,
-                            isConnecting = false,
-                            errorMessage = result.message
-                        )
+                        it.copy(isConnected = false, isConnecting = false, errorMessage = result.message)
                     }
                 }
             }
@@ -248,12 +244,6 @@ open class BluetoothViewModel @Inject constructor(
                 )
             }
         }.launchIn(viewModelScope)
-    }
-
-    private suspend fun sendRcControlData(currentState: RcUiState) {
-        Log.d("BluetoothViewModel", "Sending RC data... ${currentState.rightKnobValue}")
-        val packet = RcPacketEncoder.buildRcPacket(currentState)
-        remoteController.sendData(packet)
     }
 
     fun sendButtonEvent(event: ButtonEvent) {
@@ -272,16 +262,14 @@ open class BluetoothViewModel @Inject constructor(
 
     fun onLeftSwitchChanged(index: Int, newState: Boolean) {
         _rcControlState.update {
-            val newSwitches =
-                it.leftSwitches.toMutableList().also { list -> list[index] = newState }
+            val newSwitches = it.leftSwitches.toMutableList().also { list -> list[index] = newState }
             it.copy(leftSwitches = newSwitches)
         }
     }
 
     fun onRightSwitchChanged(index: Int, newState: Boolean) {
         _rcControlState.update {
-            val newSwitches =
-                it.rightSwitches.toMutableList().also { list -> list[index] = newState }
+            val newSwitches = it.rightSwitches.toMutableList().also { list -> list[index] = newState }
             it.copy(rightSwitches = newSwitches)
         }
     }

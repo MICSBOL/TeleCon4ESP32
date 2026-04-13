@@ -1,4 +1,5 @@
 package com.example.emitterapp.data.repository
+
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -6,17 +7,17 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode
-import com.example.emitterapp.ui.rc_screen.components.JoystickMode.Companion.toStringRepresentation
+import com.example.emitterapp.domain.model.JoystickMode
+import com.example.emitterapp.domain.model.JoystickMode.Companion.toStringRepresentation
+import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
+import com.example.emitterapp.domain.repository.ISettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-import com.example.emitterapp.domain.model.RcUiStyle
-// ...existing code...
 private object PreferencesKeys {
     val LEFT_STICK_MODE = stringPreferencesKey("left_stick_mode")
     val RIGHT_STICK_MODE = stringPreferencesKey("right_stick_mode")
@@ -68,42 +69,41 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
-    suspend fun saveLeftStickMode(mode: JoystickMode) {
+    override suspend fun saveLeftStickMode(mode: JoystickMode) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LEFT_STICK_MODE] = mode.toStringRepresentation()
         }
     }
 
-    suspend fun saveRightStickMode(mode: JoystickMode) {
+    override suspend fun saveRightStickMode(mode: JoystickMode) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.RIGHT_STICK_MODE] = mode.toStringRepresentation()
         }
     }
 
-    suspend fun saveSwitchState(index: Int, isOn: Boolean) {
+    override suspend fun saveSwitchState(index: Int, isOn: Boolean) {
         context.dataStore.edit { preferences ->
-            val currentStateString = preferences[PreferencesKeys.SWITCH_STATES] ?: "false,false,false,false,false,false"
+            val currentStateString = preferences[PreferencesKeys.SWITCH_STATES]
+                ?: "false,false,false,false,false,false"
             val states = currentStateString.split(",").toMutableList()
-
-            if (index in states.indices) {
-                states[index] = isOn.toString()
-            }
+            if (index in states.indices) states[index] = isOn.toString()
             preferences[PreferencesKeys.SWITCH_STATES] = states.joinToString(",")
         }
     }
 
-    suspend fun saveLeftKnobValue(value: Float) {
+    override suspend fun saveLeftKnobValue(value: Float) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LEFT_KNOB_VALUE] = value
         }
     }
-    suspend fun saveRightKnobValue(value: Float) {
+
+    override suspend fun saveRightKnobValue(value: Float) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.RIGHT_KNOB_VALUE] = value
         }
     }
 
-    suspend fun saveRcUiStyle(style: RcUiStyle) {
+    override suspend fun saveRcUiStyle(style: RcUiStyle) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.RC_UI_STYLE] = style.name
         }

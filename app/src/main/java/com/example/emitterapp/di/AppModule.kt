@@ -1,9 +1,9 @@
 package com.example.emitterapp.di
 
 import com.example.emitterapp.data.bluetooth.AndroidBluetoothController
-import com.example.emitterapp.data.repository.ISettingsRepository
 import com.example.emitterapp.data.repository.SettingsRepository
 import com.example.emitterapp.domain.bluetooth.RemoteController
+import com.example.emitterapp.domain.repository.ISettingsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -26,4 +26,3 @@ abstract class AppModule {
         impl: SettingsRepository
     ): ISettingsRepository
 }
-

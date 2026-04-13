@@ -1,15 +1,13 @@
 package com.example.emitterapp.domain.bluetooth
 
-import androidx.compose.ui.graphics.Color
-
 data class PanelState(
     val leftValue: Int = 0,
     val rightValue: Int = 0,
     val leftOn: Boolean = false,
     val rightOn: Boolean = false,
-    val leftColor: Color = Color.Green,
-    val rightColor: Color = Color.Green,
-    val leftTitle: String =  "",
+    val leftColorArgb: Int = 0xFF00FF00.toInt(),  // Green
+    val rightColorArgb: Int = 0xFF00FF00.toInt(), // Green
+    val leftTitle: String = "",
     val rightTitle: String = ""
 )
 
@@ -34,5 +32,5 @@ data class TelemetryState(
 data class PlotData(
     val name: String = "",
     val dataPoints: List<Float> = emptyList(),
-    val color: Color = Color.White
+    val colorArgb: Int = 0xFFFFFFFF.toInt() // White
 )
