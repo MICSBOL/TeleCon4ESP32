@@ -177,7 +177,11 @@ fun AppNavGraph() {
 
             LaunchedEffect(key1 = true) {
                 viewModel.navigateToScreen.collect { route ->
-                    navController.navigate(route)
+                    navController.navigate(route) {
+                        popUpTo(Screen.Home.route) {
+                            inclusive = false // Keep navigation history, go back to Home
+                        }
+                    }
                 }
             }
 
