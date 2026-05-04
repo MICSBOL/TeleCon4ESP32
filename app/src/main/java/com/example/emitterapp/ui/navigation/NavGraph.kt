@@ -177,7 +177,12 @@ fun AppNavGraph() {
 
             LaunchedEffect(key1 = true) {
                 viewModel.navigateToScreen.collect { route ->
-                    navController.navigate(route)
+                    navController.navigate(route) {
+                        popUpTo(Screen.Bluetooth.route) {
+                            inclusive = true // Remove Bluetooth screen, back goes to Home
+                        }
+                        launchSingleTop = true // Prevent multiple RcScreen instances
+                    }
                 }
             }
 
