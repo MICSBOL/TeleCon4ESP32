@@ -221,9 +221,8 @@ open class BluetoothViewModel @Inject constructor(
                     _state.update {
                         it.copy(isConnected = true, isConnecting = false, errorMessage = null)
                     }
-                    val route = (userSettings.value as? SettingsUiState.Success)
-                        ?.settings?.rcUiStyle?.toRoute() ?: "rc_screen"
-                    _navigateToScreen.send(route)
+                    // Navigate to Home screen instead of RC screen, keeping connection active
+                    _navigateToScreen.send("home")
                 }
                 is ConnectionResult.TransferSucceeded -> {
                     _state.update { it.copy(messages = it.messages + result.message) }

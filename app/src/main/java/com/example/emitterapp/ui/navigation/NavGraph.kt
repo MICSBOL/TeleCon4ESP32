@@ -177,12 +177,7 @@ fun AppNavGraph() {
 
             LaunchedEffect(key1 = true) {
                 viewModel.navigateToScreen.collect { route ->
-                    navController.navigate(route) {
-                        popUpTo(Screen.Bluetooth.route) {
-                            inclusive = true // Remove Bluetooth screen, back goes to Home
-                        }
-                        launchSingleTop = true // Prevent multiple RcScreen instances
-                    }
+                    navController.navigate(route)
                 }
             }
 
@@ -211,12 +206,12 @@ fun AppNavGraph() {
         }
         composable(Screen.RcScreen.route) {
             val viewModel = hiltViewModel<BluetoothViewModel>()
-            RcScreen(bluetoothViewModel = viewModel)
+            RcScreen(bluetoothViewModel = viewModel, navController = navController)
         }
 
         composable(Screen.RcScreenLedStyle.route) {
             val viewModel = hiltViewModel<BluetoothViewModel>()
-            RcScreenLedStyle(bluetoothViewModel = viewModel)
+            RcScreenLedStyle(bluetoothViewModel = viewModel, navController = navController)
         }
         composable(Screen.RcSettingsScreen.route) {
             val viewModel = hiltViewModel<SettingsViewModel>()

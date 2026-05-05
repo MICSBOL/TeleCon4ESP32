@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
 import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.TelemetryState
 import com.example.emitterapp.domain.bluetooth.IndicatorState
@@ -46,6 +48,7 @@ import com.example.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.example.emitterapp.ui.rc_screen.components.BatteryStatus
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.domain.model.JoystickMode
+import com.example.emitterapp.ui.navigation.Screen
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,7 +60,8 @@ fun RcScreen(
     bluetoothViewModel: BluetoothViewModel? = null,
     telemetryState: StateFlow<TelemetryState>? = null,
     userSettings: StateFlow<SettingsUiState>? = null,
-    rcControlState: StateFlow<RcControlState>? = null
+    rcControlState: StateFlow<RcControlState>? = null,
+    navController: NavHostController? = null
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     val actualViewModel = bluetoothViewModel
@@ -68,6 +72,15 @@ fun RcScreen(
     if (actualViewModel == null && telemetryState == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {}
         return
+    }
+
+    // Custom back handler: skip Bluetooth screen, go directly to Home
+//    val backCallback = remember {
+//        { navController?.popBackStack(Screen.Home.route, inclusive = false) }
+//    }
+    BackHandler(enabled = navController != null) {
+        actualViewModel?.stopSendingRcData()
+        navController?.popBackStack(Screen.Home.route, inclusive = false)
     }
 
     DisposableEffect(actualViewModel) {

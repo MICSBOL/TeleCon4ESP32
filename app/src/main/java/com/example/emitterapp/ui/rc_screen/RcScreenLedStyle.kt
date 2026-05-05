@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
 import com.example.emitterapp.domain.bluetooth.IndicatorState
 import com.example.emitterapp.domain.bluetooth.PanelState
 import com.example.emitterapp.domain.bluetooth.TelemetryState
@@ -39,6 +40,7 @@ import com.example.emitterapp.domain.model.ButtonEvent
 import com.example.emitterapp.ui.bluetooth.RcControlState
 import com.example.emitterapp.ui.rc_screen.components.ButtonSide
 import com.example.emitterapp.domain.model.JoystickMode
+import com.example.emitterapp.ui.navigation.Screen
 import com.example.emitterapp.ui.rc_screen.components_led_style.AnalogIndicatorLedStyle
 import com.example.emitterapp.ui.rc_screen.components_led_style.BatteryStatusLedStyle
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
@@ -53,6 +55,7 @@ fun RcScreenLedStyle(
     telemetryState: StateFlow<TelemetryState>? = null,
     userSettings: StateFlow<SettingsUiState>? = null,
     rcControlState: StateFlow<RcControlState>? = null,
+    navController: NavHostController? = null
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
 
@@ -65,7 +68,9 @@ fun RcScreenLedStyle(
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {}
         return
     }
-
+    val backCallback = remember {
+        { navController?.popBackStack(Screen.Home.route, inclusive = false) }
+    }
     DisposableEffect(actualViewModel) {
         actualViewModel?.startSendingRcData()
         onDispose { actualViewModel?.stopSendingRcData() }
