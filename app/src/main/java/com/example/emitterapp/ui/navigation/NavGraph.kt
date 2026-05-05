@@ -37,6 +37,9 @@ import com.example.emitterapp.ui.tutorial.TutorialScreen
 fun AppNavGraph() {
 
     val navController = rememberNavController()
+    val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
+    val settingsViewModel = hiltViewModel<SettingsViewModel>()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -45,10 +48,8 @@ fun AppNavGraph() {
             SplashScreen(navController = navController)
         }
         composable(Screen.Home.route) {
-            val viewModel = hiltViewModel<BluetoothViewModel>()
-            val settingsViewModel = hiltViewModel<SettingsViewModel>()
-            val state by viewModel.state.collectAsState()
-            val lastDeviceName by viewModel.lastDeviceName.collectAsState()
+            val state by bluetoothViewModel.state.collectAsState()
+            val lastDeviceName by bluetoothViewModel.lastDeviceName.collectAsState()
             val settingsUiState by settingsViewModel.uiState.collectAsState()
             val rcScreenRoute = (settingsUiState as? SettingsUiState.Success)
                 ?.settings?.rcUiStyle?.toRoute() ?: Screen.RcScreen.route
@@ -78,9 +79,11 @@ fun AppNavGraph() {
                     val scanGranted = ContextCompat.checkSelfPermission(
                         context, Manifest.permission.BLUETOOTH_SCAN
                     ) == PackageManager.PERMISSION_GRANTED
+
                     val connectGranted = ContextCompat.checkSelfPermission(
                         context, Manifest.permission.BLUETOOTH_CONNECT
                     ) == PackageManager.PERMISSION_GRANTED
+
                     if (!scanGranted || !connectGranted) {
                         permissionLauncher.launch(
                             arrayOf(
@@ -91,15 +94,17 @@ fun AppNavGraph() {
                         return
                     }
                 }
+
                 if (bluetoothAdapter?.isEnabled == false && activity != null) {
                     enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
                     return
                 }
+
                 onReady()
             }
 
             LaunchedEffect(Unit) {
-                viewModel.navigateToScreen.collect { route ->
+                bluetoothViewModel.navigateToScreen.collect { route ->
                     navController.navigate(route)
                 }
             }
@@ -111,17 +116,16 @@ fun AppNavGraph() {
                 errorMessage = state.errorMessage,
                 lastDeviceName = lastDeviceName,
                 rcScreenRoute = rcScreenRoute,
-                onDismissError = viewModel::dismissError,
+                onDismissError = bluetoothViewModel::dismissError,
                 onStartClick = {
                     ensureBluetoothReadyBeforeAction {
-                        viewModel.quickConnect()
+                        bluetoothViewModel.quickConnect()
                     }
                 }
             )
         }
         composable(Screen.Bluetooth.route) {
-            val viewModel = hiltViewModel<BluetoothViewModel>()
-            val state by viewModel.state.collectAsState()
+            val state by bluetoothViewModel.state.collectAsState()
             val context = LocalContext.current
             val activity = context as? ComponentActivity
             val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
@@ -176,7 +180,7 @@ fun AppNavGraph() {
             }
 
             LaunchedEffect(key1 = true) {
-                viewModel.navigateToScreen.collect { route ->
+                bluetoothViewModel.navigateToScreen.collect { route ->
                     navController.navigate(route)
                 }
             }
@@ -185,37 +189,33 @@ fun AppNavGraph() {
                 state = state,
                 onStartScan = {
                     ensureBluetoothReadyBeforeAction {
-                        viewModel.startScan()
+                        bluetoothViewModel.startScan()
                     }
                 },
-                onStopScan = viewModel::stopScan,
-                onDismissError = viewModel::dismissError,
+                onStopScan = bluetoothViewModel::stopScan,
+                onDismissError = bluetoothViewModel::dismissError,
                 onDeviceClick = { device ->
                     ensureBluetoothReadyBeforeAction {
-                        viewModel.connectToDevice(device)
+                        bluetoothViewModel.connectToDevice(device)
                     }
                 }
             )
         }
         composable(Screen.TestBluetooth.route) {
-            val viewModel = hiltViewModel<BluetoothViewModel>()
             TestBluetoothScreen(
-                onDisconnect = viewModel::disconnectFromDevice,
+                onDisconnect = bluetoothViewModel::disconnectFromDevice,
                 onSendTestPacket = {}
             )
         }
         composable(Screen.RcScreen.route) {
-            val viewModel = hiltViewModel<BluetoothViewModel>()
-            RcScreen(bluetoothViewModel = viewModel, navController = navController)
+            RcScreen(bluetoothViewModel = bluetoothViewModel, navController = navController)
         }
 
         composable(Screen.RcScreenLedStyle.route) {
-            val viewModel = hiltViewModel<BluetoothViewModel>()
-            RcScreenLedStyle(bluetoothViewModel = viewModel, navController = navController)
+            RcScreenLedStyle(bluetoothViewModel = bluetoothViewModel, navController = navController)
         }
         composable(Screen.RcSettingsScreen.route) {
-            val viewModel = hiltViewModel<SettingsViewModel>()
-            RcSettingsScreen(navController = navController, viewModel = viewModel)
+            RcSettingsScreen(navController = navController, viewModel = settingsViewModel)
         }
         composable(Screen.Tutorial.route) {
             TutorialScreen(navController = navController)

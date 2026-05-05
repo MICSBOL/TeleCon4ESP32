@@ -220,9 +220,9 @@ class BluetoothViewModelTest {
         fakeController.setSavedDevices(listOf(testDevice))
         fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
         viewModel.quickConnect()
-        // After successful connect the nav event for rc_screen is emitted
+        // After successful connect the nav event for home is emitted
         viewModel.navigateToScreen.test {
-            assertEquals("rc_screen", awaitItem())
+            assertEquals("home", awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }
