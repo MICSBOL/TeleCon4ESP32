@@ -160,6 +160,7 @@ open class BluetoothViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         stopSendingRcData()
+        disconnectFromDevice()
     }
 
     fun connectToDevice(device: RemoteDevice) {

@@ -11,7 +11,7 @@
     <string name="home_bluetooth_status_connected">Connected</string>
     <string name="home_bluetooth_status_disconnected">Not connected</string>
     <string name="home_item_tutorial">Tutorial</string>
-    <string name="home_start_button">Start</string>
+    <string name="home_start_button">Quick Start</string>
     <string name="home_upgrade_pro">Upgrade to pro</string>
     <string name="home_version_info">v1.0.2 - About this App</string>
     <string name="home_car_image_description">Bouncing car illustration</string>

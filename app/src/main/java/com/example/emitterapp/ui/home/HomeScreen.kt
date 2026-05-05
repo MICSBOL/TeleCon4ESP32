@@ -1,7 +1,9 @@
 package com.example.emitterapp.ui.home
 
+import android.app.Activity
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,12 +47,17 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -79,6 +86,13 @@ fun HomeScreen(
     onDismissError: () -> Unit = {}
 ) {
     val isLandscape = LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    // Handle back button press to exit the app
+    BackHandler {
+        activity?.finish()
+    }
 
     val homeItems = listOf(
         HomeItem(
@@ -234,7 +248,23 @@ private fun HomeOptionsList(
         isBluetoothConnected -> stringResource(R.string.home_bluetooth_status_connected)
         else -> stringResource(R.string.home_bluetooth_status_disconnected)
     }
-
+//    val bluetoothStatusText = when {
+//        isConnecting -> buildAnnotatedString {
+//            withStyle(style = SpanStyle(color = Color.Yellow)) {
+//                append(stringResource(R.string.home_bluetooth_status_connecting))
+//            }
+//        }
+//        isBluetoothConnected -> buildAnnotatedString {
+//            withStyle(style = SpanStyle(color = Color.Green)) {
+//                append(stringResource(R.string.home_bluetooth_status_connected))
+//            }
+//        }
+//        else -> buildAnnotatedString {
+//            withStyle(style = SpanStyle(color = Color.Red)) {
+//                append(stringResource(R.string.home_bluetooth_status_disconnected))
+//            }
+//        }
+//    }
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -248,7 +278,7 @@ private fun HomeOptionsList(
                         navController?.navigate(item.route)
                     }
                 },
-                subtitle = if (item.route == Screen.Bluetooth.route) bluetoothStatusText else null,
+                subtitle = (if (item.route == Screen.Bluetooth.route) bluetoothStatusText else null),
                 icon2 = item.icon2,
                 onClick2 = {
                     if (item.route2.isNotEmpty()) {
@@ -287,18 +317,28 @@ private fun HomeSecondaryContent(
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth(0.8f)
         ) {
-            Text(
-                text = stringResource(R.string.home_start_button),
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-            )
-        }
-        if (lastDeviceName != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = lastDeviceName,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
+                Text(
+                    text = stringResource(R.string.home_start_button),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (lastDeviceName != null){
+                    Text(
+                        text = "Connect to the last device: $lastDeviceName",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                } else {
+                    Text(
+                        text = "Scan a device",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                }
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Column(
@@ -366,7 +406,7 @@ fun HomeItemCard(
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            color = if (subtitle.contains("Connected")) Color.Green else Color.Red
                         )
                     }
                 }
