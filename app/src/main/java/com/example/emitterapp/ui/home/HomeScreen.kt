@@ -54,10 +54,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -83,7 +80,8 @@ fun HomeScreen(
     lastDeviceName: String? = null,
     rcScreenRoute: String = Screen.RcScreen.route,
     onStartClick: () -> Unit = {},
-    onDismissError: () -> Unit = {}
+    onDismissError: () -> Unit = {},
+    isLedStyle: Boolean = false
 ) {
     val isLandscape = LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
     val context = LocalContext.current
@@ -129,22 +127,22 @@ fun HomeScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(text = "RC-Emitter") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    actions = {
-                        IconButton(onClick = { /* TODO: Handle help action */ }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Help,
-                                contentDescription = stringResource(R.string.home_help)
-                            )
+                    TopAppBar(
+                        title = { Text(text = "RC-Emitter") },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        actions = {
+                            IconButton(onClick = { /* TODO: Handle help action */ }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Help,
+                                    contentDescription = stringResource(R.string.home_help)
+                                )
+                            }
                         }
-                    }
-                )
+                    )
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
@@ -163,15 +161,19 @@ fun HomeScreen(
                         isBluetoothConnected = isBluetoothConnected,
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxSize()
+                            .fillMaxSize(),
+                        isLedStyle = isLedStyle
                     )
                     HomeSecondaryContent(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize(),
-                        imageModifier = Modifier.weight(1f).fillMaxWidth(),
+                        imageModifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
                         lastDeviceName = lastDeviceName,
-                        onStartClick = onStartClick
+                        onStartClick = onStartClick,
+                        isLedStyle = isLedStyle
                     )
                 }
             } else {
@@ -189,13 +191,19 @@ fun HomeScreen(
                         isBluetoothConnected = isBluetoothConnected,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .weight(1f),
+                        isLedStyle = isLedStyle
                     )
                     HomeSecondaryContent(
-                        modifier = Modifier.weight(0.7f).fillMaxWidth(),
-                        imageModifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier = Modifier
+                            .weight(0.7f)
+                            .fillMaxWidth(),
+                        imageModifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
                         lastDeviceName = lastDeviceName,
-                        onStartClick = onStartClick
+                        onStartClick = onStartClick,
+                        isLedStyle = isLedStyle
                     )
                 }
             }
@@ -226,7 +234,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = if (lastDeviceName != null) "Connecting to $lastDeviceName…"
-                               else "Connecting…",
+                        else "Connecting…",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -241,30 +249,14 @@ private fun HomeOptionsList(
     navController: NavHostController?,
     isConnecting: Boolean,
     isBluetoothConnected: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLedStyle: Boolean = false
 ) {
     val bluetoothStatusText = when {
         isConnecting -> stringResource(R.string.home_bluetooth_status_connecting)
         isBluetoothConnected -> stringResource(R.string.home_bluetooth_status_connected)
         else -> stringResource(R.string.home_bluetooth_status_disconnected)
     }
-//    val bluetoothStatusText = when {
-//        isConnecting -> buildAnnotatedString {
-//            withStyle(style = SpanStyle(color = Color.Yellow)) {
-//                append(stringResource(R.string.home_bluetooth_status_connecting))
-//            }
-//        }
-//        isBluetoothConnected -> buildAnnotatedString {
-//            withStyle(style = SpanStyle(color = Color.Green)) {
-//                append(stringResource(R.string.home_bluetooth_status_connected))
-//            }
-//        }
-//        else -> buildAnnotatedString {
-//            withStyle(style = SpanStyle(color = Color.Red)) {
-//                append(stringResource(R.string.home_bluetooth_status_disconnected))
-//            }
-//        }
-//    }
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -284,7 +276,8 @@ private fun HomeOptionsList(
                     if (item.route2.isNotEmpty()) {
                         navController?.navigate(item.route2)
                     }
-                }
+                },
+                isLedStyle = isLedStyle
             )
         }
     }
@@ -295,7 +288,8 @@ private fun HomeSecondaryContent(
     modifier: Modifier = Modifier,
     imageModifier: Modifier,
     lastDeviceName: String? = null,
-    onStartClick: () -> Unit = {}
+    onStartClick: () -> Unit = {},
+    isLedStyle: Boolean = false
 ) {
     Column(
         modifier = modifier,
@@ -319,13 +313,13 @@ private fun HomeSecondaryContent(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
-            ){
+            ) {
                 Text(
                     text = stringResource(R.string.home_start_button),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                if (lastDeviceName != null){
+                if (lastDeviceName != null) {
                     Text(
                         text = "Connect to the last device: $lastDeviceName",
                         style = MaterialTheme.typography.labelSmall,
@@ -368,10 +362,10 @@ fun HomeItemCard(
     onClick: () -> Unit,
     subtitle: String? = null,
     icon2: ImageVector? = null,
-    onClick2: () -> Unit
+    onClick2: () -> Unit,
+    isLedStyle: Boolean = false
 ) {
     Row {
-
         Card(
             modifier = Modifier
                 .weight(1f)
@@ -414,6 +408,7 @@ fun HomeItemCard(
         }
         if (icon2 != null) {
             Spacer(modifier = Modifier.width(8.dp))
+
             Card(
                 modifier = Modifier
                     .align(Alignment.CenterVertically)
@@ -439,7 +434,6 @@ fun HomeItemCard(
                 }
             }
         }
-
     }
 }
 
@@ -451,7 +445,11 @@ fun HomeScreenPreview() {
     }
 }
 
-@Preview(showSystemUi = true, name = "Landscape", device = "spec:width=840dp,height=420dp,dpi=420,isRound=false,chinSize=0dp,orientation=landscape")
+@Preview(
+    showSystemUi = true,
+    name = "Landscape",
+    device = "spec:width=840dp,height=420dp,dpi=420,isRound=false,chinSize=0dp,orientation=landscape"
+)
 @Composable
 fun HomeScreenLandscapePreview() {
     EmitterAppTheme {
@@ -464,5 +462,13 @@ fun HomeScreenLandscapePreview() {
 fun SplashScreenDarkPreview() {
     EmitterAppTheme {
         HomeScreen()
+    }
+}
+
+@Preview(showSystemUi = true, name = "LED Style")
+@Composable
+fun HomeScreenLedStylePreview() {
+    EmitterAppTheme {
+        HomeScreen(isLedStyle = true)
     }
 }

@@ -15,7 +15,6 @@ import com.example.emitterapp.domain.use_case.GetLastDeviceUseCase
 import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
 import com.example.emitterapp.domain.use_case.SaveLastDeviceUseCase
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
-import com.example.emitterapp.ui.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
