@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,7 @@ import okio.IOException
 import java.io.File
 import java.io.FileOutputStream
 import androidx.core.graphics.createBitmap
+import com.example.emitterapp.R
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -159,7 +161,7 @@ private fun PdfGrid(onPdfClick: (String) -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Code Documents") },
+                title = { Text(stringResource(R.string.codes_and_documents_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary

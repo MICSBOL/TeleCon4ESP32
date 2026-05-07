@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -48,9 +49,9 @@ import com.example.emitterapp.ui.theme.EmitterAppTheme
 @Composable
 fun TutorialScreen(navController: NavController) {
     val tutorialSteps = listOf(
-        TutorialStep("Step 1: The Joysticks", "Description...", R.drawable.tutorial_01),
-        TutorialStep("Step 2: The Switches", "Description...", R.drawable.tutorial_02),
-        TutorialStep("Step 3: The Knobs", "Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...", R.drawable.tutorial_03)
+        TutorialStep(stringResource(R.string.tutorial_step,1) + "The Joysticks", "Description...", R.drawable.tutorial_01),
+        TutorialStep(stringResource(R.string.tutorial_step,2) + "The Switches", "Description...", R.drawable.tutorial_02),
+        TutorialStep(stringResource(R.string.tutorial_step,3) + "The Knobs", "Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...", R.drawable.tutorial_03)
         // ...
     )
     val pagerState = rememberPagerState(pageCount = { tutorialSteps.size })
@@ -58,7 +59,7 @@ fun TutorialScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("App Tutorial") },
+                title = { Text(stringResource(R.string.app_tutorial_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,

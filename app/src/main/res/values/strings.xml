@@ -15,7 +15,28 @@
     <string name="home_upgrade_pro">Upgrade to pro</string>
     <string name="home_version_info">v1.0.2 - About this App</string>
     <string name="home_car_image_description">Bouncing car illustration</string>
-
+    <string name="home_codes_documents">Codes and Documents</string>
+    <string name="home_scan_a_device">Scan new device</string>
+    <string name="home_last_devices">Connect to the last device:</string>
+    <string name="bluetooth_connect_to_a_device">Connect to a Device</string>
+    <string name="bluetooth_connection_error">Connection error</string>
+    <string name="bluetooth_paired_devices">Paired Devices</string>
+    <string name="bluetooth_scanned_devices">Scanned Devices</string>
+    <string name="codes_and_documents_title">Codes and Documents</string>
+    <string name="app_tutorial_title">App Tutorial</string>
+    <string name="tutorial_step">Step %1$d:</string>
+    <string name="rc_controller_settings_title">RC Controller Settings</string>
+    <string name="rc_controller_settings_screen_style">RC Screen Style</string>
+    <string name="rc_controller_settings_joystick_settings">Joystick Settings</string>
+    <string name="rc_controller_settings_initial_switch_positions">Initial Switch Positions</string>
+    <string name="rc_controller_settings_initial_knob_values">Initial Knob Values</string>
+    <string name="rc_controller_settings_left_stick">Left Stick</string>
+    <string name="rc_controller_settings_right_stick">Right Stick</string>
+    <string name="rc_controller_settings_left_knob">Left Knob</string>
+    <string name="rc_controller_settings_right_knob">Right Knob</string>
+    <string name="rc_controller_settings_ui_style">UI Style</string>
+    <string name="rc_controller_settings_screen_3d">Screen 3D</string>
+    <string name="rc_controller_settings_screen_led">Screen LED</string>
     <!-- SplashScreen Strings -->
     <string name="splash_title">RC - EMITTER</string>
     <string name="splash_logo_content_description">Splash Screen Logo</string>

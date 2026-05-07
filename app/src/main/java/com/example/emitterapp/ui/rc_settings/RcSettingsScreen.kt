@@ -34,26 +34,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.emitterapp.R
 import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.domain.model.JoystickMode
-
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import com.example.emitterapp.ui.theme.EmitterAppTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RcSettingsScreen(
     navController: NavController,
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    uiState: SettingsUiState? = null
 ) {
-    val uiState: SettingsUiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state = uiState ?: viewModel.uiState.collectAsStateWithLifecycle().value
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("RC Controller Settings") },
+                title = { Text(stringResource(R.string.rc_controller_settings_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -68,7 +75,7 @@ fun RcSettingsScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        when (val state = uiState) {
+        when (val state = state) {
             is SettingsUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -87,7 +94,14 @@ fun RcSettingsScreen(
                 SettingsContent(
                     modifier = Modifier.padding(paddingValues),
                     settings = state.settings,
-                    viewModel = viewModel
+                    onRcUiStyleChanged = { viewModel.onRcUiStyleChanged(it) },
+                    onLeftStickModeChanged = { viewModel.onLeftStickModeChanged(it) },
+                    onRightStickModeChanged = { viewModel.onRightStickModeChanged(it) },
+                    onSwitchInitialStateChange = { index, isOn ->
+                        viewModel.onSwitchInitialStateChange(index, isOn)
+                    },
+                    onLeftKnobInitialValueChange = { viewModel.onLeftKnobInitialValueChange(it) },
+                    onRightKnobInitialValueChange = { viewModel.onRightKnobInitialValueChange(it) }
                 )
             }
         }
@@ -98,7 +112,12 @@ fun RcSettingsScreen(
 private fun SettingsContent(
     modifier: Modifier = Modifier,
     settings: UserSettings,
-    viewModel: SettingsViewModel
+    onRcUiStyleChanged: (RcUiStyle) -> Unit = {},
+    onLeftStickModeChanged: (JoystickMode) -> Unit = {},
+    onRightStickModeChanged: (JoystickMode) -> Unit = {},
+    onSwitchInitialStateChange: (Int, Boolean) -> Unit = { _, _ -> },
+    onLeftKnobInitialValueChange: (Float) -> Unit = {},
+    onRightKnobInitialValueChange: (Float) -> Unit = {}
 ) {
     val allModes = remember {
         listOf(
@@ -116,47 +135,47 @@ private fun SettingsContent(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         item {
-            SettingsSection(title = "RC Screen Style") {
+            SettingsSection(title = stringResource(R.string.rc_controller_settings_title)) {
                 RcUiStyleSelector(
                     selectedStyle = settings.rcUiStyle,
-                    onStyleSelected = { viewModel.onRcUiStyleChanged(it) }
+                    onStyleSelected = { onRcUiStyleChanged(it) }
                 )
             }
         }
         item {
-            SettingsSection(title = "Joystick Settings") {
+            SettingsSection(title = stringResource(R.string.rc_controller_settings_joystick_settings)) {
                 JoystickModeSelector(
-                    label = "Left Stick",
+                    label = stringResource(R.string.rc_controller_settings_left_stick),
                     allModes = allModes,
                     selectedMode = settings.leftStickMode,
-                    onModeSelected = { viewModel.onLeftStickModeChanged(it) }
+                    onModeSelected = { onLeftStickModeChanged(it) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 JoystickModeSelector(
-                    label = "Right Stick",
+                    label = stringResource(R.string.rc_controller_settings_right_stick),
                     allModes = allModes,
                     selectedMode = settings.rightStickMode,
-                    onModeSelected = { viewModel.onRightStickModeChanged(it) }
+                    onModeSelected = { onRightStickModeChanged(it) }
                 )
             }
         }
         item {
-            SettingsSection(title = "Initial Switch Positions") {
+            SettingsSection(title = stringResource(R.string.rc_controller_settings_initial_switch_positions)){
                 SwitchSettingsGrid(
                     switchStates = settings.switchInitialStates,
                     onSwitchChange = { index, isOn ->
-                        viewModel.onSwitchInitialStateChange(index, isOn)
+                        onSwitchInitialStateChange(index, isOn)
                     }
                 )
             }
         }
         item {
-            SettingsSection(title = "Initial Knob Values") {
+            SettingsSection(title = stringResource(R.string.rc_controller_settings_initial_knob_values)) {
                 KnobSettingsSliders(
                     leftValue = settings.leftKnobInitialValue,
                     rightValue = settings.rightKnobInitialValue,
-                    onLeftChange = { viewModel.onLeftKnobInitialValueChange(it) },
-                    onRightChange = { viewModel.onRightKnobInitialValueChange(it) }
+                    onLeftChange = { onLeftKnobInitialValueChange(it) },
+                    onRightChange = { onRightKnobInitialValueChange(it) }
                 )
             }
         }
@@ -171,7 +190,7 @@ fun KnobSettingsSliders(
     onRightChange: (Float) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Left Knob", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.rc_controller_settings_left_knob), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         Slider(
             value = leftValue,
             onValueChange = onLeftChange,
@@ -179,7 +198,7 @@ fun KnobSettingsSliders(
             steps = 9
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Right Knob", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.rc_controller_settings_right_knob), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         Slider(
             value = rightValue,
             onValueChange = onRightChange,
@@ -386,12 +405,10 @@ fun RcUiStyleSelector(
     selectedStyle: RcUiStyle,
     onStyleSelected: (RcUiStyle) -> Unit
 ) {
-    val styleOptions = remember {
-        listOf(
-            RcUiStyle.SCREEN_3D  to "Screen 3D",
-            RcUiStyle.SCREEN_LED to "Screen LED"
-        )
-    }
+    val styleOptions = listOf(
+        RcUiStyle.SCREEN_3D to stringResource(R.string.rc_controller_settings_screen_3d),
+        RcUiStyle.SCREEN_LED to stringResource(R.string.rc_controller_settings_screen_led)
+    )
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = styleOptions.first { it.first == selectedStyle }.second
 
@@ -403,7 +420,7 @@ fun RcUiStyleSelector(
             value = selectedLabel,
             onValueChange = {},
             readOnly = true,
-            label = { Text("UI Style") },
+            label = { Text(stringResource(R.string.rc_controller_settings_ui_style)) },
             textStyle = MaterialTheme.typography.bodyLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface
             ),
@@ -473,3 +490,35 @@ private fun JoystickMode.withInitialPosition(position: Pair<Int, Int>): Joystick
     }
 }
 
+
+
+@Preview(showBackground = true)
+@Composable
+fun RcSettingsScreenPreview() {
+    val navController = rememberNavController()
+    val mockSettings = UserSettings(
+        rcUiStyle = RcUiStyle.SCREEN_3D,
+        leftStickMode = JoystickMode.Spring(),
+        rightStickMode = JoystickMode.Hold(),
+        switchInitialStates = mapOf(0 to true, 1 to false, 2 to true, 3 to false, 4 to true, 5 to false),
+        leftKnobInitialValue = 0.5f,
+        rightKnobInitialValue = 0.7f
+    )
+    val uiState = SettingsUiState.Success(mockSettings)
+    EmitterAppTheme {
+        RcSettingsScreen(navController = navController, uiState = uiState)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun KnobSettingsSlidersPreview() {
+    EmitterAppTheme {
+        KnobSettingsSliders(
+            leftValue = 0.5f,
+            rightValue = 0.7f,
+            onLeftChange = {},
+            onRightChange = {}
+        )
+    }
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EmitterApp</string>
+    <!-- HomeScreen Strings -->
+    <string name="home_title">RC-Emitter</string>
+    <string name="home_help">Ayuda</string>
+    <string name="home_item_rc_control">Pantalla de Control RC</string>
+    <string name="home_item_select_ui">Seleccionar IU</string>
+    <string name="home_item_settings">RC - Configuración</string>
+    <string name="home_item_bluetooth">Bluetooth</string>
+    <string name="home_bluetooth_status_connecting">Conectando...</string>
+    <string name="home_bluetooth_status_connected">Conectado</string>
+    <string name="home_bluetooth_status_disconnected">No conectado</string>
+    <string name="home_item_tutorial">Tutorial</string>
+    <string name="home_start_button">Inicio Rápido</string>
+    <string name="home_upgrade_pro">Actualizar a Pro</string>
+    <string name="home_version_info">v1.0.2 - Acerca de esta App</string>
+    <string name="home_car_image_description">Ilustración de automóvil rebotando</string>
+    <string name="home_codes_documents">Codigos y Documentos</string>
+    <string name="home_scan_a_device">Escanear nuevo dispositivo</string>
+    <string name="home_last_devices">Conectarse al último dispositivo:</string>
+    <string name="bluetooth_connect_to_a_device">Conectarse a un dispositivo</string>
+    <string name="bluetooth_connection_error">Error de conexión</string>
+    <string name="bluetooth_paired_devices">Dispositivos vinculados</string>
+    <string name="bluetooth_scanned_devices">Dispositivos escaneados</string>
+    <string name="codes_and_documents_title">Códigos y Documentos</string>
+    <string name="app_tutorial_title">Tutorial de la aplicación</string>
+    <string name="tutorial_step">Paso %1$d:</string>
+    <string name="rc_controller_settings_title">Ajustes del mando de RC</string>
+    <string name="rc_controller_settings_screen_style">Estilo de pantalla RC</string>
+    <string name="rc_controller_settings_joystick_settings">Configuración del joystick</string>
+    <string name="rc_controller_settings_initial_switch_positions">Posiciones iniciales de los interruptores</string>
+    <string name="rc_controller_settings_initial_knob_values">Valores iniciales de las perillas</string>
+    <string name="rc_controller_settings_left_stick">Joystick izquierdo</string>
+    <string name="rc_controller_settings_right_stick">Joystick derecho</string>
+    <string name="rc_controller_settings_left_knob">Perilla Izquierda</string>
+    <string name="rc_controller_settings_right_knob">Perilla Derecha</string>
+    <string name="rc_controller_settings_ui_style">Estilo de IU</string>
+    <string name="rc_controller_settings_screen_3d">Pantalla 3D</string>
+    <string name="rc_controller_settings_screen_led">Pantalla LED</string>
+    <!-- SplashScreen Strings -->
+    <string name="splash_title">RC - EMISOR</string>
+    <string name="splash_logo_content_description">Logo de la pantalla de inicio</string>
+    <string name="splash_get_started">Comenzar</string>
+    <string name="splash_subtitle">Controla tus proyectos en un solo lugar.</string>
+</resources>

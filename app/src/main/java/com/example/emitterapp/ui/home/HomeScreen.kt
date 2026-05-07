@@ -110,7 +110,7 @@ fun HomeScreen(
         ),
         HomeItem(
             Icons.Default.Code,
-            "Codes",
+            stringResource(R.string.home_codes_documents),
             Screen.Codes.route,
             null,
             ""
@@ -321,13 +321,13 @@ private fun HomeSecondaryContent(
                 Spacer(modifier = Modifier.height(4.dp))
                 if (lastDeviceName != null) {
                     Text(
-                        text = "Connect to the last device: $lastDeviceName",
+                        text = stringResource(R.string.home_upgrade_pro) + lastDeviceName,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
                 } else {
                     Text(
-                        text = "Scan a device",
+                        text = stringResource(R.string.home_scan_a_device),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
