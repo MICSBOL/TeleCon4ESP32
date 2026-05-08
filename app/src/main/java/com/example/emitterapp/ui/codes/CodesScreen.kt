@@ -65,6 +65,7 @@ import java.io.File
 import java.io.FileOutputStream
 import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 private data class PdfInfo(
     val title: String,
@@ -72,7 +73,7 @@ private data class PdfInfo(
     val assetFileName: String
 )
 
-private val availablePdfs = listOf(
+private val availablePdfs_eng = listOf(
     PdfInfo(
         title = "ESP32",
         icon = Icons.Default.Memory,
@@ -92,6 +93,39 @@ private val availablePdfs = listOf(
         title = "ESP32_ES",
         icon = Icons.Default.Code,
         assetFileName = "ESP32_C_Documentation_ES.pdf"
+    ),
+    PdfInfo(
+        title = "FAST_GUIDE_ENG",
+        icon = Icons.Default.Code,
+        assetFileName = "fast_guide_eng.pdf"
+    )
+)
+
+private val availablePdfs_esp = listOf(
+    PdfInfo(
+        title = "ESP32",
+        icon = Icons.Default.Memory,
+        assetFileName = "SecondDocumentation.pdf"
+    ),
+    PdfInfo(
+        title = "Kotlin Notes",
+        icon = Icons.Default.Code,
+        assetFileName = "FirstDocumentation.pdf"
+    ),
+    PdfInfo(
+        title = "ESP32_EN",
+        icon = Icons.Default.Memory,
+        assetFileName = "C_arduino_documentation.pdf"
+    ),
+    PdfInfo(
+        title = "ESP32_ES",
+        icon = Icons.Default.Code,
+        assetFileName = "ESP32_C_Documentation_ES.pdf"
+    ),
+    PdfInfo(
+        title = "FAST_GUIDE_ESP",
+        icon = Icons.Default.Code,
+        assetFileName = "fast_guide_esp.pdf"
     )
 )
 
@@ -118,6 +152,10 @@ fun CodesScreen() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PdfGrid(onPdfClick: (String) -> Unit) {
+    // Determine which PDF list to use based on system language
+    val currentLanguage = Locale.getDefault().language
+    val availablePdfs = if (currentLanguage == "es") availablePdfs_esp else availablePdfs_eng
+    
     Scaffold(
         topBar = {
             TopAppBar(
