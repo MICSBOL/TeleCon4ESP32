@@ -1,0 +1,31 @@
+---
+description: EmitterApp Android/Kotlin working conventions and architecture
+alwaysApply: true
+---
+
+# EmitterApp conventions
+
+## Structure and scope
+
+- Preserve the current package layout; do not move files unless the user asks.
+- Keep changes minimal: only what the task requires; no drive-by refactors or unrelated edits.
+
+## Architecture
+
+- Follow existing patterns: Compose + ViewModel for UI; `domain` interfaces and models; `data` for repository implementations; use cases where the feature already uses them.
+- Prefer extending or modifying existing functions over duplicating logic or adding parallel helpers.
+- Before proposing edits, read related files in the same package for naming, types, and style.
+
+## Kotlin and Compose
+
+- Match surrounding import style, abstraction level, and documentation density.
+- Comments: concise, English only; do not remove existing comments; avoid obvious docstrings.
+
+## Strings and localization
+
+- User-visible text belongs in resources, not hardcoded in Kotlin.
+- Add or update keys in [app/src/main/res/values/strings.xml](app/src/main/res/values/strings.xml) and [app/src/main/res/values-es/strings.xml](app/src/main/res/values-es/strings.xml) together with matching keys.
+
+## When the task is unclear
+
+- If there is no concrete feature, bug, or refactor target, ask the user to specify the desired outcome before large changes.

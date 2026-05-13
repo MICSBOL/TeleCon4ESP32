@@ -3,6 +3,7 @@ package com.example.emitterapp.ui.codes
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,11 +38,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okio.IOException
@@ -69,76 +74,94 @@ import com.example.emitterapp.R
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private data class PdfInfo(
-    val title: String,
+private const val ESP32_BT_CONTROLLER_ZIP = "ESP32_BT_Controller-main.zip"
+
+private enum class CodeAssetType {
+    Pdf,
+    Zip
+}
+
+private data class CodeAssetInfo(
+    @StringRes val titleRes: Int,
     val icon: ImageVector,
-    val assetFileName: String
+    val assetFileName: String,
+    val type: CodeAssetType,
+    val outputFileName: String = assetFileName
 )
 
-private val availablePdfs_eng = listOf(
-    PdfInfo(
-        title = "ESP32",
-        icon = Icons.Default.Memory,
-        assetFileName = "SecondDocumentation.pdf"
-    ),
-    PdfInfo(
-        title = "Kotlin Notes",
-        icon = Icons.Default.Code,
-        assetFileName = "FirstDocumentation.pdf"
-    ),
-    PdfInfo(
-        title = "ESP32_EN",
-        icon = Icons.Default.Memory,
-        assetFileName = "C_arduino_documentation.pdf"
-    ),
-    PdfInfo(
-        title = "ESP32_ES",
-        icon = Icons.Default.Code,
-        assetFileName = "ESP32_C_Documentation_ES.pdf"
-    ),
-    PdfInfo(
-        title = "FAST_GUIDE_ENG",
-        icon = Icons.Default.Code,
-        assetFileName = "fast_guide_eng.pdf"
-    )
-)
+private fun availableCodeAssets(language: String): List<CodeAssetInfo> {
+    val fastGuide = if (language == "es") {
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_fast_guide_esp,
+            icon = Icons.Default.Code,
+            assetFileName = "fast_guide_esp.pdf",
+            type = CodeAssetType.Pdf
+        )
+    } else {
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_fast_guide_eng,
+            icon = Icons.Default.Code,
+            assetFileName = "fast_guide_eng.pdf",
+            type = CodeAssetType.Pdf
+        )
+    }
 
-private val availablePdfs_esp = listOf(
-    PdfInfo(
-        title = "ESP32",
-        icon = Icons.Default.Memory,
-        assetFileName = "SecondDocumentation.pdf"
-    ),
-    PdfInfo(
-        title = "Kotlin Notes",
-        icon = Icons.Default.Code,
-        assetFileName = "FirstDocumentation.pdf"
-    ),
-    PdfInfo(
-        title = "ESP32_EN",
-        icon = Icons.Default.Memory,
-        assetFileName = "C_arduino_documentation.pdf"
-    ),
-    PdfInfo(
-        title = "ESP32_ES",
-        icon = Icons.Default.Code,
-        assetFileName = "ESP32_C_Documentation_ES.pdf"
-    ),
-    PdfInfo(
-        title = "FAST_GUIDE_ESP",
-        icon = Icons.Default.Code,
-        assetFileName = "fast_guide_esp.pdf"
+    return listOf(
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_esp32,
+            icon = Icons.Default.Memory,
+            assetFileName = "SecondDocumentation.pdf",
+            type = CodeAssetType.Pdf
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_kotlin_notes,
+            icon = Icons.Default.Code,
+            assetFileName = "FirstDocumentation.pdf",
+            type = CodeAssetType.Pdf
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_esp32_en,
+            icon = Icons.Default.Memory,
+            assetFileName = "C_arduino_documentation.pdf",
+            type = CodeAssetType.Pdf
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_esp32_es,
+            icon = Icons.Default.Code,
+            assetFileName = "ESP32_C_Documentation_ES.pdf",
+            type = CodeAssetType.Pdf
+        ),
+        fastGuide,
+        CodeAssetInfo(
+            titleRes = R.string.codes_esp32_bt_controller_zip,
+            icon = Icons.Default.Code,
+            assetFileName = ESP32_BT_CONTROLLER_ZIP,
+            type = CodeAssetType.Zip
+        )
     )
-)
+}
 
 @Composable
-fun CodesScreen() {
+fun CodesScreen(
+    viewModel: CodesViewModel = hiltViewModel()
+) {
     var selectedPdf by remember { mutableStateOf<String?>(null) }
+    val uiState by viewModel.uiState.collectAsState()
 
     if (selectedPdf == null) {
-        PdfGrid(
-            onPdfClick = { fileName ->
-                selectedPdf = fileName
+        CodeAssetGrid(
+            uiState = uiState,
+            onAssetClick = { asset ->
+                when (asset.type) {
+                    CodeAssetType.Pdf -> selectedPdf = asset.assetFileName
+                    CodeAssetType.Zip -> viewModel.saveZipAsset(
+                        assetFileName = asset.assetFileName,
+                        outputFileName = asset.outputFileName
+                    )
+                }
+            },
+            onDismissSaveError = {
+                viewModel.dismissSaveError()
             }
         )
     } else {
@@ -153,11 +176,34 @@ fun CodesScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PdfGrid(onPdfClick: (String) -> Unit) {
-    // Determine which PDF list to use based on system language
+private fun CodeAssetGrid(
+    uiState: CodesUiState,
+    onAssetClick: (CodeAssetInfo) -> Unit,
+    onDismissSaveError: () -> Unit
+) {
     val currentLanguage = Locale.getDefault().language
-    val availablePdfs = if (currentLanguage == "es") availablePdfs_esp else availablePdfs_eng
-    
+    val availableAssets = remember(currentLanguage) { availableCodeAssets(currentLanguage) }
+
+    if (uiState.saveError != null) {
+        AlertDialog(
+            onDismissRequest = onDismissSaveError,
+            title = { Text(stringResource(R.string.codes_zip_save_error_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.codes_zip_save_error_details,
+                        uiState.saveError
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onDismissSaveError) {
+                    Text(stringResource(R.string.codes_dialog_ok))
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -170,26 +216,56 @@ private fun PdfGrid(onPdfClick: (String) -> Unit) {
         }
     ) { paddingValues ->
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 140.dp),
+            columns = GridCells.Adaptive(minSize = 160.dp),
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(availablePdfs) { pdf ->
-                PdfGridItem(pdfInfo = pdf, onClick = { onPdfClick(pdf.assetFileName) })
+            items(availableAssets) { asset ->
+                val zipMessage = when {
+                    asset.type != CodeAssetType.Zip -> null
+                    uiState.isSavingZip -> stringResource(
+                        R.string.codes_zip_saving_message,
+                        asset.outputFileName
+                    )
+                    uiState.savedZipLocation != null -> stringResource(
+                        R.string.codes_zip_saved_message,
+                        asset.outputFileName,
+                        uiState.savedZipLocation
+                    )
+                    else -> stringResource(
+                        R.string.codes_zip_download_prompt,
+                        asset.outputFileName
+                    )
+                }
+
+                CodeAssetGridItem(
+                    assetInfo = asset,
+                    supportingText = zipMessage,
+                    isLoading = asset.type == CodeAssetType.Zip && uiState.isSavingZip,
+                    onClick = { onAssetClick(asset) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PdfGridItem(pdfInfo: PdfInfo, onClick: () -> Unit) {
+private fun CodeAssetGridItem(
+    assetInfo: CodeAssetInfo,
+    supportingText: String?,
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    val title = stringResource(assetInfo.titleRes)
+
     Card(
         modifier = Modifier
-            .aspectRatio(1f)
-            .clickable(onClick = onClick),
+            .fillMaxWidth()
+            .height(190.dp)
+            .clickable(enabled = !isLoading, onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -199,18 +275,30 @@ private fun PdfGridItem(pdfInfo: PdfInfo, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = pdfInfo.icon,
-                contentDescription = pdfInfo.title,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(48.dp))
+            } else {
+                Icon(
+                    imageVector = assetInfo.icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = pdfInfo.title,
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center
             )
+            if (supportingText != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = supportingText,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
