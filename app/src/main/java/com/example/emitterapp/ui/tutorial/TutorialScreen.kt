@@ -1,10 +1,12 @@
 package com.example.emitterapp.ui.tutorial
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,22 +40,90 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
-import coil.ImageLoader
-import coil.compose.AsyncImage
 import com.example.emitterapp.R
-import coil.decode.ImageDecoderDecoder
-import coil.decode.GifDecoder
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 
+/** Portrait tutorial clips are authored around this size; keeps letterboxing consistent in the card. */
+private const val TUTORIAL_VIDEO_ASPECT_WIDTH = 412f
+private const val TUTORIAL_VIDEO_ASPECT_HEIGHT = 915f
+
+/**
+ * Placeholder MP4 for every tutorial step until step-specific files exist.
+ * Add the file at: app/src/main/assets/videos/testvideo.mp4
+ */
+const val TUTORIAL_PLACEHOLDER_VIDEO_ASSET = "videos/testvideo.mp4"
+const val TUTORIAL_PLACEHOLDER_VIDEO_ASSET_01 = "videos/testvideo_01.mp4"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorialScreen(navController: NavController) {
     val tutorialSteps = listOf(
-        TutorialStep(stringResource(R.string.tutorial_step,1) + "The Joysticks", "Description...", R.drawable.tutorial_01),
-        TutorialStep(stringResource(R.string.tutorial_step,2) + "The Switches", "Description...", R.drawable.tutorial_02),
-        TutorialStep(stringResource(R.string.tutorial_step,3) + "The Knobs", "Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...Description...", R.drawable.tutorial_03)
-        // ...
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 1) + " " + stringResource(R.string.tutorial_home_step_title),
+            stringResource(R.string.tutorial_home_step_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 2) + " " + stringResource(R.string.tutorial_codes_step_title),
+            stringResource(R.string.tutorial_codes_step_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET_01
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 3) + " " + stringResource(R.string.tutorial_bluetooth_step_title),
+            stringResource(R.string.tutorial_bluetooth_step_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 4) + " " + stringResource(R.string.tutorial_settings_step_title),
+            stringResource(R.string.tutorial_settings_step_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 5) + " " + stringResource(R.string.tutorial_rc_overview_title),
+            stringResource(R.string.tutorial_rc_overview_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 6) + " " + stringResource(R.string.tutorial_rc_left_stick_title),
+            stringResource(R.string.tutorial_rc_left_stick_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 7) + " " + stringResource(R.string.tutorial_rc_right_stick_title),
+            stringResource(R.string.tutorial_rc_right_stick_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 8) + " " + stringResource(R.string.tutorial_rc_left_knob_title),
+            stringResource(R.string.tutorial_rc_left_knob_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 9) + " " + stringResource(R.string.tutorial_rc_right_knob_title),
+            stringResource(R.string.tutorial_rc_right_knob_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 10) + " " + stringResource(R.string.tutorial_rc_left_switches_title),
+            stringResource(R.string.tutorial_rc_left_switches_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 11) + " " + stringResource(R.string.tutorial_rc_right_switches_title),
+            stringResource(R.string.tutorial_rc_right_switches_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        ),
+        TutorialStep(
+            stringResource(R.string.tutorial_step, 12) + " " + stringResource(R.string.tutorial_rc_button_events_title),
+            stringResource(R.string.tutorial_rc_button_events_description),
+            TUTORIAL_PLACEHOLDER_VIDEO_ASSET
+        )
     )
     val pagerState = rememberPagerState(pageCount = { tutorialSteps.size })
 
@@ -86,7 +157,7 @@ fun TutorialScreen(navController: NavController) {
 
             Row(
                 Modifier
-                    .height(50.dp)
+                    .height(40.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -112,46 +183,45 @@ fun TutorialScreen(navController: NavController) {
 
 @Composable
 fun TutorialPage(step: TutorialStep) {
-    val imageLoader = ImageLoader.Builder(LocalContext.current)
-        .components {
-            if (android.os.Build.VERSION.SDK_INT >= 28) {
-                add(ImageDecoderDecoder.Factory())
-            } else {
-                add(GifDecoder.Factory())
-            }
-        }
-        .build()
-
     Card(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp, vertical = 32.dp),
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp)
+        ,
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(), // Fill the card
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = step.title,
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp)
+                modifier = Modifier.padding(top = 16.dp, start = 16.dp, end = 16.dp)
             )
 
-            AsyncImage(
-                model = step.animationResId,
-                contentDescription = "Tutorial Animation",
-                imageLoader = imageLoader,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.75f)
-            )
+                    .padding(horizontal = 16.dp)
+                    .weight(0.65f),
+                contentAlignment = Alignment.Center
+            ) {
+                TutorialVideoPlayer(
+                    assetPath = step.videoAssetPath,
+                    contentDescription = step.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(TUTORIAL_VIDEO_ASPECT_WIDTH / TUTORIAL_VIDEO_ASPECT_HEIGHT)
+                )
+            }
 
             Column(
                 modifier = Modifier
-                    .weight(0.25f)
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                    .weight(0.35f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -171,10 +241,51 @@ fun TutorialPage(step: TutorialStep) {
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun TutorialVideoPlayer(
+    assetPath: String,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val uri = remember(assetPath) {
+        Uri.parse("file:///android_asset/$assetPath")
+    }
+    val player = remember(uri) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(uri))
+            repeatMode = Player.REPEAT_MODE_ALL
+            prepare()
+            playWhenReady = true
+        }
+    }
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                this.player = player
+                this.contentDescription = contentDescription
+                useController = true
+                setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+            }
+        },
+        modifier = modifier,
+        onRelease = { view ->
+            val playerView = view as PlayerView
+            playerView.player?.release()
+            playerView.player = null
+        }
+    )
+}
+
 data class TutorialStep(
     val title: String,
     val description: String,
-    val animationResId: Int
+    /**
+     * Path to an MP4 under `app/src/main/assets/` (e.g. `videos/testvideo.mp4`).
+     * Clips are expected around 412x915 portrait for this layout.
+     */
+    val videoAssetPath: String
 )
 
 @Preview(showSystemUi = true)
@@ -185,7 +296,7 @@ fun TutorialPagePreview() {
             step = TutorialStep(
                 title = "Step 1: The Joysticks",
                 description = "Description...",
-                animationResId = R.drawable.tutorial_01
+                videoAssetPath = TUTORIAL_PLACEHOLDER_VIDEO_ASSET
             )
         )
     }
