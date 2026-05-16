@@ -18,6 +18,10 @@ class CodesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CodesUiState())
     val uiState = _uiState.asStateFlow()
 
+    /**
+     * Copies the ZIP from assets into public Downloads (or app storage on older Android versions).
+     * For sharing via email or messaging, the UI uses a separate send flow.
+     */
     fun saveZipAsset(assetFileName: String, outputFileName: String) {
         if (_uiState.value.isSavingZip) return
 

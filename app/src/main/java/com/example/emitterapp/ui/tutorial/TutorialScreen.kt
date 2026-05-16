@@ -59,7 +59,7 @@ private const val TUTORIAL_VIDEO_ASPECT_HEIGHT = 915f
  * Add the file at: app/src/main/assets/videos/testvideo.mp4
  */
 const val TUTORIAL_PLACEHOLDER_VIDEO_ASSET = "videos/testvideo.mp4"
-const val TUTORIAL_PLACEHOLDER_VIDEO_ASSET_01 = "videos/testvideo_01.mp4"
+const val TUTORIAL_PLACEHOLDER_VIDEO_ASSET_01 = "videos/video_step1.mp4"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorialScreen(navController: NavController) {
