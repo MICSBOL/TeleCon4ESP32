@@ -1,6 +1,9 @@
 package com.example.emitterapp.ui.bluetooth
 import app.cash.turbine.test
 import com.example.emitterapp.domain.bluetooth.ConnectionResult
+import com.example.emitterapp.domain.model.JoystickMode
+import com.example.emitterapp.domain.model.UserSettings
+import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import com.example.emitterapp.domain.use_case.GetLastDeviceUseCase
 import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
 import com.example.emitterapp.domain.use_case.SaveLastDeviceUseCase
@@ -9,6 +12,9 @@ import com.example.emitterapp.util.FakeRemoteDevice
 import com.example.emitterapp.util.FakeSettingsRepository
 import com.example.emitterapp.util.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -195,6 +201,72 @@ class BluetoothViewModelTest {
         viewModel.onRightKnobChanged(0.1f)
         assertEquals(0.1f, viewModel.rcControlState.value.rightKnobValue)
     }
+
+    @Test
+    fun `init applies persisted settings on cold start`() = runTest {
+        fakeSettings.setSettings(
+            UserSettings(
+                leftStickMode = JoystickMode.Hold(JoystickMode.LEFT),
+                leftKnobInitialValue = 0.75f,
+                switchInitialStates = (0..5).associateWith { false }
+            )
+        )
+        val coldStartViewModel = BluetoothViewModel(
+            remoteController = fakeController,
+            getUserSettings = GetUserSettingsUseCase(fakeSettings),
+            getLastDevice = GetLastDeviceUseCase(fakeSettings),
+            saveLastDevice = SaveLastDeviceUseCase(fakeSettings),
+        )
+        val collectJob = launch { coldStartViewModel.userSettings.collect { } }
+
+        coldStartViewModel.userSettings
+            .filterIsInstance<SettingsUiState.Success>()
+            .first { it.settings.leftKnobInitialValue == 0.75f }
+
+        val rc = coldStartViewModel.rcControlState.value
+        assertEquals(-1f, rc.leftStickPosition.first, 0.001f)
+        assertEquals(0.75f, rc.leftKnobValue)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun `onRcScreenEntered applies settings only when they changed`() = runTest {
+        val collectJob = launch { viewModel.userSettings.collect { } }
+
+        viewModel.onLeftStickChanged(0.9f, 0.9f)
+        viewModel.onLeftKnobChanged(0.1f)
+        viewModel.onLeftSwitchChanged(0, true)
+
+        fakeSettings.setSettings(
+            UserSettings(
+                leftStickMode = JoystickMode.Hold(JoystickMode.LEFT),
+                leftKnobInitialValue = 0.75f,
+                switchInitialStates = (0..5).associateWith { false }
+            )
+        )
+        viewModel.userSettings
+            .filterIsInstance<SettingsUiState.Success>()
+            .first { it.settings.leftKnobInitialValue == 0.75f }
+
+        viewModel.onRcScreenEntered()
+
+        val afterApply = viewModel.rcControlState.value
+        assertEquals(-1f, afterApply.leftStickPosition.first, 0.001f)
+        assertEquals(0f, afterApply.leftStickPosition.second, 0.001f)
+        assertEquals(0.75f, afterApply.leftKnobValue)
+        assertFalse(afterApply.leftSwitches[0])
+
+        viewModel.onLeftStickChanged(0.2f, 0.3f)
+        viewModel.onRcScreenEntered()
+
+        val afterReturn = viewModel.rcControlState.value
+        assertEquals(0.2f, afterReturn.leftStickPosition.first, 0.001f)
+        assertEquals(0.3f, afterReturn.leftStickPosition.second, 0.001f)
+
+        collectJob.cancel()
+    }
+
     // ── Quick connect ─────────────────────────────────────────────────────────
     @Test
     fun `quickConnect navigates to bluetooth screen when no last device is saved`() = runTest {

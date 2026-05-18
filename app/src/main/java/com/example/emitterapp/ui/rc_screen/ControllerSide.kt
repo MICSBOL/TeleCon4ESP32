@@ -65,6 +65,8 @@ fun ControllerSide(
     modifier: Modifier = Modifier,
     side: ButtonSide,
     mode: JoystickMode,
+    stickPosition: Pair<Float, Float>,
+    settingsSyncGeneration: Int = 0,
     onMove: (x: Float, y: Float) -> Unit,
     // @Stable SwitchStates instead of List<Boolean> — allows Compose to skip this composable
     switchStates: SwitchStates,
@@ -176,6 +178,8 @@ fun ControllerSide(
                     )
                     .fillMaxSize(),
                 mode = mode,
+                stickPosition = stickPosition,
+                settingsSyncGeneration = settingsSyncGeneration,
                 onMove = onMove
             )
 
@@ -248,6 +252,7 @@ fun ControllerSideLeftPreview() {
     ControllerSide(
         side = ButtonSide.LEFT,
         mode = JoystickMode.Spring(),
+        stickPosition = Pair(0f, 0f),
         onMove = { _, _ -> },
         switchStates = SwitchStates(false, false, false),
         onSwitchStateChange = { _, _ -> },
@@ -273,6 +278,7 @@ fun ControllerSideRightPreview() {
     ControllerSide(
         side = ButtonSide.RIGHT,
         mode = JoystickMode.Spring(),
+        stickPosition = Pair(0f, 0f),
         onMove = { _, _ -> },
         switchStates = SwitchStates(false, false, false),
         onSwitchStateChange = { _, _ -> },

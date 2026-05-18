@@ -45,6 +45,8 @@ import kotlin.math.sin
 fun StickLedStyle(
 	modifier: Modifier = Modifier,
 	mode: JoystickMode = JoystickMode.Spring(),
+	stickPosition: Pair<Float, Float> = Pair(0f, 0f),
+	settingsSyncGeneration: Int = 0,
 	onMove: (x: Float, y: Float) -> Unit
 ) {
 	val initialNormalized = remember(mode) {
@@ -62,7 +64,10 @@ fun StickLedStyle(
 		)
 	}
 
-	val stickPosition = remember { Animatable(initialNormalized, Offset.VectorConverter) }
+	val targetOffset = Offset(stickPosition.first, stickPosition.second)
+	val stickAnim = remember(settingsSyncGeneration) {
+		Animatable(targetOffset, Offset.VectorConverter)
+	}
 	val scope = rememberCoroutineScope()
 	var releaseJob by remember { mutableStateOf<Job?>(null) }
 
@@ -73,10 +78,9 @@ fun StickLedStyle(
 	val context = LocalContext.current
 	val vibrator = remember { context.resolveVibrator() }
 
-	LaunchedEffect(mode) {
+	LaunchedEffect(settingsSyncGeneration) {
 		releaseJob?.cancel()
-		stickPosition.snapTo(initialNormalized)
-		onMove(initialNormalized.x, initialNormalized.y)
+		stickAnim.snapTo(Offset(stickPosition.first, stickPosition.second))
 	}
 
 	fun normalizedToVector(normalized: Offset): Offset {
@@ -113,7 +117,7 @@ fun StickLedStyle(
 				awaitPointerEventScope {
 					while (true) {
 						val down = awaitFirstDown()
-						val currentStickCenter = center + normalizedToVector(stickPosition.value)
+						val currentStickCenter = center + normalizedToVector(stickAnim.value)
 						val distanceToStick = (down.position - currentStickCenter).getDistance()
 
 						// Ignore touches far from the handle to feel like a real gimbal.
@@ -134,7 +138,7 @@ fun StickLedStyle(
 									is JoystickMode.HorizontalSpring -> {
 										vibrator?.vibrateTick()
 										releaseJob = scope.launch {
-											stickPosition.animateTo(
+											stickAnim.animateTo(
 												targetValue = initialNormalized,
 												animationSpec = spring(
 													dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -147,7 +151,7 @@ fun StickLedStyle(
 									}
 
 									else -> {
-										onMove(stickPosition.value.x, stickPosition.value.y)
+										onMove(stickAnim.value.x, stickAnim.value.y)
 									}
 								}
 								break
@@ -169,7 +173,7 @@ fun StickLedStyle(
 							val normalized = vectorToNormalized(constrained)
 
 							scope.launch {
-								stickPosition.snapTo(normalized)
+								stickAnim.snapTo(normalized)
 							}
 							onMove(normalized.x, normalized.y)
 							change.consume()
@@ -211,7 +215,7 @@ fun StickLedStyle(
 				coreStroke = 2f
 			)
 
-			val normalized = stickPosition.value
+			val normalized = stickAnim.value
 			val stickCenter = center + normalizedToVector(normalized)
 
 			drawGlowLine(

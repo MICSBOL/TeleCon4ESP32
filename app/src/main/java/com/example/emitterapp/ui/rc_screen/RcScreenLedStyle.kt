@@ -71,11 +71,6 @@ fun RcScreenLedStyle(
     val backCallback = remember {
         { navController?.popBackStack(Screen.Home.route, inclusive = false) }
     }
-    DisposableEffect(actualViewModel) {
-        actualViewModel?.startSendingRcData()
-        onDispose { actualViewModel?.stopSendingRcData() }
-    }
-
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         val activity = context as? ComponentActivity ?: return@LaunchedEffect
@@ -88,11 +83,21 @@ fun RcScreenLedStyle(
     val collectedTelemetryState by actualTelemetryState.collectAsState()
     val collectedUserSettings by actualUserSettings.collectAsState()
     val collectedRcControlState by actualRcControlState.collectAsState()
+    val settingsSyncGeneration by (bluetoothViewModel?.rcSettingsSyncGeneration
+        ?: MutableStateFlow(0)).collectAsState()
 
     when (val state = collectedUserSettings) {
         is SettingsUiState.Loading -> CircularProgressIndicator()
         is SettingsUiState.Error   -> Text("Error: ${state.message}")
         is SettingsUiState.Success -> {
+            LaunchedEffect(actualViewModel, state.settings) {
+                actualViewModel?.onRcScreenEntered()
+            }
+
+            DisposableEffect(actualViewModel) {
+                onDispose { actualViewModel?.stopSendingRcData() }
+            }
+
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
@@ -145,6 +150,12 @@ fun RcScreenLedStyle(
                 val rightKnobValue by remember {
                     derivedStateOf { collectedRcControlState.rightKnobValue }
                 }
+                val leftStickPosition by remember {
+                    derivedStateOf { collectedRcControlState.leftStickPosition }
+                }
+                val rightStickPosition by remember {
+                    derivedStateOf { collectedRcControlState.rightStickPosition }
+                }
 
                 // ── LED-style top-extra lambdas ───────────────────────────────────
                 val analogValueState  = rememberUpdatedState(collectedTelemetryState.indicatorState.analogValue)
@@ -189,6 +200,8 @@ fun RcScreenLedStyle(
                             side               = ButtonSide.LEFT,
                             aspectRatio        = screenAspectRatio,
                             mode               = state.settings.leftStickMode,
+                            stickPosition      = leftStickPosition,
+                            settingsSyncGeneration = settingsSyncGeneration,
                             onMove             = onLeftMove,
                             switchStates       = leftSwitches,
                             onSwitchStateChange = onLeftSwitchChange,
@@ -209,6 +222,8 @@ fun RcScreenLedStyle(
                             side               = ButtonSide.RIGHT,
                             aspectRatio        = screenAspectRatio,
                             mode               = state.settings.rightStickMode,
+                            stickPosition      = rightStickPosition,
+                            settingsSyncGeneration = settingsSyncGeneration,
                             onMove             = onRightMove,
                             switchStates       = rightSwitches,
                             onSwitchStateChange = onRightSwitchChange,

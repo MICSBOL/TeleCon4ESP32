@@ -86,40 +86,65 @@ open class BluetoothViewModel @Inject constructor(
     private var deviceConnectionJob: Job? = null
     private var sendingJob: Job? = null
 
+    /** Snapshot of settings last written to [rcControlState]. */
+    private var lastAppliedSettings: UserSettings? = null
+
+    private val _rcSettingsSyncGeneration = MutableStateFlow(0)
+    val rcSettingsSyncGeneration: StateFlow<Int> = _rcSettingsSyncGeneration
+
     init {
         viewModelScope.launch {
-            val initialSettings = userSettings
+            val settings = userSettings
                 .filterIsInstance<SettingsUiState.Success>()
                 .first()
                 .settings
-
-            if (_rcControlState.value == RcControlState()) {
-                fun toNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
-                    val x = (pos.first - 6) / 6f
-                    val y = (pos.second - 6) / -6f
-                    return Pair(x, y)
-                }
-                Log.d("BluetoothViewModel", "Applying initial saved settings to pristine RcControlState.")
-                _rcControlState.update {
-                    it.copy(
-                        leftStickPosition = toNormalized(initialSettings.leftStickMode.initialPosition),
-                        rightStickPosition = toNormalized(initialSettings.rightStickMode.initialPosition),
-                        leftKnobValue = initialSettings.leftKnobInitialValue,
-                        rightKnobValue = initialSettings.rightKnobInitialValue,
-                        leftSwitches = listOf(
-                            initialSettings.switchInitialStates[0] ?: false,
-                            initialSettings.switchInitialStates[1] ?: false,
-                            initialSettings.switchInitialStates[2] ?: false
-                        ),
-                        rightSwitches = listOf(
-                            initialSettings.switchInitialStates[3] ?: false,
-                            initialSettings.switchInitialStates[4] ?: false,
-                            initialSettings.switchInitialStates[5] ?: false
-                        )
-                    )
-                }
-            }
+            applySettingsIfChanged(settings)
         }
+    }
+
+    /**
+     * Called when an RC screen is shown. Applies [UserSettings] after a cold start or when
+     * RcSettings changed; otherwise keeps the last in-session [rcControlState].
+     */
+    fun onRcScreenEntered() {
+        val settings = (userSettings.value as? SettingsUiState.Success)?.settings ?: return
+        applySettingsIfChanged(settings)
+        startSendingRcData()
+    }
+
+    private fun applySettingsIfChanged(settings: UserSettings) {
+        if (settings == lastAppliedSettings) return
+        applySettingsToRcControl(settings)
+        lastAppliedSettings = settings
+        _rcSettingsSyncGeneration.update { it + 1 }
+    }
+
+    private fun applySettingsToRcControl(settings: UserSettings) {
+        Log.d("BluetoothViewModel", "Applying saved settings to RcControlState.")
+        _rcControlState.update {
+            it.copy(
+                leftStickPosition = gridPositionToNormalized(settings.leftStickMode.initialPosition),
+                rightStickPosition = gridPositionToNormalized(settings.rightStickMode.initialPosition),
+                leftKnobValue = settings.leftKnobInitialValue,
+                rightKnobValue = settings.rightKnobInitialValue,
+                leftSwitches = listOf(
+                    settings.switchInitialStates[0] ?: false,
+                    settings.switchInitialStates[1] ?: false,
+                    settings.switchInitialStates[2] ?: false
+                ),
+                rightSwitches = listOf(
+                    settings.switchInitialStates[3] ?: false,
+                    settings.switchInitialStates[4] ?: false,
+                    settings.switchInitialStates[5] ?: false
+                )
+            )
+        }
+    }
+
+    private fun gridPositionToNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
+        val x = (pos.first - 6) / 6f
+        val y = (pos.second - 6) / -6f
+        return Pair(x, y)
     }
 
     fun startSendingRcData() {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,10 +63,18 @@ import kotlin.math.sqrt
  *             Defaults to a standard spring-loaded joystick centered at (6, 6).
  */
 
+private fun normalizedStickToFrame(x: Float, y: Float): Int {
+    val gridX = ((x * 6f) + 6f).roundToInt().coerceIn(0, 12)
+    val gridY = (((-y) * 6f) + 6f).roundToInt().coerceIn(0, 12)
+    return gridY * 13 + gridX
+}
+
 @Composable
 fun Joystick_RC3D(
     modifier: Modifier = Modifier,
     mode: JoystickMode = JoystickMode.Spring(),
+    stickPosition: Pair<Float, Float> = Pair(0f, 0f),
+    settingsSyncGeneration: Int = 0,
     onMove: (x: Float, y: Float) -> Unit
 ) {
     val frames = remember {
@@ -110,7 +119,13 @@ fun Joystick_RC3D(
         clampedY * 13 + clampedX
     }
 
-    var frame by remember { mutableStateOf(initialFrame) }
+    var frame by remember(settingsSyncGeneration) {
+        mutableStateOf(normalizedStickToFrame(stickPosition.first, stickPosition.second))
+    }
+
+    LaunchedEffect(settingsSyncGeneration) {
+        frame = normalizedStickToFrame(stickPosition.first, stickPosition.second)
+    }
 
     var center by remember { mutableStateOf(Offset.Zero) }
     var dragRadius by remember { mutableStateOf(0f) }

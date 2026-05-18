@@ -39,6 +39,8 @@ fun ControllerSideLedStyle(
     modifier: Modifier = Modifier,
     side: ButtonSide,
     mode: JoystickMode,
+    stickPosition: Pair<Float, Float>,
+    settingsSyncGeneration: Int = 0,
     onMove: (x: Float, y: Float) -> Unit,
     switchStates: SwitchStates,
     onSwitchStateChange: (index: Int, isOn: Boolean) -> Unit,
@@ -154,6 +156,8 @@ fun ControllerSideLedStyle(
                     )
                     .fillMaxSize(),
                 mode = mode,
+                stickPosition = stickPosition,
+                settingsSyncGeneration = settingsSyncGeneration,
                 onMove = onMove
             )
 
@@ -260,6 +264,7 @@ private fun ControllerSideLedStyleLeftPreview() {
     ControllerSideLedStyle(
         side = ButtonSide.LEFT,
         mode = JoystickMode.Spring(),
+        stickPosition = Pair(0f, 0f),
         onMove = { _, _ -> },
         switchStates = SwitchStates(true, false, true),
         onSwitchStateChange = { _, _ -> },
@@ -284,6 +289,7 @@ private fun ControllerSideLedStyleRightPreview() {
     ControllerSideLedStyle(
         side = ButtonSide.RIGHT,
         mode = JoystickMode.Spring(),
+        stickPosition = Pair(0f, 0f),
         onMove = { _, _ -> },
         switchStates = SwitchStates(false, true, false),
         onSwitchStateChange = { _, _ -> },
