@@ -10,8 +10,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -19,7 +21,8 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.emitterapp.R
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun Switch3DButton(
@@ -37,8 +40,9 @@ fun Switch3DButton(
         )
     }
 
-    var frame by remember { mutableStateOf(if (isOn) frames.size - 1 else 0) }
+    var frame by remember { mutableStateOf(if (isOn) 0 else frames.lastIndex) }
     var isBusy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
     val isInPreview = LocalInspectionMode.current
@@ -51,20 +55,34 @@ fun Switch3DButton(
         onDispose { mediaPlayer?.release() }
     }
 
-    LaunchedEffect(isOn) {
+    suspend fun animateToTarget(targetOn: Boolean) {
+        if (isBusy) return
         isBusy = true
-        if (isOn) {
-            for (i in frames.size - 1 downTo 0) { frame = i; delay(5) }
-        } else {
-            for (i in 0 until frames.size) { frame = i; delay(5) }
+        val targetFrame = if (targetOn) 0 else frames.lastIndex
+        val startFrame = frame
+        if (startFrame != targetFrame) {
+            val frameMs = 5L
+            val totalMs = (kotlin.math.abs(targetFrame - startFrame) * frameMs).coerceAtLeast(frameMs)
+            val startTime = withFrameMillis { it }
+            while (true) {
+                val elapsed = withFrameMillis { it } - startTime
+                if (elapsed >= totalMs) break
+                val t = (elapsed.toFloat() / totalMs).coerceIn(0f, 1f)
+                frame = (startFrame + (targetFrame - startFrame) * t).roundToInt()
+            }
+            frame = targetFrame
         }
         isBusy = false
     }
 
-    // rememberUpdatedState: the gesture handler reads the latest isOn/isBusy/onStateChange
-    // without needing to restart (key stays Unit). Previously pointerInput(isBusy, isOn)
-    // caused the handler to restart up to 10 times per animation cycle.
-    val currentIsOn by rememberUpdatedState(isOn)
+    // External sync (e.g. settings apply) — skip while a local gesture animation runs.
+    LaunchedEffect(isOn) {
+        if (!isBusy) {
+            val targetFrame = if (isOn) 0 else frames.lastIndex
+            if (frame != targetFrame) animateToTarget(isOn)
+        }
+    }
+
     val currentIsBusy by rememberUpdatedState(isBusy)
     val currentOnStateChange by rememberUpdatedState(onStateChange)
 
@@ -73,16 +91,19 @@ fun Switch3DButton(
         contentDescription = if (isOn) "On" else "Off",
         modifier = modifier
             .size(70.dp)
-            .pointerInput(Unit) {    // Unit key: never restarts
+            .pointerInput(Unit) {
                 detectDragGestures { _, dragAmount ->
                     if (currentIsBusy) return@detectDragGestures
                     val verticalDrag = dragAmount.y
-                    if (verticalDrag > 3 && currentIsOn) {
+                    val currentlyOn = frame == 0
+                    if (verticalDrag > 3 && currentlyOn) {
                         mediaPlayer?.safeStart()
                         currentOnStateChange(false)
-                    } else if (verticalDrag < -3 && !currentIsOn) {
+                        scope.launch { animateToTarget(false) }
+                    } else if (verticalDrag < -3 && !currentlyOn) {
                         mediaPlayer?.safeStart()
                         currentOnStateChange(true)
+                        scope.launch { animateToTarget(true) }
                     }
                 }
             }

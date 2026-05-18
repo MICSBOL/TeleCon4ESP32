@@ -39,7 +39,12 @@ fun RealTimePlot(
 
     var canvasSize by remember { mutableStateOf(Size.Zero) }
 
-    val paths by remember(series, canvasSize) {
+    // Rebuild paths only when plot content changes, not on every new list instance.
+    val seriesSignature = remember(series) {
+        series.map { it.dataPoints.size to it.dataPoints.lastOrNull() }
+    }
+
+    val paths by remember(seriesSignature, canvasSize) {
         derivedStateOf {
             if (canvasSize == Size.Zero) {
                 emptyList()

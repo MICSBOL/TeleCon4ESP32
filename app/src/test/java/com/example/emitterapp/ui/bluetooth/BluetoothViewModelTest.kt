@@ -264,6 +264,7 @@ class BluetoothViewModelTest {
         assertEquals(0.2f, afterReturn.leftStickPosition.first, 0.001f)
         assertEquals(0.3f, afterReturn.leftStickPosition.second, 0.001f)
 
+        viewModel.stopSendingRcData()
         collectJob.cancel()
     }
 

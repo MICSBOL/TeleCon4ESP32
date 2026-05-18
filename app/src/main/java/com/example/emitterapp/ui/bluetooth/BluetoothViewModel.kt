@@ -7,7 +7,15 @@ import com.example.emitterapp.domain.bluetooth.ConnectionResult
 import com.example.emitterapp.domain.bluetooth.RemoteController
 import com.example.emitterapp.domain.bluetooth.RemoteDevice
 import com.example.emitterapp.domain.bluetooth.RcPacketEncoder
+import com.example.emitterapp.domain.bluetooth.PlotData
 import com.example.emitterapp.domain.bluetooth.TelemetryState
+import com.example.emitterapp.ui.rc_screen.SideIndicatorUi
+import com.example.emitterapp.ui.rc_screen.SideTelemetry
+import com.example.emitterapp.ui.rc_screen.SwitchStates
+import com.example.emitterapp.ui.rc_screen.toLeftSideTelemetry
+import com.example.emitterapp.ui.rc_screen.toRightSideTelemetry
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import com.example.emitterapp.domain.model.ButtonEvent
 import com.example.emitterapp.domain.model.RcState
 import com.example.emitterapp.domain.model.UserSettings
@@ -16,9 +24,13 @@ import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
 import com.example.emitterapp.domain.use_case.SaveLastDeviceUseCase
 import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.plus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -64,6 +76,68 @@ open class BluetoothViewModel @Inject constructor(
 
     val telemetryState: StateFlow<TelemetryState> = remoteController.telemetryState
 
+    private val _rcPlotSeries = MutableStateFlow<List<PlotData>>(emptyList())
+
+    /** Plot series throttled for RC UI (~30 fps) so BT flood does not starve switch/knob animations. */
+    val rcPlotSeries: StateFlow<List<PlotData>> = _rcPlotSeries
+
+    /** Panel/LED slice — does not change when only plot points are appended. */
+    val rcLeftSideTelemetry: StateFlow<SideTelemetry> = telemetryState
+        .map { it.toLeftSideTelemetry() }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = telemetryState.value.toLeftSideTelemetry(),
+        )
+
+    val rcRightSideTelemetry: StateFlow<SideTelemetry> = telemetryState
+        .map { it.toRightSideTelemetry() }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = telemetryState.value.toRightSideTelemetry(),
+        )
+
+    val rcLeftIndicator: StateFlow<SideIndicatorUi> = telemetryState
+        .map {
+            SideIndicatorUi(
+                value = it.indicatorState.analogValue,
+                title = it.indicatorState.analogTitle,
+            )
+        }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SideIndicatorUi(
+                telemetryState.value.indicatorState.analogValue,
+                telemetryState.value.indicatorState.analogTitle,
+            ),
+        )
+
+    val rcRightIndicator: StateFlow<SideIndicatorUi> = telemetryState
+        .map {
+            SideIndicatorUi(
+                value = it.indicatorState.batteryLevel,
+                title = it.indicatorState.batteryTitle,
+            )
+        }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SideIndicatorUi(
+                telemetryState.value.indicatorState.batteryLevel,
+                telemetryState.value.indicatorState.batteryTitle,
+            ),
+        )
+
     val state = combine(
         remoteController.discoveredDevices,
         remoteController.savedDevices,
@@ -78,6 +152,60 @@ open class BluetoothViewModel @Inject constructor(
     private val _rcControlState = MutableStateFlow(RcControlState())
     val rcControlState: StateFlow<RcControlState> = _rcControlState
 
+    val rcLeftSwitchStates: StateFlow<SwitchStates> = rcControlState
+        .map { SwitchStates.of(it.leftSwitches) }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SwitchStates.of(_rcControlState.value.leftSwitches),
+        )
+
+    val rcRightSwitchStates: StateFlow<SwitchStates> = rcControlState
+        .map { SwitchStates.of(it.rightSwitches) }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SwitchStates.of(_rcControlState.value.rightSwitches),
+        )
+
+    val rcLeftStickPosition: StateFlow<Pair<Float, Float>> = rcControlState
+        .map { it.leftStickPosition }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _rcControlState.value.leftStickPosition,
+        )
+
+    val rcRightStickPosition: StateFlow<Pair<Float, Float>> = rcControlState
+        .map { it.rightStickPosition }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _rcControlState.value.rightStickPosition,
+        )
+
+    val rcLeftKnobValue: StateFlow<Float> = rcControlState
+        .map { it.leftKnobValue }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _rcControlState.value.leftKnobValue,
+        )
+
+    val rcRightKnobValue: StateFlow<Float> = rcControlState
+        .map { it.rightKnobValue }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _rcControlState.value.rightKnobValue,
+        )
+
     val lastDeviceName: StateFlow<String?> = getLastDevice()
         .map { it?.second }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -85,12 +213,18 @@ open class BluetoothViewModel @Inject constructor(
     private var connectingDevice: RemoteDevice? = null
     private var deviceConnectionJob: Job? = null
     private var sendingJob: Job? = null
+    private var plotThrottleJob: Job? = null
+    private val rcPlotScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** Snapshot of settings last written to [rcControlState]. */
     private var lastAppliedSettings: UserSettings? = null
 
     private val _rcSettingsSyncGeneration = MutableStateFlow(0)
     val rcSettingsSyncGeneration: StateFlow<Int> = _rcSettingsSyncGeneration
+
+    companion object {
+        private const val RC_PLOT_UI_PERIOD_MS = 33L
+    }
 
     init {
         viewModelScope.launch {
@@ -102,6 +236,38 @@ open class BluetoothViewModel @Inject constructor(
         }
     }
 
+    private fun startRcPlotUiThrottling() {
+        if (plotThrottleJob?.isActive == true) return
+        plotThrottleJob = rcPlotScope.launch {
+            var latest = emptyList<PlotData>()
+            var hasPending = false
+            val collectJob = launch {
+                telemetryState
+                    .map { it.plotState.series }
+                    .collect { series ->
+                        latest = series
+                        hasPending = true
+                    }
+            }
+            try {
+                while (isActive) {
+                    delay(RC_PLOT_UI_PERIOD_MS)
+                    if (hasPending) {
+                        _rcPlotSeries.value = latest
+                        hasPending = false
+                    }
+                }
+            } finally {
+                collectJob.cancel()
+            }
+        }
+    }
+
+    private fun stopRcPlotUiThrottling() {
+        plotThrottleJob?.cancel()
+        plotThrottleJob = null
+    }
+
     /**
      * Called when an RC screen is shown. Applies [UserSettings] after a cold start or when
      * RcSettings changed; otherwise keeps the last in-session [rcControlState].
@@ -109,6 +275,7 @@ open class BluetoothViewModel @Inject constructor(
     fun onRcScreenEntered() {
         val settings = (userSettings.value as? SettingsUiState.Success)?.settings ?: return
         applySettingsIfChanged(settings)
+        startRcPlotUiThrottling()
         startSendingRcData()
     }
 
@@ -179,6 +346,7 @@ open class BluetoothViewModel @Inject constructor(
         Log.d("BluetoothViewModel", "Stopping RC data sending loop.")
         sendingJob?.cancel()
         sendingJob = null
+        stopRcPlotUiThrottling()
     }
 
     override fun onCleared() {

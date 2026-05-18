@@ -49,10 +49,13 @@ fun Knob3D(
     var rotationAngle by remember { mutableStateOf(minAngle + (value * (maxAngle - minAngle))) }
     var dragStartAngle by remember { mutableStateOf(0f) }
     var center by remember { mutableStateOf(Offset.Zero) }
+    var isDragging by remember { mutableStateOf(false) }
 
-    // Keep rotationAngle in sync when value is changed externally (e.g. initial load).
+    // Sync external value only when the user is not dragging (e.g. settings apply).
     LaunchedEffect(value) {
-        rotationAngle = minAngle + (value * (maxAngle - minAngle))
+        if (!isDragging) {
+            rotationAngle = minAngle + (value * (maxAngle - minAngle))
+        }
     }
 
     // Use rememberUpdatedState so the gesture handler always sees the latest callback
@@ -74,10 +77,13 @@ fun Knob3D(
             .pointerInput(Unit) {      // Unit key: never restarts the handler
                 detectDragGestures(
                     onDragStart = { startPosition ->
+                        isDragging = true
                         val startVector = startPosition - center
                         dragStartAngle =
                             atan2(startVector.y, startVector.x) * 180 / Math.PI.toFloat()
                     },
+                    onDragEnd = { isDragging = false },
+                    onDragCancel = { isDragging = false },
                     onDrag = { change, _ ->
                         val dragVector = change.position - center
                         val currentDragAngle =
