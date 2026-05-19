@@ -27,20 +27,15 @@ import androidx.compose.material.icons.filled.Dock
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -61,6 +56,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.emitterapp.R
+import com.example.emitterapp.ui.components.EmitterAppScaffold
+import com.example.emitterapp.ui.components.EmitterCardShape
+import com.example.emitterapp.ui.components.EmitterIconContainer
+import com.example.emitterapp.ui.components.EmitterStyledCard
+import com.example.emitterapp.ui.components.brandPrimary
+import com.example.emitterapp.ui.components.mutedTextColor
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -278,7 +279,7 @@ private fun CodesStyledDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = horizontalMargin),
-            shape = RoundedCornerShape(28.dp),
+            shape = EmitterCardShape,
             color = colorScheme.surfaceContainerHigh,
             tonalElevation = if (isDark) 4.dp else 2.dp,
             shadowElevation = if (isDark) 18.dp else 8.dp,
@@ -610,23 +611,16 @@ private fun CodeAssetGrid(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.codes_and_documents_title)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
+    EmitterAppScaffold(
+        title = stringResource(R.string.home_title),
+        subtitle = stringResource(R.string.codes_and_documents_title)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             availableAssets.forEach { asset ->
                 val zipMessage = when {
@@ -672,41 +666,44 @@ private fun CodeAssetGridItem(
 ) {
     val title = stringResource(assetInfo.titleRes)
 
-    Card(
+    EmitterStyledCard(
         modifier = modifier
             .fillMaxHeight()
-            .clickable(enabled = !isLoading, onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable(enabled = !isLoading, onClick = onClick)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(48.dp))
-            } else {
-                Icon(
-                    imageVector = assetInfo.icon,
-                    contentDescription = title,
+                CircularProgressIndicator(
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    color = brandPrimary()
+                )
+            } else {
+                EmitterIconContainer(
+                    icon = assetInfo.icon,
+                    contentDescription = title,
+                    boxSize = 52.dp,
+                    iconSize = 28.dp
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (supportingText != null) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = supportingText,
                     style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = mutedTextColor()
                 )
             }
         }

@@ -24,18 +24,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +58,9 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import com.example.emitterapp.R
+import com.example.emitterapp.ui.components.EmitterAppScaffold
+import com.example.emitterapp.ui.components.EmitterStyledCard
+import com.example.emitterapp.ui.components.brandPrimary
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 
 private const val TUTORIAL_VIDEO_STEP5_ASSET = "videos/video_step5.mp4"
@@ -138,21 +136,17 @@ fun TutorialScreen(navController: NavController) {
     )
     val pagerState = rememberPagerState(pageCount = { tutorialSteps.size })
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_tutorial_title)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+    EmitterAppScaffold(
+        title = stringResource(R.string.home_title),
+        subtitle = stringResource(R.string.app_tutorial_title),
+        navigationIcon = {
+            IconButton(onClick = { navController.navigateUp() }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.rc_settings_back),
+                    tint = brandPrimary()
+                )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -196,12 +190,11 @@ fun TutorialScreen(navController: NavController) {
 fun TutorialPage(step: TutorialStep) {
     val isDarkTheme = isSystemInDarkTheme()
 
-    Card(
+    EmitterStyledCard(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
-            .padding(top = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .padding(top = 8.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

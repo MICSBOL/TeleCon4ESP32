@@ -9,53 +9,60 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-)
 private val AppDarkColorScheme = darkColorScheme(
-    primary = AccentBlue,
-    secondary = AccentGreen,
-    tertiary = PlotMagenta,
+    primary = TechBlueBright,
+    onPrimary = TechOnPrimary,
+    primaryContainer = DarkPrimaryContainer,
+    onPrimaryContainer = TechCyanBright,
+    secondary = TechCyanBright,
+    onSecondary = TechOnPrimary,
+    tertiary = AccentRed,
+    onTertiary = DarkOnBackground,
     background = DarkBackground,
-    surface = DarkSurface,
-    onPrimary = DarkBackground,
-    onSecondary = DarkBackground,
-    onTertiary = DarkBackground,
     onBackground = DarkOnBackground,
-    onSurface = DarkOnSurface
+    surface = DarkSurface,
+    onSurface = DarkOnSurface,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkOnSurfaceVariant,
+    outline = DarkOutline,
+    outlineVariant = DarkOutline,
+    surfaceContainerLow = DarkBackground,
+    surfaceContainer = DarkSurface,
+    surfaceContainerHigh = DarkSurfaceVariant,
+    surfaceContainerHighest = DarkSurfaceVariant,
+    error = StatusDisconnected,
+    onError = DarkOnBackground,
 )
 
 private val AppLightColorScheme = lightColorScheme(
-    primary = AccentBlue,
-    secondary = AccentGreen,
-    tertiary = PlotMagenta,
+    primary = TechBlue,
+    onPrimary = TechOnPrimary,
+    primaryContainer = LightPrimaryContainer,
+    onPrimaryContainer = TechBlueDark,
+    secondary = TechCyan,
+    onSecondary = TechOnAccent,
+    tertiary = AccentRed,
+    onTertiary = LightOnBackground,
     background = LightBackground,
-    surface = LightSurface,
-    onPrimary = LightSurface,
-    onSecondary = LightSurface,
-    onTertiary = LightSurface,
     onBackground = LightOnBackground,
-    onSurface = LightOnSurface
+    surface = LightSurface,
+    onSurface = LightOnSurface,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightOnSurfaceVariant,
+    outline = LightOutline,
+    outlineVariant = LightOutline,
+    surfaceContainerLow = LightBackground,
+    surfaceContainer = LightSurface,
+    surfaceContainerHigh = LightSurfaceVariant,
+    surfaceContainerHighest = LightSurfaceVariant,
+    error = StatusDisconnected,
+    onError = LightOnBackground,
 )
 
 @Composable
@@ -69,9 +76,21 @@ fun EmitterAppTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> AppDarkColorScheme
         else -> AppLightColorScheme
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
     }
 
     MaterialTheme(

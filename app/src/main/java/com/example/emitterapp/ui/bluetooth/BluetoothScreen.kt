@@ -2,6 +2,7 @@ package com.example.emitterapp.ui.bluetooth
 
 import android.content.res.Configuration
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,30 +19,30 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.emitterapp.R
 import com.example.emitterapp.domain.bluetooth.BluetoothDevice
 import com.example.emitterapp.domain.bluetooth.RemoteDevice
+import com.example.emitterapp.ui.components.EmitterAppScaffold
+import com.example.emitterapp.ui.components.EmitterIconContainer
+import com.example.emitterapp.ui.components.EmitterSectionTitle
+import com.example.emitterapp.ui.components.EmitterStyledCard
+import com.example.emitterapp.ui.components.brandPrimary
+import com.example.emitterapp.ui.components.mutedTextColor
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BluetoothScreen(
     state: BluetoothUiState,
@@ -50,54 +51,55 @@ fun BluetoothScreen(
     onDeviceClick: (RemoteDevice) -> Unit,
     onDismissError: () -> Unit = {},
 ) {
-    // ----- Error dialog -----
     if (state.errorMessage != null) {
         AlertDialog(
             onDismissRequest = onDismissError,
             title = { Text(stringResource(R.string.bluetooth_connection_error)) },
-            text  = { Text(state.errorMessage) },
+            text = { Text(state.errorMessage) },
             confirmButton = {
-                TextButton(onClick = onDismissError) { Text("OK") }
+                TextButton(onClick = onDismissError) { Text(stringResource(R.string.codes_dialog_ok)) }
             }
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.bluetooth_connect_to_a_device)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                actions = {
-                    if (state.isScanning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 3.dp
-                        )
-                        IconButton(onClick = onStopScan) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Stop Scan"
-                            )
-                        }
-                    } else {
-                        IconButton(onClick = onStartScan) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Start Scan"
-                            )
-                        }
-                    }
+    EmitterAppScaffold(
+        title = stringResource(R.string.home_title),
+        subtitle = stringResource(R.string.bluetooth_connect_to_a_device),
+        actions = {
+            if (state.isScanning) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .padding(end = 4.dp),
+                    color = brandPrimary(),
+                    strokeWidth = 3.dp
+                )
+                IconButton(onClick = onStopScan) {
+                    EmitterIconContainer(
+                        icon = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.bluetooth_stop_scan)
+                    )
                 }
-            )
+            } else {
+                IconButton(onClick = onStartScan) {
+                    EmitterIconContainer(
+                        icon = Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.bluetooth_start_scan)
+                    )
+                }
+            }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            Column(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
                 BluetoothDeviceList(
                     pairedDevices = state.pairedDevices,
                     scannedDevices = state.scannedDevices,
@@ -106,27 +108,28 @@ fun BluetoothScreen(
                 )
             }
 
-            // ----- Scanning empty-list spinner -----
-            if (state.isScanning && state.pairedDevices.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            if (state.isScanning && state.pairedDevices.isEmpty() && state.scannedDevices.isEmpty()) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = brandPrimary()
+                )
             }
 
-            // ----- Connecting overlay -----
             if (state.isConnecting) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(enabled = false) {},   // block touches while connecting
+                        .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
-                    Card(elevation = CardDefaults.cardElevation(8.dp)) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator()
+                    EmitterStyledCard(modifier = Modifier.padding(24.dp)) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = brandPrimary())
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("Connecting…", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = stringResource(R.string.home_bluetooth_status_connecting),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
                     }
                 }
@@ -142,25 +145,44 @@ fun BluetoothDeviceList(
     onClick: (RemoteDevice) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(modifier = modifier) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         item {
-            Text(
+            EmitterSectionTitle(
                 text = stringResource(R.string.bluetooth_paired_devices),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(top = 8.dp)
             )
+        }
+        if (pairedDevices.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.bluetooth_no_paired_devices),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = mutedTextColor(),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
         }
         items(pairedDevices) { device ->
             DeviceListItem(device = device, onClick = onClick)
         }
         item {
-            Text(
+            EmitterSectionTitle(
                 text = stringResource(R.string.bluetooth_scanned_devices),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(top = 8.dp)
             )
+        }
+        if (scannedDevices.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.bluetooth_no_scanned_devices),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = mutedTextColor(),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
         }
         items(scannedDevices) { device ->
             DeviceListItem(device = device, onClick = onClick)
@@ -173,28 +195,30 @@ fun DeviceListItem(
     device: RemoteDevice,
     onClick: (RemoteDevice) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable { onClick(device) },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    EmitterStyledCard(
+        modifier = Modifier.clickable { onClick(device) }
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Bluetooth,
-                contentDescription = "Bluetooth Device",
-                tint = MaterialTheme.colorScheme.primary
+            EmitterIconContainer(
+                icon = Icons.Default.Bluetooth,
+                contentDescription = null
             )
-            Text(
-                text = device.name ?: "(No name)",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 16.dp)
-            )
+            Column(modifier = Modifier.padding(start = 14.dp)) {
+                Text(
+                    text = device.name ?: stringResource(R.string.bluetooth_unknown_device),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = device.address,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = mutedTextColor()
+                )
+            }
         }
     }
 }
@@ -235,16 +259,10 @@ fun BluetoothScreenPreview() {
 fun BluetoothScreenPreview_Dark() {
     val fakePairedDevices = listOf(
         BluetoothDevice(name = "RC Car", address = "00:11:22:33:44:55"),
-        BluetoothDevice(name = "Old RC Remote", address = "AA:BB:CC:DD:EE:FF")
     )
-    val fakeScannedDevices = listOf(
-        BluetoothDevice(name = "Neighbor's TV", address = "A1:B2:C3:D4:E5:F6"),
-        BluetoothDevice(name = "Fitness Tracker", address = "1A:2B:3C:4D:5E:6F")
-    )
-
     val fakeState = BluetoothUiState(
         pairedDevices = fakePairedDevices,
-        scannedDevices = fakeScannedDevices,
+        scannedDevices = emptyList(),
         isScanning = true
     )
 

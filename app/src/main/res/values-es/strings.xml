@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">EmitterApp</string>
+    <string name="app_header_subtitle">Conduce, ajusta y conecta tu hardware RC</string>
     <!-- HomeScreen Strings -->
     <string name="home_title">RC-Emitter</string>
     <string name="home_help">Ayuda</string>
@@ -23,6 +24,11 @@
     <string name="bluetooth_connection_error">Error de conexión</string>
     <string name="bluetooth_paired_devices">Dispositivos vinculados</string>
     <string name="bluetooth_scanned_devices">Dispositivos escaneados</string>
+    <string name="bluetooth_start_scan">Iniciar escaneo</string>
+    <string name="bluetooth_stop_scan">Detener escaneo</string>
+    <string name="bluetooth_no_paired_devices">Aún no hay dispositivos vinculados.</string>
+    <string name="bluetooth_no_scanned_devices">No se encontraron dispositivos. Toca actualizar para escanear.</string>
+    <string name="bluetooth_unknown_device">Dispositivo desconocido</string>
     <string name="codes_and_documents_title">Códigos y Documentos</string>
     <string name="codes_document_esp32">ESP32</string>
     <string name="codes_document_kotlin_notes">Notas de Kotlin</string>
@@ -77,6 +83,7 @@
     <string name="tutorial_rc_plot_telemetry_test_title">Probar telemetría de la gráfica central</string>
     <string name="tutorial_rc_plot_telemetry_test_description">Este video muestra cómo se definen las etiquetas de los canales de la gráfica en el firmware y cómo tres valores de prueba enviados desde el Monitor Serie del Arduino IDE alimentan la gráfica de telemetría central de la pantalla RC (paso 6, punto 8).\n\nParte 1 — Etiquetas en `telemetry.cpp`:\n\n- Abre `telemetry.cpp` en el proyecto del ESP32 y localiza `sendConfigTelemetry()`.\n\n- En la sección CONFIG LABELS, muestra el arreglo `plotNames[]` (por ejemplo `\"Volts\"`, `\"Amps\"`, `\"RPMs\"`). Esas cadenas se envían una vez por Bluetooth al conectar y pasan a ser las etiquetas de la leyenda en la app.\n\n- Opcionalmente señala `panelNames[]` (`\"Left\"`, `\"Right\"`) e `indicatorNames[]` (`\"Throttle\"`, `\"Battery\"`) en la misma función para títulos de paneles e indicadores.\n\n- Sube el sketch después de cualquier cambio en las etiquetas.\n\nParte 2 — Prueba de valores por el Monitor Serie:\n\n- En `debug_config.h`, pon `DEBUG_ENABLED` en 1.\n\n- Define `#define TELEMETRY_DEBUG_MODE DBG_PLOT` para que el firmware lea tres valores de prueba de gráfica por el Monitor Serie (`getPlot1()`, `getPlot2()`, `getPlot3()`).\n\n- Reflashea el ESP32, conecta el teléfono por Bluetooth y abre Control RC para ver la gráfica central y la leyenda.\n\n- Abre el Monitor Serie a 115200 baudios. Tras conectar Bluetooth, confirma que aparece `Telemetry config sent...` cuando se ejecuta `sendConfigTelemetry()`.\n\nLo que debe mostrar el video:\n\n- Introduce tres valores de prueba (por ejemplo `120`, `80` y `200` en el formato que espere tu firmware).\n\n- El ESP32 envía paquetes de gráfica (cabecera `0xCC 0x33`) unos cada 50 ms con esos tres bytes.\n\n- En la pantalla RC, la leyenda muestra Volts, Amps y RPMs y las trazas de la gráfica en tiempo real se actualizan en los tres canales.\n\n- Cambia los tres valores en el Monitor Serie de nuevo para mostrar que la gráfica sigue los nuevos niveles.\n\nSi las etiquetas son incorrectas, edita `plotNames[]` en `telemetry.cpp` y vuelve a conectar para reenviar la configuración. Si la gráfica no cambia, verifica Bluetooth, que `TELEMETRY_DEBUG_MODE` sea `DBG_PLOT` y que la app esté en Control RC.</string>
     <string name="rc_controller_settings_title">Ajustes del mando de RC</string>
+    <string name="rc_settings_back">Atrás</string>
     <string name="rc_controller_settings_screen_style">Estilo de pantalla RC</string>
     <string name="rc_controller_settings_joystick_settings">Configuración del joystick</string>
     <string name="rc_controller_settings_initial_switch_positions">Posiciones iniciales de los interruptores</string>

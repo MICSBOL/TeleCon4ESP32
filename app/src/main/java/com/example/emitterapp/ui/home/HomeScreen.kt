@@ -27,27 +27,19 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -59,8 +51,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.emitterapp.R
+import com.example.emitterapp.ui.components.ConnectionStatusDot
+import com.example.emitterapp.ui.components.EmitterAppScaffold
+import com.example.emitterapp.ui.components.EmitterIconContainer
+import com.example.emitterapp.ui.components.EmitterQuickStartButton
+import com.example.emitterapp.ui.components.EmitterStyledCard
+import com.example.emitterapp.ui.components.brandPrimary
+import com.example.emitterapp.ui.components.mutedTextColor
 import com.example.emitterapp.ui.navigation.Screen
 import com.example.emitterapp.ui.theme.EmitterAppTheme
+import com.example.emitterapp.ui.theme.StatusConnected
+import com.example.emitterapp.ui.theme.StatusDisconnected
 
 data class HomeItem(
     val icon: ImageVector,
@@ -70,7 +71,6 @@ data class HomeItem(
     val route2: String
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavHostController? = null,
@@ -87,7 +87,6 @@ fun HomeScreen(
     val context = LocalContext.current
     val activity = context as? Activity
 
-    // Handle back button press to exit the app
     BackHandler {
         activity?.finish()
     }
@@ -100,7 +99,6 @@ fun HomeScreen(
             Icons.Default.Settings,
             Screen.RcSettingsScreen.route
         ),
-        HomeItem(Icons.Default.Style, stringResource(R.string.home_item_select_ui), "", null, ""),
         HomeItem(
             Icons.Default.Bluetooth,
             stringResource(R.string.home_item_bluetooth),
@@ -125,33 +123,25 @@ fun HomeScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                    TopAppBar(
-                        title = { Text(text = "RC-Emitter") },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        actions = {
-                            IconButton(onClick = { /* TODO: Handle help action */ }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Help,
-                                    contentDescription = stringResource(R.string.home_help)
-                                )
-                            }
-                        }
+        EmitterAppScaffold(
+            title = stringResource(R.string.home_title),
+            subtitle = stringResource(R.string.app_header_subtitle),
+            actions = {
+                IconButton(onClick = { /* TODO: Handle help action */ }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Help,
+                        contentDescription = stringResource(R.string.home_help),
+                        tint = brandPrimary()
                     )
-            },
-            containerColor = MaterialTheme.colorScheme.background
+                }
+            }
         ) { paddingValues ->
             if (isLandscape) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     HomeOptionsList(
@@ -181,7 +171,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     HomeOptionsList(
@@ -209,32 +199,33 @@ fun HomeScreen(
             }
         }
 
-        // Error dialog
         if (errorMessage != null) {
             AlertDialog(
                 onDismissRequest = onDismissError,
-                title = { Text("Connection failed") },
+                title = { Text(stringResource(R.string.bluetooth_connection_error)) },
                 text = { Text(errorMessage) },
                 confirmButton = {
-                    TextButton(onClick = onDismissError) { Text("OK") }
+                    TextButton(onClick = onDismissError) { Text(stringResource(R.string.codes_dialog_ok)) }
                 }
             )
         }
 
-        // Connecting overlay
         if (isConnecting) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)),
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = brandPrimary())
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = if (lastDeviceName != null) "Connecting to $lastDeviceName…"
-                        else "Connecting…",
+                        text = if (lastDeviceName != null) {
+                            stringResource(R.string.home_bluetooth_status_connecting) + " $lastDeviceName"
+                        } else {
+                            stringResource(R.string.home_bluetooth_status_connecting)
+                        },
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -259,7 +250,7 @@ private fun HomeOptionsList(
     }
     LazyColumn(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items(homeItems) { item ->
             HomeItemCard(
@@ -270,7 +261,8 @@ private fun HomeOptionsList(
                         navController?.navigate(item.route)
                     }
                 },
-                subtitle = (if (item.route == Screen.Bluetooth.route) bluetoothStatusText else null),
+                subtitle = if (item.route == Screen.Bluetooth.route) bluetoothStatusText else null,
+                isBluetoothConnected = isBluetoothConnected,
                 icon2 = item.icon2,
                 onClick2 = {
                     if (item.route2.isNotEmpty()) {
@@ -297,61 +289,37 @@ private fun HomeSecondaryContent(
     ) {
         Image(
             painter = painterResource(R.drawable.car_bouncing01),
-            contentDescription = "car",
+            contentDescription = stringResource(R.string.home_car_image_description),
             contentScale = ContentScale.Fit,
             modifier = imageModifier
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
+        Spacer(modifier = Modifier.height(12.dp))
+        EmitterQuickStartButton(
+            text = stringResource(R.string.home_start_button),
             onClick = onStartClick,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.fillMaxWidth(0.8f)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.home_start_button),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                if (lastDeviceName != null) {
-                    Text(
-                        text = stringResource(R.string.home_upgrade_pro) + lastDeviceName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.home_scan_a_device),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                    )
-                }
+            icon = Icons.Default.RocketLaunch,
+            modifier = Modifier.fillMaxWidth(0.92f),
+            supportingText = if (lastDeviceName != null) {
+                stringResource(R.string.home_last_devices) + " " + lastDeviceName
+            } else {
+                stringResource(R.string.home_scan_a_device)
             }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.home_upgrade_pro),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { /* TODO */ }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.home_version_info),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.home_upgrade_pro),
+            style = MaterialTheme.typography.bodyMedium,
+            color = brandPrimary(),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.clickable { /* TODO */ }
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.home_version_info),
+            style = MaterialTheme.typography.labelSmall,
+            color = mutedTextColor()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
@@ -361,75 +329,69 @@ fun HomeItemCard(
     title: String,
     onClick: () -> Unit,
     subtitle: String? = null,
+    isBluetoothConnected: Boolean = false,
     icon2: ImageVector? = null,
     onClick2: () -> Unit,
     isLedStyle: Boolean = false
 ) {
     Row {
-        Card(
+        EmitterStyledCard(
             modifier = Modifier
                 .weight(1f)
-                .height(70.dp)
-                .clickable(onClick = onClick),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            shape = RoundedCornerShape(16.dp)
+                .clickable(onClick = onClick)
         ) {
             Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(36.dp)
+                EmitterIconContainer(
+                    icon = icon,
+                    contentDescription = title
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     if (subtitle != null) {
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (subtitle.contains("Connected")) Color.Green else Color.Red
-                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ConnectionStatusDot(connected = isBluetoothConnected)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isBluetoothConnected) StatusConnected else StatusDisconnected
+                            )
+                        }
                     }
                 }
             }
         }
         if (icon2 != null) {
             Spacer(modifier = Modifier.width(8.dp))
-
             Card(
                 modifier = Modifier
                     .align(Alignment.CenterVertically)
-                    .size(70.dp)
+                    .size(72.dp)
                     .clickable(onClick = onClick2),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                border = CardDefaults.outlinedCardBorder()
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = icon2,
+                    EmitterIconContainer(
+                        icon = icon2,
                         contentDescription = title,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(36.dp)
+                        boxSize = 44.dp
                     )
                 }
             }

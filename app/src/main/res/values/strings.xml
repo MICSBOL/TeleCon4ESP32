@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">EmitterApp</string>
+    <string name="app_header_subtitle">Drive, tune, and connect your RC hardware</string>
     <!-- HomeScreen Strings -->
     <string name="home_title">RC-Emitter</string>
     <string name="home_help">Help</string>
@@ -22,6 +23,11 @@
     <string name="bluetooth_connection_error">Connection error</string>
     <string name="bluetooth_paired_devices">Paired Devices</string>
     <string name="bluetooth_scanned_devices">Scanned Devices</string>
+    <string name="bluetooth_start_scan">Start scan</string>
+    <string name="bluetooth_stop_scan">Stop scan</string>
+    <string name="bluetooth_no_paired_devices">No paired devices yet.</string>
+    <string name="bluetooth_no_scanned_devices">No devices found. Tap refresh to scan.</string>
+    <string name="bluetooth_unknown_device">Unknown device</string>
     <string name="codes_and_documents_title">Codes and Documents</string>
     <string name="codes_document_esp32">ESP32</string>
     <string name="codes_document_kotlin_notes">Kotlin Notes</string>
@@ -76,6 +82,7 @@
     <string name="tutorial_rc_plot_telemetry_test_title">Test center plot telemetry</string>
     <string name="tutorial_rc_plot_telemetry_test_description">This video shows how plot channel labels are defined in firmware and how three plot test values sent from the Arduino IDE Serial Monitor drive the center telemetry graph on the RC screen (step 6, item 8).\n\nPart 1 — Plot labels in `telemetry.cpp`:\n\n- Open `telemetry.cpp` in the ESP32 project and locate `sendConfigTelemetry()`.\n\n- In the CONFIG LABELS section, show the `plotNames[]` array (for example `\"Volts\"`, `\"Amps\"`, `\"RPMs\"`). These strings are sent once over Bluetooth after connect and become the legend labels in the app plot.\n\n- Optionally point out `panelNames[]` (`\"Left\"`, `\"Right\"`) and `indicatorNames[]` (`\"Throttle\"`, `\"Battery\"`) in the same function for panel and header titles.\n\n- Upload the sketch after any label changes.\n\nPart 2 — Plot value test over Serial Monitor:\n\n- In `debug_config.h`, set `DEBUG_ENABLED` to 1.\n\n- Set `#define TELEMETRY_DEBUG_MODE DBG_PLOT` so the firmware reads three plot test values from Serial Monitor (`getPlot1()`, `getPlot2()`, `getPlot3()`).\n\n- Reflash the ESP32, connect the phone over Bluetooth, and open RC Control so the center graph and legend are visible.\n\n- Open Serial Monitor at 115200 baud. After Bluetooth connects, confirm `Telemetry config sent...` appears when `sendConfigTelemetry()` runs.\n\nWhat the video should show:\n\n- Enter three plot test values (for example `120`, `80`, and `200` in the format your firmware expects).\n\n- The ESP32 sends plot packets (`0xCC 0x33` header) about every 50 ms with those three bytes.\n\n- On the RC screen, the legend lists Volts, Amps, and RPMs and the real-time graph traces update for all three channels.\n\n- Change the three values in Serial Monitor again to show the graph following the new levels.\n\nIf labels are wrong, edit `plotNames[]` in `telemetry.cpp` and reconnect so config is sent again. If the graph stays flat, verify Bluetooth, `TELEMETRY_DEBUG_MODE` is `DBG_PLOT`, and the RC Control screen is open.</string>
     <string name="rc_controller_settings_title">RC Controller Settings</string>
+    <string name="rc_settings_back">Back</string>
     <string name="rc_controller_settings_screen_style">RC Screen Style</string>
     <string name="rc_controller_settings_joystick_settings">Joystick Settings</string>
     <string name="rc_controller_settings_initial_switch_positions">Initial Switch Positions</string>

@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +35,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -45,8 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.emitterapp.R
 import com.example.emitterapp.ui.navigation.Screen
+import com.example.emitterapp.ui.components.EmitterQuickStartButton
+import com.example.emitterapp.ui.components.brandPrimary
+import com.example.emitterapp.ui.components.brandSecondary
 import com.example.emitterapp.ui.theme.EmitterAppTheme
-import com.example.emitterapp.ui.theme.syncopate
 import com.example.emitterapp.ui.theme.titanOneRegular
 
 @Composable
@@ -71,16 +72,19 @@ fun SplashScreenContent(
         startAnimation = true
     }
 
-    val domeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val domeColor = brandPrimary().copy(alpha = 0.22f)
+    val domeAccent = brandSecondary().copy(alpha = 0.14f)
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.radialGradient(
-                    0.0f to MaterialTheme.colorScheme.surface,
-                    0.6f to MaterialTheme.colorScheme.background,
-                    1.0f to MaterialTheme.colorScheme.background
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                        MaterialTheme.colorScheme.background
+                    )
                 )
             )
     ) {
@@ -176,8 +180,6 @@ fun SplashScreenContent(
             else -> 35.sp
         }
         val subtitleFontSize = if (maxWidth < 360.dp) 14.sp else 16.sp
-        val buttonTextSize = if (maxWidth < 360.dp) 16.sp else 18.sp
-
         if (isLandscape) {
             Box(
                 modifier = Modifier
@@ -185,7 +187,11 @@ fun SplashScreenContent(
                     .offset(x = topLeftCornerX, y = topLeftCornerY)
                     .align(Alignment.TopStart)
                     .clip(CircleShape)
-                    .background(domeColor)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(domeColor, domeAccent, Color.Transparent)
+                        )
+                    )
             )
 
             Box(
@@ -194,7 +200,11 @@ fun SplashScreenContent(
                     .offset(x = bottomRightCornerX, y = bottomRightCornerY)
                     .align(Alignment.BottomEnd)
                     .clip(CircleShape)
-                    .background(domeColor)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(domeAccent, domeColor, Color.Transparent)
+                        )
+                    )
             )
         } else {
             Box(
@@ -203,7 +213,11 @@ fun SplashScreenContent(
                     .offset(y = topDomeOffset)
                     .align(Alignment.TopCenter)
                     .clip(CircleShape)
-                    .background(domeColor)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(domeColor, domeAccent, Color.Transparent)
+                        )
+                    )
             )
 
             Box(
@@ -212,7 +226,11 @@ fun SplashScreenContent(
                     .offset(y = bottomDomeOffset)
                     .align(Alignment.BottomCenter)
                     .clip(CircleShape)
-                    .background(domeColor)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(domeAccent, domeColor, Color.Transparent)
+                        )
+                    )
             )
         }
 
@@ -248,7 +266,7 @@ fun SplashScreenContent(
                         text = stringResource(R.string.splash_title),
                         fontFamily = titanOneRegular,
                         fontSize = titleFontSize,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = brandPrimary(),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .padding(top = titleTopPadding)
@@ -261,22 +279,11 @@ fun SplashScreenContent(
                             .alpha(contentAlpha),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Button(
+                        EmitterQuickStartButton(
+                            text = stringResource(R.string.splash_get_started),
                             onClick = onGetStarted,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.fillMaxWidth(0.76f)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.splash_get_started),
-                                fontSize = buttonTextSize,
-                                fontFamily = syncopate,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = stringResource(R.string.splash_subtitle),
@@ -306,7 +313,7 @@ fun SplashScreenContent(
                     text = stringResource(R.string.splash_title),
                     fontFamily = titanOneRegular,
                     fontSize = titleFontSize,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = brandPrimary(),
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .padding(top = titleTopPadding)
@@ -321,22 +328,11 @@ fun SplashScreenContent(
                         .alpha(contentAlpha),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Button(
+                    EmitterQuickStartButton(
+                        text = stringResource(R.string.splash_get_started),
                         onClick = onGetStarted,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth(buttonWidthFraction)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.splash_get_started),
-                            fontSize = buttonTextSize,
-                            fontFamily = syncopate,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = stringResource(R.string.splash_subtitle),

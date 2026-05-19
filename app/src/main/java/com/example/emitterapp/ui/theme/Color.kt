@@ -2,43 +2,73 @@ package com.example.emitterapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// --- Modern tech brand (electric blue + cyan) ---
+val TechBlue = Color(0xFF1D6FE8)
+val TechBlueBright = Color(0xFF3B9EFF)
+val TechBlueDark = Color(0xFF1557C0)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val TechCyan = Color(0xFF00C2D4)
+val TechCyanBright = Color(0xFF2DD4EE)
+val TechCyanDark = Color(0xFF0891B2)
 
-val backgroundSplash = Color(0xFFD1D5D8)
-val backgroundPurple = Color(0xFFB8ABF2)
-val titleColor = Color(0xFF3A473F)
+val TechOnPrimary = Color(0xFFFFFFFF)
+val TechOnAccent = Color(0xFF0A0E14)
 
+// Aliases used by UI components and legacy references
+val EmitterViolet = TechBlue
+val EmitterVioletLight = TechBlueBright
+val EmitterVioletDark = TechBlueDark
+val EmitterOnViolet = TechOnPrimary
 
-val AccentBlue = Color(0xFF00BFFF) // Deep Sky Blue - a vibrant, electric blue for accents.
-val AccentGreen = Color(0xFF39FF14) // Neon Green - for "On" or "Active" states.
-val AccentRed = Color(0xFFFF3131)   // Neon Red - for "Off" or "Warning" states.
+val EmitterAmber = TechCyan
+val EmitterAmberDark = TechCyanDark
+val EmitterOnAmber = TechOnAccent
 
-// --- Dark Mode Palette (Recommended Primary Theme) ---
-val DarkBackground = Color(0xFF0D1117)      // Very dark, slightly blue-tinted gray (like a terminal)
-val DarkSurface = Color(0xFF161B22)         // Slightly lighter gray for cards and panels
-val DarkOnBackground = Color(0xFFF0F6FC)     // Off-white for high-contrast text
-val DarkOnSurface = Color(0xFFC9D1D9)        // Slightly dimmer white for secondary text
-val DarkGridLine = Color(0x66484F58)        // Semi-transparent gray for plot grid lines
-val DarkAxisLine = Color(0x998B949E)        // Brighter gray for plot main axes
+val CyanPrimary = TechBlue
+val CyanPrimaryDark = TechBlueBright
 
-// --- Light Mode Palette ---
-val LightBackground = Color(0xFFF3F4F6)     // Light, clean gray (avoids pure white)
-val LightSurface = Color(0xFFFFFFFF)        // White for cards and panels
-val LightOnBackground = Color(0xFF1F2937)    // Dark charcoal for main text
-val LightOnSurface = Color(0xFF4B5563)       // Softer gray for secondary text
-val LightGridLine = Color(0x66D1D5DB)       // Semi-transparent light gray for plot grids
-val LightAxisLine = Color(0x996B7280)       // Darker gray for plot main axes
+// --- Light surfaces (cool slate) ---
+val LightBackground = Color(0xFFF0F4F8)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceVariant = Color(0xFFE2E8F0)
+val LightOnBackground = Color(0xFF0F172A)
+val LightOnSurface = Color(0xFF1E293B)
+val LightOnSurfaceVariant = Color(0xFF64748B)
+val LightOutline = Color(0xFFCBD5E1)
+val LightPrimaryContainer = Color(0xFFDBEAFE)
 
-// --- Data Visualization Palette (Works on both Dark and Light backgrounds) ---
+// --- Dark surfaces (blue-charcoal) ---
+val DarkBackground = Color(0xFF0A0E14)
+val DarkSurface = Color(0xFF121820)
+val DarkSurfaceVariant = Color(0xFF1C2533)
+val DarkOnBackground = Color(0xFFF1F5F9)
+val DarkOnSurface = Color(0xFFE2E8F0)
+val DarkOnSurfaceVariant = Color(0xFF94A3B8)
+val DarkOutline = Color(0xFF2D3A4D)
+val DarkPrimaryContainer = Color(0xFF172554)
+
+// --- Status ---
+val StatusConnected = Color(0xFF10B981)
+val StatusDisconnected = Color(0xFFF43F5E)
+
+// --- Hardware / plot accents ---
+val AccentOrange = Color(0xFFFFB300)
+val AccentRed = Color(0xFFEF5350)
+
+val AccentBlue = TechBlueBright
+val AccentGreen = Color(0xFF39FF14)
+val DarkGridLine = Color(0x66484F58)
+val DarkAxisLine = Color(0x998B949E)
+val LightGridLine = Color(0x66CBD5E1)
+val LightAxisLine = Color(0x9964748B)
+
 val PlotCyan = Color(0xFF22D3EE)
 val PlotRed = Color(0xFFF43F5E)
 val PlotYellow = Color(0xFFFACC15)
 val PlotGreen = Color(0xFF4ADE80)
 val PlotMagenta = Color(0xFFD946EF)
 val PlotOrange = Color(0xFFF97316)
+
+val backgroundSplash = LightBackground
+val backgroundPurple = LightPrimaryContainer
+val titleColor = LightOnBackground

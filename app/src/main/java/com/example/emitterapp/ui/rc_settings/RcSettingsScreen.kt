@@ -22,10 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +45,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.example.emitterapp.ui.components.EmitterAppScaffold
+import com.example.emitterapp.ui.components.EmitterSectionTitle
+import com.example.emitterapp.ui.components.EmitterStyledCard
+import com.example.emitterapp.ui.components.brandPrimary
 import com.example.emitterapp.ui.theme.EmitterAppTheme
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RcSettingsScreen(
@@ -57,32 +59,37 @@ fun RcSettingsScreen(
     uiState: SettingsUiState? = null
 ) {
     val state = uiState ?: viewModel.uiState.collectAsStateWithLifecycle().value
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.rc_controller_settings_title)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
+    EmitterAppScaffold(
+        title = stringResource(R.string.home_title),
+        subtitle = stringResource(R.string.rc_controller_settings_title),
+        navigationIcon = {
+            IconButton(onClick = { navController.navigateUp() }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.rc_settings_back),
+                    tint = brandPrimary()
+                )
+            }
+        }
     ) { paddingValues ->
         when (val state = state) {
             is SettingsUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = brandPrimary())
                 }
             }
             is SettingsUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = state.message,
                         color = MaterialTheme.colorScheme.error,
@@ -131,11 +138,11 @@ private fun SettingsContent(
     }
 
     LazyColumn(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            SettingsSection(title = stringResource(R.string.rc_controller_settings_title)) {
+            SettingsSection(title = stringResource(R.string.rc_controller_settings_screen_style)) {
                 RcUiStyleSelector(
                     selectedStyle = settings.rcUiStyle,
                     onStyleSelected = { onRcUiStyleChanged(it) }
@@ -210,20 +217,9 @@ fun KnobSettingsSliders(
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+        EmitterSectionTitle(text = title)
+        EmitterStyledCard {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 content()
             }
         }
