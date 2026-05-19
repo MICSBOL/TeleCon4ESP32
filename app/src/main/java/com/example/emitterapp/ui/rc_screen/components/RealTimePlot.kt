@@ -30,42 +30,28 @@ import androidx.compose.ui.unit.toSize
 import com.example.emitterapp.domain.bluetooth.PlotData
 import kotlin.math.sin
 
+private const val MAX_VISIBLE_PLOT_POINTS = 100
+
 @Composable
 fun RealTimePlot(
     modifier: Modifier = Modifier,
     series: List<PlotData>,
+    plotRevision: Long = 0L,
     gridColor: Color = Color.White.copy(alpha = 0.2f),
 ) {
 
     var canvasSize by remember { mutableStateOf(Size.Zero) }
 
-    // Rebuild paths only when plot content changes, not on every new list instance.
-    val seriesSignature = remember(series) {
-        series.map { it.dataPoints.size to it.dataPoints.lastOrNull() }
-    }
-
-    val paths by remember(seriesSignature, canvasSize) {
+    val paths by remember(series, plotRevision, canvasSize) {
         derivedStateOf {
             if (canvasSize == Size.Zero) {
                 emptyList()
             } else {
                 series.map { plotData ->
-                    if (plotData.dataPoints.size < 2) {
-                        Path()
-                    } else {
-                        Path().apply {
-                            val stepX = canvasSize.width / (plotData.dataPoints.size - 1).toFloat().coerceAtLeast(1f)
-                            moveTo(
-                                x = 0f,
-                                y = canvasSize.height - (plotData.dataPoints.first() * canvasSize.height)
-                            )
-                            for (i in 1 until plotData.dataPoints.size) {
-                                val x = i * stepX
-                                val y = canvasSize.height - (plotData.dataPoints[i] * canvasSize.height)
-                                lineTo(x, y)
-                            }
-                        }
-                    }
+                    buildPlotPath(
+                        points = plotData.dataPoints.takeLast(MAX_VISIBLE_PLOT_POINTS),
+                        canvasSize = canvasSize,
+                    )
                 }
             }
         }
@@ -121,6 +107,32 @@ fun RealTimePlot(
                 glowWidth = 6.dp.toPx(),
                 glowBlur = 14f
             )
+        }
+    }
+}
+
+private fun buildPlotPath(points: List<Float>, canvasSize: Size): Path {
+    if (points.isEmpty()) return Path()
+
+    return when (points.size) {
+        1 -> {
+            val y = canvasSize.height - (points[0].coerceIn(0f, 1f) * canvasSize.height)
+            Path().apply {
+                moveTo(0f, y)
+                lineTo(canvasSize.width, y)
+            }
+        }
+        else -> Path().apply {
+            val stepX = canvasSize.width / (points.size - 1).toFloat()
+            moveTo(
+                x = 0f,
+                y = canvasSize.height - (points[0].coerceIn(0f, 1f) * canvasSize.height),
+            )
+            for (i in 1 until points.size) {
+                val x = i * stepX
+                val y = canvasSize.height - (points[i].coerceIn(0f, 1f) * canvasSize.height)
+                lineTo(x, y)
+            }
         }
     }
 }

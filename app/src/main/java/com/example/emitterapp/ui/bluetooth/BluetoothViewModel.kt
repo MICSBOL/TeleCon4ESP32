@@ -76,10 +76,10 @@ open class BluetoothViewModel @Inject constructor(
 
     val telemetryState: StateFlow<TelemetryState> = remoteController.telemetryState
 
-    private val _rcPlotSeries = MutableStateFlow<List<PlotData>>(emptyList())
+    private val _rcPlotUiState = MutableStateFlow(RcPlotUiState())
 
     /** Plot series throttled for RC UI (~30 fps) so BT flood does not starve switch/knob animations. */
-    val rcPlotSeries: StateFlow<List<PlotData>> = _rcPlotSeries
+    val rcPlotUiState: StateFlow<RcPlotUiState> = _rcPlotUiState
 
     /** Panel/LED slice — does not change when only plot points are appended. */
     val rcLeftSideTelemetry: StateFlow<SideTelemetry> = telemetryState
@@ -239,13 +239,18 @@ open class BluetoothViewModel @Inject constructor(
     private fun startRcPlotUiThrottling() {
         if (plotThrottleJob?.isActive == true) return
         plotThrottleJob = rcPlotScope.launch {
-            var latest = emptyList<PlotData>()
+            var latest = RcPlotUiState()
             var hasPending = false
             val collectJob = launch {
                 telemetryState
-                    .map { it.plotState.series }
-                    .collect { series ->
-                        latest = series
+                    .map { state ->
+                        RcPlotUiState(
+                            series = state.plotState.series,
+                            revision = state.plotState.revision,
+                        )
+                    }
+                    .collect { plotState ->
+                        latest = plotState
                         hasPending = true
                     }
             }
@@ -253,7 +258,7 @@ open class BluetoothViewModel @Inject constructor(
                 while (isActive) {
                     delay(RC_PLOT_UI_PERIOD_MS)
                     if (hasPending) {
-                        _rcPlotSeries.value = latest
+                        _rcPlotUiState.value = latest
                         hasPending = false
                     }
                 }
@@ -482,4 +487,10 @@ data class RcControlState(
     val rightSwitches: List<Boolean> = List(3) { false },
     val leftKnobValue: Float = 0.5f,
     val rightKnobValue: Float = 0.5f
+)
+
+/** Throttled plot snapshot for the RC screen (series history + monotonic revision). */
+data class RcPlotUiState(
+    val series: List<PlotData> = emptyList(),
+    val revision: Long = 0L,
 )

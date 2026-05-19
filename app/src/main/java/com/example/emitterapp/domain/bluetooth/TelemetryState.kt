@@ -20,7 +20,9 @@ data class IndicatorState(
 )
 
 data class PlotState(
-    val series: List<PlotData> = emptyList()
+    val series: List<PlotData> = emptyList(),
+    /** Incremented on each plot packet so the UI can redraw scrolling history. */
+    val revision: Long = 0L,
 )
 
 data class TelemetryState(

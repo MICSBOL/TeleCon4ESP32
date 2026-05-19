@@ -307,19 +307,22 @@ class AndroidBluetoothController @Inject constructor(
                         while (oldPoints.size > 100) {
                             oldPoints.removeAt(0)
                         }
-                        updatedSeries[index] = updatedSeries[index].copy(dataPoints = oldPoints)
+                        updatedSeries[index] = updatedSeries[index].copy(dataPoints = oldPoints.toList())
                     } else {
                         updatedSeries.add(
                             PlotData(
                                 name = plotNameMap.getOrDefault(index, "Plot ${index + 1}"),
-                                dataPoints = mutableListOf(value),
+                                dataPoints = listOf(value),
                                 colorArgb = plotColorArgbs.getOrElse(index) { 0xFFFFFFFF.toInt() }
                             )
                         )
                     }
                 }
                 currentState.copy(
-                    plotState = currentState.plotState.copy(series = updatedSeries)
+                    plotState = currentState.plotState.copy(
+                        series = updatedSeries,
+                        revision = currentState.plotState.revision + 1,
+                    )
                 )
             }
         } catch (e: Exception) {

@@ -246,23 +246,35 @@ private fun RcScreenCenterPlotHost(
     modifier: Modifier = Modifier,
 ) {
     if (bluetoothViewModel != null) {
-        val series by bluetoothViewModel.rcPlotSeries.collectAsState()
-        RcScreenCenterPlot(series = series, modifier = modifier)
+        val plotUi by bluetoothViewModel.rcPlotUiState.collectAsState()
+        RcScreenCenterPlot(
+            series = plotUi.series,
+            plotRevision = plotUi.revision,
+            modifier = modifier,
+        )
     } else {
         val telemetry by telemetryState.collectAsState()
         val series by remember {
             derivedStateOf { telemetry.plotState.series }
         }
-        RcScreenCenterPlot(series = series, modifier = modifier)
+        val plotRevision by remember {
+            derivedStateOf { telemetry.plotState.revision }
+        }
+        RcScreenCenterPlot(
+            series = series,
+            plotRevision = plotRevision,
+            modifier = modifier,
+        )
     }
 }
 
 @Composable
 private fun RcScreenCenterPlot(
     series: List<PlotData>,
+    plotRevision: Long,
     modifier: Modifier = Modifier,
 ) {
-    CenterDisplay(modifier = modifier, series = series)
+    CenterDisplay(modifier = modifier, series = series, plotRevision = plotRevision)
 }
 
 @Composable

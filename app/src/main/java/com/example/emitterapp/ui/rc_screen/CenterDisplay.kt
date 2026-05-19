@@ -64,7 +64,8 @@ import kotlin.random.Random
 @Composable
 fun CenterDisplay(
     modifier: Modifier = Modifier,
-    series: List<PlotData> = emptyList()
+    series: List<PlotData> = emptyList(),
+    plotRevision: Long = 0L,
 ) {
     Box(
         modifier = modifier
@@ -95,7 +96,8 @@ fun CenterDisplay(
                             PlotType.CARTESIAN -> {
                                 CartesianPlot(
                                     modifier = Modifier,
-                                    series = series
+                                    series = series,
+                                    plotRevision = plotRevision,
                                 )
                             }
 
@@ -152,7 +154,8 @@ enum class PlotType {
 @Composable
 fun CartesianPlot(
     modifier: Modifier,
-    series: List<PlotData> = emptyList()
+    series: List<PlotData> = emptyList(),
+    plotRevision: Long = 0L,
 ) {
     Row(
         modifier = modifier
@@ -200,7 +203,8 @@ fun CartesianPlot(
                     .padding(top = 8.dp)
                     .weight(1f)
                     .fillMaxWidth(),
-                series = series
+                series = series,
+                plotRevision = plotRevision,
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
