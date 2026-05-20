@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -63,7 +64,12 @@ import com.example.emitterapp.ui.components.EmitterStyledCard
 import com.example.emitterapp.ui.components.brandPrimary
 import com.example.emitterapp.ui.theme.EmitterAppTheme
 
-private const val TUTORIAL_VIDEO_STEP5_ASSET = "videos/video_step5.mp4"
+private const val TUTORIAL_VIDEO_STEP2_LIGHT = "videos/video_step2_light.mp4"
+private const val TUTORIAL_VIDEO_STEP2_DARK = "videos/video_step2_dark.mp4"
+private const val TUTORIAL_VIDEO_STEP4_LIGHT = "videos/video_step4_light.mp4"
+private const val TUTORIAL_VIDEO_STEP4_DARK = "videos/video_step4_dark.mp4"
+private const val TUTORIAL_VIDEO_STEP5_LIGHT = "videos/video_step5_light.mp4"
+private const val TUTORIAL_VIDEO_STEP5_DARK = "videos/video_step5_dark.mp4"
 private const val TUTORIAL_VIDEO_STEP7_ASSET = "videos/video_step7.mp4"
 private const val TUTORIAL_VIDEO_STEP8_ASSET = "videos/video_step8.mp4"
 private const val TUTORIAL_VIDEO_STEP9_ASSET = "videos/video_step9.mp4"
@@ -83,7 +89,10 @@ fun TutorialScreen(navController: NavController) {
             title = stringResource(R.string.tutorial_step, 2) + " " +
                 stringResource(R.string.tutorial_codes_step_title),
             description = stringResource(R.string.tutorial_codes_step_description),
-            media = TutorialMedia.Video("videos/video_step2.mp4")
+            media = TutorialMedia.ThemedVideo(
+                lightAssetPath = TUTORIAL_VIDEO_STEP2_LIGHT,
+                darkAssetPath = TUTORIAL_VIDEO_STEP2_DARK,
+            )
         ),
         TutorialStep(
             title = stringResource(R.string.tutorial_step, 3) + " " +
@@ -95,13 +104,19 @@ fun TutorialScreen(navController: NavController) {
             title = stringResource(R.string.tutorial_step, 4) + " " +
                 stringResource(R.string.tutorial_bluetooth_step_title),
             description = stringResource(R.string.tutorial_bluetooth_step_description),
-            media = TutorialMedia.Video("videos/video_step4.mp4")
+            media = TutorialMedia.ThemedVideo(
+                lightAssetPath = TUTORIAL_VIDEO_STEP4_LIGHT,
+                darkAssetPath = TUTORIAL_VIDEO_STEP4_DARK,
+            )
         ),
         TutorialStep(
             title = stringResource(R.string.tutorial_step, 5) + " " +
                 stringResource(R.string.tutorial_settings_step_title),
             description = stringResource(R.string.tutorial_settings_step_description),
-            media = TutorialMedia.Video(TUTORIAL_VIDEO_STEP5_ASSET)
+            media = TutorialMedia.ThemedVideo(
+                lightAssetPath = TUTORIAL_VIDEO_STEP5_LIGHT,
+                darkAssetPath = TUTORIAL_VIDEO_STEP5_DARK,
+            )
         ),
         TutorialStep(
             title = stringResource(R.string.tutorial_step, 6) + " " +
@@ -215,22 +230,26 @@ fun TutorialPage(step: TutorialStep) {
             ) {
                 when (val media = step.media) {
                     TutorialMedia.HomeScreenshot -> {
-                        Image(
-                            painter = painterResource(
-                                if (isDarkTheme) R.drawable.home_dark else R.drawable.home_light
-                            ),
+                        TutorialImageViewer(
+                            imageResId = if (isDarkTheme) R.drawable.home_dark else R.drawable.home_light,
                             contentDescription = step.title,
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
                         )
                     }
 
                     TutorialMedia.RcScreenshot -> {
-                        Image(
-                            painter = painterResource(R.drawable.rc_screen),
+                        TutorialImageViewer(
+                            imageResId = R.drawable.rc_screen,
                             contentDescription = step.title,
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
+                        )
+                    }
+
+                    is TutorialMedia.ThemedVideo -> {
+                        TutorialVideoPlayer(
+                            assetPath = if (isDarkTheme) media.darkAssetPath else media.lightAssetPath,
+                            contentDescription = step.title,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
 
@@ -238,7 +257,7 @@ fun TutorialPage(step: TutorialStep) {
                         TutorialVideoPlayer(
                             assetPath = media.assetPath,
                             contentDescription = step.title,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
@@ -269,6 +288,97 @@ fun TutorialPage(step: TutorialStep) {
     }
 }
 
+@Composable
+private fun TutorialImageViewer(
+    @DrawableRes imageResId: Int,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    var isFullscreen by remember { mutableStateOf(false) }
+
+    TutorialFullscreenHost(
+        isFullscreen = isFullscreen,
+        onFullscreenChange = { isFullscreen = it },
+        embeddedModifier = modifier,
+        fullscreenModifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) { contentModifier ->
+        Image(
+            painter = painterResource(imageResId),
+            contentDescription = contentDescription,
+            modifier = contentModifier,
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
+private fun TutorialFullscreenHost(
+    isFullscreen: Boolean,
+    onFullscreenChange: (Boolean) -> Unit,
+    embeddedModifier: Modifier,
+    fullscreenModifier: Modifier,
+    content: @Composable (contentModifier: Modifier) -> Unit,
+) {
+    val surface: @Composable (Modifier) -> Unit = { surfaceModifier ->
+        TutorialFullscreenSurface(
+            isFullscreen = isFullscreen,
+            onFullscreenToggle = { onFullscreenChange(!isFullscreen) },
+            modifier = surfaceModifier,
+        ) {
+            content(Modifier.fillMaxSize())
+        }
+    }
+
+    if (isFullscreen) {
+        BackHandler { onFullscreenChange(false) }
+        Dialog(
+            onDismissRequest = { onFullscreenChange(false) },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
+        ) {
+            surface(fullscreenModifier)
+        }
+    } else {
+        surface(embeddedModifier)
+    }
+}
+
+@Composable
+private fun TutorialFullscreenSurface(
+    isFullscreen: Boolean,
+    onFullscreenToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val fullscreenLabel = if (isFullscreen) {
+        stringResource(R.string.tutorial_video_exit_fullscreen)
+    } else {
+        stringResource(R.string.tutorial_video_enter_fullscreen)
+    }
+    val fullscreenIcon = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen
+
+    Box(modifier = modifier) {
+        content()
+        IconButton(
+            onClick = onFullscreenToggle,
+            modifier = Modifier.align(Alignment.TopEnd),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = Color.Black.copy(alpha = 0.45f),
+                contentColor = Color.White,
+            ),
+        ) {
+            Icon(
+                imageVector = fullscreenIcon,
+                contentDescription = fullscreenLabel,
+            )
+        }
+    }
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun TutorialVideoPlayer(
@@ -293,53 +403,14 @@ private fun TutorialVideoPlayer(
         onDispose { player.release() }
     }
 
-    if (isFullscreen) {
-        BackHandler { isFullscreen = false }
-        Dialog(
-            onDismissRequest = { isFullscreen = false },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false,
-            ),
-        ) {
-            TutorialVideoPlayerSurface(
-                player = player,
-                contentDescription = contentDescription,
-                isFullscreen = true,
-                onFullscreenToggle = { isFullscreen = false },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-            )
-        }
-    } else {
-        TutorialVideoPlayerSurface(
-            player = player,
-            contentDescription = contentDescription,
-            isFullscreen = false,
-            onFullscreenToggle = { isFullscreen = true },
-            modifier = modifier,
-        )
-    }
-}
-
-@androidx.annotation.OptIn(UnstableApi::class)
-@Composable
-private fun TutorialVideoPlayerSurface(
-    player: ExoPlayer,
-    contentDescription: String,
-    isFullscreen: Boolean,
-    onFullscreenToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val fullscreenLabel = if (isFullscreen) {
-        stringResource(R.string.tutorial_video_exit_fullscreen)
-    } else {
-        stringResource(R.string.tutorial_video_enter_fullscreen)
-    }
-    val fullscreenIcon = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen
-
-    Box(modifier = modifier) {
+    TutorialFullscreenHost(
+        isFullscreen = isFullscreen,
+        onFullscreenChange = { isFullscreen = it },
+        embeddedModifier = modifier,
+        fullscreenModifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) { contentModifier ->
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -355,31 +426,25 @@ private fun TutorialVideoPlayerSurface(
                     playerView.player = player
                 }
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = contentModifier,
             onRelease = { playerView ->
                 playerView.player = null
             },
         )
-        IconButton(
-            onClick = onFullscreenToggle,
-            modifier = Modifier.align(Alignment.TopEnd),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = Color.Black.copy(alpha = 0.45f),
-                contentColor = Color.White,
-            ),
-        ) {
-            Icon(
-                imageVector = fullscreenIcon,
-                contentDescription = fullscreenLabel,
-            )
-        }
     }
 }
 
 sealed interface TutorialMedia {
-    /** Home screen reference image (light/dark drawable chosen from theme). */
+    /**
+     * Home screen reference image: [R.drawable.home_light] / [R.drawable.home_dark].
+     * Overlay badges 1–7 (Select UI removed); see [R.string.tutorial_home_step_description].
+     */
     data object HomeScreenshot : TutorialMedia
     data object RcScreenshot : TutorialMedia
+    data class ThemedVideo(
+        val lightAssetPath: String,
+        val darkAssetPath: String,
+    ) : TutorialMedia
     data class Video(val assetPath: String) : TutorialMedia
 }
 

@@ -1,7 +1,6 @@
 package com.example.emitterapp.domain.use_case
 
 import com.example.emitterapp.domain.model.JoystickMode
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.repository.ISettingsRepository
 import javax.inject.Inject
 
@@ -10,8 +9,7 @@ data class SaveSettingsUseCases @Inject constructor(
     val saveRightStickMode: SaveRightStickModeUseCase,
     val saveSwitchState: SaveSwitchStateUseCase,
     val saveLeftKnobValue: SaveLeftKnobValueUseCase,
-    val saveRightKnobValue: SaveRightKnobValueUseCase,
-    val saveRcUiStyle: SaveRcUiStyleUseCase
+    val saveRightKnobValue: SaveRightKnobValueUseCase
 )
 
 class SaveLeftStickModeUseCase @Inject constructor(
@@ -42,10 +40,4 @@ class SaveRightKnobValueUseCase @Inject constructor(
     private val repository: ISettingsRepository
 ) {
     suspend operator fun invoke(value: Float) = repository.saveRightKnobValue(value)
-}
-
-class SaveRcUiStyleUseCase @Inject constructor(
-    private val repository: ISettingsRepository
-) {
-    suspend operator fun invoke(style: RcUiStyle) = repository.saveRcUiStyle(style)
 }

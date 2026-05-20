@@ -1,7 +1,6 @@
 package com.example.emitterapp.util
 
 import com.example.emitterapp.domain.model.JoystickMode
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.domain.repository.ISettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -39,9 +38,6 @@ class FakeSettingsRepository : ISettingsRepository {
     }
     override suspend fun saveRightKnobValue(value: Float) {
         _settings.update { it.copy(rightKnobInitialValue = value) }
-    }
-    override suspend fun saveRcUiStyle(style: RcUiStyle) {
-        _settings.update { it.copy(rcUiStyle = style) }
     }
 
     // ── Helpers for tests ────────────────────────────────────────────────────

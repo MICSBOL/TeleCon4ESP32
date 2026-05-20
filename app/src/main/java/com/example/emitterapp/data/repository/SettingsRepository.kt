@@ -9,7 +9,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.emitterapp.domain.model.JoystickMode
 import com.example.emitterapp.domain.model.JoystickMode.Companion.toStringRepresentation
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.domain.repository.ISettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,7 +25,6 @@ private object PreferencesKeys {
     val RIGHT_KNOB_VALUE = floatPreferencesKey("right_knob_value")
     val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
     val LAST_DEVICE_NAME = stringPreferencesKey("last_device_name")
-    val RC_UI_STYLE = stringPreferencesKey("rc_ui_style")
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
@@ -40,7 +38,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val switchStatesString = preferences[PreferencesKeys.SWITCH_STATES]
         val leftKnobValue = preferences[PreferencesKeys.LEFT_KNOB_VALUE] ?: 0.5f
         val rightKnobValue = preferences[PreferencesKeys.RIGHT_KNOB_VALUE] ?: 0.5f
-        val rcUiStyle = RcUiStyle.fromString(preferences[PreferencesKeys.RC_UI_STYLE])
 
         val switchStatesMap = switchStatesString?.split(",")?.mapIndexed { index, s ->
             index to (s.toBooleanStrictOrNull() ?: false)
@@ -51,8 +48,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             rightStickMode = JoystickMode.fromString(rightModeString),
             switchInitialStates = switchStatesMap,
             leftKnobInitialValue = leftKnobValue,
-            rightKnobInitialValue = rightKnobValue,
-            rcUiStyle = rcUiStyle
+            rightKnobInitialValue = rightKnobValue
         )
     }
 
@@ -100,12 +96,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     override suspend fun saveRightKnobValue(value: Float) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.RIGHT_KNOB_VALUE] = value
-        }
-    }
-
-    override suspend fun saveRcUiStyle(style: RcUiStyle) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.RC_UI_STYLE] = style.name
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.example.emitterapp.domain.repository
 
 import com.example.emitterapp.domain.model.JoystickMode
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import kotlinx.coroutines.flow.Flow
 
@@ -19,5 +18,4 @@ interface ISettingsRepository {
     suspend fun saveSwitchState(index: Int, isOn: Boolean)
     suspend fun saveLeftKnobValue(value: Float)
     suspend fun saveRightKnobValue(value: Float)
-    suspend fun saveRcUiStyle(style: RcUiStyle)
 }

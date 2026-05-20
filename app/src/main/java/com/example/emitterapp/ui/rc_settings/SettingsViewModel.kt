@@ -2,7 +2,6 @@ package com.example.emitterapp.ui.rc_settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.domain.use_case.GetUserSettingsUseCase
 import com.example.emitterapp.domain.use_case.SaveSettingsUseCases
@@ -61,12 +60,6 @@ class SettingsViewModel @Inject constructor(
     fun onRightKnobInitialValueChange(value: Float){
         viewModelScope.launch {
             saveSettings.saveRightKnobValue(value)
-        }
-    }
-
-    fun onRcUiStyleChanged(style: RcUiStyle) {
-        viewModelScope.launch {
-            saveSettings.saveRcUiStyle(style)
         }
     }
 }

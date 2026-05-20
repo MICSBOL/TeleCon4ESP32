@@ -7,6 +7,5 @@ data class UserSettings(
     val rightStickMode: JoystickMode = JoystickMode.Spring(),
     val switchInitialStates: Map<Int, Boolean> = (0..5).associateWith { false },
     val leftKnobInitialValue: Float = 0.5f,
-    val rightKnobInitialValue: Float = 0.5f,
-    val rcUiStyle: RcUiStyle = RcUiStyle.SCREEN_3D
+    val rightKnobInitialValue: Float = 0.5f
 )

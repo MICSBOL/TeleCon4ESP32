@@ -32,13 +32,11 @@ import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.emitterapp.R
-import com.example.emitterapp.domain.model.RcUiStyle
 import com.example.emitterapp.domain.model.UserSettings
 import com.example.emitterapp.domain.model.JoystickMode
 import androidx.compose.ui.tooling.preview.Preview
@@ -101,7 +99,6 @@ fun RcSettingsScreen(
                 SettingsContent(
                     modifier = Modifier.padding(paddingValues),
                     settings = state.settings,
-                    onRcUiStyleChanged = { viewModel.onRcUiStyleChanged(it) },
                     onLeftStickModeChanged = { viewModel.onLeftStickModeChanged(it) },
                     onRightStickModeChanged = { viewModel.onRightStickModeChanged(it) },
                     onSwitchInitialStateChange = { index, isOn ->
@@ -119,7 +116,6 @@ fun RcSettingsScreen(
 private fun SettingsContent(
     modifier: Modifier = Modifier,
     settings: UserSettings,
-    onRcUiStyleChanged: (RcUiStyle) -> Unit = {},
     onLeftStickModeChanged: (JoystickMode) -> Unit = {},
     onRightStickModeChanged: (JoystickMode) -> Unit = {},
     onSwitchInitialStateChange: (Int, Boolean) -> Unit = { _, _ -> },
@@ -141,14 +137,6 @@ private fun SettingsContent(
         modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        item {
-            SettingsSection(title = stringResource(R.string.rc_controller_settings_screen_style)) {
-                RcUiStyleSelector(
-                    selectedStyle = settings.rcUiStyle,
-                    onStyleSelected = { onRcUiStyleChanged(it) }
-                )
-            }
-        }
         item {
             SettingsSection(title = stringResource(R.string.rc_controller_settings_joystick_settings)) {
                 JoystickModeSelector(
@@ -395,68 +383,6 @@ fun JoystickModeSelector(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RcUiStyleSelector(
-    selectedStyle: RcUiStyle,
-    onStyleSelected: (RcUiStyle) -> Unit
-) {
-    val styleOptions = listOf(
-        RcUiStyle.SCREEN_3D to stringResource(R.string.rc_controller_settings_screen_3d),
-        RcUiStyle.SCREEN_LED to stringResource(R.string.rc_controller_settings_screen_led)
-    )
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = styleOptions.first { it.first == selectedStyle }.second
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it }
-    ) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.rc_controller_settings_ui_style)) },
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                focusedBorderColor = MaterialTheme.colorScheme.primary
-            ),
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-        ) {
-            styleOptions.forEach { (style, label) ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = label,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = if (style == selectedStyle) FontWeight.Bold else FontWeight.Normal
-                        )
-                    },
-                    onClick = {
-                        onStyleSelected(style)
-                        expanded = false
-                    },
-                    colors = MenuDefaults.itemColors(
-                        textColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-            }
-        }
-    }
-}
-
 private fun isInitialPositionAllowedForMode(mode: JoystickMode, position: Pair<Int, Int>): Boolean {
     return when (mode) {
         is JoystickMode.Spring -> position == JoystickMode.CENTER
@@ -493,7 +419,6 @@ private fun JoystickMode.withInitialPosition(position: Pair<Int, Int>): Joystick
 fun RcSettingsScreenPreview() {
     val navController = rememberNavController()
     val mockSettings = UserSettings(
-        rcUiStyle = RcUiStyle.SCREEN_3D,
         leftStickMode = JoystickMode.Spring(),
         rightStickMode = JoystickMode.Hold(),
         switchInitialStates = mapOf(0 to true, 1 to false, 2 to true, 3 to false, 4 to true, 5 to false),

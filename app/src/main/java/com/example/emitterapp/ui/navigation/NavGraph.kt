@@ -24,12 +24,9 @@ import com.example.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.example.emitterapp.ui.codes.CodesScreen
 import com.example.emitterapp.ui.home.HomeScreen
 import com.example.emitterapp.ui.rc_screen.RcScreen
-import com.example.emitterapp.ui.rc_screen.RcScreenLedStyle
 import com.example.emitterapp.ui.rc_screen.components.TestBluetoothScreen
 import com.example.emitterapp.ui.rc_settings.RcSettingsScreen
-import com.example.emitterapp.ui.rc_settings.SettingsUiState
 import com.example.emitterapp.ui.rc_settings.SettingsViewModel
-// toRoute() is a top-level extension in this package — no extra import needed
 import com.example.emitterapp.ui.splash.SplashScreen
 import com.example.emitterapp.ui.tutorial.TutorialScreen
 
@@ -50,9 +47,6 @@ fun AppNavGraph() {
         composable(Screen.Home.route) {
             val state by bluetoothViewModel.state.collectAsState()
             val lastDeviceName by bluetoothViewModel.lastDeviceName.collectAsState()
-            val settingsUiState by settingsViewModel.uiState.collectAsState()
-            val rcScreenRoute = (settingsUiState as? SettingsUiState.Success)
-                ?.settings?.rcUiStyle?.toRoute() ?: Screen.RcScreen.route
             val context = LocalContext.current
             val activity = context as? ComponentActivity
             val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
@@ -115,7 +109,6 @@ fun AppNavGraph() {
                 isBluetoothConnected = state.isConnected,
                 errorMessage = state.errorMessage,
                 lastDeviceName = lastDeviceName,
-                rcScreenRoute = rcScreenRoute,
                 onDismissError = bluetoothViewModel::dismissError,
                 onStartClick = {
                     ensureBluetoothReadyBeforeAction {
@@ -209,10 +202,6 @@ fun AppNavGraph() {
         }
         composable(Screen.RcScreen.route) {
             RcScreen(bluetoothViewModel = bluetoothViewModel, navController = navController)
-        }
-
-        composable(Screen.RcScreenLedStyle.route) {
-            RcScreenLedStyle(bluetoothViewModel = bluetoothViewModel, navController = navController)
         }
         composable(Screen.RcSettingsScreen.route) {
             RcSettingsScreen(navController = navController, viewModel = settingsViewModel)

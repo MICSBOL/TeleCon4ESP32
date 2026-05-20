@@ -78,10 +78,8 @@ fun HomeScreen(
     isBluetoothConnected: Boolean = false,
     errorMessage: String? = null,
     lastDeviceName: String? = null,
-    rcScreenRoute: String = Screen.RcScreen.route,
     onStartClick: () -> Unit = {},
-    onDismissError: () -> Unit = {},
-    isLedStyle: Boolean = false
+    onDismissError: () -> Unit = {}
 ) {
     val isLandscape = LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
     val context = LocalContext.current
@@ -95,7 +93,7 @@ fun HomeScreen(
         HomeItem(
             Icons.Default.RocketLaunch,
             stringResource(R.string.home_item_rc_control),
-            rcScreenRoute,
+            Screen.RcScreen.route,
             Icons.Default.Settings,
             Screen.RcSettingsScreen.route
         ),
@@ -151,8 +149,7 @@ fun HomeScreen(
                         isBluetoothConnected = isBluetoothConnected,
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxSize(),
-                        isLedStyle = isLedStyle
+                            .fillMaxSize()
                     )
                     HomeSecondaryContent(
                         modifier = Modifier
@@ -162,8 +159,7 @@ fun HomeScreen(
                             .weight(1f)
                             .fillMaxWidth(),
                         lastDeviceName = lastDeviceName,
-                        onStartClick = onStartClick,
-                        isLedStyle = isLedStyle
+                        onStartClick = onStartClick
                     )
                 }
             } else {
@@ -181,8 +177,7 @@ fun HomeScreen(
                         isBluetoothConnected = isBluetoothConnected,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
-                        isLedStyle = isLedStyle
+                            .weight(1f)
                     )
                     HomeSecondaryContent(
                         modifier = Modifier
@@ -192,8 +187,7 @@ fun HomeScreen(
                             .weight(1f)
                             .fillMaxWidth(),
                         lastDeviceName = lastDeviceName,
-                        onStartClick = onStartClick,
-                        isLedStyle = isLedStyle
+                        onStartClick = onStartClick
                     )
                 }
             }
@@ -240,8 +234,7 @@ private fun HomeOptionsList(
     navController: NavHostController?,
     isConnecting: Boolean,
     isBluetoothConnected: Boolean,
-    modifier: Modifier = Modifier,
-    isLedStyle: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val bluetoothStatusText = when {
         isConnecting -> stringResource(R.string.home_bluetooth_status_connecting)
@@ -268,8 +261,7 @@ private fun HomeOptionsList(
                     if (item.route2.isNotEmpty()) {
                         navController?.navigate(item.route2)
                     }
-                },
-                isLedStyle = isLedStyle
+                }
             )
         }
     }
@@ -280,8 +272,7 @@ private fun HomeSecondaryContent(
     modifier: Modifier = Modifier,
     imageModifier: Modifier,
     lastDeviceName: String? = null,
-    onStartClick: () -> Unit = {},
-    isLedStyle: Boolean = false
+    onStartClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier,
@@ -331,8 +322,7 @@ fun HomeItemCard(
     subtitle: String? = null,
     isBluetoothConnected: Boolean = false,
     icon2: ImageVector? = null,
-    onClick2: () -> Unit,
-    isLedStyle: Boolean = false
+    onClick2: () -> Unit
 ) {
     Row {
         EmitterStyledCard(
@@ -427,10 +417,3 @@ fun SplashScreenDarkPreview() {
     }
 }
 
-@Preview(showSystemUi = true, name = "LED Style")
-@Composable
-fun HomeScreenLedStylePreview() {
-    EmitterAppTheme {
-        HomeScreen(isLedStyle = true)
-    }
-}
