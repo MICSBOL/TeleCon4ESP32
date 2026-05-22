@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">EmitterApp</string>
+    <string name="app_name">MICSBOL</string>
     <string name="app_header_subtitle">Conduce, ajusta y conecta tu hardware RC</string>
     <!-- HomeScreen Strings -->
     <string name="home_title">RC-Emitter</string>
     <string name="home_help">Ayuda</string>
+    <string name="home_help_dialog_title">Ayuda rápida</string>
+    <string name="home_help_dialog_subtitle">Problemas frecuentes y cómo solucionarlos. Toca un problema para ver la solución.</string>
+    <string name="home_help_problem_bt_not_found">ESP32-BT no aparece al escanear</string>
+    <string name="home_help_solution_bt_not_found">Enciende el ESP32 y presiona RESET. En Arduino IDE, abre el Monitor Serie a 115200 baudios y confirma que muestre ESP32 Bluetooth Receiver Ready. En la pantalla Bluetooth de la app, toca actualizar para escanear, acércate al ESP32 y detén el escaneo cuando ESP32-BT aparezca en Dispositivos escaneados.</string>
+    <string name="home_help_problem_connect_fails">Inicio Rápido o la conexión fallan</string>
+    <string name="home_help_solution_connect_fails">Abre Bluetooth desde Inicio, inicia un escaneo y toca ESP32-BT. Si ya estaba emparejado, prueba Dispositivos vinculados. Si sigue fallando, olvida ESP32-BT en la configuración Bluetooth del sistema, escanea de nuevo y empareja desde Dispositivos escaneados.</string>
+    <string name="home_help_problem_not_connected">Inicio sigue mostrando No conectado</string>
+    <string name="home_help_solution_not_connected">Solo un teléfono debe controlar el ESP32 a la vez. Cierra otras apps que puedan usar el enlace Bluetooth. Abre Bluetooth desde Inicio, conéctate a ESP32-BT y espera hasta que la tarjeta Bluetooth muestre Conectado antes de abrir Control RC.</string>
+    <string name="home_help_problem_rc_no_response">Los sticks, interruptores o botones RC no tienen efecto</string>
+    <string name="home_help_solution_rc_no_response">Conéctate primero por Bluetooth (Inicio debe mostrar Conectado). Abre Control RC en horizontal. Confirma que el sketch del ESP32 esté cargado y que el Monitor Serie muestre ESP32 Bluetooth Receiver Ready. Prueba las entradas con el debug del Monitor Serie como en el Tutorial.</string>
+    <string name="home_help_problem_telemetry_stale">Los indicadores, LEDs, displays de siete segmentos o la gráfica no se actualizan</string>
+    <string name="home_help_solution_telemetry_stale">La telemetría la envía el firmware del ESP32. Permanece en la pantalla Control RC con Bluetooth conectado. Reflashea el sketch si hace falta y verifica debug_config.h y la configuración de telemetría. Usa los pasos de prueba de telemetría del Tutorial para confirmar que el firmware envía datos.</string>
+    <string name="home_help_problem_first_setup">Configuración inicial — ¿por dónde empiezo?</string>
+    <string name="home_help_solution_first_setup">Sigue el Tutorial de la app en orden: obtén el ZIP del ESP32 en Códigos y Documentos, carga ESP32_BT_Controller.ino en Arduino IDE, conéctate por Bluetooth, configura Ajustes RC y luego abre Control RC. El botón Ayuda está siempre disponible en Inicio para resolver problemas rápidamente.</string>
     <string name="home_item_rc_control">Pantalla de Control RC</string>
-    <string name="home_item_select_ui">Seleccionar IU</string>
     <string name="home_item_settings">RC - Configuración</string>
     <string name="home_item_bluetooth">Bluetooth</string>
     <string name="home_bluetooth_status_connecting">Conectando...</string>
@@ -14,7 +27,6 @@
     <string name="home_bluetooth_status_disconnected">No conectado</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Inicio Rápido</string>
-    <string name="home_upgrade_pro">Actualizar a Pro</string>
     <string name="home_version_info">v1.0.2 - Acerca de esta App</string>
     <string name="home_car_image_description">Ilustración de automóvil rebotando</string>
     <string name="home_codes_documents">Codigos y Documentos</string>

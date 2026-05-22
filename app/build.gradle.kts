@@ -7,13 +7,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.emitterapp"
+    namespace = "com.micsbol.emitterapp"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.emitterapp"
+        applicationId = "com.micsbol.emitterapp"
         minSdk = 27
         targetSdk = 36
         versionCode = 1

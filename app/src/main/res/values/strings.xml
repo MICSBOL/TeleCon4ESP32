@@ -1,11 +1,24 @@
 <resources>
-    <string name="app_name">EmitterApp</string>
+    <string name="app_name">MICSBOL</string>
     <string name="app_header_subtitle">Drive, tune, and connect your RC hardware</string>
     <!-- HomeScreen Strings -->
     <string name="home_title">RC-Emitter</string>
     <string name="home_help">Help</string>
+    <string name="home_help_dialog_title">Quick help</string>
+    <string name="home_help_dialog_subtitle">Common problems and how to fix them. Tap a problem to see the solution.</string>
+    <string name="home_help_problem_bt_not_found">ESP32-BT does not appear when scanning</string>
+    <string name="home_help_solution_bt_not_found">Power on the ESP32 and press RESET. In Arduino IDE, open Serial Monitor at 115200 baud and confirm it prints ESP32 Bluetooth Receiver Ready. On the app Bluetooth screen, tap refresh to scan, move closer to the ESP32, and stop scanning when ESP32-BT appears in Scanned Devices.</string>
+    <string name="home_help_problem_connect_fails">Quick Start or connect fails</string>
+    <string name="home_help_solution_connect_fails">Open Bluetooth from Home, start a scan, and tap ESP32-BT. If it was paired before, try Paired Devices instead. If connection still fails, forget ESP32-BT in Android system Bluetooth settings, scan again, and pair from Scanned Devices.</string>
+    <string name="home_help_problem_not_connected">Home still shows Not connected</string>
+    <string name="home_help_solution_not_connected">Only one phone should control the ESP32 at a time. Close other apps that may use the Bluetooth link. Open Bluetooth from Home, connect to ESP32-BT, and wait until the Bluetooth card shows Connected before opening RC Control.</string>
+    <string name="home_help_problem_rc_no_response">RC sticks, switches, or buttons have no effect</string>
+    <string name="home_help_solution_rc_no_response">Connect over Bluetooth first (Home must show Connected). Open RC Control in landscape. Confirm the ESP32 sketch is uploaded and Serial Monitor shows ESP32 Bluetooth Receiver Ready. Test inputs with Serial Monitor debug enabled as shown in the Tutorial.</string>
+    <string name="home_help_problem_telemetry_stale">Gauges, LEDs, seven-segment displays, or plot do not update</string>
+    <string name="home_help_solution_telemetry_stale">Telemetry is sent by the ESP32 firmware. Stay on the RC Control screen with Bluetooth connected. Reflash the sketch if needed and verify debug_config.h and telemetry settings. Use the Tutorial telemetry test steps to confirm the firmware is sending data.</string>
+    <string name="home_help_problem_first_setup">First-time setup — where do I start?</string>
+    <string name="home_help_solution_first_setup">Follow the in-app Tutorial in order: get the ESP32 ZIP from Codes and Documents, upload ESP32_BT_Controller.ino in Arduino IDE, connect via Bluetooth, configure RC Settings, then open RC Control. The Help button is always available from Home for quick troubleshooting.</string>
     <string name="home_item_rc_control">RC Control Screen</string>
-    <string name="home_item_select_ui">Select UI</string>
     <string name="home_item_settings">RC - Settings</string>
     <string name="home_item_bluetooth">Bluetooth</string>
     <string name="home_bluetooth_status_connecting">Connecting...</string>
@@ -13,7 +26,6 @@
     <string name="home_bluetooth_status_disconnected">Not connected</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Quick Start</string>
-    <string name="home_upgrade_pro">Upgrade to pro</string>
     <string name="home_version_info">v1.0.2 - About this App</string>
     <string name="home_car_image_description">Bouncing car illustration</string>
     <string name="home_codes_documents">Codes and Documents</string>
