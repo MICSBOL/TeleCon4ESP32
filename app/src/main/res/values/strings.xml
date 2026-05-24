@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MICSBOL</string>
+    <string name="app_name">RC-Emitter</string>
     <string name="app_header_subtitle">Drive, tune, and connect your RC hardware</string>
     <!-- HomeScreen Strings -->
     <string name="home_title">RC-Emitter</string>
@@ -26,7 +26,7 @@
     <string name="home_bluetooth_status_disconnected">Not connected</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Quick Start</string>
-    <string name="home_version_info">v1.0.2 - About this App</string>
+    <string name="home_version_info">v%1$s - About this App</string>
     <string name="home_car_image_description">Bouncing car illustration</string>
     <string name="home_codes_documents">Codes and Documents</string>
     <string name="home_scan_a_device">Scan new device</string>
@@ -102,10 +102,41 @@
     <string name="rc_controller_settings_right_stick">Right Stick</string>
     <string name="rc_controller_settings_left_knob">Left Knob</string>
     <string name="rc_controller_settings_right_knob">Right Knob</string>
-    <!-- SplashScreen Strings -->
-    <string name="splash_title">RC - EMITTER</string>
-    <string name="splash_logo_content_description">Splash Screen Logo</string>
-    <string name="splash_get_started">Get Started</string>
-    <string name="splash_subtitle">Control your projects in one place.</string>
+    <string name="splash_logo_content_description">MICSBOL app logo</string>
+    <string name="splash_tagline">Bluetooth RC transmitter for ESP32 hardware</string>
+    <string name="splash_tap_hint">Tap anywhere to continue</string>
+    <string name="splash_brand_credit">by MICSBOL</string>
     <string name="codes_document_general">General Documentation.</string>
+    <!-- About & Privacy (hosted on MICSBOL/BT_ESP32_USER_DOCUMENTATION GitHub Pages) -->
+    <string name="documentation_base_url" translatable="false">https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/</string>
+    <string name="documentation_repository_url" translatable="false">https://github.com/MICSBOL/BT_ESP32_USER_DOCUMENTATION</string>
+    <string name="privacy_policy_url" translatable="false">https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/privacy-policy.html</string>
+    <string name="privacy_policy_url_es" translatable="false">https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/privacy-policy-es.html</string>
+    <string name="documentation_pdf_en_url" translatable="false">https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/main_en.pdf</string>
+    <string name="documentation_pdf_es_url" translatable="false">https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/main.pdf</string>
+    <string name="about_title">About this App</string>
+    <string name="about_subtitle">Legal information and data use</string>
+    <string name="about_back">Back</string>
+    <string name="about_version_label">Version %1$s</string>
+    <string name="about_description">MICSBOL RC-Emitter connects your phone to ESP32-based RC hardware over Bluetooth. Control sticks, switches, knobs, and view live telemetry from your firmware.</string>
+    <string name="about_logo_content_description">MICSBOL app logo</string>
+    <string name="about_legal_section_title">Legal</string>
+    <string name="about_privacy_policy">Privacy Policy</string>
+    <string name="about_privacy_policy_hint">How we handle Bluetooth, local settings, and ads</string>
+    <string name="about_open_in_browser">Open online</string>
+    <string name="about_data_section_title">Data use summary</string>
+    <string name="about_data_section_body">Bluetooth: device discovery, pairing, and live control/telemetry with hardware you connect — not sent to MICSBOL servers.\n\nLocal storage: last device and RC settings on your phone only.\n\nAds: Google AdMob may collect advertising identifiers and usage data. See the Privacy Policy for details and Google ad settings.</string>
+    <string name="about_contact_label">Privacy contact: %1$s</string>
+    <string name="about_contact_email" translatable="false">privacy@micsbol.com</string>
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="home_about_content_description">Open About this App</string>
+    <string name="about_documentation_section_title">Documentation</string>
+    <string name="about_documentation_home">Documentation website</string>
+    <string name="about_documentation_home_hint">Privacy policy, guides, and PDFs online</string>
+    <string name="about_documentation_en">User documentation (English PDF)</string>
+    <string name="about_documentation_en_hint">ESP32 Bluetooth controller guide</string>
+    <string name="about_documentation_es">User documentation (Spanish PDF)</string>
+    <string name="about_documentation_es_hint">Guía del controlador ESP32 Bluetooth</string>
+    <string name="about_documentation_repository">Documentation repository</string>
+    <string name="about_documentation_repository_hint">Source files on GitHub</string>
 </resources>

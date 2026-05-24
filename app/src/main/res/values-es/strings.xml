@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MICSBOL</string>
+    <string name="app_name">RC-Emisor</string>
     <string name="app_header_subtitle">Conduce, ajusta y conecta tu hardware RC</string>
     <!-- HomeScreen Strings -->
-    <string name="home_title">RC-Emitter</string>
+    <string name="home_title">RC-Emisor</string>
     <string name="home_help">Ayuda</string>
     <string name="home_help_dialog_title">Ayuda rápida</string>
     <string name="home_help_dialog_subtitle">Problemas frecuentes y cómo solucionarlos. Toca un problema para ver la solución.</string>
@@ -27,7 +27,7 @@
     <string name="home_bluetooth_status_disconnected">No conectado</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Inicio Rápido</string>
-    <string name="home_version_info">v1.0.2 - Acerca de esta App</string>
+    <string name="home_version_info">v%1$s - Acerca de esta App</string>
     <string name="home_car_image_description">Ilustración de automóvil rebotando</string>
     <string name="home_codes_documents">Codigos y Documentos</string>
     <string name="home_scan_a_device">Escanear nuevo dispositivo</string>
@@ -103,10 +103,34 @@
     <string name="rc_controller_settings_right_stick">Joystick derecho</string>
     <string name="rc_controller_settings_left_knob">Perilla Izquierda</string>
     <string name="rc_controller_settings_right_knob">Perilla Derecha</string>
-    <!-- SplashScreen Strings -->
-    <string name="splash_title">RC - EMISOR</string>
-    <string name="splash_logo_content_description">Logo de la pantalla de inicio</string>
-    <string name="splash_get_started">Comenzar</string>
-    <string name="splash_subtitle">Controla tus proyectos en un solo lugar.</string>
+    <string name="splash_logo_content_description">Logo de la app MICSBOL</string>
+    <string name="splash_tagline">Transmisor RC Bluetooth para hardware ESP32</string>
+    <string name="splash_tap_hint">Toca en cualquier lugar para continuar</string>
+    <string name="splash_brand_credit">by MICSBOL</string>
     <string name="codes_document_general">Documentación General</string>
+    <!-- About & Privacy -->
+    <string name="about_title">Acerca de esta app</string>
+    <string name="about_subtitle">Información legal y uso de datos</string>
+    <string name="about_back">Atrás</string>
+    <string name="about_version_label">Versión %1$s</string>
+    <string name="about_description">MICSBOL RC-Emisor conecta tu teléfono a hardware RC basado en ESP32 por Bluetooth. Controla sticks, interruptores y perillas, y consulta telemetría en vivo desde tu firmware.</string>
+    <string name="about_logo_content_description">Logo de la app MICSBOL</string>
+    <string name="about_legal_section_title">Legal</string>
+    <string name="about_privacy_policy">Política de privacidad</string>
+    <string name="about_privacy_policy_hint">Bluetooth, ajustes locales y anuncios</string>
+    <string name="about_open_in_browser">Abrir en línea</string>
+    <string name="about_data_section_title">Resumen de datos</string>
+    <string name="about_data_section_body">Bluetooth: descubrimiento, emparejamiento y control/telemetría en vivo con el hardware que conectes — no se envía a servidores de MICSBOL.\n\nAlmacenamiento local: último dispositivo y ajustes RC solo en tu teléfono.\n\nAnuncios: Google AdMob puede recopilar identificadores publicitarios y datos de uso. Consulta la Política de privacidad y los ajustes de anuncios de Google.</string>
+    <string name="about_contact_label">Contacto de privacidad: %1$s</string>
+    <string name="privacy_policy_title">Política de privacidad</string>
+    <string name="home_about_content_description">Abrir Acerca de esta app</string>
+    <string name="about_documentation_section_title">Documentación</string>
+    <string name="about_documentation_home">Sitio de documentación</string>
+    <string name="about_documentation_home_hint">Política de privacidad, guías y PDFs en línea</string>
+    <string name="about_documentation_en">Documentación de usuario (PDF en inglés)</string>
+    <string name="about_documentation_en_hint">Guía del controlador ESP32 Bluetooth</string>
+    <string name="about_documentation_es">Documentación de usuario (PDF en español)</string>
+    <string name="about_documentation_es_hint">Guía del controlador ESP32 Bluetooth</string>
+    <string name="about_documentation_repository">Repositorio de documentación</string>
+    <string name="about_documentation_repository_hint">Archivos fuente en GitHub</string>
 </resources>

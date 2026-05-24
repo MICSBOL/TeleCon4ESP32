@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Logo marks only, scaled for system splash (dark theme). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <!-- Scaled to ~68% and centered for adaptive-icon safe zone (inner 66%) -->
     <group
         android:pivotX="256"
         android:pivotY="256"
-        android:scaleX="0.68"
-        android:scaleY="0.68">
+        android:scaleX="0.52"
+        android:scaleY="0.52">
         <path
             android:fillColor="#292DD4EE"
             android:pathData="M183.55,232.8m-75.38,0a75.38,75.38 0,1 1,150.76 0a75.38,75.38 0,1 1,-150.76 0" />

@@ -1,411 +1,318 @@
 package com.micsbol.emitterapp.ui.splash
 
-import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import com.micsbol.emitterapp.R
-import com.micsbol.emitterapp.ui.navigation.Screen
-import com.micsbol.emitterapp.ui.components.EmitterQuickStartButton
+import com.micsbol.emitterapp.ui.components.EmitterBrandLogo
 import com.micsbol.emitterapp.ui.components.brandPrimary
 import com.micsbol.emitterapp.ui.components.brandSecondary
-import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
+import com.micsbol.emitterapp.ui.components.mutedTextColor
+import com.micsbol.emitterapp.ui.navigation.Screen
 import com.micsbol.emitterapp.ui.theme.titanOneRegular
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private const val SPLASH_DISPLAY_MS = 2_000L
+private const val LOGO_ANIM_DURATION_MS = 1_050
+private const val LOGO_SCALE_START = 0.84f
+private const val LOGO_SLIDE_START_DP = 16f
+private const val TEXT_ANIM_DURATION_MS = 900
+private const val TEXT_SLIDE_START_DP = 12f
+private val SplashMotionEasing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
 @Composable
-fun SplashScreen(navController: androidx.navigation.NavHostController) {
-    SplashScreenContent(
-        onGetStarted = {
-            navController.navigate(Screen.Home.route) {
-                popUpTo(Screen.Splash.route) { inclusive = true }
-                launchSingleTop = true
-            }
+fun SplashScreen(
+    navController: NavHostController,
+    onComposeSplashReady: () -> Unit = {},
+) {
+    LaunchedEffect(Unit) {
+        onComposeSplashReady()
+    }
+
+    val navigateToHome: () -> Unit = {
+        navController.navigate(Screen.Home.route) {
+            popUpTo(Screen.Splash.route) { inclusive = true }
+            launchSingleTop = true
         }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(SPLASH_DISPLAY_MS)
+        navigateToHome()
+    }
+
+    SplashScreenContent(
+        onSkip = navigateToHome,
+        displayDurationMs = SPLASH_DISPLAY_MS,
     )
 }
 
 @Composable
 fun SplashScreenContent(
-    onGetStarted: () -> Unit,
+    onSkip: () -> Unit,
+    displayDurationMs: Long = SPLASH_DISPLAY_MS,
 ) {
-    var startAnimation by remember { mutableStateOf(false) }
+    var progress by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(key1 = true) {
-        startAnimation = true
+    LaunchedEffect(displayDurationMs) {
+        progress = 0f
+        val steps = 40
+        val stepDelay = displayDurationMs / steps
+        repeat(steps) { step ->
+            progress = (step + 1) / steps.toFloat()
+            delay(stepDelay)
+        }
     }
 
-    val domeColor = brandPrimary().copy(alpha = 0.22f)
-    val domeAccent = brandSecondary().copy(alpha = 0.14f)
+    val hintPulse = rememberInfiniteTransition(label = "hintPulse")
+    val hintAlpha by hintPulse.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "hintAlpha",
+    )
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
+                        MaterialTheme.colorScheme.surface,
                         MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                        MaterialTheme.colorScheme.background
+                        MaterialTheme.colorScheme.background,
                     )
                 )
             )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onSkip,
+            ),
     ) {
-        val screenMaxWidth = maxWidth
-        val isLandscape = maxWidth > maxHeight
-        val isTablet = minOf(maxWidth, maxHeight) >= 600.dp
-
-        val entranceTravel = maxHeight * 0.18f
-
-        // Portrait domes: keep a strong visible slice on all vertical layouts,
-        // including Tablet Portrait.
-        val portraitDomeDiameter = when {
-            isTablet -> maxWidth * 3.05f
-            else -> maxWidth * 3.35f
-        }
-        val portraitTopVisibleSlice = when {
-            isTablet -> maxHeight * 0.50f
-            else -> maxHeight * 0.50f
-        }
-        val portraitBottomVisibleSlice = when {
-            isTablet -> maxHeight * 0.50f
-            else -> maxHeight * 0.50f
-        }
-        val portraitTopRestOffset = -(portraitDomeDiameter - portraitTopVisibleSlice)
-        val portraitBottomRestOffset = portraitDomeDiameter - portraitBottomVisibleSlice
-
-        val topDomeOffset by animateDpAsState(
-            targetValue = if (startAnimation) portraitTopRestOffset else portraitTopRestOffset - entranceTravel,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "topDomeOffset"
-        )
-        val bottomDomeOffset by animateDpAsState(
-            targetValue = if (startAnimation) portraitBottomRestOffset else portraitBottomRestOffset + entranceTravel,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "bottomDomeOffset"
-        )
-
-        // Tablets get larger corner domes so they remain visible and decorative on wide layouts.
-        val landscapeCornerDiameter = when {
-            isTablet -> maxHeight * 2.30f
-            else -> maxHeight * 1.65f
-        }
-        val landscapeCornerInsetX = when {
-            isTablet -> landscapeCornerDiameter * 0.52f
-            else -> landscapeCornerDiameter * 0.42f
-        }
-        val landscapeCornerInsetY = when {
-            isTablet -> landscapeCornerDiameter * 0.52f
-            else -> landscapeCornerDiameter * 0.42f
-        }
-        val topLeftCornerX by animateDpAsState(
-            targetValue = if (startAnimation) -landscapeCornerInsetX else -landscapeCornerInsetX - entranceTravel,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "topLeftCornerX"
-        )
-        val topLeftCornerY by animateDpAsState(
-            targetValue = if (startAnimation) -landscapeCornerInsetY else -landscapeCornerInsetY - entranceTravel,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "topLeftCornerY"
-        )
-        val bottomRightCornerX by animateDpAsState(
-            targetValue = if (startAnimation) landscapeCornerInsetX else landscapeCornerInsetX + entranceTravel,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "bottomRightCornerX"
-        )
-        val bottomRightCornerY by animateDpAsState(
-            targetValue = if (startAnimation) landscapeCornerInsetY else landscapeCornerInsetY + entranceTravel,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "bottomRightCornerY"
-        )
-        val imageScale by animateFloatAsState(
-            targetValue = if (startAnimation) 1.0f else 0f,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 500),
-            label = "imageScale"
-        )
-        val contentAlpha by animateFloatAsState(
-            targetValue = if (startAnimation) 1f else 0f,
-            animationSpec = tween(durationMillis = 1000, delayMillis = 1500),
-            label = "contentAlpha"
-        )
-
-        val titleTopPadding = if (isLandscape) maxHeight * 0.08f else maxHeight * 0.10f
-        val bottomPadding = if (isLandscape) maxHeight * 0.06f else maxHeight * 0.07f
-        val logoWidthFraction = if (isLandscape) 0.45f else 0.82f
-        val buttonWidthFraction = if (isLandscape) 0.38f else 0.72f
-        val titleFontSize = when {
-            maxWidth < 360.dp -> 28.sp
-            isTablet && isLandscape -> 58.sp
-            isTablet -> 52.sp
-            isLandscape && maxWidth >= 840.dp -> 50.sp
-            isLandscape -> 46.sp
-            maxWidth >= 500.dp -> 48.sp
-            else -> 35.sp
-        }
-        val subtitleFontSize = if (maxWidth < 360.dp) 14.sp else 16.sp
-        if (isLandscape) {
-            Box(
-                modifier = Modifier
-                    .requiredSize(landscapeCornerDiameter)
-                    .offset(x = topLeftCornerX, y = topLeftCornerY)
-                    .align(Alignment.TopStart)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(domeColor, domeAccent, Color.Transparent)
-                        )
-                    )
-            )
-
-            Box(
-                modifier = Modifier
-                    .requiredSize(landscapeCornerDiameter)
-                    .offset(x = bottomRightCornerX, y = bottomRightCornerY)
-                    .align(Alignment.BottomEnd)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(domeAccent, domeColor, Color.Transparent)
-                        )
-                    )
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .requiredSize(portraitDomeDiameter)
-                    .offset(y = topDomeOffset)
-                    .align(Alignment.TopCenter)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(domeColor, domeAccent, Color.Transparent)
-                        )
-                    )
-            )
-
-            Box(
-                modifier = Modifier
-                    .requiredSize(portraitDomeDiameter)
-                    .offset(y = bottomDomeOffset)
-                    .align(Alignment.BottomCenter)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(domeAccent, domeColor, Color.Transparent)
-                        )
-                    )
-            )
-        }
-
-        if (isLandscape) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        modifier = Modifier
-                            .fillMaxWidth(0.86f)
-                            .scale(imageScale)
-                            .alpha(imageScale),
-                        painter = painterResource(R.drawable.joystick_01),
-                        contentDescription = stringResource(R.string.splash_logo_content_description),
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 30.dp)
-                        .fillMaxSize()
-                        .padding(horizontal = screenMaxWidth * 0.03f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-
-                    Text(
-                        text = stringResource(R.string.splash_title),
-                        fontFamily = titanOneRegular,
-                        fontSize = titleFontSize,
-                        color = brandPrimary(),
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .padding(top = titleTopPadding)
-                            .alpha(contentAlpha)
-                    )
-                    Spacer(modifier = Modifier.size(30.dp))
-                    Column(
-                        modifier = Modifier
-                            .padding(bottom = bottomPadding)
-                            .alpha(contentAlpha),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        EmitterQuickStartButton(
-                            text = stringResource(R.string.splash_get_started),
-                            onClick = onGetStarted,
-                            modifier = Modifier.fillMaxWidth(0.76f)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = stringResource(R.string.splash_subtitle),
-                            fontFamily = titanOneRegular,
-                            fontSize = subtitleFontSize,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            SplashAnimatedLogo {
+                EmitterBrandLogo(
+                    size = 112.dp,
+                    fullLogo = true,
+                )
             }
-        } else {
-            Image(
-                modifier = Modifier
-                    .fillMaxWidth(logoWidthFraction)
-                    .scale(imageScale)
-                    .alpha(imageScale)
-                    .align(Alignment.Center),
-                painter = painterResource(R.drawable.joystick_01),
-                contentDescription = stringResource(R.string.splash_logo_content_description),
-            )
 
+            Spacer(modifier = Modifier.height(28.dp))
+
+            SplashFadeSlideText(animationDelayMs = 380) {
+                Text(
+                    text = stringResource(R.string.home_title),
+                    fontFamily = titanOneRegular,
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = brandPrimary(),
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SplashFadeSlideText(animationDelayMs = 520) {
+                Text(
+                    text = stringResource(R.string.app_header_subtitle),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SplashFadeSlideText(animationDelayMs = 660) {
+                Text(
+                    text = stringResource(R.string.splash_tagline),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = mutedTextColor(),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        SplashFadeSlideText(
+            animationDelayMs = 840,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 40.dp, vertical = 36.dp),
+        ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = stringResource(R.string.splash_title),
-                    fontFamily = titanOneRegular,
-                    fontSize = titleFontSize,
-                    color = brandPrimary(),
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .padding(top = titleTopPadding)
-                        .alpha(contentAlpha)
+                    text = stringResource(R.string.splash_tap_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = mutedTextColor().copy(alpha = hintAlpha),
+                    textAlign = TextAlign.Center,
                 )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Column(
-                    modifier = Modifier
-                        .padding(bottom = bottomPadding)
-                        .alpha(contentAlpha),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    EmitterQuickStartButton(
-                        text = stringResource(R.string.splash_get_started),
-                        onClick = onGetStarted,
-                        modifier = Modifier.fillMaxWidth(buttonWidthFraction)
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = stringResource(R.string.splash_subtitle),
-                        fontFamily = titanOneRegular,
-                        fontSize = subtitleFontSize,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(0.55f),
+                    color = brandPrimary(),
+                    trackColor = brandSecondary().copy(alpha = 0.25f),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.splash_brand_credit),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = mutedTextColor().copy(alpha = 0.75f),
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
 }
 
-@Preview(showSystemUi = true)
 @Composable
-fun SplashScreenPreview() {
-    EmitterAppTheme {
-        SplashScreenContent(onGetStarted = {})
+private fun SplashAnimatedLogo(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val slideStartPx = with(density) { LOGO_SLIDE_START_DP.dp.toPx() }
+    val scale = remember { Animatable(LOGO_SCALE_START) }
+    val alpha = remember { Animatable(0f) }
+    val offsetY = remember { Animatable(slideStartPx) }
+
+    LaunchedEffect(Unit) {
+        coroutineScope {
+            launch {
+                alpha.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = LOGO_ANIM_DURATION_MS - 120,
+                        easing = SplashMotionEasing,
+                    ),
+                )
+            }
+            launch {
+                scale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = LOGO_ANIM_DURATION_MS,
+                        easing = SplashMotionEasing,
+                    ),
+                )
+            }
+            launch {
+                offsetY.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = LOGO_ANIM_DURATION_MS,
+                        easing = SplashMotionEasing,
+                    ),
+                )
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier.graphicsLayer {
+            scaleX = scale.value
+            scaleY = scale.value
+            this.alpha = alpha.value
+            translationY = offsetY.value
+        },
+    ) {
+        content()
     }
 }
 
-@Preview(showSystemUi = true, name = "Dark Mode", uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun SplashScreenDarkPreview() {
-    EmitterAppTheme {
-        SplashScreenContent(onGetStarted = {})
-    }
-}
+private fun SplashFadeSlideText(
+    animationDelayMs: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val slideStartPx = with(density) { TEXT_SLIDE_START_DP.dp.toPx() }
+    val alpha = remember { Animatable(0f) }
+    val offsetY = remember { Animatable(slideStartPx) }
 
-@Preview(
-    showBackground = true,
-    name = "Phone Portrait",
-    device = "spec:width=411dp,height=891dp,dpi=420"
-)
-@Composable
-private fun SplashScreenPhonePortraitPreview() {
-    EmitterAppTheme {
-        SplashScreenContent(onGetStarted = {})
+    LaunchedEffect(animationDelayMs) {
+        delay(animationDelayMs.toLong())
+        coroutineScope {
+            launch {
+                alpha.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = TEXT_ANIM_DURATION_MS,
+                        easing = SplashMotionEasing,
+                    ),
+                )
+            }
+            launch {
+                offsetY.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = TEXT_ANIM_DURATION_MS,
+                        easing = SplashMotionEasing,
+                    ),
+                )
+            }
+        }
     }
-}
 
-@Preview(
-    showBackground = true,
-    name = "Phone Landscape",
-    device = "spec:width=891dp,height=411dp,dpi=420"
-)
-@Composable
-private fun SplashScreenPhoneLandscapePreview() {
-    EmitterAppTheme {
-        SplashScreenContent(onGetStarted = {})
-    }
-}
-
-@Preview(
-    showSystemUi = true,
-    name = "Tablet Portrait",
-    device = "spec:width=800dp,height=1280dp,dpi=240"
-)
-@Composable
-private fun SplashScreenTabletPortraitPreview() {
-    EmitterAppTheme {
-        SplashScreenContent(onGetStarted = {})
-    }
-}
-
-@Preview(
-    showSystemUi = true,
-    name = "Tablet Landscape",
-    device = "spec:width=1280dp,height=800dp,dpi=240"
-)
-@Composable
-private fun SplashScreenTabletLandscapePreview() {
-    EmitterAppTheme {
-        SplashScreenContent(onGetStarted = {})
+    Box(
+        modifier = modifier.graphicsLayer {
+            this.alpha = alpha.value
+            translationY = offsetY.value
+        },
+    ) {
+        content()
     }
 }

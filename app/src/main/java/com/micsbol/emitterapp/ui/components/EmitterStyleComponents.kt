@@ -1,5 +1,6 @@
 package com.micsbol.emitterapp.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -23,9 +24,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -38,9 +42,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.ui.theme.TechBlue
 import com.micsbol.emitterapp.ui.theme.TechBlueBright
 import com.micsbol.emitterapp.ui.theme.TechBlueDark
@@ -54,6 +62,47 @@ import com.micsbol.emitterapp.ui.theme.StatusDisconnected
 val EmitterCardShape = RoundedCornerShape(14.dp)
 val EmitterInnerShape = RoundedCornerShape(10.dp)
 val EmitterPillButtonShape = RoundedCornerShape(28.dp)
+val EmitterHeaderBrandLogoSizeHome = 72.dp
+val EmitterHeaderBrandLogoSize = 56.dp
+
+@Composable
+fun EmitterBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = stringResource(R.string.about_back),
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier.size(48.dp),
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = contentDescription,
+            tint = brandPrimary(),
+        )
+    }
+}
+
+@Composable
+fun EmitterBrandLogo(
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    fullLogo: Boolean = false,
+) {
+    Image(
+        painter = painterResource(
+            if (fullLogo) R.drawable.ic_micsbol_logo else R.drawable.ic_micsbol_logo_marks
+        ),
+        contentDescription = stringResource(
+            if (fullLogo) {
+                R.string.splash_logo_content_description
+            } else {
+                R.string.about_logo_content_description
+            }
+        ),
+        modifier = modifier.size(size),
+    )
+}
 
 @Composable
 fun brandPrimary(): Color =
@@ -78,10 +127,23 @@ fun EmitterAppScaffold(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
+    showBrandLogo: Boolean = true,
+    brandLogoSize: Dp? = null,
+    onNavigateBack: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val resolvedNavigationIcon = navigationIcon
+        ?: onNavigateBack?.let { onBack ->
+            { EmitterBackButton(onClick = onBack) }
+        }
+    val resolvedLogoSize = brandLogoSize
+        ?: if (resolvedNavigationIcon == null && subtitle != null) {
+            EmitterHeaderBrandLogoSizeHome
+        } else {
+            EmitterHeaderBrandLogoSize
+        }
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -89,7 +151,9 @@ fun EmitterAppScaffold(
             EmitterAppHeader(
                 title = title,
                 subtitle = subtitle,
-                navigationIcon = navigationIcon,
+                showBrandLogo = showBrandLogo,
+                brandLogoSize = resolvedLogoSize,
+                navigationIcon = resolvedNavigationIcon,
                 actions = actions
             )
         },
@@ -101,6 +165,8 @@ fun EmitterAppScaffold(
 fun EmitterAppHeader(
     title: String,
     subtitle: String? = null,
+    showBrandLogo: Boolean = true,
+    brandLogoSize: Dp = EmitterHeaderBrandLogoSize,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
@@ -117,30 +183,54 @@ fun EmitterAppHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(start = 4.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            if (navigationIcon != null) {
-                navigationIcon()
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = mutedTextColor()
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                if (navigationIcon != null) {
+                    navigationIcon()
+                }
+                if (showBrandLogo) {
+                    EmitterBrandLogo(
+                        modifier = Modifier.padding(
+                            start = if (navigationIcon != null) 0.dp else 8.dp,
+                            end = 12.dp,
+                        ),
+                        size = brandLogoSize,
                     )
                 }
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Start
+                    )
+                    if (subtitle != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = mutedTextColor(),
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
             }
-            Row(content = actions)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+                content = actions
+            )
         }
         Box(
             modifier = Modifier

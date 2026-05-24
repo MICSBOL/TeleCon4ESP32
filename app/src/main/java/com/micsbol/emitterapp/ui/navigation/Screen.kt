@@ -8,4 +8,6 @@ sealed class Screen(val route: String) {
     object RcSettingsScreen : Screen("rc_settings")
     object Tutorial : Screen("tutorial")
     object Codes : Screen("codes")
+    object About : Screen("about")
+    object PrivacyPolicy : Screen("privacy_policy")
 }

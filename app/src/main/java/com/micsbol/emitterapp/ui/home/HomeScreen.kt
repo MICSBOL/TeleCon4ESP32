@@ -1,12 +1,17 @@
 package com.micsbol.emitterapp.ui.home
 
 import android.app.Activity
+import com.micsbol.emitterapp.BuildConfig
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +63,7 @@ import androidx.navigation.NavHostController
 import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.ui.components.ConnectionStatusDot
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
+import com.micsbol.emitterapp.ui.components.EmitterHeaderBrandLogoSizeHome
 import com.micsbol.emitterapp.ui.components.EmitterIconContainer
 import com.micsbol.emitterapp.ui.components.EmitterQuickStartButton
 import com.micsbol.emitterapp.ui.components.EmitterStyledCard
@@ -130,6 +136,8 @@ fun HomeScreen(
         EmitterAppScaffold(
             title = stringResource(R.string.home_title),
             subtitle = stringResource(R.string.app_header_subtitle),
+            brandLogoSize = EmitterHeaderBrandLogoSizeHome,
+            onNavigateBack = { activity?.finish() },
             actions = {
                 IconButton(onClick = { showHelpDialog = true }) {
                     Icon(
@@ -165,7 +173,8 @@ fun HomeScreen(
                             .weight(1f)
                             .fillMaxWidth(),
                         lastDeviceName = lastDeviceName,
-                        onStartClick = onStartClick
+                        onStartClick = onStartClick,
+                        onAboutClick = { navController?.navigate(Screen.About.route) }
                     )
                 }
             } else {
@@ -193,7 +202,8 @@ fun HomeScreen(
                             .weight(1f)
                             .fillMaxWidth(),
                         lastDeviceName = lastDeviceName,
-                        onStartClick = onStartClick
+                        onStartClick = onStartClick,
+                        onAboutClick = { navController?.navigate(Screen.About.route) }
                     )
                 }
             }
@@ -282,8 +292,10 @@ private fun HomeSecondaryContent(
     modifier: Modifier = Modifier,
     imageModifier: Modifier,
     lastDeviceName: String? = null,
-    onStartClick: () -> Unit = {}
+    onStartClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -308,9 +320,15 @@ private fun HomeSecondaryContent(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = stringResource(R.string.home_version_info),
+            text = stringResource(R.string.home_version_info, BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.labelSmall,
-            color = mutedTextColor()
+            color = brandPrimary(),
+            modifier = Modifier
+                .semantics {
+                    role = Role.Button
+                    contentDescription = context.getString(R.string.home_about_content_description)
+                }
+                .clickable(onClick = onAboutClick)
         )
         Spacer(modifier = Modifier.height(8.dp))
     }
@@ -413,7 +431,7 @@ fun HomeScreenLandscapePreview() {
 
 @Preview(showSystemUi = true, name = "Dark Mode", uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun SplashScreenDarkPreview() {
+fun HomeScreenDarkPreview() {
     EmitterAppTheme {
         HomeScreen()
     }

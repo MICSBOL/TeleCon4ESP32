@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
 import com.micsbol.emitterapp.ui.components.EmitterCardShape
@@ -306,8 +307,10 @@ private fun CodesStyledDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodesScreen(
+    navController: NavController,
     viewModel: CodesViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -534,35 +537,42 @@ fun CodesScreen(
         )
     }
 
-    CodeAssetGrid(
-        uiState = uiState,
-        onAssetClick = { asset ->
-            when (asset.type) {
-                CodeAssetType.Pdf -> {
-                    when (openPdfAssetExternally(context, asset.assetFileName)) {
-                        PdfOpenResult.Success -> Unit
-                        PdfOpenResult.NoActivity ->
-                            pdfDialogKind = PdfDialogKind.NoReader
+    EmitterAppScaffold(
+        title = stringResource(R.string.home_title),
+        subtitle = stringResource(R.string.codes_and_documents_title),
+        onNavigateBack = { navController.navigateUp() },
+    ) { paddingValues ->
+        CodeAssetGrid(
+            modifier = Modifier.padding(paddingValues),
+            uiState = uiState,
+            onAssetClick = { asset ->
+                when (asset.type) {
+                    CodeAssetType.Pdf -> {
+                        when (openPdfAssetExternally(context, asset.assetFileName)) {
+                            PdfOpenResult.Success -> Unit
+                            PdfOpenResult.NoActivity ->
+                                pdfDialogKind = PdfDialogKind.NoReader
 
-                        PdfOpenResult.CopyFailed ->
-                            pdfDialogKind = PdfDialogKind.CopyFailed
+                            PdfOpenResult.CopyFailed ->
+                                pdfDialogKind = PdfDialogKind.CopyFailed
+                        }
+                    }
+
+                    CodeAssetType.Zip -> {
+                        pendingZipExport = asset
                     }
                 }
-
-                CodeAssetType.Zip -> {
-                    pendingZipExport = asset
-                }
+            },
+            onDismissSaveError = {
+                viewModel.dismissSaveError()
             }
-        },
-        onDismissSaveError = {
-            viewModel.dismissSaveError()
-        }
-    )
+        )
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CodeAssetGrid(
+    modifier: Modifier = Modifier,
     uiState: CodesUiState,
     onAssetClick: (CodeAssetInfo) -> Unit,
     onDismissSaveError: () -> Unit
@@ -611,47 +621,41 @@ private fun CodeAssetGrid(
         )
     }
 
-    EmitterAppScaffold(
-        title = stringResource(R.string.home_title),
-        subtitle = stringResource(R.string.codes_and_documents_title)
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            availableAssets.forEach { asset ->
-                val zipMessage = when {
-                    asset.type != CodeAssetType.Zip -> null
-                    uiState.isSavingZip -> stringResource(
-                        R.string.codes_zip_saving_message,
-                        asset.outputFileName
-                    )
+    Column(
+        modifier = modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        availableAssets.forEach { asset ->
+            val zipMessage = when {
+                asset.type != CodeAssetType.Zip -> null
+                uiState.isSavingZip -> stringResource(
+                    R.string.codes_zip_saving_message,
+                    asset.outputFileName
+                )
 
-                    uiState.savedZipLocation != null -> stringResource(
-                        R.string.codes_zip_saved_message,
-                        asset.outputFileName,
-                        uiState.savedZipLocation
-                    )
+                uiState.savedZipLocation != null -> stringResource(
+                    R.string.codes_zip_saved_message,
+                    asset.outputFileName,
+                    uiState.savedZipLocation
+                )
 
-                    else -> stringResource(
-                        R.string.codes_zip_card_hint,
-                        asset.outputFileName
-                    )
-                }
-
-                CodeAssetGridItem(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    assetInfo = asset,
-                    supportingText = zipMessage,
-                    isLoading = asset.type == CodeAssetType.Zip && uiState.isSavingZip,
-                    onClick = { onAssetClick(asset) }
+                else -> stringResource(
+                    R.string.codes_zip_card_hint,
+                    asset.outputFileName
                 )
             }
+
+            CodeAssetGridItem(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                assetInfo = asset,
+                supportingText = zipMessage,
+                isLoading = asset.type == CodeAssetType.Zip && uiState.isSavingZip,
+                onClick = { onAssetClick(asset) }
+            )
         }
     }
 }

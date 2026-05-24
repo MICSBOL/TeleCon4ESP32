@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import com.micsbol.emitterapp.domain.bluetooth.RemoteController
 import com.micsbol.emitterapp.ui.navigation.AppNavGraph
 import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -15,13 +16,22 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var remoteController: RemoteController
 
+    private var keepSystemSplash = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { keepSystemSplash }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
             EmitterAppTheme {
-                AppNavGraph()
+                AppNavGraph(
+                    onComposeSplashReady = {
+                        keepSystemSplash = false
+                        window.decorView.post { window.decorView.invalidate() }
+                    },
+                )
             }
         }
 

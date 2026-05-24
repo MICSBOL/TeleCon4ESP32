@@ -41,17 +41,22 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.domain.bluetooth.PlotData
+import com.micsbol.emitterapp.ui.components.EmitterBrandLogo
+import com.micsbol.emitterapp.ui.components.brandPrimary
 import com.micsbol.emitterapp.ui.rc_screen.components.AdBanner
 import com.micsbol.emitterapp.ui.rc_screen.components.ButtonSide
 import com.micsbol.emitterapp.ui.rc_screen.components.HorizontalTextAnimation
 import com.micsbol.emitterapp.ui.rc_screen.components.PushButtonSide
 import com.micsbol.emitterapp.ui.rc_screen.components.RealTimePlot
+import com.micsbol.emitterapp.ui.theme.titanOneRegular
 import kotlinx.coroutines.delay
 import kotlin.apply
 import kotlin.math.PI
@@ -69,8 +74,7 @@ fun CenterDisplay(
 ) {
     Box(
         modifier = modifier
-            .background(Color.Transparent)
-            .padding(top = 8.dp),
+            .background(Color.Transparent),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -141,6 +145,22 @@ fun CenterDisplay(
                     contentScale = ContentScale.FillBounds
                 )
             }
+        }
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            EmitterBrandLogo(size = 20.dp)
+            Text(
+                text = stringResource(R.string.home_title),
+                fontFamily = titanOneRegular,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Normal,
+                color = brandPrimary(),
+            )
         }
     }
 }

@@ -26,11 +26,15 @@ import com.micsbol.emitterapp.ui.home.HomeScreen
 import com.micsbol.emitterapp.ui.rc_screen.RcScreen
 import com.micsbol.emitterapp.ui.rc_settings.RcSettingsScreen
 import com.micsbol.emitterapp.ui.rc_settings.SettingsViewModel
+import com.micsbol.emitterapp.ui.about.AboutScreen
+import com.micsbol.emitterapp.ui.about.PrivacyPolicyScreen
 import com.micsbol.emitterapp.ui.splash.SplashScreen
 import com.micsbol.emitterapp.ui.tutorial.TutorialScreen
 
 @Composable
-fun AppNavGraph() {
+fun AppNavGraph(
+    onComposeSplashReady: () -> Unit = {},
+) {
 
     val navController = rememberNavController()
     val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
@@ -41,7 +45,10 @@ fun AppNavGraph() {
         startDestination = Screen.Splash.route
     ) {
         composable(Screen.Splash.route) {
-            SplashScreen(navController = navController)
+            SplashScreen(
+                navController = navController,
+                onComposeSplashReady = onComposeSplashReady,
+            )
         }
         composable(Screen.Home.route) {
             val state by bluetoothViewModel.state.collectAsState()
@@ -179,6 +186,7 @@ fun AppNavGraph() {
 
             BluetoothScreen(
                 state = state,
+                onNavigateBack = { navController.navigateUp() },
                 onStartScan = {
                     ensureBluetoothReadyBeforeAction {
                         bluetoothViewModel.startScan()
@@ -203,7 +211,13 @@ fun AppNavGraph() {
             TutorialScreen(navController = navController)
         }
         composable(Screen.Codes.route){
-            CodesScreen()
+            CodesScreen(navController = navController)
+        }
+        composable(Screen.About.route) {
+            AboutScreen(navController = navController)
+        }
+        composable(Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(navController = navController)
         }
     }
 }

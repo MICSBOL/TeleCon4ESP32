@@ -49,6 +49,7 @@ fun BluetoothScreen(
     onStartScan: () -> Unit,
     onStopScan: () -> Unit,
     onDeviceClick: (RemoteDevice) -> Unit,
+    onNavigateBack: () -> Unit,
     onDismissError: () -> Unit = {},
 ) {
     if (state.errorMessage != null) {
@@ -65,6 +66,7 @@ fun BluetoothScreen(
     EmitterAppScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.bluetooth_connect_to_a_device),
+        onNavigateBack = onNavigateBack,
         actions = {
             if (state.isScanning) {
                 CircularProgressIndicator(
@@ -246,6 +248,7 @@ fun BluetoothScreenPreview() {
             onStartScan = { },
             onStopScan = { },
             onDeviceClick = { },
+            onNavigateBack = { },
         )
     }
 }
@@ -272,6 +275,7 @@ fun BluetoothScreenPreview_Dark() {
             onStartScan = { },
             onStopScan = { },
             onDeviceClick = { },
+            onNavigateBack = { },
         )
     }
 }
