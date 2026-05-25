@@ -55,6 +55,8 @@ import com.micsbol.emitterapp.ui.rc_screen.components.AnalogIndicator
 import com.micsbol.emitterapp.ui.rc_screen.components.BatteryStatus
 import com.micsbol.emitterapp.ui.rc_screen.components.ButtonSide
 import com.micsbol.emitterapp.domain.model.JoystickMode
+import com.micsbol.emitterapp.ui.ads.InterstitialTrigger
+import com.micsbol.emitterapp.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.emitterapp.ui.navigation.Screen
 import com.micsbol.emitterapp.ui.rc_settings.SettingsUiState
 import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
@@ -81,13 +83,16 @@ fun RcScreen(
         return
     }
 
-    // Custom back handler: skip Bluetooth screen, go directly to Home
-//    val backCallback = remember {
-//        { navController?.popBackStack(Screen.Home.route, inclusive = false) }
-//    }
+    val exitRcToHome = rememberNavigateWithInterstitial(
+        trigger = InterstitialTrigger.RC_EXIT,
+        onNavigate = {
+            actualViewModel?.stopSendingRcData()
+            navController?.popBackStack(Screen.Home.route, inclusive = false)
+        },
+    )
+
     BackHandler(enabled = navController != null) {
-        actualViewModel?.stopSendingRcData()
-        navController?.popBackStack(Screen.Home.route, inclusive = false)
+        exitRcToHome()
     }
 
     val context = LocalContext.current

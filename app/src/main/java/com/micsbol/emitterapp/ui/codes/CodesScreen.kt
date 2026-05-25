@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -57,6 +58,8 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.emitterapp.R
+import com.micsbol.emitterapp.ui.ads.InterstitialTrigger
+import com.micsbol.emitterapp.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
 import com.micsbol.emitterapp.ui.components.EmitterCardShape
 import com.micsbol.emitterapp.ui.components.EmitterIconContainer
@@ -537,10 +540,17 @@ fun CodesScreen(
         )
     }
 
+    val navigateBackToHome = rememberNavigateWithInterstitial(
+        trigger = InterstitialTrigger.CODES_EXIT,
+        onNavigate = { navController.navigateUp() },
+    )
+
+    BackHandler(onBack = navigateBackToHome)
+
     EmitterAppScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.codes_and_documents_title),
-        onNavigateBack = { navController.navigateUp() },
+        onNavigateBack = navigateBackToHome,
     ) { paddingValues ->
         CodeAssetGrid(
             modifier = Modifier.padding(paddingValues),

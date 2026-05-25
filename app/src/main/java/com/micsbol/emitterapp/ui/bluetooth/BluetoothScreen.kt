@@ -35,7 +35,9 @@ import androidx.compose.ui.unit.dp
 import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.domain.bluetooth.BluetoothDevice
 import com.micsbol.emitterapp.domain.bluetooth.RemoteDevice
+import com.micsbol.emitterapp.ui.ads.AdPolicy
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
+import com.micsbol.emitterapp.ui.navigation.Screen
 import com.micsbol.emitterapp.ui.components.EmitterIconContainer
 import com.micsbol.emitterapp.ui.components.EmitterSectionTitle
 import com.micsbol.emitterapp.ui.components.EmitterStyledCard
@@ -66,6 +68,7 @@ fun BluetoothScreen(
     EmitterAppScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.bluetooth_connect_to_a_device),
+        showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route),
         onNavigateBack = onNavigateBack,
         actions = {
             if (state.isScanning) {

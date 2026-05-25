@@ -5,8 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.micsbol.emitterapp.domain.bluetooth.RemoteController
+import com.micsbol.emitterapp.ui.ads.InterstitialAdManager
+import com.micsbol.emitterapp.ui.ads.LocalInterstitialAdManager
 import com.micsbol.emitterapp.ui.navigation.AppNavGraph
 import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -15,6 +18,9 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var remoteController: RemoteController
+
+    @Inject
+    lateinit var interstitialAdManager: InterstitialAdManager
 
     private var keepSystemSplash = true
 
@@ -26,12 +32,16 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EmitterAppTheme {
-                AppNavGraph(
-                    onComposeSplashReady = {
-                        keepSystemSplash = false
-                        window.decorView.post { window.decorView.invalidate() }
-                    },
-                )
+                CompositionLocalProvider(
+                    LocalInterstitialAdManager provides interstitialAdManager,
+                ) {
+                    AppNavGraph(
+                        onComposeSplashReady = {
+                            keepSystemSplash = false
+                            window.decorView.post { window.decorView.invalidate() }
+                        },
+                    )
+                }
             }
         }
 

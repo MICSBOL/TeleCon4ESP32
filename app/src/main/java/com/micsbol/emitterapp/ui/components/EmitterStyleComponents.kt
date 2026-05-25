@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -129,6 +130,7 @@ fun EmitterAppScaffold(
     modifier: Modifier = Modifier,
     showBrandLogo: Boolean = true,
     brandLogoSize: Dp? = null,
+    showAdBanner: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
@@ -156,6 +158,17 @@ fun EmitterAppScaffold(
                 navigationIcon = resolvedNavigationIcon,
                 actions = actions
             )
+        },
+        bottomBar = {
+            if (showAdBanner) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars),
+                ) {
+                    AdBanner(modifier = Modifier.fillMaxWidth())
+                }
+            }
         },
         content = content
     )

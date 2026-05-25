@@ -51,7 +51,6 @@ import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.domain.bluetooth.PlotData
 import com.micsbol.emitterapp.ui.components.EmitterBrandLogo
 import com.micsbol.emitterapp.ui.components.brandPrimary
-import com.micsbol.emitterapp.ui.rc_screen.components.AdBanner
 import com.micsbol.emitterapp.ui.rc_screen.components.ButtonSide
 import com.micsbol.emitterapp.ui.rc_screen.components.HorizontalTextAnimation
 import com.micsbol.emitterapp.ui.rc_screen.components.PushButtonSide
@@ -132,10 +131,6 @@ fun CenterDisplay(
                             }
                         }
                     }
-                    AdBanner(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                    )
                 }
 
                 Image(
