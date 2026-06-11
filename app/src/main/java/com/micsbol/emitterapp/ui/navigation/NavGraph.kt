@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,6 +30,8 @@ import com.micsbol.emitterapp.ui.rc_settings.SettingsViewModel
 import com.micsbol.emitterapp.ui.about.AboutScreen
 import com.micsbol.emitterapp.ui.about.PrivacyPolicyScreen
 import com.micsbol.emitterapp.ui.splash.SplashScreen
+import com.micsbol.emitterapp.ui.entitlement.EntitlementViewModel
+import com.micsbol.emitterapp.ui.entitlement.LocalEntitlement
 import com.micsbol.emitterapp.ui.tutorial.TutorialScreen
 
 @Composable
@@ -39,7 +42,10 @@ fun AppNavGraph(
     val navController = rememberNavController()
     val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
     val settingsViewModel = hiltViewModel<SettingsViewModel>()
+    val entitlementViewModel = hiltViewModel<EntitlementViewModel>()
+    val entitlement by entitlementViewModel.entitlement.collectAsState()
 
+    CompositionLocalProvider(LocalEntitlement provides entitlement) {
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -219,5 +225,6 @@ fun AppNavGraph(
         composable(Screen.PrivacyPolicy.route) {
             PrivacyPolicyScreen(navController = navController)
         }
+    }
     }
 }

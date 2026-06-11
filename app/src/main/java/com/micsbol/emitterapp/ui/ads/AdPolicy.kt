@@ -1,5 +1,7 @@
 package com.micsbol.emitterapp.ui.ads
 
+import com.micsbol.emitterapp.domain.model.Entitlement
+import com.micsbol.emitterapp.domain.model.shouldShowAds
 import com.micsbol.emitterapp.ui.navigation.Screen
 
 /**
@@ -7,6 +9,7 @@ import com.micsbol.emitterapp.ui.navigation.Screen
  *
  * Recurring sessions: Home banner + interstitial when leaving RC.
  * Rare visits (1–3×): interstitial when leaving Codes only.
+ * Premium users never see ads — see [Entitlement.shouldShowAds].
  */
 object AdPolicy {
     /** Google sample ad unit — replace before Play release. */
@@ -23,12 +26,14 @@ object AdPolicy {
         Screen.Bluetooth.route,
     )
 
-    fun hasBanner(route: String): Boolean = route in bannerRoutes
+    fun hasBanner(route: String, entitlement: Entitlement): Boolean =
+        entitlement.shouldShowAds() && route in bannerRoutes
 
-    fun shouldShowInterstitial(trigger: InterstitialTrigger): Boolean = when (trigger) {
-        InterstitialTrigger.CODES_EXIT,
-        InterstitialTrigger.RC_EXIT -> true
-    }
+    fun shouldShowInterstitial(trigger: InterstitialTrigger, entitlement: Entitlement): Boolean =
+        entitlement.shouldShowAds() && when (trigger) {
+            InterstitialTrigger.CODES_EXIT,
+            InterstitialTrigger.RC_EXIT -> true
+        }
 }
 
 enum class InterstitialTrigger {

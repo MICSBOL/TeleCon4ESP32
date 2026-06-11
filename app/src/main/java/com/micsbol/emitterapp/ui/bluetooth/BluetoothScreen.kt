@@ -36,6 +36,7 @@ import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.domain.bluetooth.BluetoothDevice
 import com.micsbol.emitterapp.domain.bluetooth.RemoteDevice
 import com.micsbol.emitterapp.ui.ads.AdPolicy
+import com.micsbol.emitterapp.ui.entitlement.LocalEntitlement
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
 import com.micsbol.emitterapp.ui.navigation.Screen
 import com.micsbol.emitterapp.ui.components.EmitterIconContainer
@@ -54,6 +55,8 @@ fun BluetoothScreen(
     onNavigateBack: () -> Unit,
     onDismissError: () -> Unit = {},
 ) {
+    val entitlement = LocalEntitlement.current
+
     if (state.errorMessage != null) {
         AlertDialog(
             onDismissRequest = onDismissError,
@@ -68,7 +71,7 @@ fun BluetoothScreen(
     EmitterAppScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.bluetooth_connect_to_a_device),
-        showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route),
+        showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route, entitlement),
         onNavigateBack = onNavigateBack,
         actions = {
             if (state.isScanning) {

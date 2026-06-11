@@ -70,6 +70,7 @@ import com.micsbol.emitterapp.ui.components.EmitterStyledCard
 import com.micsbol.emitterapp.ui.components.brandPrimary
 import com.micsbol.emitterapp.ui.components.mutedTextColor
 import com.micsbol.emitterapp.ui.ads.AdPolicy
+import com.micsbol.emitterapp.ui.entitlement.LocalEntitlement
 import com.micsbol.emitterapp.ui.navigation.Screen
 import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
 import com.micsbol.emitterapp.ui.theme.StatusConnected
@@ -94,6 +95,7 @@ fun HomeScreen(
     onDismissError: () -> Unit = {}
 ) {
     val isLandscape = LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
+    val entitlement = LocalEntitlement.current
     val context = LocalContext.current
     val activity = context as? Activity
     var showHelpDialog by remember { mutableStateOf(false) }
@@ -138,7 +140,7 @@ fun HomeScreen(
             title = stringResource(R.string.home_title),
             subtitle = stringResource(R.string.app_header_subtitle),
             brandLogoSize = EmitterHeaderBrandLogoSizeHome,
-            showAdBanner = AdPolicy.hasBanner(Screen.Home.route),
+            showAdBanner = AdPolicy.hasBanner(Screen.Home.route, entitlement),
             onNavigateBack = { activity?.finish() },
             actions = {
                 IconButton(onClick = { showHelpDialog = true }) {

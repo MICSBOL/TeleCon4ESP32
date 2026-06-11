@@ -10,6 +10,8 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.micsbol.emitterapp.domain.model.shouldShowAds
+import com.micsbol.emitterapp.domain.repository.IEntitlementRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class InterstitialAdManager @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val entitlementRepository: IEntitlementRepository,
 ) {
     private var interstitialAd: InterstitialAd? = null
     private var isLoading = false
@@ -24,6 +27,7 @@ class InterstitialAdManager @Inject constructor(
     private var sessionShowCount = 0
 
     fun preload() {
+        if (!entitlementRepository.entitlement.value.shouldShowAds()) return
         if (interstitialAd != null || isLoading) return
         isLoading = true
         InterstitialAd.load(
@@ -53,7 +57,8 @@ class InterstitialAdManager @Inject constructor(
         trigger: InterstitialTrigger,
         onComplete: () -> Unit,
     ) {
-        if (!AdPolicy.shouldShowInterstitial(trigger)) {
+        val entitlement = entitlementRepository.entitlement.value
+        if (!AdPolicy.shouldShowInterstitial(trigger, entitlement)) {
             onComplete()
             return
         }
