@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen
+package com.micsbol.emitterapp.ui.control_panel
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
@@ -26,15 +26,15 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.micsbol.emitterapp.domain.bluetooth.TelemetryState
-import com.micsbol.emitterapp.ui.rc_screen.components.ButtonSide
+import com.micsbol.emitterapp.ui.control_panel.components.ButtonSide
 import com.micsbol.emitterapp.domain.model.JoystickMode
-import com.micsbol.emitterapp.ui.rc_screen.components.Joystick_RC3D
-import com.micsbol.emitterapp.ui.rc_screen.components.Knob3D
-import com.micsbol.emitterapp.ui.rc_screen.components.LedIndicator
-import com.micsbol.emitterapp.ui.rc_screen.components.SevenSegmentedPanel
-import com.micsbol.emitterapp.ui.rc_screen.components.Switch3DButton
-import com.micsbol.emitterapp.ui.rc_screen.components.AnalogIndicator
-import com.micsbol.emitterapp.ui.rc_screen.components.BatteryStatus
+import com.micsbol.emitterapp.ui.control_panel.components.Joystick_RC3D
+import com.micsbol.emitterapp.ui.control_panel.components.Knob3D
+import com.micsbol.emitterapp.ui.control_panel.components.LedIndicator
+import com.micsbol.emitterapp.ui.control_panel.components.SevenSegmentedPanel
+import com.micsbol.emitterapp.ui.control_panel.components.Switch3DButton
+import com.micsbol.emitterapp.ui.control_panel.components.AnalogIndicator
+import com.micsbol.emitterapp.ui.control_panel.components.BatteryStatus
 import kotlin.math.cos
 import kotlin.math.sin
 

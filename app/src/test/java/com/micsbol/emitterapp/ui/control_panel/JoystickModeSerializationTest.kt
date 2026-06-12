@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen
+package com.micsbol.emitterapp.ui.control_panel
 import com.micsbol.emitterapp.domain.model.JoystickMode
 import com.micsbol.emitterapp.domain.model.JoystickMode.Companion.fromString
 import com.micsbol.emitterapp.domain.model.JoystickMode.Companion.toStringRepresentation

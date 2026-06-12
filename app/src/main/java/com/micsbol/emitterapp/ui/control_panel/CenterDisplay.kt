@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen
+package com.micsbol.emitterapp.ui.control_panel
 
 import android.graphics.BlurMaskFilter
 import android.graphics.Paint
@@ -51,10 +51,10 @@ import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.domain.bluetooth.PlotData
 import com.micsbol.emitterapp.ui.components.EmitterBrandLogo
 import com.micsbol.emitterapp.ui.components.brandPrimary
-import com.micsbol.emitterapp.ui.rc_screen.components.ButtonSide
-import com.micsbol.emitterapp.ui.rc_screen.components.HorizontalTextAnimation
-import com.micsbol.emitterapp.ui.rc_screen.components.PushButtonSide
-import com.micsbol.emitterapp.ui.rc_screen.components.RealTimePlot
+import com.micsbol.emitterapp.ui.control_panel.components.ButtonSide
+import com.micsbol.emitterapp.ui.control_panel.components.HorizontalTextAnimation
+import com.micsbol.emitterapp.ui.control_panel.components.PushButtonSide
+import com.micsbol.emitterapp.ui.control_panel.components.RealTimePlot
 import com.micsbol.emitterapp.ui.theme.titanOneRegular
 import kotlinx.coroutines.delay
 import kotlin.apply

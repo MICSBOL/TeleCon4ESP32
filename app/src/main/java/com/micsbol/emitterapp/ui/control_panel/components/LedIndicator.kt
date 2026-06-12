@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen.components
+package com.micsbol.emitterapp.ui.control_panel.components
 
 import android.graphics.BlurMaskFilter
 import androidx.compose.animation.core.copy

@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen
+package com.micsbol.emitterapp.ui.control_panel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

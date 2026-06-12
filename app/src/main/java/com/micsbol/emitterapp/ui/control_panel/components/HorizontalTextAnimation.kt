@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen.components
+package com.micsbol.emitterapp.ui.control_panel.components
 
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Column

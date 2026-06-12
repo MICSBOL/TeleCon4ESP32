@@ -231,7 +231,7 @@ class BluetoothViewModelTest {
     }
 
     @Test
-    fun `onRcScreenEntered applies settings only when they changed`() = runTest {
+    fun `onControlPanelEntered applies settings only when they changed`() = runTest {
         val collectJob = launch { viewModel.userSettings.collect { } }
 
         viewModel.onLeftStickChanged(0.9f, 0.9f)
@@ -249,7 +249,7 @@ class BluetoothViewModelTest {
             .filterIsInstance<SettingsUiState.Success>()
             .first { it.settings.leftKnobInitialValue == 0.75f }
 
-        viewModel.onRcScreenEntered()
+        viewModel.onControlPanelEntered()
 
         val afterApply = viewModel.rcControlState.value
         assertEquals(-1f, afterApply.leftStickPosition.first, 0.001f)
@@ -258,7 +258,7 @@ class BluetoothViewModelTest {
         assertFalse(afterApply.leftSwitches[0])
 
         viewModel.onLeftStickChanged(0.2f, 0.3f)
-        viewModel.onRcScreenEntered()
+        viewModel.onControlPanelEntered()
 
         val afterReturn = viewModel.rcControlState.value
         assertEquals(0.2f, afterReturn.leftStickPosition.first, 0.001f)

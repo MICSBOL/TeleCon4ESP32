@@ -25,18 +25,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,8 +76,6 @@ data class HomeItem(
     val icon: ImageVector,
     val title: String,
     val route: String,
-    val icon2: ImageVector?,
-    val route2: String
 )
 
 @Composable
@@ -106,32 +100,24 @@ fun HomeScreen(
 
     val homeItems = listOf(
         HomeItem(
-            Icons.Default.SportsEsports,
-            stringResource(R.string.home_item_rc_control),
-            Screen.RcScreen.route,
-            Icons.Default.Settings,
-            Screen.RcSettingsScreen.route
+            Icons.Default.Apps,
+            stringResource(R.string.home_item_applications),
+            Screen.Applications.route,
         ),
         HomeItem(
             Icons.Default.Bluetooth,
             stringResource(R.string.home_item_bluetooth),
             Screen.Bluetooth.route,
-            null,
-            ""
         ),
         HomeItem(
             Icons.Default.Code,
             stringResource(R.string.home_codes_documents),
             Screen.Codes.route,
-            null,
-            ""
         ),
         HomeItem(
             Icons.Default.VideoLibrary,
             stringResource(R.string.home_item_tutorial),
             Screen.Tutorial.route,
-            null,
-            ""
         ),
     )
 
@@ -280,12 +266,6 @@ private fun HomeOptionsList(
                 },
                 subtitle = if (item.route == Screen.Bluetooth.route) bluetoothStatusText else null,
                 isBluetoothConnected = isBluetoothConnected,
-                icon2 = item.icon2,
-                onClick2 = {
-                    if (item.route2.isNotEmpty()) {
-                        navController?.navigate(item.route2)
-                    }
-                }
             )
         }
     }
@@ -345,68 +325,39 @@ fun HomeItemCard(
     onClick: () -> Unit,
     subtitle: String? = null,
     isBluetoothConnected: Boolean = false,
-    icon2: ImageVector? = null,
-    onClick2: () -> Unit
 ) {
-    Row {
-        EmitterStyledCard(
-            modifier = Modifier
-                .weight(1f)
-                .clickable(onClick = onClick)
+    EmitterStyledCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                EmitterIconContainer(
-                    icon = icon,
-                    contentDescription = title
+            EmitterIconContainer(
+                icon = icon,
+                contentDescription = title,
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (subtitle != null) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ConnectionStatusDot(connected = isBluetoothConnected)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isBluetoothConnected) StatusConnected else StatusDisconnected
-                            )
-                        }
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ConnectionStatusDot(connected = isBluetoothConnected)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isBluetoothConnected) StatusConnected else StatusDisconnected,
+                        )
                     }
-                }
-            }
-        }
-        if (icon2 != null) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Card(
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .size(72.dp)
-                    .clickable(onClick = onClick2),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(16.dp),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    EmitterIconContainer(
-                        icon = icon2,
-                        contentDescription = title,
-                        boxSize = 44.dp
-                    )
                 }
             }
         }

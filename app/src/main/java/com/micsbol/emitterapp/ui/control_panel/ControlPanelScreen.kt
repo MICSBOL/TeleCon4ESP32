@@ -1,4 +1,4 @@
-package com.micsbol.emitterapp.ui.rc_screen
+package com.micsbol.emitterapp.ui.control_panel
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -18,7 +18,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.res.stringResource
+import com.micsbol.emitterapp.domain.model.ApplicationId
+import com.micsbol.emitterapp.ui.applications.navigateToApplicationSettings
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -41,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.micsbol.emitterapp.R
 import com.micsbol.emitterapp.domain.bluetooth.PlotData
@@ -51,13 +60,14 @@ import com.micsbol.emitterapp.domain.model.UserSettings
 import com.micsbol.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.micsbol.emitterapp.domain.model.ButtonEvent
 import com.micsbol.emitterapp.ui.bluetooth.RcControlState
-import com.micsbol.emitterapp.ui.rc_screen.components.AnalogIndicator
-import com.micsbol.emitterapp.ui.rc_screen.components.BatteryStatus
-import com.micsbol.emitterapp.ui.rc_screen.components.ButtonSide
+import com.micsbol.emitterapp.ui.control_panel.components.AnalogIndicator
+import com.micsbol.emitterapp.ui.control_panel.components.BatteryStatus
+import com.micsbol.emitterapp.ui.control_panel.components.ButtonSide
 import com.micsbol.emitterapp.domain.model.JoystickMode
 import com.micsbol.emitterapp.ui.ads.InterstitialTrigger
 import com.micsbol.emitterapp.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.emitterapp.ui.navigation.Screen
+import com.micsbol.emitterapp.ui.components.brandPrimary
 import com.micsbol.emitterapp.ui.rc_settings.SettingsUiState
 import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,7 +75,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 @SuppressLint("RestrictedApi", "UnusedBoxWithConstraintsScope")
 @Composable
-fun RcScreen(
+fun ControlPanelScreen(
     bluetoothViewModel: BluetoothViewModel? = null,
     telemetryState: StateFlow<TelemetryState>? = null,
     userSettings: StateFlow<SettingsUiState>? = null,
@@ -119,7 +129,7 @@ fun RcScreen(
 
         is SettingsUiState.Success -> {
             LaunchedEffect(actualViewModel, state.settings) {
-                actualViewModel?.onRcScreenEntered()
+                actualViewModel?.onControlPanelEntered()
             }
 
             DisposableEffect(actualViewModel) {
@@ -182,6 +192,27 @@ fun RcScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
+                if (navController != null) {
+                    IconButton(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .padding(8.dp),
+                        onClick = {
+                            navController.navigateToApplicationSettings(ApplicationId.CONTROL_PANEL)
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(
+                                R.string.applications_settings_content_description,
+                                stringResource(R.string.app_control_panel_settings_title),
+                            ),
+                            tint = brandPrimary(),
+                        )
+                    }
+                }
+
                 // Row keeps plot/center recompositions isolated from the side controller trees.
                 Row(
                     modifier = Modifier
@@ -194,7 +225,7 @@ fun RcScreen(
                             .wrapContentWidth()
                             .fillMaxHeight(),
                     ) {
-                        RcScreenLeftControllerHost(
+                        ControlPanelLeftControllerHost(
                             bluetoothViewModel = bluetoothViewModel,
                             telemetryState = actualTelemetryState,
                             rcControlState = actualRcControlState,
@@ -213,7 +244,7 @@ fun RcScreen(
                             .weight(1f)
                             .fillMaxHeight(),
                     ) {
-                        RcScreenCenterPlotHost(
+                        ControlPanelCenterPlotHost(
                             bluetoothViewModel = bluetoothViewModel,
                             telemetryState = actualTelemetryState,
                             modifier = Modifier.fillMaxSize(),
@@ -224,7 +255,7 @@ fun RcScreen(
                             .wrapContentWidth()
                             .fillMaxHeight(),
                     ) {
-                        RcScreenRightControllerHost(
+                        ControlPanelRightControllerHost(
                             bluetoothViewModel = bluetoothViewModel,
                             telemetryState = actualTelemetryState,
                             rcControlState = actualRcControlState,
@@ -245,14 +276,14 @@ fun RcScreen(
 }
 
 @Composable
-private fun RcScreenCenterPlotHost(
+private fun ControlPanelCenterPlotHost(
     bluetoothViewModel: BluetoothViewModel?,
     telemetryState: StateFlow<TelemetryState>,
     modifier: Modifier = Modifier,
 ) {
     if (bluetoothViewModel != null) {
         val plotUi by bluetoothViewModel.rcPlotUiState.collectAsState()
-        RcScreenCenterPlot(
+        ControlPanelCenterPlot(
             series = plotUi.series,
             plotRevision = plotUi.revision,
             modifier = modifier,
@@ -265,7 +296,7 @@ private fun RcScreenCenterPlotHost(
         val plotRevision by remember {
             derivedStateOf { telemetry.plotState.revision }
         }
-        RcScreenCenterPlot(
+        ControlPanelCenterPlot(
             series = series,
             plotRevision = plotRevision,
             modifier = modifier,
@@ -274,7 +305,7 @@ private fun RcScreenCenterPlotHost(
 }
 
 @Composable
-private fun RcScreenCenterPlot(
+private fun ControlPanelCenterPlot(
     series: List<PlotData>,
     plotRevision: Long,
     modifier: Modifier = Modifier,
@@ -283,7 +314,7 @@ private fun RcScreenCenterPlot(
 }
 
 @Composable
-private fun RcScreenLeftControllerHost(
+private fun ControlPanelLeftControllerHost(
     bluetoothViewModel: BluetoothViewModel?,
     telemetryState: StateFlow<TelemetryState>,
     rcControlState: StateFlow<RcControlState>,
@@ -297,7 +328,7 @@ private fun RcScreenLeftControllerHost(
     onBottomPress: () -> Unit,
 ) {
     if (bluetoothViewModel != null) {
-        RcScreenLeftControllerConnected(
+        ControlPanelLeftControllerConnected(
             bluetoothViewModel = bluetoothViewModel,
             settings = settings,
             aspectRatio = aspectRatio,
@@ -322,7 +353,7 @@ private fun RcScreenLeftControllerHost(
                 )
             }
         }
-        RcScreenLeftController(
+        ControlPanelLeftController(
             settings = settings,
             aspectRatio = aspectRatio,
             settingsSyncGeneration = settingsSyncGeneration,
@@ -339,7 +370,7 @@ private fun RcScreenLeftControllerHost(
 }
 
 @Composable
-private fun RcScreenLeftControllerConnected(
+private fun ControlPanelLeftControllerConnected(
     bluetoothViewModel: BluetoothViewModel,
     settings: UserSettings,
     aspectRatio: Float,
@@ -355,11 +386,11 @@ private fun RcScreenLeftControllerConnected(
         side = ButtonSide.LEFT,
         modifier = Modifier.wrapContentHeight(),
     ) { metrics ->
-        RcScreenLeftTelemetryLayer(
+        ControlPanelLeftTelemetryLayer(
             metrics = metrics,
             bluetoothViewModel = bluetoothViewModel,
         )
-        RcScreenLeftControlsLayer(
+        ControlPanelLeftControlsLayer(
             metrics = metrics,
             bluetoothViewModel = bluetoothViewModel,
             mode = settings.leftStickMode,
@@ -374,7 +405,7 @@ private fun RcScreenLeftControllerConnected(
 }
 
 @Composable
-private fun RcScreenRightControllerHost(
+private fun ControlPanelRightControllerHost(
     bluetoothViewModel: BluetoothViewModel?,
     telemetryState: StateFlow<TelemetryState>,
     rcControlState: StateFlow<RcControlState>,
@@ -388,7 +419,7 @@ private fun RcScreenRightControllerHost(
     onBottomPress: () -> Unit,
 ) {
     if (bluetoothViewModel != null) {
-        RcScreenRightControllerConnected(
+        ControlPanelRightControllerConnected(
             bluetoothViewModel = bluetoothViewModel,
             settings = settings,
             aspectRatio = aspectRatio,
@@ -413,7 +444,7 @@ private fun RcScreenRightControllerHost(
                 )
             }
         }
-        RcScreenRightController(
+        ControlPanelRightController(
             settings = settings,
             aspectRatio = aspectRatio,
             settingsSyncGeneration = settingsSyncGeneration,
@@ -430,7 +461,7 @@ private fun RcScreenRightControllerHost(
 }
 
 @Composable
-private fun RcScreenRightControllerConnected(
+private fun ControlPanelRightControllerConnected(
     bluetoothViewModel: BluetoothViewModel,
     settings: UserSettings,
     aspectRatio: Float,
@@ -446,11 +477,11 @@ private fun RcScreenRightControllerConnected(
         side = ButtonSide.RIGHT,
         modifier = Modifier.wrapContentHeight(),
     ) { metrics ->
-        RcScreenRightTelemetryLayer(
+        ControlPanelRightTelemetryLayer(
             metrics = metrics,
             bluetoothViewModel = bluetoothViewModel,
         )
-        RcScreenRightControlsLayer(
+        ControlPanelRightControlsLayer(
             metrics = metrics,
             bluetoothViewModel = bluetoothViewModel,
             mode = settings.rightStickMode,
@@ -465,7 +496,7 @@ private fun RcScreenRightControllerConnected(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.RcScreenLeftTelemetryLayer(
+private fun BoxWithConstraintsScope.ControlPanelLeftTelemetryLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
 ) {
@@ -484,7 +515,7 @@ private fun BoxWithConstraintsScope.RcScreenLeftTelemetryLayer(
 }
 
 @Composable
-private fun RcScreenLeftControlsLayer(
+private fun ControlPanelLeftControlsLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
     mode: JoystickMode,
@@ -505,7 +536,7 @@ private fun RcScreenLeftControlsLayer(
             onTopPress = onTopPress,
             onBottomPress = onBottomPress,
         )
-        RcScreenStickSlot(
+        ControlPanelStickSlot(
             side = ButtonSide.LEFT,
             metrics = metrics,
             mode = mode,
@@ -513,12 +544,12 @@ private fun RcScreenLeftControlsLayer(
             stickPosition = bluetoothViewModel.rcLeftStickPosition,
             onMove = onMove,
         )
-        RcScreenSwitchesSlot(
+        ControlPanelSwitchesSlot(
             switchStates = bluetoothViewModel.rcLeftSwitchStates,
             onSwitchStateChange = onSwitchStateChange,
             metrics = metrics,
         )
-        RcScreenKnobSlot(
+        ControlPanelKnobSlot(
             knobValue = bluetoothViewModel.rcLeftKnobValue,
             onKnobValueChange = onKnobValueChange,
             metrics = metrics,
@@ -527,7 +558,7 @@ private fun RcScreenLeftControlsLayer(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.RcScreenRightTelemetryLayer(
+private fun BoxWithConstraintsScope.ControlPanelRightTelemetryLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
 ) {
@@ -546,7 +577,7 @@ private fun BoxWithConstraintsScope.RcScreenRightTelemetryLayer(
 }
 
 @Composable
-private fun RcScreenRightControlsLayer(
+private fun ControlPanelRightControlsLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
     mode: JoystickMode,
@@ -567,7 +598,7 @@ private fun RcScreenRightControlsLayer(
             onTopPress = onTopPress,
             onBottomPress = onBottomPress,
         )
-        RcScreenStickSlot(
+        ControlPanelStickSlot(
             side = ButtonSide.RIGHT,
             metrics = metrics,
             mode = mode,
@@ -575,12 +606,12 @@ private fun RcScreenRightControlsLayer(
             stickPosition = bluetoothViewModel.rcRightStickPosition,
             onMove = onMove,
         )
-        RcScreenSwitchesSlot(
+        ControlPanelSwitchesSlot(
             switchStates = bluetoothViewModel.rcRightSwitchStates,
             onSwitchStateChange = onSwitchStateChange,
             metrics = metrics,
         )
-        RcScreenKnobSlot(
+        ControlPanelKnobSlot(
             knobValue = bluetoothViewModel.rcRightKnobValue,
             onKnobValueChange = onKnobValueChange,
             metrics = metrics,
@@ -589,7 +620,7 @@ private fun RcScreenRightControlsLayer(
 }
 
 @Composable
-private fun BoxScope.RcScreenStickSlot(
+private fun BoxScope.ControlPanelStickSlot(
     side: ButtonSide,
     metrics: ControllerSideLayoutMetrics,
     mode: JoystickMode,
@@ -614,7 +645,7 @@ private fun BoxScope.RcScreenStickSlot(
 }
 
 @Composable
-private fun BoxScope.RcScreenSwitchesSlot(
+private fun BoxScope.ControlPanelSwitchesSlot(
     switchStates: StateFlow<SwitchStates>,
     onSwitchStateChange: (Int, Boolean) -> Unit,
     metrics: ControllerSideLayoutMetrics,
@@ -629,7 +660,7 @@ private fun BoxScope.RcScreenSwitchesSlot(
 }
 
 @Composable
-private fun BoxScope.RcScreenKnobSlot(
+private fun BoxScope.ControlPanelKnobSlot(
     knobValue: StateFlow<Float>,
     onKnobValueChange: (Float) -> Unit,
     metrics: ControllerSideLayoutMetrics,
@@ -646,7 +677,7 @@ private fun BoxScope.RcScreenKnobSlot(
 }
 
 @Composable
-private fun RcScreenLeftController(
+private fun ControlPanelLeftController(
     settings: UserSettings,
     aspectRatio: Float,
     settingsSyncGeneration: Int,
@@ -684,7 +715,7 @@ private fun RcScreenLeftController(
 }
 
 @Composable
-private fun RcScreenRightController(
+private fun ControlPanelRightController(
     settings: UserSettings,
     aspectRatio: Float,
     settingsSyncGeneration: Int,
@@ -774,12 +805,12 @@ class FakeBluetoothViewModel {
 //    fun sendButtonEvent(event: ButtonEvent) {}
 }
 
-@Preview(showBackground = true, device = "spec:width=914dp,height=411dp,dpi=420", name = "RcScreen Landscape Phone")
+@Preview(showBackground = true, device = "spec:width=914dp,height=411dp,dpi=420", name = "ControlPanel Landscape Phone")
 @Composable
-fun RcScreenPreviewDirect() {
+fun ControlPanelScreenPreviewDirect() {
     EmitterAppTheme {
         val fakeViewModel = FakeBluetoothViewModel()
-        RcScreen(
+        ControlPanelScreen(
             telemetryState = fakeViewModel.telemetryState,
             userSettings = fakeViewModel.userSettings,
             rcControlState = fakeViewModel.rcControlState
@@ -787,12 +818,12 @@ fun RcScreenPreviewDirect() {
     }
 }
 
-@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,dpi=160", name = "RcScreen Tablet Landscape")
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,dpi=160", name = "ControlPanel Tablet Landscape")
 @Composable
-fun RcScreenPreviewTablet() {
+fun ControlPanelScreenPreviewTablet() {
     EmitterAppTheme {
         val fakeViewModel = FakeBluetoothViewModel()
-        RcScreen(
+        ControlPanelScreen(
             telemetryState = fakeViewModel.telemetryState,
             userSettings = fakeViewModel.userSettings,
             rcControlState = fakeViewModel.rcControlState
@@ -800,12 +831,12 @@ fun RcScreenPreviewTablet() {
     }
 }
 
-@Preview(showBackground = true, device = "spec:width=1024dp,height=600dp,dpi=160", name = "RcScreen Small Tablet Landscape")
+@Preview(showBackground = true, device = "spec:width=1024dp,height=600dp,dpi=160", name = "ControlPanel Small Tablet Landscape")
 @Composable
-fun RcScreenPreviewSmallTablet() {
+fun ControlPanelScreenPreviewSmallTablet() {
     EmitterAppTheme {
         val fakeViewModel = FakeBluetoothViewModel()
-        RcScreen(
+        ControlPanelScreen(
             telemetryState = fakeViewModel.telemetryState,
             userSettings = fakeViewModel.userSettings,
             rcControlState = fakeViewModel.rcControlState
@@ -813,12 +844,12 @@ fun RcScreenPreviewSmallTablet() {
     }
 }
 
-@Preview(showBackground = true, device = "spec:width=1920dp,height=1080dp,dpi=160", name = "RcScreen Large Screen Landscape")
+@Preview(showBackground = true, device = "spec:width=1920dp,height=1080dp,dpi=160", name = "ControlPanel Large Screen Landscape")
 @Composable
-fun RcScreenPreviewLargeScreen() {
+fun ControlPanelScreenPreviewLargeScreen() {
     EmitterAppTheme {
         val fakeViewModel = FakeBluetoothViewModel()
-        RcScreen(
+        ControlPanelScreen(
             telemetryState = fakeViewModel.telemetryState,
             userSettings = fakeViewModel.userSettings,
             rcControlState = fakeViewModel.rcControlState

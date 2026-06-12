@@ -9,11 +9,11 @@ import com.micsbol.emitterapp.domain.bluetooth.RemoteDevice
 import com.micsbol.emitterapp.domain.bluetooth.RcPacketEncoder
 import com.micsbol.emitterapp.domain.bluetooth.PlotData
 import com.micsbol.emitterapp.domain.bluetooth.TelemetryState
-import com.micsbol.emitterapp.ui.rc_screen.SideIndicatorUi
-import com.micsbol.emitterapp.ui.rc_screen.SideTelemetry
-import com.micsbol.emitterapp.ui.rc_screen.SwitchStates
-import com.micsbol.emitterapp.ui.rc_screen.toLeftSideTelemetry
-import com.micsbol.emitterapp.ui.rc_screen.toRightSideTelemetry
+import com.micsbol.emitterapp.ui.control_panel.SideIndicatorUi
+import com.micsbol.emitterapp.ui.control_panel.SideTelemetry
+import com.micsbol.emitterapp.ui.control_panel.SwitchStates
+import com.micsbol.emitterapp.ui.control_panel.toLeftSideTelemetry
+import com.micsbol.emitterapp.ui.control_panel.toRightSideTelemetry
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import com.micsbol.emitterapp.domain.model.ButtonEvent
@@ -277,7 +277,7 @@ open class BluetoothViewModel @Inject constructor(
      * Called when an RC screen is shown. Applies [UserSettings] after a cold start or when
      * RcSettings changed; otherwise keeps the last in-session [rcControlState].
      */
-    fun onRcScreenEntered() {
+    fun onControlPanelEntered() {
         val settings = (userSettings.value as? SettingsUiState.Success)?.settings ?: return
         applySettingsIfChanged(settings)
         startRcPlotUiThrottling()

@@ -33,8 +33,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.micsbol.emitterapp.R
+import com.micsbol.emitterapp.domain.model.ApplicationId
 import com.micsbol.emitterapp.domain.model.UserSettings
 import com.micsbol.emitterapp.domain.model.JoystickMode
+import com.micsbol.emitterapp.ui.applications.applicationSettingsTitleRes
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,11 +52,12 @@ import com.micsbol.emitterapp.ui.theme.EmitterAppTheme
 fun RcSettingsScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel(),
-    uiState: SettingsUiState? = null
+    uiState: SettingsUiState? = null,
+    applicationId: ApplicationId = ApplicationId.CONTROL_PANEL,
 ) {
     val state = uiState ?: viewModel.uiState.collectAsStateWithLifecycle().value
     EmitterAppScaffold(
-        title = stringResource(R.string.home_title),
+        title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.rc_controller_settings_title),
         onNavigateBack = { navController.navigateUp() },
     ) { paddingValues ->

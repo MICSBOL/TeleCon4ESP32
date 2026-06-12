@@ -17,21 +17,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.micsbol.emitterapp.domain.model.ApplicationId
+import com.micsbol.emitterapp.ui.about.AboutScreen
+import com.micsbol.emitterapp.ui.about.PrivacyPolicyScreen
+import com.micsbol.emitterapp.ui.applications.ApplicationSettingsHostScreen
+import com.micsbol.emitterapp.ui.applications.ApplicationsScreen
+import com.micsbol.emitterapp.ui.applications.ProApplicationPlaceholderScreen
 import com.micsbol.emitterapp.ui.bluetooth.BluetoothScreen
 import com.micsbol.emitterapp.ui.bluetooth.BluetoothViewModel
 import com.micsbol.emitterapp.ui.codes.CodesScreen
-import com.micsbol.emitterapp.ui.home.HomeScreen
-import com.micsbol.emitterapp.ui.rc_screen.RcScreen
-import com.micsbol.emitterapp.ui.rc_settings.RcSettingsScreen
-import com.micsbol.emitterapp.ui.rc_settings.SettingsViewModel
-import com.micsbol.emitterapp.ui.about.AboutScreen
-import com.micsbol.emitterapp.ui.about.PrivacyPolicyScreen
-import com.micsbol.emitterapp.ui.splash.SplashScreen
+import com.micsbol.emitterapp.ui.control_panel.ControlPanelScreen
 import com.micsbol.emitterapp.ui.entitlement.EntitlementViewModel
 import com.micsbol.emitterapp.ui.entitlement.LocalEntitlement
+import com.micsbol.emitterapp.ui.home.HomeScreen
+import com.micsbol.emitterapp.ui.premium.UpgradeScreen
+import com.micsbol.emitterapp.ui.rc_settings.SettingsViewModel
+import com.micsbol.emitterapp.ui.rc_vehicle_pro.RcVehicleProScreen
+import com.micsbol.emitterapp.ui.splash.SplashScreen
 import com.micsbol.emitterapp.ui.tutorial.TutorialScreen
 
 @Composable
@@ -207,11 +214,75 @@ fun AppNavGraph(
                 }
             )
         }
-        composable(Screen.RcScreen.route) {
-            RcScreen(bluetoothViewModel = bluetoothViewModel, navController = navController)
+        composable(Screen.Applications.route) {
+            ApplicationsScreen(navController = navController)
         }
-        composable(Screen.RcSettingsScreen.route) {
-            RcSettingsScreen(navController = navController, viewModel = settingsViewModel)
+        composable(Screen.ControlPanel.route) {
+            ControlPanelScreen(
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            )
+        }
+        composable(Screen.RcVehiclePro.route) {
+            RcVehicleProScreen(navController = navController)
+        }
+        composable(Screen.GreenhousePro.route) {
+            ProApplicationPlaceholderScreen(
+                navController = navController,
+                applicationId = ApplicationId.GREENHOUSE,
+            )
+        }
+        composable(Screen.SolarPro.route) {
+            ProApplicationPlaceholderScreen(
+                navController = navController,
+                applicationId = ApplicationId.SOLAR_POWER,
+            )
+        }
+        composable(Screen.SmartHomePro.route) {
+            ProApplicationPlaceholderScreen(
+                navController = navController,
+                applicationId = ApplicationId.SMART_HOME,
+            )
+        }
+        composable(Screen.CustomDashboardPro.route) {
+            ProApplicationPlaceholderScreen(
+                navController = navController,
+                applicationId = ApplicationId.CUSTOM_DASHBOARD,
+            )
+        }
+        composable(Screen.Upgrade.route) {
+            UpgradeScreen(navController = navController)
+        }
+        composable(
+            route = Screen.ApplicationSettings.route,
+            arguments = listOf(
+                navArgument("applicationId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val applicationId = backStackEntry.arguments
+                ?.getString("applicationId")
+                ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+                ?: return@composable
+            ApplicationSettingsHostScreen(
+                navController = navController,
+                applicationId = applicationId,
+                settingsViewModel = settingsViewModel,
+            )
+        }
+        composable(
+            route = Screen.ProPlaceholder.route,
+            arguments = listOf(
+                navArgument("applicationId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val applicationId = backStackEntry.arguments
+                ?.getString("applicationId")
+                ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+                ?: return@composable
+            ProApplicationPlaceholderScreen(
+                navController = navController,
+                applicationId = applicationId,
+            )
         }
         composable(Screen.Tutorial.route) {
             TutorialScreen(navController = navController)
