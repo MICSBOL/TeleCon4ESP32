@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.micsbol.emitterapp"
+    namespace = "com.micsbol.telecon4esp32"
     compileSdk {
         version = release(36)
     }

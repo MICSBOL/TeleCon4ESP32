@@ -1,9 +1,9 @@
 ---
-description: EmitterApp Android/Kotlin working conventions and architecture
+description: TeleCon4ESP32 Android/Kotlin working conventions and architecture
 alwaysApply: true
 ---
 
-# EmitterApp conventions
+# TeleCon4ESP32 conventions
 
 ## Structure and scope
 

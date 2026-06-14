@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.EmitterApp" parent="Theme.EmitterApp.Main" />
+    <style name="Theme.TeleCon4Esp32" parent="Theme.TeleCon4Esp32.Main" />
 
-    <style name="Theme.EmitterApp.Main" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.TeleCon4Esp32.Main" parent="android:Theme.Material.Light.NoActionBar" />
 
     <!-- Shown while the app process starts; hands off to Main once Compose is ready. -->
-    <style name="Theme.EmitterApp.Starting" parent="Theme.SplashScreen">
+    <style name="Theme.TeleCon4Esp32.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
-        <item name="postSplashScreenTheme">@style/Theme.EmitterApp.Main</item>
+        <item name="postSplashScreenTheme">@style/Theme.TeleCon4Esp32.Main</item>
     </style>
 
 </resources>
