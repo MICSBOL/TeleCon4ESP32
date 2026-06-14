@@ -1,8 +1,8 @@
 <resources>
-    <string name="app_name">RC-Emitter</string>
-    <string name="app_header_subtitle">Drive, tune, and connect your RC hardware</string>
+    <string name="app_name">TeleCon4ESP32</string>
+    <string name="app_header_subtitle">Telemetry and control for your ESP32 projects</string>
     <!-- HomeScreen Strings -->
-    <string name="home_title">RC-Emitter</string>
+    <string name="home_title">TeleCon4ESP32</string>
     <string name="home_help">Help</string>
     <string name="home_help_dialog_title">Quick help</string>
     <string name="home_help_dialog_subtitle">Common problems and how to fix them. Tap a problem to see the solution.</string>
@@ -145,8 +145,8 @@
     <string name="rc_controller_settings_right_stick">Right Stick</string>
     <string name="rc_controller_settings_left_knob">Left Knob</string>
     <string name="rc_controller_settings_right_knob">Right Knob</string>
-    <string name="splash_logo_content_description">MICSBOL app logo</string>
-    <string name="splash_tagline">Bluetooth RC transmitter for ESP32 hardware</string>
+    <string name="splash_logo_content_description">TeleCon4ESP32 app logo</string>
+    <string name="splash_tagline">Telemetry and control for ESP32 over Bluetooth</string>
     <string name="splash_tap_hint">Tap anywhere to continue</string>
     <string name="splash_brand_credit">by MICSBOL</string>
     <string name="codes_document_general">General Documentation.</string>
@@ -161,8 +161,8 @@
     <string name="about_subtitle">Legal information and data use</string>
     <string name="about_back">Back</string>
     <string name="about_version_label">Version %1$s</string>
-    <string name="about_description">MICSBOL RC-Emitter connects your phone to ESP32-based RC hardware over Bluetooth. Control sticks, switches, knobs, and view live telemetry from your firmware.</string>
-    <string name="about_logo_content_description">MICSBOL app logo</string>
+    <string name="about_description">TeleCon4ESP32 connects your phone to ESP32 hardware over Bluetooth. Control sticks, switches, knobs, and view live telemetry from your firmware.</string>
+    <string name="about_logo_content_description">TeleCon4ESP32 logo</string>
     <string name="about_legal_section_title">Legal</string>
     <string name="about_privacy_policy">Privacy Policy</string>
     <string name="about_privacy_policy_hint">How we handle Bluetooth, local settings, and ads</string>

@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,7 +44,6 @@ import com.micsbol.emitterapp.ui.components.brandPrimary
 import com.micsbol.emitterapp.ui.components.brandSecondary
 import com.micsbol.emitterapp.ui.components.mutedTextColor
 import com.micsbol.emitterapp.ui.navigation.Screen
-import com.micsbol.emitterapp.ui.theme.titanOneRegular
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -140,27 +138,14 @@ fun SplashScreenContent(
         ) {
             SplashAnimatedLogo {
                 EmitterBrandLogo(
-                    size = 112.dp,
+                    size = 140.dp,
                     fullLogo = true,
                 )
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             SplashFadeSlideText(animationDelayMs = 380) {
-                Text(
-                    text = stringResource(R.string.home_title),
-                    fontFamily = titanOneRegular,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = brandPrimary(),
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            SplashFadeSlideText(animationDelayMs = 520) {
                 Text(
                     text = stringResource(R.string.app_header_subtitle),
                     style = MaterialTheme.typography.bodyLarge,

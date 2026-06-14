@@ -58,6 +58,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.emitterapp.R
+import com.micsbol.emitterapp.util.hostedPdfUrl
 import com.micsbol.emitterapp.ui.ads.InterstitialTrigger
 import com.micsbol.emitterapp.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
@@ -81,9 +82,10 @@ private enum class CodeAssetType {
 private data class CodeAssetInfo(
     @StringRes val titleRes: Int,
     val icon: ImageVector,
-    val assetFileName: String,
     val type: CodeAssetType,
-    val outputFileName: String = assetFileName
+    val assetFileName: String? = null,
+    @StringRes val remoteUrlRes: Int? = null,
+    val outputFileName: String = assetFileName ?: "document.pdf",
 )
 
 private enum class PdfOpenResult {
@@ -145,6 +147,16 @@ private fun shareZipAssetExternally(
         }
     } catch (_: IOException) {
         ZipSharePrepareResult.CopyFailed
+    }
+}
+
+private fun openPdfUrlExternally(context: Context, url: String): PdfOpenResult {
+    return try {
+        val viewIntent = Intent(Intent.ACTION_VIEW, Uri.parse(hostedPdfUrl(url)))
+        context.startActivity(viewIntent)
+        PdfOpenResult.Success
+    } catch (_: ActivityNotFoundException) {
+        PdfOpenResult.NoActivity
     }
 }
 
@@ -219,15 +231,15 @@ private fun availableCodeAssets(language: String): List<CodeAssetInfo> {
         CodeAssetInfo(
             titleRes = R.string.codes_document_general,
             icon = Icons.Default.DocumentScanner,
-            assetFileName = "general_documentation_es.pdf",
-            type = CodeAssetType.Pdf
+            type = CodeAssetType.Pdf,
+            remoteUrlRes = R.string.documentation_pdf_es_url,
         )
     } else {
         CodeAssetInfo(
             titleRes = R.string.codes_document_general,
             icon = Icons.Default.DocumentScanner,
-            assetFileName = "general_documentation_en.pdf",
-            type = CodeAssetType.Pdf
+            type = CodeAssetType.Pdf,
+            remoteUrlRes = R.string.documentation_pdf_en_url,
         )
     }
 
@@ -238,7 +250,7 @@ private fun availableCodeAssets(language: String): List<CodeAssetInfo> {
             titleRes = R.string.codes_esp32_bt_controller_zip,
             icon = Icons.Default.Code,
             assetFileName = ESP32_BT_CONTROLLER_ZIP,
-            type = CodeAssetType.Zip
+            type = CodeAssetType.Zip,
         )
     )
 }
@@ -409,6 +421,7 @@ fun CodesScreen(
     }
 
     pendingZipExport?.let { asset ->
+        val zipFileName = checkNotNull(asset.assetFileName)
         CodesStyledDialog(
             onDismissRequest = { pendingZipExport = null },
             title = { CodesDialogTitle(text = stringResource(R.string.codes_zip_export_title)) },
@@ -427,7 +440,7 @@ fun CodesScreen(
                             when (
                                 shareZipAssetExternally(
                                     context,
-                                    asset.assetFileName,
+                                    zipFileName,
                                     asset.outputFileName
                                 )
                             ) {
@@ -460,7 +473,7 @@ fun CodesScreen(
                         onClick = {
                             pendingZipExport = null
                             viewModel.saveZipAsset(
-                                assetFileName = asset.assetFileName,
+                                assetFileName = zipFileName,
                                 outputFileName = asset.outputFileName
                             )
                         },
@@ -558,7 +571,16 @@ fun CodesScreen(
             onAssetClick = { asset ->
                 when (asset.type) {
                     CodeAssetType.Pdf -> {
-                        when (openPdfAssetExternally(context, asset.assetFileName)) {
+                        val result = when {
+                            asset.remoteUrlRes != null ->
+                                openPdfUrlExternally(context, context.getString(asset.remoteUrlRes))
+
+                            asset.assetFileName != null ->
+                                openPdfAssetExternally(context, asset.assetFileName)
+
+                            else -> PdfOpenResult.CopyFailed
+                        }
+                        when (result) {
                             PdfOpenResult.Success -> Unit
                             PdfOpenResult.NoActivity ->
                                 pdfDialogKind = PdfDialogKind.NoReader

@@ -39,6 +39,7 @@ import androidx.navigation.NavController
 import com.micsbol.emitterapp.BuildConfig
 import java.util.Locale
 import com.micsbol.emitterapp.R
+import com.micsbol.emitterapp.util.hostedPdfUrl
 import com.micsbol.emitterapp.ui.components.EmitterAppScaffold
 import com.micsbol.emitterapp.ui.components.EmitterSectionTitle
 import com.micsbol.emitterapp.ui.components.EmitterStyledCard
@@ -149,7 +150,7 @@ fun AboutScreen(navController: NavController) {
             }
             Spacer(modifier = Modifier.height(10.dp))
             EmitterStyledCard(
-                modifier = Modifier.clickable { openUrl(documentationPdfEnUrl) }
+                modifier = Modifier.clickable { openUrl(hostedPdfUrl(documentationPdfEnUrl)) }
             ) {
                 AboutLinkRow(
                     title = stringResource(R.string.about_documentation_en),
@@ -159,7 +160,7 @@ fun AboutScreen(navController: NavController) {
             }
             Spacer(modifier = Modifier.height(10.dp))
             EmitterStyledCard(
-                modifier = Modifier.clickable { openUrl(documentationPdfEsUrl) }
+                modifier = Modifier.clickable { openUrl(hostedPdfUrl(documentationPdfEsUrl)) }
             ) {
                 AboutLinkRow(
                     title = stringResource(R.string.about_documentation_es),

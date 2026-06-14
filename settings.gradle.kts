@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "EmitterApp"
+rootProject.name = "TeleCon4ESP32"
 include(":app")
  

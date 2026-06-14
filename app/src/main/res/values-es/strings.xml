@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RC-Emisor</string>
-    <string name="app_header_subtitle">Conduce, ajusta y conecta tu hardware RC</string>
+    <string name="app_name">TeleCon4ESP32</string>
+    <string name="app_header_subtitle">Telemetría y control para tus proyectos ESP32</string>
     <!-- HomeScreen Strings -->
-    <string name="home_title">RC-Emisor</string>
+    <string name="home_title">TeleCon4ESP32</string>
     <string name="home_help">Ayuda</string>
     <string name="home_help_dialog_title">Ayuda rápida</string>
     <string name="home_help_dialog_subtitle">Problemas frecuentes y cómo solucionarlos. Toca un problema para ver la solución.</string>
@@ -146,8 +146,8 @@
     <string name="rc_controller_settings_right_stick">Joystick derecho</string>
     <string name="rc_controller_settings_left_knob">Perilla Izquierda</string>
     <string name="rc_controller_settings_right_knob">Perilla Derecha</string>
-    <string name="splash_logo_content_description">Logo de la app MICSBOL</string>
-    <string name="splash_tagline">Transmisor RC Bluetooth para hardware ESP32</string>
+    <string name="splash_logo_content_description">Logo de TeleCon4ESP32</string>
+    <string name="splash_tagline">Telemetría y control para ESP32 por Bluetooth</string>
     <string name="splash_tap_hint">Toca en cualquier lugar para continuar</string>
     <string name="splash_brand_credit">by MICSBOL</string>
     <string name="codes_document_general">Documentación General</string>
@@ -156,8 +156,8 @@
     <string name="about_subtitle">Información legal y uso de datos</string>
     <string name="about_back">Atrás</string>
     <string name="about_version_label">Versión %1$s</string>
-    <string name="about_description">MICSBOL RC-Emisor conecta tu teléfono a hardware RC basado en ESP32 por Bluetooth. Controla sticks, interruptores y perillas, y consulta telemetría en vivo desde tu firmware.</string>
-    <string name="about_logo_content_description">Logo de la app MICSBOL</string>
+    <string name="about_description">TeleCon4ESP32 conecta tu teléfono a hardware ESP32 por Bluetooth. Controla sticks, interruptores y perillas, y consulta telemetría en vivo desde tu firmware.</string>
+    <string name="about_logo_content_description">Logo de TeleCon4ESP32</string>
     <string name="about_legal_section_title">Legal</string>
     <string name="about_privacy_policy">Política de privacidad</string>
     <string name="about_privacy_policy_hint">Bluetooth, ajustes locales y anuncios</string>

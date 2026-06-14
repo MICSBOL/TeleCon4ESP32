@@ -92,15 +92,9 @@ fun EmitterBrandLogo(
 ) {
     Image(
         painter = painterResource(
-            if (fullLogo) R.drawable.ic_micsbol_logo else R.drawable.ic_micsbol_logo_marks
+            if (fullLogo) R.drawable.ic_telecon4esp32_logo else R.drawable.ic_telecon4esp32_icon
         ),
-        contentDescription = stringResource(
-            if (fullLogo) {
-                R.string.splash_logo_content_description
-            } else {
-                R.string.about_logo_content_description
-            }
-        ),
+        contentDescription = stringResource(R.string.about_logo_content_description),
         modifier = modifier.size(size),
     )
 }
