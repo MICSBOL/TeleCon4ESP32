@@ -428,7 +428,9 @@ private fun TutorialVideoPlayer(
 sealed interface TutorialMedia {
     /**
      * Home screen reference image: [R.drawable.home_light] / [R.drawable.home_dark].
-     * Overlay badges 1–7 (Select UI removed); see [R.string.tutorial_home_step_description].
+     * Badges 1–6 (right-aligned on rows 2–5 and Quick Start; Help top-right):
+     * 1 Quick Start, 2 Applications, 3 Bluetooth, 4 Codes and Documents, 5 Tutorial, 6 Help.
+     * See [R.string.tutorial_home_step_description].
      */
     data object HomeScreenshot : TutorialMedia
     data object RcScreenshot : TutorialMedia
