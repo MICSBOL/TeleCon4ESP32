@@ -28,6 +28,7 @@ import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationsScreen
 import com.micsbol.telecon4esp32.ui.applications.ProApplicationPlaceholderScreen
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
@@ -227,10 +228,7 @@ fun AppNavGraph(
             RcVehicleProScreen(navController = navController)
         }
         composable(Screen.GreenhousePro.route) {
-            ProApplicationPlaceholderScreen(
-                navController = navController,
-                applicationId = ApplicationId.GREENHOUSE,
-            )
+            GreenhouseScreen(navController = navController)
         }
         composable(Screen.SolarPro.route) {
             ProApplicationPlaceholderScreen(

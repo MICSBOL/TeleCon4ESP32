@@ -42,7 +42,6 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_greenhouse_subtitle,
         icon = Icons.Default.Eco,
         route = Screen.GreenhousePro.route,
-        comingSoon = true,
     ),
     ApplicationCatalogItem(
         id = ApplicationId.SOLAR_POWER,

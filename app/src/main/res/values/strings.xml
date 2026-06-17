@@ -182,4 +182,44 @@
     <string name="about_documentation_es_hint">Guía del controlador ESP32 Bluetooth</string>
     <string name="about_documentation_repository">Documentation repository</string>
     <string name="about_documentation_repository_hint">Source files on GitHub</string>
+
+    <!-- GreenhouseScreen -->
+    <string name="greenhouse_screen_title">GREENHOUSE</string>
+    <string name="greenhouse_menu_content_description">Back to applications</string>
+    <string name="greenhouse_status_online">Online</string>
+    <string name="greenhouse_status_offline">Offline</string>
+    <string name="greenhouse_mode_auto">Auto</string>
+    <string name="greenhouse_updated_ago">Updated %1$s ago</string>
+    <string name="greenhouse_temperature_reading">%1$.1f°C</string>
+    <string name="greenhouse_humidity_reading">Humidity %1$d%%</string>
+    <string name="greenhouse_humidity_label">Humidity</string>
+    <string name="greenhouse_vpd_reading">VPD %1$s kPa</string>
+    <string name="greenhouse_vpd_label">VPD</string>
+    <string name="greenhouse_vpd_value">%1$s kPa</string>
+    <string name="greenhouse_stable">Stable</string>
+    <string name="greenhouse_illustration_content_description">Greenhouse illustration</string>
+    <string name="greenhouse_soil">Soil</string>
+    <string name="greenhouse_light">Light</string>
+    <string name="greenhouse_delta_temp">ΔT in/out</string>
+    <string name="greenhouse_tank">Tank</string>
+    <string name="greenhouse_percent_value">%1$d%%</string>
+    <string name="greenhouse_soil_target">Target %1$d–%2$d%%</string>
+    <string name="greenhouse_light_kilolux">%1$sk lux</string>
+    <string name="greenhouse_light_lux">%1$d lux</string>
+    <string name="greenhouse_lights_on">Lights ON</string>
+    <string name="greenhouse_lights_off">Lights OFF</string>
+    <string name="greenhouse_delta_temp_value">%1$s°C</string>
+    <string name="greenhouse_vent_open">Vent %1$d%% open</string>
+    <string name="greenhouse_last_irrigation">Last irr: %1$s ago</string>
+    <string name="greenhouse_chart_title">LAST 24H</string>
+    <string name="greenhouse_chart_temp">Temp °C</string>
+    <string name="greenhouse_chart_humidity">Humidity %%</string>
+    <string name="greenhouse_chart_vpd">VPD kPa</string>
+    <string name="greenhouse_fan_on">Fan ON</string>
+    <string name="greenhouse_fan_off">Fan OFF</string>
+    <string name="greenhouse_heater_on">Heater ON</string>
+    <string name="greenhouse_heater_off">Heater OFF</string>
+    <string name="greenhouse_pump_on">Pump ON</string>
+    <string name="greenhouse_pump_idle">Pump idle</string>
+    <string name="greenhouse_target_climate">Target %1$d°C / %2$d%% RH</string>
 </resources>
