@@ -216,4 +216,65 @@
     <string name="greenhouse_pump_on">Bomba ON</string>
     <string name="greenhouse_pump_idle">Bomba en reposo</string>
     <string name="greenhouse_target_climate">Objetivo %1$d°C / %2$d%% HR</string>
+
+    <!-- SmartHomeScreen -->
+    <string name="smart_home_screen_title">HOGAR INTELIGENTE</string>
+    <string name="smart_home_menu_content_description">Volver a aplicaciones</string>
+    <string name="smart_home_all_systems_normal">Todos los sistemas normales</string>
+    <string name="smart_home_notifications_content_description">Notificaciones</string>
+    <string name="smart_home_section_rooms">Habitaciones</string>
+    <string name="smart_home_section_systems">Sistemas</string>
+    <string name="smart_home_section_energy_usage">Consumo de energía</string>
+    <string name="smart_home_section_recent_events">Eventos recientes</string>
+    <string name="smart_home_view_all">Ver todo</string>
+    <string name="smart_home_period_today">Hoy</string>
+    <string name="smart_home_room_living_room">Salón</string>
+    <string name="smart_home_room_kitchen">Cocina</string>
+    <string name="smart_home_room_bedroom">Dormitorio</string>
+    <string name="smart_home_room_garage">Garaje</string>
+    <string name="smart_home_room_status_on_count">%1$d ENC</string>
+    <string name="smart_home_room_status_off">APAG</string>
+    <string name="smart_home_room_status_open">ABIERTO</string>
+    <string name="smart_home_room_window_open">Ventana abierta</string>
+    <string name="smart_home_room_door_open">Puerta abierta</string>
+    <string name="smart_home_temperature_short">%1$.0f°C</string>
+    <string name="smart_home_system_climate">Clima</string>
+    <string name="smart_home_system_climate_status">Confortable</string>
+    <string name="smart_home_system_energy">Energía</string>
+    <string name="smart_home_system_energy_now">Ahora</string>
+    <string name="smart_home_system_energy_value">%1$.1f kW</string>
+    <string name="smart_home_system_security">Seguridad</string>
+    <string name="smart_home_system_security_status">Todo seguro</string>
+    <string name="smart_home_system_water">Agua</string>
+    <string name="smart_home_system_water_today">Hoy</string>
+    <string name="smart_home_system_water_value">%1$d L</string>
+    <string name="smart_home_energy_now_label">%1$.1f kW ahora</string>
+    <string name="smart_home_energy_chart_unit">kW</string>
+    <string name="smart_home_energy_axis_value">%1$s kW</string>
+    <string name="smart_home_energy_axis_time">Hora</string>
+    <string name="smart_home_event_front_door_locked">Puerta principal cerrada</string>
+    <string name="smart_home_event_living_room_light_on">Luz del salón encendida</string>
+    <string name="smart_home_event_motion_driveway">Movimiento detectado en la entrada</string>
+    <string name="smart_home_event_windows_living_room">Ventanas abiertas en el salón</string>
+    <string name="smart_home_event_water_usage">Consumo de agua</string>
+    <string name="smart_home_event_time_today">Hoy, %1$s</string>
+
+    <!-- SolarSystemScreen -->
+    <string name="solar_system_screen_title">SISTEMA SOLAR</string>
+    <string name="solar_system_menu_content_description">Volver a aplicaciones</string>
+    <string name="solar_system_energy_balance">Balance energético: +%1$dW</string>
+    <string name="solar_system_section_live_power_flow">FLUJO DE ENERGÍA EN VIVO</string>
+    <string name="solar_system_section_production_today">PRODUCCIÓN (HOY)</string>
+    <string name="solar_system_section_daily_energy">ENERGÍA DIARIA</string>
+    <string name="solar_system_period_today">Hoy</string>
+    <string name="solar_system_metric_solar">Solar</string>
+    <string name="solar_system_metric_load">Carga</string>
+    <string name="solar_system_metric_battery">Batería</string>
+    <string name="solar_system_metric_grid">Red</string>
+    <string name="solar_system_metric_voltage">Voltaje</string>
+    <string name="solar_system_metric_current">Corriente</string>
+    <string name="solar_system_grid_exporting">Exportando</string>
+    <string name="solar_system_power_watts">%1$dW</string>
+    <string name="solar_system_production_axis_unit">kW</string>
+    <string name="solar_system_daily_energy_value">%1$s kWh</string>
 </resources>

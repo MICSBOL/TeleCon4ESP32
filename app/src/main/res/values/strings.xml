@@ -222,4 +222,65 @@
     <string name="greenhouse_pump_on">Pump ON</string>
     <string name="greenhouse_pump_idle">Pump idle</string>
     <string name="greenhouse_target_climate">Target %1$d°C / %2$d%% RH</string>
+
+    <!-- SmartHomeScreen -->
+    <string name="smart_home_screen_title">SMART HOME</string>
+    <string name="smart_home_menu_content_description">Back to applications</string>
+    <string name="smart_home_all_systems_normal">All Systems Normal</string>
+    <string name="smart_home_notifications_content_description">Notifications</string>
+    <string name="smart_home_section_rooms">Rooms</string>
+    <string name="smart_home_section_systems">Systems</string>
+    <string name="smart_home_section_energy_usage">Energy Usage</string>
+    <string name="smart_home_section_recent_events">Recent Events</string>
+    <string name="smart_home_view_all">View All</string>
+    <string name="smart_home_period_today">Today</string>
+    <string name="smart_home_room_living_room">Living Room</string>
+    <string name="smart_home_room_kitchen">Kitchen</string>
+    <string name="smart_home_room_bedroom">Bedroom</string>
+    <string name="smart_home_room_garage">Garage</string>
+    <string name="smart_home_room_status_on_count">%1$d ON</string>
+    <string name="smart_home_room_status_off">OFF</string>
+    <string name="smart_home_room_status_open">OPEN</string>
+    <string name="smart_home_room_window_open">Window Open</string>
+    <string name="smart_home_room_door_open">Door Open</string>
+    <string name="smart_home_temperature_short">%1$.0f°C</string>
+    <string name="smart_home_system_climate">Climate</string>
+    <string name="smart_home_system_climate_status">Comfortable</string>
+    <string name="smart_home_system_energy">Energy</string>
+    <string name="smart_home_system_energy_now">Now</string>
+    <string name="smart_home_system_energy_value">%1$.1f kW</string>
+    <string name="smart_home_system_security">Security</string>
+    <string name="smart_home_system_security_status">All Secure</string>
+    <string name="smart_home_system_water">Water</string>
+    <string name="smart_home_system_water_today">Today</string>
+    <string name="smart_home_system_water_value">%1$d L</string>
+    <string name="smart_home_energy_now_label">%1$.1f kW Now</string>
+    <string name="smart_home_energy_chart_unit">kW</string>
+    <string name="smart_home_energy_axis_value">%1$s kW</string>
+    <string name="smart_home_energy_axis_time">Time</string>
+    <string name="smart_home_event_front_door_locked">Front Door Locked</string>
+    <string name="smart_home_event_living_room_light_on">Living Room Light Turned On</string>
+    <string name="smart_home_event_motion_driveway">Motion Detected in Driveway</string>
+    <string name="smart_home_event_windows_living_room">Windows Opened in Living Room</string>
+    <string name="smart_home_event_water_usage">Water Usage</string>
+    <string name="smart_home_event_time_today">Today, %1$s</string>
+
+    <!-- SolarSystemScreen -->
+    <string name="solar_system_screen_title">SOLAR SYSTEM</string>
+    <string name="solar_system_menu_content_description">Back to applications</string>
+    <string name="solar_system_energy_balance">Energy Balance: +%1$dW</string>
+    <string name="solar_system_section_live_power_flow">LIVE POWER FLOW</string>
+    <string name="solar_system_section_production_today">PRODUCTION (TODAY)</string>
+    <string name="solar_system_section_daily_energy">DAILY ENERGY</string>
+    <string name="solar_system_period_today">Today</string>
+    <string name="solar_system_metric_solar">Solar</string>
+    <string name="solar_system_metric_load">Load</string>
+    <string name="solar_system_metric_battery">Battery</string>
+    <string name="solar_system_metric_grid">Grid</string>
+    <string name="solar_system_metric_voltage">Voltage</string>
+    <string name="solar_system_metric_current">Current</string>
+    <string name="solar_system_grid_exporting">Exporting</string>
+    <string name="solar_system_power_watts">%1$dW</string>
+    <string name="solar_system_production_axis_unit">kW</string>
+    <string name="solar_system_daily_energy_value">%1$s kWh</string>
 </resources>

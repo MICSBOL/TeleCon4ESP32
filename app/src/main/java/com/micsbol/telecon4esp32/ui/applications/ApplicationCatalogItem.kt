@@ -49,7 +49,6 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_solar_subtitle,
         icon = Icons.Default.SolarPower,
         route = Screen.SolarPro.route,
-        comingSoon = true,
     ),
     ApplicationCatalogItem(
         id = ApplicationId.SMART_HOME,
@@ -57,7 +56,6 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_smart_home_subtitle,
         icon = Icons.Default.Home,
         route = Screen.SmartHomePro.route,
-        comingSoon = true,
     ),
     ApplicationCatalogItem(
         id = ApplicationId.CUSTOM_DASHBOARD,

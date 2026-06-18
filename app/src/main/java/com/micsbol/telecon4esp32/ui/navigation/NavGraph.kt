@@ -29,6 +29,8 @@ import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationsScreen
 import com.micsbol.telecon4esp32.ui.applications.ProApplicationPlaceholderScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseScreen
+import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeScreen
+import com.micsbol.telecon4esp32.ui.solarsystem.SolarSystemScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
@@ -231,16 +233,10 @@ fun AppNavGraph(
             GreenhouseScreen(navController = navController)
         }
         composable(Screen.SolarPro.route) {
-            ProApplicationPlaceholderScreen(
-                navController = navController,
-                applicationId = ApplicationId.SOLAR_POWER,
-            )
+            SolarSystemScreen(navController = navController)
         }
         composable(Screen.SmartHomePro.route) {
-            ProApplicationPlaceholderScreen(
-                navController = navController,
-                applicationId = ApplicationId.SMART_HOME,
-            )
+            SmartHomeScreen(navController = navController)
         }
         composable(Screen.CustomDashboardPro.route) {
             ProApplicationPlaceholderScreen(
