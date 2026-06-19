@@ -227,7 +227,10 @@ fun AppNavGraph(
             )
         }
         composable(Screen.RcVehiclePro.route) {
-            RcVehicleProScreen(navController = navController)
+            RcVehicleProScreen(
+                navController = navController,
+                bluetoothViewModel = bluetoothViewModel,
+            )
         }
         composable(Screen.GreenhousePro.route) {
             GreenhouseScreen(navController = navController)
