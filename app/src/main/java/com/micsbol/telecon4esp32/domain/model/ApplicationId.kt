@@ -9,6 +9,7 @@ enum class ApplicationId {
     GREENHOUSE,
     SOLAR_POWER,
     SMART_HOME,
+    WATER_TANK,
     CUSTOM_DASHBOARD,
 }
 
@@ -20,5 +21,6 @@ fun ApplicationId.premiumFeature(): PremiumFeature? = when (this) {
     ApplicationId.GREENHOUSE -> PremiumFeature.GREENHOUSE
     ApplicationId.SOLAR_POWER -> PremiumFeature.SOLAR_POWER
     ApplicationId.SMART_HOME -> PremiumFeature.SMART_HOME
+    ApplicationId.WATER_TANK -> PremiumFeature.WATER_TANK
     ApplicationId.CUSTOM_DASHBOARD -> PremiumFeature.CUSTOM_DASHBOARD
 }

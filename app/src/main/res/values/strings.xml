@@ -39,6 +39,8 @@
     <string name="app_solar_subtitle">Production, battery, and inverter insights</string>
     <string name="app_smart_home_title">Smart home</string>
     <string name="app_smart_home_subtitle">Rooms, scenes, and device automation</string>
+    <string name="app_water_tank_title">Water tank</string>
+    <string name="app_water_tank_subtitle">Tank level monitoring with ESP32 sensors</string>
     <string name="app_custom_dashboard_title">Custom dashboard</string>
     <string name="app_custom_dashboard_subtitle">Build your own control layout</string>
     <string name="app_control_panel_settings_title">Control panel settings</string>
@@ -46,6 +48,7 @@
     <string name="app_greenhouse_settings_title">Greenhouse settings</string>
     <string name="app_solar_settings_title">Solar power settings</string>
     <string name="app_smart_home_settings_title">Smart home settings</string>
+    <string name="app_water_tank_settings_title">Water tank settings</string>
     <string name="app_custom_dashboard_settings_title">Custom dashboard settings</string>
     <string name="applications_settings_content_description">Open %1$s</string>
     <string name="app_settings_placeholder_title">Settings coming soon</string>
@@ -253,6 +256,38 @@
     <string name="greenhouse_pump_on">Pump ON</string>
     <string name="greenhouse_pump_idle">Pump idle</string>
     <string name="greenhouse_target_climate">Target %1$d°C / %2$d%% RH</string>
+
+    <!-- WaterTankScreen -->
+    <string name="water_tank_screen_title">Water Tank Level Monitor</string>
+    <string name="water_tank_menu_content_description">Back to applications</string>
+    <string name="water_tank_refresh_content_description">Refresh tank data</string>
+    <string name="water_tank_esp32_connected">ESP32 Connected</string>
+    <string name="water_tank_esp32_disconnected">ESP32 Disconnected</string>
+    <string name="water_tank_percent_value">%1$d%%</string>
+    <string name="water_tank_volume_capacity">%1$d / %2$d L</string>
+    <string name="water_tank_current_level">Current Level</string>
+    <string name="water_tank_visualization_content_description">Water tank at %1$d percent</string>
+    <string name="water_tank_volume">Volume</string>
+    <string name="water_tank_capacity">Capacity</string>
+    <string name="water_tank_last_updated">Last updated</string>
+    <string name="water_tank_liters_value">%1$d L</string>
+    <string name="water_tank_updated_ago">%1$s ago</string>
+    <string name="water_tank_status_normal">Normal</string>
+    <string name="water_tank_status_low">Low</string>
+    <string name="water_tank_status_critical">Critical</string>
+    <string name="water_tank_pump_on">Pump ON</string>
+    <string name="water_tank_pump_off">Pump Off</string>
+    <string name="water_tank_period_24h">24H</string>
+    <string name="water_tank_period_7d">7D</string>
+    <string name="water_tank_period_30d">30D</string>
+    <string name="water_tank_chart_title">Water Level Over Time</string>
+    <string name="water_tank_chart_legend">Water Level (%)</string>
+    <string name="water_tank_stat_average">Average</string>
+    <string name="water_tank_stat_minimum">Minimum</string>
+    <string name="water_tank_stat_maximum">Maximum</string>
+    <string name="water_tank_sensor_online">Sensor Online</string>
+    <string name="water_tank_sensor_offline">Sensor Offline</string>
+    <string name="water_tank_last_updated_time">Last Updated: %1$s</string>
 
     <!-- SmartHomeScreen -->
     <string name="smart_home_screen_title">SMART HOME</string>

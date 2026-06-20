@@ -23,6 +23,7 @@ fun applicationSettingsTitleRes(applicationId: ApplicationId): Int = when (appli
     ApplicationId.GREENHOUSE -> R.string.app_greenhouse_settings_title
     ApplicationId.SOLAR_POWER -> R.string.app_solar_settings_title
     ApplicationId.SMART_HOME -> R.string.app_smart_home_settings_title
+    ApplicationId.WATER_TANK -> R.string.app_water_tank_settings_title
     ApplicationId.CUSTOM_DASHBOARD -> R.string.app_custom_dashboard_settings_title
 }
 

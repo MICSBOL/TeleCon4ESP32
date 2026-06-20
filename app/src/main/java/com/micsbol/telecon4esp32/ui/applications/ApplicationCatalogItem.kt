@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.SolarPower
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -56,6 +57,13 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_smart_home_subtitle,
         icon = Icons.Default.Home,
         route = Screen.SmartHomePro.route,
+    ),
+    ApplicationCatalogItem(
+        id = ApplicationId.WATER_TANK,
+        titleRes = com.micsbol.telecon4esp32.R.string.app_water_tank_title,
+        subtitleRes = com.micsbol.telecon4esp32.R.string.app_water_tank_subtitle,
+        icon = Icons.Default.WaterDrop,
+        route = Screen.WaterTankPro.route,
     ),
     ApplicationCatalogItem(
         id = ApplicationId.CUSTOM_DASHBOARD,

@@ -21,6 +21,9 @@ enum class PremiumFeature {
     /** Smart home rooms and scenes. */
     SMART_HOME,
 
+    /** Water tank level monitoring. */
+    WATER_TANK,
+
     /** User-defined dashboard builder. */
     CUSTOM_DASHBOARD,
 }
