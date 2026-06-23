@@ -41,6 +41,10 @@
     <string name="app_smart_home_subtitle">Rooms, scenes, and device automation</string>
     <string name="app_water_tank_title">Water tank</string>
     <string name="app_water_tank_subtitle">Tank level monitoring with ESP32 sensors</string>
+    <string name="app_smart_door_lock_title">Smart door lock</string>
+    <string name="app_smart_door_lock_subtitle">Front door video call and ESP32 lock control</string>
+    <string name="app_smart_lighting_title">Smart lighting</string>
+    <string name="app_smart_lighting_subtitle">Rooms, dimmers, and ESP32 light control</string>
     <string name="app_custom_dashboard_title">Custom dashboard</string>
     <string name="app_custom_dashboard_subtitle">Build your own control layout</string>
     <string name="app_control_panel_settings_title">Control panel settings</string>
@@ -49,6 +53,8 @@
     <string name="app_solar_settings_title">Solar power settings</string>
     <string name="app_smart_home_settings_title">Smart home settings</string>
     <string name="app_water_tank_settings_title">Water tank settings</string>
+    <string name="app_smart_door_lock_settings_title">Smart door lock settings</string>
+    <string name="app_smart_lighting_settings_title">Smart lighting settings</string>
     <string name="app_custom_dashboard_settings_title">Custom dashboard settings</string>
     <string name="applications_settings_content_description">Open %1$s</string>
     <string name="app_settings_placeholder_title">Settings coming soon</string>
@@ -330,6 +336,76 @@
     <string name="smart_home_event_windows_living_room">Windows Opened in Living Room</string>
     <string name="smart_home_event_water_usage">Water Usage</string>
     <string name="smart_home_event_time_today">Today, %1$s</string>
+
+    <!-- SmartDoorLockScreen -->
+    <string name="smart_door_lock_back_content_description">Back to applications</string>
+    <string name="smart_door_lock_call_title">Front Door Call</string>
+    <string name="smart_door_lock_connected">Connected</string>
+    <string name="smart_door_lock_disconnected">Disconnected</string>
+    <string name="smart_door_lock_video_content_description">Front door live video</string>
+    <string name="smart_door_lock_video_fallback_content_description">Front door video placeholder</string>
+    <string name="smart_door_lock_connection_lost_title">Connection lost</string>
+    <string name="smart_door_lock_connection_lost_body">Unable to reach the ESP32 doorbell camera. Check WiFi and device power.</string>
+    <string name="smart_door_lock_connecting">Connecting to camera…</string>
+    <string name="smart_door_lock_door_locked">Door Locked</string>
+    <string name="smart_door_lock_door_unlocked">Door Unlocked</string>
+    <string name="smart_door_lock_esp32_online">ESP32 Online</string>
+    <string name="smart_door_lock_esp32_offline">ESP32 Offline</string>
+    <string name="smart_door_lock_wifi_signal">WiFi %1$d dBm</string>
+    <string name="smart_door_lock_send_unlock">Send Unlock Signal</string>
+    <string name="smart_door_lock_send_lock">Send Lock Signal</string>
+    <string name="smart_door_lock_mic_on">Mic ON</string>
+    <string name="smart_door_lock_mic_off">Mic OFF</string>
+    <string name="smart_door_lock_speaker_on">Speaker ON</string>
+    <string name="smart_door_lock_speaker_off">Speaker OFF</string>
+    <string name="smart_door_lock_camera_on">Camera ON</string>
+    <string name="smart_door_lock_camera_off">Camera OFF</string>
+    <string name="smart_door_lock_relay_pin_state">Relay PIN 12: %1$s</string>
+    <string name="smart_door_lock_relay_active_low">Active LOW</string>
+    <string name="smart_door_lock_trigger_pulse">Trigger 2s Pulse</string>
+    <string name="smart_door_lock_trigger_pulse_active">Pulsing…</string>
+    <string name="smart_door_lock_end_call">End Call</string>
+
+    <!-- SmartLightingScreen -->
+    <string name="smart_lighting_screen_title">Smart Lighting System</string>
+    <string name="smart_lighting_turn_all_on">Turn all on</string>
+    <string name="smart_lighting_turn_all_off">Turn all off</string>
+    <string name="smart_lighting_all_devices_subtitle">All connected lights</string>
+    <string name="smart_lighting_back_content_description">Back to applications</string>
+    <string name="smart_lighting_section_connected">CONNECTED</string>
+    <string name="smart_lighting_section_bedroom">BEDROOM</string>
+    <string name="smart_lighting_section_common_areas">COMMON AREAS</string>
+    <string name="smart_lighting_section_rooms">ROOMS</string>
+    <string name="smart_lighting_section_utility_outdoor">UTILITY &amp; OUTDOOR</string>
+    <string name="smart_lighting_section_add_device">ADD NEW DEVICE</string>
+    <string name="smart_lighting_section_settings">SETTINGS</string>
+    <string name="smart_lighting_status_online">Online</string>
+    <string name="smart_lighting_status_on">On</string>
+    <string name="smart_lighting_status_off">Off</string>
+    <string name="smart_lighting_device_thumbnail_content_description">%1$s light %2$s</string>
+    <string name="smart_lighting_signal_percent">%1$d%%</string>
+    <string name="smart_lighting_device_living_room_dimmer">Living Room Dimmer</string>
+    <string name="smart_lighting_device_kitchen_strip">Kitchen Strip LED</string>
+    <string name="smart_lighting_device_bedroom_lamp">Bedroom Lamp</string>
+    <string name="smart_lighting_device_bedroom_ceiling">Bedroom Ceiling</string>
+    <string name="smart_lighting_device_bedroom_closet">Bedroom Closet</string>
+    <string name="smart_lighting_device_led_hallway">Hallway LED</string>
+    <string name="smart_lighting_device_led_dining_room">Dining Room LED</string>
+    <string name="smart_lighting_device_led_staircase">Staircase LED</string>
+    <string name="smart_lighting_device_led_bathroom">Bathroom LED</string>
+    <string name="smart_lighting_device_led_office">Office LED</string>
+    <string name="smart_lighting_device_led_garage">Garage LED</string>
+    <string name="smart_lighting_device_led_patio">Patio LED</string>
+    <string name="smart_lighting_device_type_smart_bulb">Smart Bulb</string>
+    <string name="smart_lighting_device_type_led_strip">LED Strip</string>
+    <string name="smart_lighting_device_type_ceiling_light">Ceiling Light</string>
+    <string name="smart_lighting_add_smart_bulb">Smart Bulb</string>
+    <string name="smart_lighting_add_led_strip">LED Strip</string>
+    <string name="smart_lighting_add_pair_bluetooth">Pair via Bluetooth</string>
+    <string name="smart_lighting_add_scan_qr">Scan QR code</string>
+    <string name="smart_lighting_setting_auto_off_away">Auto-off when away</string>
+    <string name="smart_lighting_setting_motion_activation">Motion activation</string>
+    <string name="smart_lighting_setting_sunset_sync">Sunset sync</string>
 
     <!-- SolarSystemScreen -->
     <string name="solar_system_screen_title">SOLAR SYSTEM</string>

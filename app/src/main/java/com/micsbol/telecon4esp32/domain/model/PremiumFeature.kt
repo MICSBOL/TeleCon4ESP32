@@ -24,6 +24,12 @@ enum class PremiumFeature {
     /** Water tank level monitoring. */
     WATER_TANK,
 
+    /** Smart door lock video intercom and GPIO control. */
+    SMART_DOOR_LOCK,
+
+    /** Smart lighting devices, scenes, and schedules. */
+    SMART_LIGHTING,
+
     /** User-defined dashboard builder. */
     CUSTOM_DASHBOARD,
 }

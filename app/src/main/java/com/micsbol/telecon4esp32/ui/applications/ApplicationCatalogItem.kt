@@ -4,6 +4,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DashboardCustomize
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.SolarPower
 import androidx.compose.material.icons.filled.Tune
@@ -64,6 +66,20 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_water_tank_subtitle,
         icon = Icons.Default.WaterDrop,
         route = Screen.WaterTankPro.route,
+    ),
+    ApplicationCatalogItem(
+        id = ApplicationId.SMART_DOOR_LOCK,
+        titleRes = com.micsbol.telecon4esp32.R.string.app_smart_door_lock_title,
+        subtitleRes = com.micsbol.telecon4esp32.R.string.app_smart_door_lock_subtitle,
+        icon = Icons.Default.Lock,
+        route = Screen.SmartDoorLockPro.route,
+    ),
+    ApplicationCatalogItem(
+        id = ApplicationId.SMART_LIGHTING,
+        titleRes = com.micsbol.telecon4esp32.R.string.app_smart_lighting_title,
+        subtitleRes = com.micsbol.telecon4esp32.R.string.app_smart_lighting_subtitle,
+        icon = Icons.Default.Lightbulb,
+        route = Screen.SmartLightingPro.route,
     ),
     ApplicationCatalogItem(
         id = ApplicationId.CUSTOM_DASHBOARD,
