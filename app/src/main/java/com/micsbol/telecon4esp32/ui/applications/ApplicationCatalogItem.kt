@@ -87,6 +87,5 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_custom_dashboard_subtitle,
         icon = Icons.Default.DashboardCustomize,
         route = Screen.CustomDashboardPro.route,
-        comingSoon = true,
     ),
 )

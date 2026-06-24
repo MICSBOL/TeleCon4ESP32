@@ -38,6 +38,7 @@ import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelScreen
+import com.micsbol.telecon4esp32.ui.customdashboard.CustomDashboardScreen
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.home.HomeScreen
@@ -254,10 +255,7 @@ fun AppNavGraph(
             SmartLightingScreen(navController = navController)
         }
         composable(Screen.CustomDashboardPro.route) {
-            ProApplicationPlaceholderScreen(
-                navController = navController,
-                applicationId = ApplicationId.CUSTOM_DASHBOARD,
-            )
+            CustomDashboardScreen(navController = navController)
         }
         composable(Screen.Upgrade.route) {
             UpgradeScreen(navController = navController)
