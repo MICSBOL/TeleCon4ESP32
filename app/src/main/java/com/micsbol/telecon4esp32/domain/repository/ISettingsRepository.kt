@@ -1,5 +1,7 @@
 package com.micsbol.telecon4esp32.domain.repository
 
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import kotlinx.coroutines.flow.Flow
@@ -12,10 +14,17 @@ import kotlinx.coroutines.flow.Flow
 interface ISettingsRepository {
     val settingsFlow: Flow<UserSettings>
     val lastDeviceFlow: Flow<Pair<String, String?>?>
+    fun protocolModeFlow(applicationId: ApplicationId): Flow<BluetoothProtocolMode>
     suspend fun saveLastDevice(address: String, name: String?)
+    suspend fun saveProtocolMode(applicationId: ApplicationId, mode: BluetoothProtocolMode)
     suspend fun saveLeftStickMode(mode: JoystickMode)
     suspend fun saveRightStickMode(mode: JoystickMode)
     suspend fun saveSwitchState(index: Int, isOn: Boolean)
     suspend fun saveLeftKnobValue(value: Float)
     suspend fun saveRightKnobValue(value: Float)
+    suspend fun saveLeftPanelUnit(value: String)
+    suspend fun saveRightPanelUnit(value: String)
+    suspend fun saveAnalogIndicatorUnit(value: String)
+    suspend fun saveBatteryLabel(value: String)
+    suspend fun savePlotLabel(index: Int, value: String)
 }

@@ -1,7 +1,7 @@
 package com.micsbol.telecon4esp32.domain.model
 
 /**
- * Built-in application profiles shown on the Applications screen.
+ * Built-in application profiles shown on the Control modules screen.
  */
 enum class ApplicationId {
     CONTROL_PANEL,

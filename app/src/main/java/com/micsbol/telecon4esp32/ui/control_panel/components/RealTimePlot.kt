@@ -59,8 +59,7 @@ fun RealTimePlot(
 
     Canvas(
         modifier = modifier
-            .padding(top = 8.dp)
-            .padding(2.dp)
+            .padding(top = 2.dp)
             .onGloballyPositioned { layoutCoordinates ->
                 canvasSize = layoutCoordinates.size.toSize()
             }

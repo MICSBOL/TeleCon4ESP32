@@ -1,9 +1,12 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 import app.cash.turbine.test
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetLastDeviceUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetUserSettingsUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLastDeviceUseCase
@@ -15,6 +18,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -46,6 +51,7 @@ class BluetoothViewModelTest {
             getUserSettings  = GetUserSettingsUseCase(fakeSettings),
             getLastDevice    = GetLastDeviceUseCase(fakeSettings),
             saveLastDevice   = SaveLastDeviceUseCase(fakeSettings),
+            getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
         )
     }
     // ── Initial state ─────────────────────────────────────────────────────────
@@ -216,6 +222,7 @@ class BluetoothViewModelTest {
             getUserSettings = GetUserSettingsUseCase(fakeSettings),
             getLastDevice = GetLastDeviceUseCase(fakeSettings),
             saveLastDevice = SaveLastDeviceUseCase(fakeSettings),
+            getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
         )
         val collectJob = launch { coldStartViewModel.userSettings.collect { } }
 
@@ -268,6 +275,39 @@ class BluetoothViewModelTest {
         collectJob.cancel()
     }
 
+    @Test
+    fun `simple protocol sends rc control only when control state changes`() = runTest {
+        fakeSettings.setSettings(UserSettings())
+        runCurrent()
+        fakeSettings.saveProtocolMode(ApplicationId.CONTROL_PANEL, BluetoothProtocolMode.SIMPLE)
+        runCurrent()
+
+        val simpleViewModel = BluetoothViewModel(
+            remoteController = fakeController,
+            getUserSettings = GetUserSettingsUseCase(fakeSettings),
+            getLastDevice = GetLastDeviceUseCase(fakeSettings),
+            saveLastDevice = SaveLastDeviceUseCase(fakeSettings),
+            getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
+        )
+        val collectJob = launch { simpleViewModel.userSettings.collect { } }
+        runCurrent()
+
+        simpleViewModel.onControlPanelEntered()
+        runCurrent()
+        assertEquals(1, fakeController.sentLines.size)
+
+        simpleViewModel.onLeftStickChanged(0.5f, 0.5f)
+        runCurrent()
+        assertEquals(2, fakeController.sentLines.size)
+
+        advanceTimeBy(200)
+        runCurrent()
+        assertEquals(2, fakeController.sentLines.size)
+
+        simpleViewModel.stopSendingRcData()
+        collectJob.cancel()
+    }
+
     // ── Quick connect ─────────────────────────────────────────────────────────
     @Test
     fun `quickConnect navigates to bluetooth screen when no last device is saved`() = runTest {
@@ -296,6 +336,17 @@ class BluetoothViewModelTest {
         // After successful connect the nav event for home is emitted
         viewModel.navigateToScreen.test {
             assertEquals("home", awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `connect pops back when preparePostConnectPopBack was called`() = runTest {
+        viewModel.preparePostConnectPopBack()
+        fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
+        viewModel.connectToDevice(testDevice)
+        viewModel.navigateToScreen.test {
+            assertEquals(BluetoothViewModel.POP_BACK_ON_CONNECT, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }

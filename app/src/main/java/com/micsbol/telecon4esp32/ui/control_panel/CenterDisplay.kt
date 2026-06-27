@@ -5,7 +5,6 @@ import android.graphics.Paint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,8 +38,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +48,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelDisplayFrame
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.ui.control_panel.components.HorizontalTextAnimation
 import com.micsbol.telecon4esp32.ui.control_panel.components.PushButtonSide
@@ -65,97 +63,106 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+private val CenterDisplayBezelWidth = 5.dp
+private val CenterDisplayOuterCornerRadius = 8.dp
+private val CenterDisplayInnerCornerRadius = 3.dp
+private val CenterDisplayChinHeight = 8.dp
+private val CenterDisplayHeaderLogoSize = 16.dp
+
 @Composable
 fun CenterDisplay(
     modifier: Modifier = Modifier,
     series: List<PlotData> = emptyList(),
     plotRevision: Long = 0L,
+    topStartOverlay: @Composable () -> Unit = {},
 ) {
     Box(
         modifier = modifier
+            .fillMaxSize()
             .background(Color.Transparent),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
+        ControlPanelDisplayFrame(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            bezelWidth = CenterDisplayBezelWidth,
+            outerCornerRadius = CenterDisplayOuterCornerRadius,
+            innerCornerRadius = CenterDisplayInnerCornerRadius,
+            chinHeight = CenterDisplayChinHeight,
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxSize(),
             ) {
-
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(start = 1.dp, top = 2.dp),
+                    contentAlignment = Alignment.TopStart,
+                ) {
+                    topStartOverlay()
+                }
                 Column(
                     modifier = Modifier
-                        .padding(bottom = 18.dp)
-                        .background(
-                            Color(0xFF0A0F1A),
-                        )
+                        .weight(1f)
+                        .fillMaxHeight(),
                 ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        when (PlotType.CARTESIAN) {
-                            PlotType.CARTESIAN -> {
-                                CartesianPlot(
-                                    modifier = Modifier,
-                                    series = series,
-                                    plotRevision = plotRevision,
-                                )
-                            }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        EmitterBrandLogo(size = CenterDisplayHeaderLogoSize)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.home_title),
+                            fontFamily = titanOneRegular,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Normal,
+                            color = brandPrimary(),
+                        )
+                    }
+                    when (PlotType.CARTESIAN) {
+                        PlotType.CARTESIAN -> {
+                            CartesianPlot(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                series = series,
+                                plotRevision = plotRevision,
+                            )
+                        }
 
-                            PlotType.COMPLEX_CIRCULAR -> {
-                                val realPart = series.getOrNull(0)?.dataPoints?.lastOrNull() ?: 0f
-                                val imagPart = series.getOrNull(1)?.dataPoints?.lastOrNull() ?: 0f
-                                ComplexCircularPlot(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(24.dp),
-                                    points = listOf(
-                                        ComplexPlotData(
-                                            real = realPart,
-                                            imaginary = imagPart,
-                                            color = Color.Magenta
-                                        )
-                                    )
-                                )
-                            }
+                        PlotType.COMPLEX_CIRCULAR -> {
+                            val realPart = series.getOrNull(0)?.dataPoints?.lastOrNull() ?: 0f
+                            val imagPart = series.getOrNull(1)?.dataPoints?.lastOrNull() ?: 0f
+                            ComplexCircularPlot(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                points = listOf(
+                                    ComplexPlotData(
+                                        real = realPart,
+                                        imaginary = imagPart,
+                                        color = Color.Magenta,
+                                    ),
+                                ),
+                            )
+                        }
 
-                            PlotType.BAR_GRAPH -> {
-                                BarGraph(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 32.dp, vertical = 34.dp),
-                                    series = series,
-                                )
-                            }
+                        PlotType.BAR_GRAPH -> {
+                            BarGraph(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                series = series,
+                            )
                         }
                     }
                 }
-
-                Image(
-                    painter = painterResource(id = R.drawable.center_frame_blue),
-                    contentDescription = "Center Display Frame",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.FillBounds
-                )
             }
-        }
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            EmitterBrandLogo(size = 20.dp)
-            Text(
-                text = stringResource(R.string.home_title),
-                fontFamily = titanOneRegular,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Normal,
-                color = brandPrimary(),
-            )
         }
     }
 }
@@ -166,69 +173,100 @@ enum class PlotType {
     BAR_GRAPH
 }
 
+private val CartesianPlotHorizontalPadding = 6.dp
+
 @Composable
 fun CartesianPlot(
     modifier: Modifier,
     series: List<PlotData> = emptyList(),
     plotRevision: Long = 0L,
 ) {
-    Row(
+    val topSeries = series.take(2)
+    val bottomSeries = series.drop(2).take(2)
+
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 4.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = CartesianPlotHorizontalPadding),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.15f)
-                .padding(horizontal = 2.dp),
-            horizontalAlignment = Alignment.Start
+                .weight(1f)
+                .fillMaxWidth(),
         ) {
-
-            series.forEach { plotData ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box {
-                        HorizontalTextAnimation(
-                            text = plotData.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.LightGray,
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .width(10.dp)
-                            .height(2.dp)
-                            .background(Color(plotData.colorArgb))
-                    )
-                }
-            }
-
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            RealTimePlot(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .padding(top = 8.dp)
-                    .weight(1f)
-                    .fillMaxWidth(),
-                series = series,
+            CartesianPlotPane(
+                modifier = Modifier.weight(1f),
+                series = topSeries,
                 plotRevision = plotRevision,
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "Time (s)",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.LightGray,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color.White.copy(alpha = 0.18f)),
             )
+            CartesianPlotPane(
+                modifier = Modifier.weight(1f),
+                series = bottomSeries,
+                plotRevision = plotRevision,
+            )
+        }
+        Text(
+            text = stringResource(R.string.rc_plot_axis_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.LightGray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 1.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlotLegendItem(plotData: PlotData) {
+    Row(
+        modifier = Modifier.padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(8.dp)
+                .height(2.dp)
+                .background(Color(plotData.colorArgb)),
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        HorizontalTextAnimation(
+            text = plotData.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.LightGray,
+        )
+    }
+}
+
+@Composable
+private fun CartesianPlotPane(
+    modifier: Modifier = Modifier,
+    series: List<PlotData>,
+    plotRevision: Long,
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        RealTimePlot(
+            modifier = Modifier.fillMaxSize(),
+            series = series,
+            plotRevision = plotRevision,
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 4.dp, top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            series.forEach { plotData ->
+                PlotLegendItem(plotData = plotData)
+            }
         }
     }
 }

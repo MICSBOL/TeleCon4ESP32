@@ -59,13 +59,6 @@ fun ApplicationsScreen(navController: NavController) {
                             onComingSoon = { comingSoonAppName = title },
                         )
                     },
-                    settingsContentDescription = stringResource(
-                        R.string.applications_settings_content_description,
-                        stringResource(applicationSettingsTitleRes(item.id)),
-                    ),
-                    onSettingsClick = {
-                        navController.navigateToApplicationSettings(item.id)
-                    },
                 )
             }
         }

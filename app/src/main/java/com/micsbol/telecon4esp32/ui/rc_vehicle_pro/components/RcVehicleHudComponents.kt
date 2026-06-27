@@ -23,7 +23,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BatteryFull
-import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Engineering
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
@@ -45,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothStatusChip
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.brandSecondary
 import com.micsbol.telecon4esp32.ui.components.mutedTextColor
@@ -269,15 +269,10 @@ private fun RcMetricTile(
 @Composable
 fun RcHudTopBarStatusRow(
     uiState: RcVehicleProUiState,
+    isBluetoothConnecting: Boolean = false,
+    onBluetoothDisconnectedClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val btConnected = uiState.isBluetoothConnected
-    val btColor = if (btConnected) StatusConnected else StatusDisconnected
-    val btDescription = if (btConnected) {
-        stringResource(R.string.rc_vehicle_status_connected)
-    } else {
-        stringResource(R.string.rc_vehicle_status_disconnected)
-    }
     val camOnline = uiState.isCameraOnline
     val camColor = if (camOnline) brandSecondary() else StatusDisconnected
     val camDescription = if (camOnline) {
@@ -291,17 +286,11 @@ fun RcHudTopBarStatusRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RcHudTopBarStatusBadge(
-            backgroundColor = btColor.copy(alpha = 0.18f),
-            contentDescription = btDescription,
-        ) {
-            Icon(
-                imageVector = Icons.Default.BluetoothConnected,
-                contentDescription = null,
-                tint = btColor,
-                modifier = Modifier.size(15.dp),
-            )
-        }
+        LiveControlBluetoothStatusChip(
+            isConnected = uiState.isBluetoothConnected,
+            isConnecting = isBluetoothConnecting,
+            onDisconnectedClick = onBluetoothDisconnectedClick,
+        )
         RcHudTopBarStatusBadge(
             backgroundColor = brandPrimary().copy(alpha = 0.15f),
             contentDescription = stringResource(R.string.rc_vehicle_battery_value, uiState.batteryPercent),

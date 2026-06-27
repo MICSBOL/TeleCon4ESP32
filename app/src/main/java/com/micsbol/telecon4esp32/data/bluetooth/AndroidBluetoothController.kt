@@ -11,9 +11,14 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
+import com.micsbol.telecon4esp32.domain.bluetooth.EspMessage
+import com.micsbol.telecon4esp32.domain.bluetooth.LineProtocolCodec
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
+import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
+import com.micsbol.telecon4esp32.domain.bluetooth.RcBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +47,9 @@ class AndroidBluetoothController @Inject constructor(
 
     private val _telemetryState = MutableStateFlow(TelemetryState())
     override val telemetryState: StateFlow<TelemetryState> = _telemetryState.asStateFlow()
+
+    private val _messages = MutableSharedFlow<EspMessage>(extraBufferCapacity = 64)
+    override val messages: SharedFlow<EspMessage> = _messages.asSharedFlow()
     // Internal state flows using the generic RemoteDevice interface
     private val _discoveredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
     override val discoveredDevices: StateFlow<List<RemoteDevice>> = _discoveredDevices.asStateFlow()
@@ -159,18 +167,15 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     private fun updatePlotNames(newNames: List<String>) {
-        plotNameMap.clear()
-        newNames.forEachIndexed { index, name ->
-            plotNameMap[index] = name
-        }
-
         _telemetryState.update { currentState ->
-            val updatedSeries = newNames.mapIndexed { index, name ->
-                val existingData = currentState.plotState.series.getOrNull(index)?.dataPoints ?: emptyList()
-                val colorArgb = plotColorArgbs.getOrElse(index) { 0xFFFFFFFF.toInt() }
-                PlotData(name = name, dataPoints = existingData, colorArgb = colorArgb)
-            }
-            currentState.copy(plotState = currentState.plotState.copy(series = updatedSeries))
+            val (updated, names) = RcBinaryTelemetryMapper.applyPlotConfigNames(
+                names = newNames,
+                current = currentState,
+                plotColors = plotColorArgbs,
+            )
+            plotNameMap.clear()
+            plotNameMap.putAll(names)
+            updated
         }
     }
 
@@ -187,6 +192,36 @@ class AndroidBluetoothController @Inject constructor(
             bytes[0] == 0xCC.toByte() && bytes[1] == 0x44.toByte() -> {
                 Log.d("BluetoothController_config", "Parsed config packet")
                 parseConfigPacket(bytes)
+            }
+        }
+    }
+
+    private fun parseIncomingLine(line: String) {
+        val message = LineProtocolCodec.decode(line) ?: return
+        _messages.tryEmit(message)
+        if (message.app != SimpleProtocolEncoder.RC_APP) return
+
+        when (message.type) {
+            "DATA" -> _telemetryState.update { current ->
+                SimpleProtocolTelemetryMapper.applyRcData(message.values, current)
+            }
+            "PLOTCFG" -> _telemetryState.update { current ->
+                val (updated, names) = SimpleProtocolTelemetryMapper.applyRcPlotConfig(
+                    values = message.values,
+                    current = current,
+                    plotColors = plotColorArgbs,
+                )
+                plotNameMap.clear()
+                plotNameMap.putAll(names)
+                updated
+            }
+            "PLOT" -> _telemetryState.update { current ->
+                SimpleProtocolTelemetryMapper.applyRcPlot(
+                    values = message.values,
+                    current = current,
+                    plotNames = plotNameMap,
+                    plotColors = plotColorArgbs,
+                )
             }
         }
     }
@@ -298,30 +333,11 @@ class AndroidBluetoothController @Inject constructor(
             }
 
             _telemetryState.update { currentState ->
-                val updatedSeries = currentState.plotState.series.toMutableList()
-                newPlotValues.forEachIndexed { index, value ->
-                    if (index < updatedSeries.size) {
-                        val oldPoints = updatedSeries[index].dataPoints.toMutableList()
-                        oldPoints.add(value)
-                        while (oldPoints.size > 100) {
-                            oldPoints.removeAt(0)
-                        }
-                        updatedSeries[index] = updatedSeries[index].copy(dataPoints = oldPoints.toList())
-                    } else {
-                        updatedSeries.add(
-                            PlotData(
-                                name = plotNameMap.getOrDefault(index, "Plot ${index + 1}"),
-                                dataPoints = listOf(value),
-                                colorArgb = plotColorArgbs.getOrElse(index) { 0xFFFFFFFF.toInt() }
-                            )
-                        )
-                    }
-                }
-                currentState.copy(
-                    plotState = currentState.plotState.copy(
-                        series = updatedSeries,
-                        revision = currentState.plotState.revision + 1,
-                    )
+                RcBinaryTelemetryMapper.applyPlotSamples(
+                    normalizedSamples = newPlotValues,
+                    current = currentState,
+                    plotNames = plotNameMap,
+                    plotColors = plotColorArgbs,
                 )
             }
         } catch (e: Exception) {
@@ -500,9 +516,12 @@ class AndroidBluetoothController @Inject constructor(
             }
 
             emit(ConnectionResult.ConnectionEstablished)
-            dataTransferService!!.listenForRawBytes()
-                .collect { byteArray ->
-                    parseIncomingPacket(byteArray)
+            dataTransferService!!.listenForIncoming()
+                .collect { frame ->
+                    when (frame) {
+                        is IncomingBluetoothFrame.BinaryPacket -> parseIncomingPacket(frame.bytes)
+                        is IncomingBluetoothFrame.TextLine -> parseIncomingLine(frame.line)
+                    }
                 }
         }.onCompletion {
             closeConnection()
@@ -545,6 +564,12 @@ class AndroidBluetoothController @Inject constructor(
     override suspend fun sendData(data: ByteArray): Boolean? {
         if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
         return dataTransferService?.sendPacket(data)
+    }
+
+    override suspend fun sendLine(line: String): Boolean? {
+        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
+        val payload = if (line.endsWith("\n")) line else "$line\n"
+        return dataTransferService?.sendPacket(payload.toByteArray(Charsets.UTF_8))
     }
 
     companion object {

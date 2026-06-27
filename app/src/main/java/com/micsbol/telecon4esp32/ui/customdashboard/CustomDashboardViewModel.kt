@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.model.DashboardWidgetPlacement
 import com.micsbol.telecon4esp32.domain.model.DashboardWidgetType
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
@@ -25,6 +26,7 @@ import kotlin.math.sin
 @HiltViewModel
 class CustomDashboardViewModel @Inject constructor(
     private val customDashboardRepository: ICustomDashboardRepository,
+    private val remoteController: RemoteController,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -46,6 +48,13 @@ class CustomDashboardViewModel @Inject constructor(
             customDashboardRepository.savedDashboardsFlow.collect { dashboards ->
                 _uiState.update {
                     it.copy(savedDashboards = dashboards.sortedBy { layout -> layout.name.lowercase() })
+                }
+            }
+        }
+        viewModelScope.launch {
+            remoteController.isConnected.collect { connected ->
+                updateEditor { editor ->
+                    editor.copy(isEsp32Connected = connected)
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.ui.customdashboard.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +24,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
 import com.micsbol.telecon4esp32.ui.customdashboard.CustomDashboardEditorState
 import com.micsbol.telecon4esp32.domain.model.DashboardWidgetType
 import com.micsbol.telecon4esp32.ui.customdashboard.defaultColumnSpan
@@ -54,6 +56,7 @@ fun CustomDashboardEditorContent(
     onSliderChange: (String, Float) -> Unit,
     onPushButtonPress: (String) -> Unit,
     onLedToggle: (String) -> Unit,
+    onBluetoothDisconnectedClick: () -> Unit,
     modifier: Modifier = Modifier,
     topBarActions: @Composable () -> Unit = {},
 ) {
@@ -76,6 +79,7 @@ fun CustomDashboardEditorContent(
             onSaveClick = onSaveLayoutRequested,
             onRenameClick = onRenameLayoutRequested,
             canSave = editorState.widgets.isNotEmpty(),
+            onBluetoothDisconnectedClick = onBluetoothDisconnectedClick,
             saveConfirmationVisible = editorState.saveConfirmationVisible,
             topBarActions = topBarActions,
         )
@@ -91,10 +95,13 @@ fun CustomDashboardEditorContent(
             )
         }
 
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
+        ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
         ) {
             if (editorState.isEditMode) {
                 DashboardWidgetPalettePanel(
@@ -161,6 +168,12 @@ fun CustomDashboardEditorContent(
                     )
                 }
             }
+        }
+
+            LiveControlBluetoothDisconnectedBannerOverlay(
+                visible = !editorState.isEsp32Connected,
+                onClick = onBluetoothDisconnectedClick,
+            )
         }
     }
 

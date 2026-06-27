@@ -125,7 +125,11 @@ fun AppNavGraph(
 
             LaunchedEffect(Unit) {
                 bluetoothViewModel.navigateToScreen.collect { route ->
-                    navController.navigate(route)
+                    if (route == BluetoothViewModel.POP_BACK_ON_CONNECT) {
+                        navController.navigateUp()
+                    } else {
+                        navController.navigate(route)
+                    }
                 }
             }
 
@@ -200,7 +204,11 @@ fun AppNavGraph(
 
             LaunchedEffect(key1 = true) {
                 bluetoothViewModel.navigateToScreen.collect { route ->
-                    navController.navigate(route)
+                    if (route == BluetoothViewModel.POP_BACK_ON_CONNECT) {
+                        navController.navigateUp()
+                    } else {
+                        navController.navigate(route)
+                    }
                 }
             }
 
@@ -274,6 +282,11 @@ fun AppNavGraph(
                 navController = navController,
                 applicationId = applicationId,
                 settingsViewModel = settingsViewModel,
+                onDisplayLabelsApplied = { draft ->
+                    if (applicationId == ApplicationId.CONTROL_PANEL) {
+                        bluetoothViewModel.applyDisplayLabelSettings(draft)
+                    }
+                },
             )
         }
         composable(

@@ -23,6 +23,7 @@ import com.micsbol.telecon4esp32.ui.control_panel.LockScreenOrientation
 import com.micsbol.telecon4esp32.ui.customdashboard.components.CustomDashboardEditorContent
 import com.micsbol.telecon4esp32.ui.customdashboard.components.CustomDashboardHomeContent
 import com.micsbol.telecon4esp32.ui.customdashboard.displayDashboardName
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 @Composable
@@ -98,6 +99,7 @@ fun CustomDashboardScreen(
                     onSliderChange = viewModel::onSliderChange,
                     onPushButtonPress = viewModel::onPushButtonPress,
                     onLedToggle = viewModel::onLedToggle,
+                    onBluetoothDisconnectedClick = { navController.navigate(Screen.Bluetooth.route) },
                     modifier = Modifier.fillMaxSize(),
                     topBarActions = {
                         ApplicationSettingsIconButton(
@@ -163,6 +165,7 @@ private fun CustomDashboardEditorPreview() {
             onSliderChange = { _, _ -> },
             onPushButtonPress = {},
             onLedToggle = {},
+            onBluetoothDisconnectedClick = {},
         )
     }
 }

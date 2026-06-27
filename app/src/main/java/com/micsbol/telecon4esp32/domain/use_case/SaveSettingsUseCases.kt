@@ -9,7 +9,12 @@ data class SaveSettingsUseCases @Inject constructor(
     val saveRightStickMode: SaveRightStickModeUseCase,
     val saveSwitchState: SaveSwitchStateUseCase,
     val saveLeftKnobValue: SaveLeftKnobValueUseCase,
-    val saveRightKnobValue: SaveRightKnobValueUseCase
+    val saveRightKnobValue: SaveRightKnobValueUseCase,
+    val saveLeftPanelUnit: SaveLeftPanelUnitUseCase,
+    val saveRightPanelUnit: SaveRightPanelUnitUseCase,
+    val saveAnalogIndicatorUnit: SaveAnalogIndicatorUnitUseCase,
+    val saveBatteryLabel: SaveBatteryLabelUseCase,
+    val savePlotLabel: SavePlotLabelUseCase,
 )
 
 class SaveLeftStickModeUseCase @Inject constructor(
@@ -40,4 +45,34 @@ class SaveRightKnobValueUseCase @Inject constructor(
     private val repository: ISettingsRepository
 ) {
     suspend operator fun invoke(value: Float) = repository.saveRightKnobValue(value)
+}
+
+class SaveLeftPanelUnitUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(value: String) = repository.saveLeftPanelUnit(value)
+}
+
+class SaveRightPanelUnitUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(value: String) = repository.saveRightPanelUnit(value)
+}
+
+class SaveAnalogIndicatorUnitUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(value: String) = repository.saveAnalogIndicatorUnit(value)
+}
+
+class SaveBatteryLabelUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(value: String) = repository.saveBatteryLabel(value)
+}
+
+class SavePlotLabelUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(index: Int, value: String) = repository.savePlotLabel(index, value)
 }

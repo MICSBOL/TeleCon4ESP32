@@ -19,10 +19,10 @@
     <string name="home_help_problem_first_setup">First-time setup — where do I start?</string>
     <string name="home_help_solution_first_setup">Follow the in-app Tutorial in order: get the ESP32 ZIP from Codes and Documents, upload ESP32_BT_Controller.ino in Arduino IDE, connect via Bluetooth, configure RC Settings, then open RC Control. The Help button is always available from Home for quick troubleshooting.</string>
     <string name="home_item_rc_control">RC Control Screen</string>
-    <string name="home_item_applications">Applications</string>
+    <string name="home_item_applications">Control modules</string>
     <string name="home_item_settings">Panel settings</string>
-    <string name="applications_title">Applications</string>
-    <string name="applications_subtitle">Choose a control experience for your device</string>
+    <string name="applications_title">Control modules</string>
+    <string name="applications_subtitle">Choose a control module for your device</string>
     <string name="applications_badge_free">FREE</string>
     <string name="applications_badge_pro">PRO</string>
     <string name="applications_badge_pro_unlocked">PRO</string>
@@ -57,8 +57,17 @@
     <string name="app_smart_lighting_settings_title">Smart lighting settings</string>
     <string name="app_custom_dashboard_settings_title">Custom dashboard settings</string>
     <string name="applications_settings_content_description">Open %1$s</string>
+    <string name="control_panel_back_to_modules_content_description">Back to control modules</string>
     <string name="app_settings_placeholder_title">Settings coming soon</string>
     <string name="app_settings_placeholder_body">Application-specific settings will be available in a future update.</string>
+    <string name="app_settings_communication_subtitle">Bluetooth communication</string>
+    <string name="app_settings_protocol_section_title">Communication protocol</string>
+    <string name="app_settings_protocol_section_description">Choose the message format your ESP32 firmware expects for this application. Reconnect after changing.</string>
+    <string name="app_settings_protocol_prefix_label">ESP32 message prefix: %1$s</string>
+    <string name="app_settings_protocol_simple">Simple (text lines)</string>
+    <string name="app_settings_protocol_simple_description">Human-readable lines such as GH:DATA,temp,26.2. Easier to write on the ESP32.</string>
+    <string name="app_settings_protocol_advanced">Advanced (binary RC)</string>
+    <string name="app_settings_protocol_advanced_description">Legacy binary packets for full RC telemetry, plots, and high-rate joystick updates.</string>
     <string name="rc_vehicle_pro_placeholder_title">RC Vehicle Pro</string>
     <string name="rc_vehicle_pro_placeholder_body">Advanced RC layouts and live camera view will appear here. This Pro application is under development.</string>
     <string name="rc_vehicle_camera_content_description">Live ESP32 camera feed</string>
@@ -95,7 +104,7 @@
     <string name="pro_app_placeholder_title">Under development</string>
     <string name="pro_app_placeholder_body">This Pro application is coming in a future update.</string>
     <string name="upgrade_title">Upgrade to Pro</string>
-    <string name="upgrade_subtitle">Unlock specialized applications and remove ads</string>
+    <string name="upgrade_subtitle">Unlock specialized control modules and remove ads</string>
     <string name="upgrade_benefits_title">Pro includes</string>
     <string name="upgrade_benefit_ad_free">Ad-free experience</string>
     <string name="upgrade_benefit_rc_vehicle">RC Vehicle with camera</string>
@@ -107,6 +116,10 @@
     <string name="home_bluetooth_status_connecting">Connecting...</string>
     <string name="home_bluetooth_status_connected">Connected</string>
     <string name="home_bluetooth_status_disconnected">Not connected</string>
+    <string name="live_control_bluetooth_disconnected_banner">Not connected — tap to connect.</string>
+    <string name="live_control_bluetooth_connected_content_description">Bluetooth connected</string>
+    <string name="live_control_bluetooth_connecting_content_description">Bluetooth connecting</string>
+    <string name="live_control_bluetooth_disconnected_content_description">Not connected. Tap to open Bluetooth.</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Quick Start</string>
     <string name="home_version_info">v%1$s - About this App</string>
@@ -155,7 +168,7 @@
     <string name="app_tutorial_title">App Tutorial</string>
     <string name="tutorial_step">Step %1$d:</string>
     <string name="tutorial_home_step_title">Home screen buttons</string>
-    <string name="tutorial_home_step_description">Match the blue numbered badges on the Home screen image (1–6) to the items below.\n\n1. Quick Start (bottom): reconnects to the last saved Bluetooth device, or sends you to scan for a new device.\n\n2. Applications: opens the app catalog (RC Control, Smart home, and more). Tap an app to open it, or tap the gear beside an app for its settings.\n\n3. Bluetooth: opens the device list to scan, connect, and check the current connection status.\n\n4. Codes and Documents: opens PDF guides and lets you share or save the ESP32_BT_Controller-main.zip code file.\n\n5. Tutorial: opens this step-by-step app guide.\n\n6. Help (top-right): shortcut for quick troubleshooting tips.</string>
+    <string name="tutorial_home_step_description">Match the blue numbered badges on the Home screen image (1–6) to the items below.\n\n1. Quick Start (bottom): reconnects to the last saved Bluetooth device, or sends you to scan for a new device.\n\n2. Control modules: opens the module catalog (Control panel, Smart home, and more). Tap a module to open it.\n\n3. Bluetooth: opens the device list to scan, connect, and check the current connection status.\n\n4. Codes and Documents: opens PDF guides and lets you share or save the ESP32_BT_Controller-main.zip code file.\n\n5. Tutorial: opens this step-by-step app guide.\n\n6. Help (top-right): shortcut for quick troubleshooting tips.</string>
     <string name="tutorial_arduino_ide_step_title">Upload with Arduino IDE</string>
     <string name="tutorial_arduino_ide_step_description">This video shows how to prepare the ESP32 in Arduino IDE:\n\n- Open ESP32_BT_Controller.ino in Arduino IDE (download the ZIP from the app in step 2 if you do not have the sketch yet).\n\n- Select the correct ESP32 board under Tools > Board.\n\n- Select the serial port connected to your ESP32 under Tools > Port.\n\n- Upload the sketch to the ESP32.\n\n- Open Tools > Serial Monitor and set the baud rate to 115200.\n\n- Press the ESP32 RESET button.\n\n- Confirm the monitor prints: ESP32 Bluetooth Receiver Ready.\n\n- When you see that message, the ESP32 is waiting for a Bluetooth connection from the app (step 4).</string>
     <string name="tutorial_codes_step_title">Get the ESP32 project ZIP</string>
@@ -163,7 +176,7 @@
     <string name="tutorial_bluetooth_step_title">Connect to the ESP32 with Bluetooth</string>
     <string name="tutorial_bluetooth_step_description">This GIF shows how to connect the app to the ESP32-BT device:\n\n- From the Home screen, tap the Bluetooth button.\n\n- On the Bluetooth screen, tap the refresh icon in the top app bar to start scanning.\n\n- When ESP32-BT appears, tap the X icon to stop scanning.\n\n- Check the Scanned Devices list and find ESP32-BT.\n\n- If this is the first connection, tap ESP32-BT from Scanned Devices to pair and connect.\n\n- If the ESP32 was already paired before, tap ESP32-BT from Paired Devices to connect faster.\n\n- After the connection succeeds, the app returns to the Home screen.\n\n- Confirm that the Bluetooth button now shows the Connected status.</string>
     <string name="tutorial_settings_step_title">Configure the RC controller</string>
-    <string name="tutorial_settings_step_description">This video shows how to review and apply the controller settings:\n\n- From the Home screen (Bluetooth Connected), tap Applications.\n\n- On Applications, tap the gear beside Control panel to open Control panel settings.\n\n- On RC Controller Settings, review Joystick Settings and choose the behavior for the left and right sticks.\n\n- Review Initial Switch Positions and set the starting state for switches S1 to S6.\n\n- Review Initial Knob Values and set the starting value for the left and right knobs.\n\n- Return to the Home screen after the configuration is saved.\n\n- Tap Applications again, then tap Control panel to open the controller.\n\n- Confirm that joystick behavior, switch states, and knob values are applied correctly on the RC screen.</string>
+    <string name="tutorial_settings_step_description">This video shows how to review and apply the controller settings:\n\n- From the Home screen (Bluetooth Connected), tap Control modules.\n\n- Open Control panel, then tap the settings icon in the top bar to open Control panel settings.\n\n- On RC Controller Settings, review Joystick Settings and choose the behavior for the left and right sticks.\n\n- Review Initial Switch Positions and set the starting state for switches S1 to S6.\n\n- Review Initial Knob Values and set the starting value for the left and right knobs.\n\n- Return to the Home screen after the configuration is saved.\n\n- Tap Control modules again, then tap Control panel to open the controller.\n\n- Confirm that joystick behavior, switch states, and knob values are applied correctly on the RC screen.</string>
     <string name="tutorial_video_enter_fullscreen">Enter fullscreen</string>
     <string name="tutorial_video_exit_fullscreen">Exit fullscreen</string>
     <string name="tutorial_rc_overview_title">RC screen layout overview</string>
@@ -185,6 +198,26 @@
     <string name="rc_controller_settings_right_stick">Right Stick</string>
     <string name="rc_controller_settings_left_knob">Left Knob</string>
     <string name="rc_controller_settings_right_knob">Right Knob</string>
+    <string name="rc_controller_settings_display_labels">Display labels</string>
+    <string name="rc_controller_settings_left_panel_unit">Left numeric panel unit</string>
+    <string name="rc_controller_settings_right_panel_unit">Right numeric panel unit</string>
+    <string name="rc_controller_settings_analog_indicator_unit">Analog indicator unit</string>
+    <string name="rc_controller_settings_battery_label">Battery label</string>
+    <string name="rc_controller_settings_plot_labels">Plot labels</string>
+    <string name="rc_controller_settings_plot_label_1">Plot 1 label</string>
+    <string name="rc_controller_settings_plot_label_2">Plot 2 label</string>
+    <string name="rc_controller_settings_plot_label_3">Plot 3 label</string>
+    <string name="rc_controller_settings_plot_label_4">Plot 4 label</string>
+    <string name="rc_controller_settings_left_panel_unit_hint">e.g. RPM</string>
+    <string name="rc_controller_settings_right_panel_unit_hint">e.g. km/h</string>
+    <string name="rc_controller_settings_analog_indicator_unit_hint">e.g. V</string>
+    <string name="rc_controller_settings_battery_label_hint">e.g. %</string>
+    <string name="rc_controller_settings_plot_label_hint_1">e.g. Volts</string>
+    <string name="rc_controller_settings_plot_label_hint_2">e.g. Amps</string>
+    <string name="rc_controller_settings_plot_label_hint_3">e.g. RPM</string>
+    <string name="rc_controller_settings_plot_label_hint_4">e.g. Temp</string>
+    <string name="rc_controller_settings_apply_labels">Apply labels</string>
+    <string name="rc_plot_axis_label">Sample</string>
     <string name="splash_logo_content_description">TeleCon4ESP32 app logo</string>
     <string name="splash_tagline">Telemetry and control for ESP32 over Bluetooth</string>
     <string name="splash_tap_hint">Tap anywhere to continue</string>
@@ -225,7 +258,7 @@
 
     <!-- GreenhouseScreen -->
     <string name="greenhouse_screen_title">GREENHOUSE</string>
-    <string name="greenhouse_menu_content_description">Back to applications</string>
+    <string name="greenhouse_menu_content_description">Back to control modules</string>
     <string name="greenhouse_status_online">Online</string>
     <string name="greenhouse_status_offline">Offline</string>
     <string name="greenhouse_mode_auto">Auto</string>
@@ -265,7 +298,7 @@
 
     <!-- WaterTankScreen -->
     <string name="water_tank_screen_title">Water Tank Level Monitor</string>
-    <string name="water_tank_menu_content_description">Back to applications</string>
+    <string name="water_tank_menu_content_description">Back to control modules</string>
     <string name="water_tank_refresh_content_description">Refresh tank data</string>
     <string name="water_tank_esp32_connected">ESP32 Connected</string>
     <string name="water_tank_esp32_disconnected">ESP32 Disconnected</string>
@@ -297,7 +330,7 @@
 
     <!-- SmartHomeScreen -->
     <string name="smart_home_screen_title">SMART HOME</string>
-    <string name="smart_home_menu_content_description">Back to applications</string>
+    <string name="smart_home_menu_content_description">Back to control modules</string>
     <string name="smart_home_all_systems_normal">All Systems Normal</string>
     <string name="smart_home_notifications_content_description">Notifications</string>
     <string name="smart_home_section_rooms">Rooms</string>
@@ -338,7 +371,7 @@
     <string name="smart_home_event_time_today">Today, %1$s</string>
 
     <!-- SmartDoorLockScreen -->
-    <string name="smart_door_lock_back_content_description">Back to applications</string>
+    <string name="smart_door_lock_back_content_description">Back to control modules</string>
     <string name="smart_door_lock_call_title">Front Door Call</string>
     <string name="smart_door_lock_connected">Connected</string>
     <string name="smart_door_lock_disconnected">Disconnected</string>
@@ -371,7 +404,7 @@
     <string name="smart_lighting_turn_all_on">Turn all on</string>
     <string name="smart_lighting_turn_all_off">Turn all off</string>
     <string name="smart_lighting_all_devices_subtitle">All connected lights</string>
-    <string name="smart_lighting_back_content_description">Back to applications</string>
+    <string name="smart_lighting_back_content_description">Back to control modules</string>
     <string name="smart_lighting_section_connected">CONNECTED</string>
     <string name="smart_lighting_section_bedroom">BEDROOM</string>
     <string name="smart_lighting_section_common_areas">COMMON AREAS</string>
@@ -497,7 +530,7 @@
 
     <!-- SolarSystemScreen -->
     <string name="solar_system_screen_title">SOLAR SYSTEM</string>
-    <string name="solar_system_menu_content_description">Back to applications</string>
+    <string name="solar_system_menu_content_description">Back to control modules</string>
     <string name="solar_system_energy_balance">Energy Balance: +%1$dW</string>
     <string name="solar_system_section_live_power_flow">LIVE POWER FLOW</string>
     <string name="solar_system_section_production_today">PRODUCTION (TODAY)</string>

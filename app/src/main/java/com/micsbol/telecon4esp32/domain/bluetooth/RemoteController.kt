@@ -10,6 +10,7 @@ interface RemoteController {
     val savedDevices: StateFlow<List<RemoteDevice>>
     val error: SharedFlow<String>
     val telemetryState: StateFlow<TelemetryState>
+    val messages: SharedFlow<EspMessage>
 
     fun startDiscovery()
     fun stopDiscovery()
@@ -17,6 +18,9 @@ interface RemoteController {
     fun connect(device: RemoteDevice): Flow<ConnectionResult>
 
     suspend fun sendData(data: ByteArray): Boolean?
+
+    /** Sends a line-protocol message. A trailing newline is appended when missing. */
+    suspend fun sendLine(line: String): Boolean?
 
     fun disconnect()
     fun release()

@@ -45,7 +45,10 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudMetricsRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudTopBarStatusRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcVehicleHudTopBar
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcViewfinderBrackets
+import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout.CAMERA_PAN_CENTER
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 @Composable
@@ -58,6 +61,7 @@ fun RcVehicleProScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val rcControlState by bluetoothViewModel.rcControlState.collectAsState()
+    val bluetoothConnectionState by bluetoothViewModel.state.collectAsState()
 
     val context = LocalContext.current
     LaunchedEffect(Unit) {
@@ -90,9 +94,11 @@ fun RcVehicleProScreen(
 
     RcVehicleProContent(
         uiState = uiState,
+        isBluetoothConnecting = bluetoothConnectionState.isConnecting,
         leftStickPosition = rcControlState.leftStickPosition,
         rightStickPosition = rcControlState.rightStickPosition,
         onNavigateBack = { navController.navigateUp() },
+        onBluetoothDisconnectedClick = { navController.navigate(Screen.Bluetooth.route) },
         settingsAction = {
             ApplicationSettingsIconButton(
                 applicationId = ApplicationId.RC_VEHICLE_PRO,
@@ -127,9 +133,11 @@ fun RcVehicleProScreen(
 @Composable
 fun RcVehicleProContent(
     uiState: RcVehicleProUiState,
+    isBluetoothConnecting: Boolean = false,
     leftStickPosition: Pair<Float, Float>,
     rightStickPosition: Pair<Float, Float>,
     onNavigateBack: () -> Unit,
+    onBluetoothDisconnectedClick: () -> Unit = {},
     settingsAction: @Composable () -> Unit,
     onThrottleMove: (Float, Float) -> Unit,
     onSteeringMove: (Float, Float) -> Unit,
@@ -159,7 +167,11 @@ fun RcVehicleProContent(
                     RcHudMetricsRow(uiState = uiState)
                 },
                 statusContent = {
-                    RcHudTopBarStatusRow(uiState = uiState)
+                    RcHudTopBarStatusRow(
+                        uiState = uiState,
+                        isBluetoothConnecting = isBluetoothConnecting,
+                        onBluetoothDisconnectedClick = onBluetoothDisconnectedClick,
+                    )
                 },
                 actions = settingsAction,
             )
@@ -229,6 +241,11 @@ fun RcVehicleProContent(
                 }
             }
         }
+
+        LiveControlBluetoothDisconnectedBannerOverlay(
+            visible = !uiState.isBluetoothConnected && !isBluetoothConnecting,
+            onClick = onBluetoothDisconnectedClick,
+        )
     }
 }
 

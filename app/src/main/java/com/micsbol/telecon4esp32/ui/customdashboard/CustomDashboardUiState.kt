@@ -29,7 +29,7 @@ data class CustomDashboardEditorState(
     val plotRevision: Long = 0L,
     val waveformStats: DashboardWaveformStats = DashboardWaveformStats(),
     val selectedWidgetId: String? = null,
-    val isEsp32Connected: Boolean = true,
+    val isEsp32Connected: Boolean = false,
     val saveConfirmationVisible: Boolean = false,
     val saveNameDialogVisible: Boolean = false,
     val saveNameDialogIsRename: Boolean = false,

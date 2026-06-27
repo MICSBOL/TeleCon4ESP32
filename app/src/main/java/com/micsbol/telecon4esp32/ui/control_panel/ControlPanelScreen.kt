@@ -20,13 +20,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.res.stringResource
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelOverlayControls
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -67,7 +63,8 @@ import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.ui.ads.InterstitialTrigger
 import com.micsbol.telecon4esp32.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.telecon4esp32.ui.navigation.Screen
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothUiState
+import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -117,6 +114,8 @@ fun ControlPanelScreen(
     val collectedUserSettings by actualUserSettings.collectAsState()
     val settingsSyncGeneration by (bluetoothViewModel?.rcSettingsSyncGeneration
         ?: MutableStateFlow(0)).collectAsState()
+    val bluetoothConnectionState by (bluetoothViewModel?.state
+        ?: MutableStateFlow(BluetoothUiState())).collectAsState()
 
     when (val state = collectedUserSettings) {
         is SettingsUiState.Loading -> {
@@ -128,7 +127,10 @@ fun ControlPanelScreen(
         }
 
         is SettingsUiState.Success -> {
-            LaunchedEffect(actualViewModel, state.settings) {
+            val plotLabels by (bluetoothViewModel?.rcPlotDisplayLabels
+                ?: MutableStateFlow(state.settings.plotLabels)).collectAsState()
+
+            LaunchedEffect(actualViewModel) {
                 actualViewModel?.onControlPanelEntered()
             }
 
@@ -192,25 +194,21 @@ fun ControlPanelScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                if (navController != null) {
-                    IconButton(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
-                            .padding(8.dp),
-                        onClick = {
-                            navController.navigateToApplicationSettings(ApplicationId.CONTROL_PANEL)
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(
-                                R.string.applications_settings_content_description,
-                                stringResource(R.string.app_control_panel_settings_title),
-                            ),
-                            tint = brandPrimary(),
-                        )
+                val onOpenBluetooth: () -> Unit = remember(actualViewModel, navController) {
+                    {
+                        actualViewModel?.preparePostConnectPopBack()
+                        if (navController != null) {
+                            navController.navigate(Screen.Bluetooth.route)
+                        }
                     }
+                }
+
+                if (navController != null) {
+                    LiveControlBluetoothDisconnectedBannerOverlay(
+                        visible = !bluetoothConnectionState.isConnected &&
+                            !bluetoothConnectionState.isConnecting,
+                        onClick = onOpenBluetooth,
+                    )
                 }
 
                 // Row keeps plot/center recompositions isolated from the side controller trees.
@@ -244,10 +242,32 @@ fun ControlPanelScreen(
                             .weight(1f)
                             .fillMaxHeight(),
                     ) {
+                        val centerOverlay: @Composable () -> Unit = {
+                            if (navController != null) {
+                                ControlPanelOverlayControls(
+                                    isBluetoothConnected = bluetoothConnectionState.isConnected,
+                                    isBluetoothConnecting = bluetoothConnectionState.isConnecting,
+                                    onBackToModulesClick = {
+                                        actualViewModel?.stopSendingRcData()
+                                        navController.navigate(Screen.Applications.route) {
+                                            popUpTo(Screen.Home.route)
+                                            launchSingleTop = true
+                                        }
+                                    },
+                                    onSettingsClick = {
+                                        navController.navigateToApplicationSettings(ApplicationId.CONTROL_PANEL)
+                                    },
+                                    onBluetoothDisconnectedClick = onOpenBluetooth,
+                                )
+                            }
+                        }
                         ControlPanelCenterPlotHost(
                             bluetoothViewModel = bluetoothViewModel,
                             telemetryState = actualTelemetryState,
+                            plotLabels = plotLabels,
+                            settingsSyncGeneration = settingsSyncGeneration,
                             modifier = Modifier.fillMaxSize(),
+                            topStartOverlay = centerOverlay,
                         )
                     }
                     Box(
@@ -279,14 +299,21 @@ fun ControlPanelScreen(
 private fun ControlPanelCenterPlotHost(
     bluetoothViewModel: BluetoothViewModel?,
     telemetryState: StateFlow<TelemetryState>,
+    plotLabels: List<String>,
+    settingsSyncGeneration: Int = 0,
     modifier: Modifier = Modifier,
+    topStartOverlay: @Composable () -> Unit = {},
 ) {
     if (bluetoothViewModel != null) {
         val plotUi by bluetoothViewModel.rcPlotUiState.collectAsState()
+        val displaySeries = remember(plotUi.series, plotLabels, settingsSyncGeneration) {
+            plotSeriesForDisplay(plotUi.series, plotLabels)
+        }
         ControlPanelCenterPlot(
-            series = plotUi.series,
+            series = displaySeries,
             plotRevision = plotUi.revision,
             modifier = modifier,
+            topStartOverlay = topStartOverlay,
         )
     } else {
         val telemetry by telemetryState.collectAsState()
@@ -296,10 +323,14 @@ private fun ControlPanelCenterPlotHost(
         val plotRevision by remember {
             derivedStateOf { telemetry.plotState.revision }
         }
+        val displaySeries = remember(series, plotLabels, settingsSyncGeneration) {
+            plotSeriesForDisplay(series, plotLabels)
+        }
         ControlPanelCenterPlot(
-            series = series,
+            series = displaySeries,
             plotRevision = plotRevision,
             modifier = modifier,
+            topStartOverlay = topStartOverlay,
         )
     }
 }
@@ -309,8 +340,14 @@ private fun ControlPanelCenterPlot(
     series: List<PlotData>,
     plotRevision: Long,
     modifier: Modifier = Modifier,
+    topStartOverlay: @Composable () -> Unit = {},
 ) {
-    CenterDisplay(modifier = modifier, series = series, plotRevision = plotRevision)
+    CenterDisplay(
+        modifier = modifier,
+        series = series,
+        plotRevision = plotRevision,
+        topStartOverlay = topStartOverlay,
+    )
 }
 
 @Composable
