@@ -38,7 +38,7 @@ val Typography: Typography
     get() = Typography(
         // Style for large headlines (e.g., screen titles)
         headlineLarge = TextStyle(
-            fontFamily = FontFamily.Default,
+            fontFamily = syncopate,
             fontWeight = FontWeight.Bold,
             fontSize = 32.sp,
             lineHeight = 40.sp,
@@ -47,7 +47,7 @@ val Typography: Typography
         ),
         // Style for titles of sections
         titleLarge = TextStyle(
-            fontFamily = FontFamily.Default,
+            fontFamily = syncopate,
             fontWeight = FontWeight.Normal,
             fontSize = 22.sp,
             lineHeight = 28.sp,
@@ -65,7 +65,7 @@ val Typography: Typography
         ),
         // Style for smaller, less important text (like the plot labels)
         labelSmall = TextStyle(
-            fontFamily = FontFamily.Default,
+            fontFamily = syncopate,
             fontWeight = FontWeight.Medium,
             fontSize = 11.sp,
             lineHeight = 16.sp,

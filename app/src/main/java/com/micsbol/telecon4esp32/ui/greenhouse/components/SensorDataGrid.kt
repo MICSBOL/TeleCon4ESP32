@@ -15,9 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.theme.PlotOrange
-import com.micsbol.telecon4esp32.ui.theme.PlotYellow
-import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlass
 import java.util.Locale
 
 @Composable
@@ -67,7 +65,7 @@ fun SensorDataGrid(
         ) {
             SensorMetricCard(
                 icon = Icons.Default.WaterDrop,
-                iconTint = TechBlueBright,
+                iconTint = GreenhouseGlass.AccentGreen,
                 title = stringResource(R.string.greenhouse_soil),
                 value = stringResource(R.string.greenhouse_percent_value, soilPercent),
                 subtext = stringResource(
@@ -75,19 +73,21 @@ fun SensorDataGrid(
                     soilTargetMin,
                     soilTargetMax,
                 ),
-                valueColor = TechBlueBright,
+                valueColor = GreenhouseGlass.ValueGreen,
+                sparklineSeed = soilPercent,
                 modifier = Modifier.weight(1f),
                 fillHeight = fillAvailableHeight,
             )
             SensorMetricCard(
                 icon = Icons.Default.LightMode,
-                iconTint = PlotYellow,
+                iconTint = GreenhouseGlass.AccentLime,
                 title = stringResource(R.string.greenhouse_light),
                 value = lightValue,
                 subtext = stringResource(
                     if (lightsOn) R.string.greenhouse_lights_on else R.string.greenhouse_lights_off,
                 ),
-                valueColor = PlotYellow,
+                valueColor = GreenhouseGlass.ValueTeal,
+                sparklineSeed = lightLux.toInt(),
                 modifier = Modifier.weight(1f),
                 fillHeight = fillAvailableHeight,
             )
@@ -104,24 +104,26 @@ fun SensorDataGrid(
         ) {
             SensorMetricCard(
                 icon = Icons.Default.Thermostat,
-                iconTint = PlotOrange,
+                iconTint = GreenhouseGlass.WarningOrange,
                 title = stringResource(R.string.greenhouse_delta_temp),
                 value = stringResource(
                     R.string.greenhouse_delta_temp_value,
                     "$deltaSign${String.format(Locale.US, "%.1f", deltaTempC)}",
                 ),
                 subtext = stringResource(R.string.greenhouse_vent_open, ventOpenPercent),
-                valueColor = PlotOrange,
+                valueColor = GreenhouseGlass.ValueOrange,
+                sparklineSeed = (deltaTempC * 10).toInt(),
                 modifier = Modifier.weight(1f),
                 fillHeight = fillAvailableHeight,
             )
             SensorMetricCard(
                 icon = Icons.Default.Opacity,
-                iconTint = TechBlueBright,
+                iconTint = GreenhouseGlass.LeafBright,
                 title = stringResource(R.string.greenhouse_tank),
                 value = stringResource(R.string.greenhouse_percent_value, tankPercent),
                 subtext = stringResource(R.string.greenhouse_last_irrigation, lastIrrigationAgo),
-                valueColor = TechBlueBright,
+                valueColor = GreenhouseGlass.ValueGreen,
+                sparklineSeed = tankPercent,
                 modifier = Modifier.weight(1f),
                 fillHeight = fillAvailableHeight,
             )

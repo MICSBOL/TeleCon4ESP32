@@ -1,16 +1,19 @@
 package com.micsbol.telecon4esp32.ui.smarthome.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Thermostat
@@ -24,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,7 +45,7 @@ fun RoomCard(
     modifier: Modifier = Modifier,
 ) {
     SmartHomeCard(
-        modifier = modifier.width(160.dp),
+        modifier = modifier.width(168.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -56,28 +61,7 @@ fun RoomCard(
             RoomStatusBadgeChip(room = room)
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(88.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            room.accentColor.copy(alpha = 0.35f),
-                            room.accentColor.copy(alpha = 0.08f),
-                        ),
-                    ),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = room.icon,
-                contentDescription = null,
-                tint = room.accentColor,
-                modifier = Modifier.size(48.dp),
-            )
-        }
+        RoomImageHero(room = room)
         Spacer(modifier = Modifier.height(10.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -113,6 +97,52 @@ fun RoomCard(
                     color = PlotOrange,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RoomImageHero(room: RoomUiModel) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(96.dp)
+            .clip(RoundedCornerShape(10.dp)),
+    ) {
+        Image(
+            painter = painterResource(room.imageRes),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        // Scrim tinted with the room accent so photos read consistently across the row.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.05f),
+                            room.accentColor.copy(alpha = 0.35f),
+                        ),
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .padding(8.dp)
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.35f))
+                .align(Alignment.TopStart),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = room.icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }

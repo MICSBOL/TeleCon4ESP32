@@ -22,7 +22,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,18 +31,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 import com.micsbol.telecon4esp32.ui.ads.AdPolicy
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
+import com.micsbol.telecon4esp32.ui.components.AdBanner
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.navigation.Screen
-import com.micsbol.telecon4esp32.ui.components.EmitterIconContainer
-import com.micsbol.telecon4esp32.ui.components.EmitterSectionTitle
-import com.micsbol.telecon4esp32.ui.components.EmitterStyledCard
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 @Composable
@@ -68,10 +68,11 @@ fun BluetoothScreen(
         )
     }
 
-    TeleCon4Esp32Scaffold(
+    val showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route, entitlement)
+
+    NeoScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.bluetooth_connect_to_a_device),
-        showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route, entitlement),
         onNavigateBack = onNavigateBack,
         actions = {
             if (state.isScanning) {
@@ -79,20 +80,22 @@ fun BluetoothScreen(
                     modifier = Modifier
                         .size(28.dp)
                         .padding(end = 4.dp),
-                    color = brandPrimary(),
+                    color = Neo.Accent,
                     strokeWidth = 3.dp
                 )
                 IconButton(onClick = onStopScan) {
-                    EmitterIconContainer(
-                        icon = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.bluetooth_stop_scan)
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.bluetooth_stop_scan),
+                        tint = Neo.Accent,
                     )
                 }
             } else {
                 IconButton(onClick = onStartScan) {
-                    EmitterIconContainer(
-                        icon = Icons.Default.Refresh,
-                        contentDescription = stringResource(R.string.bluetooth_start_scan)
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.bluetooth_start_scan),
+                        tint = Neo.Accent,
                     )
                 }
             }
@@ -104,22 +107,25 @@ fun BluetoothScreen(
                 .padding(paddingValues)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
                 BluetoothDeviceList(
                     pairedDevices = state.pairedDevices,
                     scannedDevices = state.scannedDevices,
                     onClick = onDeviceClick,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
                 )
+                if (showAdBanner) {
+                    AdBanner(modifier = Modifier.fillMaxWidth())
+                }
             }
 
             if (state.isScanning && state.pairedDevices.isEmpty() && state.scannedDevices.isEmpty()) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = brandPrimary()
+                    color = Neo.Accent
                 )
             }
 
@@ -130,13 +136,15 @@ fun BluetoothScreen(
                         .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
-                    EmitterStyledCard(modifier = Modifier.padding(24.dp)) {
+                    NeoCard(modifier = Modifier.padding(24.dp)) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = brandPrimary())
+                            CircularProgressIndicator(color = Neo.Accent)
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = stringResource(R.string.home_bluetooth_status_connecting),
-                                style = MaterialTheme.typography.bodyLarge
+                                color = Neo.TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
                             )
                         }
                     }
@@ -158,7 +166,7 @@ fun BluetoothDeviceList(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            EmitterSectionTitle(
+            NeoSectionTitle(
                 text = stringResource(R.string.bluetooth_paired_devices),
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -167,8 +175,8 @@ fun BluetoothDeviceList(
             item {
                 Text(
                     text = stringResource(R.string.bluetooth_no_paired_devices),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = mutedTextColor(),
+                    color = Neo.TextSecondary,
+                    fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
@@ -177,7 +185,7 @@ fun BluetoothDeviceList(
             DeviceListItem(device = device, onClick = onClick)
         }
         item {
-            EmitterSectionTitle(
+            NeoSectionTitle(
                 text = stringResource(R.string.bluetooth_scanned_devices),
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -186,8 +194,8 @@ fun BluetoothDeviceList(
             item {
                 Text(
                     text = stringResource(R.string.bluetooth_no_scanned_devices),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = mutedTextColor(),
+                    color = Neo.TextSecondary,
+                    fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
@@ -203,28 +211,26 @@ fun DeviceListItem(
     device: RemoteDevice,
     onClick: (RemoteDevice) -> Unit
 ) {
-    EmitterStyledCard(
-        modifier = Modifier.clickable { onClick(device) }
+    NeoCard(
+        onClick = { onClick(device) },
+        contentPadding = 12.dp,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            EmitterIconContainer(
-                icon = Icons.Default.Bluetooth,
-                contentDescription = null
-            )
+            NeoIconBadge(icon = Icons.Default.Bluetooth, size = 42.dp)
             Column(modifier = Modifier.padding(start = 14.dp)) {
                 Text(
                     text = device.name ?: stringResource(R.string.bluetooth_unknown_device),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Neo.TextPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     text = device.address,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = mutedTextColor()
+                    color = Neo.TextSecondary,
+                    fontSize = 11.sp,
                 )
             }
         }

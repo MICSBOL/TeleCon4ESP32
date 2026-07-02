@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,20 +28,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.micsbol.telecon4esp32.R
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
-import com.micsbol.telecon4esp32.ui.components.brandSecondary
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
 import com.micsbol.telecon4esp32.ui.navigation.Screen
+import com.micsbol.telecon4esp32.ui.theme.Neo
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -114,21 +111,13 @@ fun SplashScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.surface,
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background,
-                    )
-                )
-            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onSkip,
             ),
     ) {
+        NeumorphicBackground()
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -138,18 +127,19 @@ fun SplashScreenContent(
         ) {
             SplashAnimatedLogo {
                 EmitterBrandLogo(
-                    size = 140.dp,
+                    size = 156.dp,
                     fullLogo = true,
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            SplashFadeSlideText(animationDelayMs = 380) {
+            SplashFadeSlideText(animationDelayMs = 320) {
                 Text(
                     text = stringResource(R.string.app_header_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = Neo.Accent,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -159,8 +149,8 @@ fun SplashScreenContent(
             SplashFadeSlideText(animationDelayMs = 660) {
                 Text(
                     text = stringResource(R.string.splash_tagline),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = mutedTextColor(),
+                    color = Neo.TextSecondary,
+                    fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -178,23 +168,23 @@ fun SplashScreenContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = stringResource(R.string.splash_tap_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = mutedTextColor().copy(alpha = hintAlpha),
+                    text = stringResource(R.string.splash_tap_hint).uppercase(),
+                    color = Neo.TextSecondary.copy(alpha = hintAlpha),
+                    fontSize = 11.sp,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier.fillMaxWidth(0.55f),
-                    color = brandPrimary(),
-                    trackColor = brandSecondary().copy(alpha = 0.25f),
+                    color = Neo.Accent,
+                    trackColor = Neo.SurfaceLow,
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = stringResource(R.string.splash_brand_credit),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = mutedTextColor().copy(alpha = 0.75f),
+                    color = Neo.TextSecondary.copy(alpha = 0.75f),
+                    fontSize = 11.sp,
                     textAlign = TextAlign.Center,
                 )
             }

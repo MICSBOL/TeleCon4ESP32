@@ -41,7 +41,7 @@ import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelScreen
 import com.micsbol.telecon4esp32.ui.customdashboard.CustomDashboardScreen
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
-import com.micsbol.telecon4esp32.ui.home.HomeScreen
+import com.micsbol.telecon4esp32.ui.cyber.screens.CyberHomeScreen
 import com.micsbol.telecon4esp32.ui.premium.UpgradeScreen
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsViewModel
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProScreen
@@ -133,7 +133,7 @@ fun AppNavGraph(
                 }
             }
 
-            HomeScreen(
+            CyberHomeScreen(
                 navController = navController,
                 isConnecting = state.isConnecting,
                 isBluetoothConnected = state.isConnected,

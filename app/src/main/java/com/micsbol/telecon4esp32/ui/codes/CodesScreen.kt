@@ -7,8 +7,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,22 +19,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Dock
 import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
@@ -53,7 +41,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -61,12 +48,17 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.util.hostedPdfUrl
 import com.micsbol.telecon4esp32.ui.ads.InterstitialTrigger
 import com.micsbol.telecon4esp32.ui.ads.rememberNavigateWithInterstitial
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
-import com.micsbol.telecon4esp32.ui.components.EmitterCardShape
-import com.micsbol.telecon4esp32.ui.components.EmitterIconContainer
-import com.micsbol.telecon4esp32.ui.components.EmitterStyledCard
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoDialog
+import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
+import com.micsbol.telecon4esp32.ui.components.NeoDialogTextAction
+import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
+import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
+import com.micsbol.telecon4esp32.ui.components.NeoPillButton
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
+import com.micsbol.telecon4esp32.ui.theme.Neo
+import androidx.compose.ui.unit.sp
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -255,73 +247,6 @@ private fun availableCodeAssets(language: String): List<CodeAssetInfo> {
     )
 }
 
-@Composable
-private fun CodesDialogTitle(
-    text: String,
-    color: Color = MaterialTheme.colorScheme.onSurface
-) {
-    Text(
-        text = text,
-        modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = color
-    )
-}
-
-@Composable
-private fun CodesDialogBody(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-/** Dialog frame using app colors: elevated surface, primary accent border (stronger in dark theme). */
-@Composable
-private fun CodesStyledDialog(
-    onDismissRequest: () -> Unit,
-    title: @Composable () -> Unit,
-    text: (@Composable () -> Unit)? = null,
-    horizontalMargin: Dp = 16.dp,
-    actions: @Composable () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val isDark = isSystemInDarkTheme()
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = horizontalMargin),
-            shape = EmitterCardShape,
-            color = colorScheme.surfaceContainerHigh,
-            tonalElevation = if (isDark) 4.dp else 2.dp,
-            shadowElevation = if (isDark) 18.dp else 8.dp,
-            border = BorderStroke(
-                width = 1.dp,
-                color = colorScheme.primary.copy(alpha = if (isDark) 0.52f else 0.3f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                title()
-                if (text != null) {
-                    text.invoke()
-                }
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    color = colorScheme.primary.copy(alpha = if (isDark) 0.22f else 0.12f)
-                )
-                actions()
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodesScreen(
@@ -335,10 +260,10 @@ fun CodesScreen(
     var zipShareError by remember { mutableStateOf<ZipShareErrorDialog?>(null) }
 
     pdfDialogKind?.let { kind ->
-        CodesStyledDialog(
+        NeoDialog(
             onDismissRequest = { pdfDialogKind = null },
             title = {
-                CodesDialogTitle(
+                NeoDialogTitle(
                     text = stringResource(
                         when (kind) {
                             PdfDialogKind.NoReader -> R.string.codes_pdf_no_reader_title
@@ -347,8 +272,8 @@ fun CodesScreen(
                     )
                 )
             },
-            text = {
-                CodesDialogBody(
+            subtitle = {
+                NeoDialogBody(
                     text = stringResource(
                         when (kind) {
                             PdfDialogKind.NoReader -> R.string.codes_pdf_no_reader_message
@@ -358,61 +283,39 @@ fun CodesScreen(
                 )
             },
             actions = {
-                val primary = MaterialTheme.colorScheme.primary
-                val onPrimary = MaterialTheme.colorScheme.onPrimary
                 when (kind) {
                     PdfDialogKind.NoReader -> {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            TextButton(
+                            NeoSecondaryButton(
+                                text = stringResource(R.string.codes_pdf_cancel),
                                 onClick = { pdfDialogKind = null },
-                                colors = ButtonDefaults.textButtonColors(contentColor = primary)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.codes_pdf_cancel),
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
+                                compact = true,
+                            )
+                            NeoPillButton(
+                                text = stringResource(R.string.codes_pdf_find_reader),
                                 onClick = {
                                     context.launchPlayStorePdfReaderSearch()
                                     pdfDialogKind = null
                                 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = primary,
-                                    contentColor = onPrimary
-                                ),
-                                elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = if (isSystemInDarkTheme()) 4.dp else 2.dp,
-                                    pressedElevation = 6.dp
-                                )
-                            ) {
-                                Text(stringResource(R.string.codes_pdf_find_reader))
-                            }
+                                compact = true,
+                            )
                         }
                     }
 
                     PdfDialogKind.CopyFailed -> {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
+                            horizontalArrangement = Arrangement.End,
                         ) {
-                            Button(
+                            NeoPillButton(
+                                text = stringResource(R.string.codes_dialog_ok),
                                 onClick = { pdfDialogKind = null },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = primary,
-                                    contentColor = onPrimary
-                                ),
-                                elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = if (isSystemInDarkTheme()) 4.dp else 2.dp
-                                )
-                            ) {
-                                Text(stringResource(R.string.codes_dialog_ok))
-                            }
+                                compact = true,
+                            )
                         }
                     }
                 }
@@ -422,19 +325,17 @@ fun CodesScreen(
 
     pendingZipExport?.let { asset ->
         val zipFileName = checkNotNull(asset.assetFileName)
-        CodesStyledDialog(
+        NeoDialog(
             onDismissRequest = { pendingZipExport = null },
-            title = { CodesDialogTitle(text = stringResource(R.string.codes_zip_export_title)) },
-            text = {
-                CodesDialogBody(text = stringResource(R.string.codes_zip_export_message))
-            },
+            title = { NeoDialogTitle(text = stringResource(R.string.codes_zip_export_title)) },
+            subtitle = { NeoDialogBody(text = stringResource(R.string.codes_zip_export_message)) },
             actions = {
-                val scheme = MaterialTheme.colorScheme
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Button(
+                    NeoPillButton(
+                        text = stringResource(R.string.codes_zip_export_share),
                         onClick = {
                             pendingZipExport = null
                             when (
@@ -452,24 +353,10 @@ fun CodesScreen(
                                     zipShareError = ZipShareErrorDialog.CopyFailed
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = scheme.primary,
-                            contentColor = scheme.onPrimary
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = if (isSystemInDarkTheme()) 4.dp else 2.dp,
-                            pressedElevation = 6.dp
-                        )
-                    ) {
-                        Text(
-                            text = stringResource(R.string.codes_zip_export_share),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                    OutlinedButton(
+                        fillMaxWidth = true,
+                    )
+                    NeoSecondaryButton(
+                        text = stringResource(R.string.codes_zip_export_save),
                         onClick = {
                             pendingZipExport = null
                             viewModel.saveZipAsset(
@@ -477,39 +364,22 @@ fun CodesScreen(
                                 outputFileName = asset.outputFileName
                             )
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, scheme.primary),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.primary)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.codes_zip_export_save),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                    TextButton(
+                        fillMaxWidth = true,
+                    )
+                    NeoDialogTextAction(
+                        text = stringResource(R.string.codes_pdf_cancel),
                         onClick = { pendingZipExport = null },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(contentColor = scheme.primary)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.codes_pdf_cancel),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
+                    )
                 }
             }
         )
     }
 
     zipShareError?.let { kind ->
-        CodesStyledDialog(
+        NeoDialog(
             onDismissRequest = { zipShareError = null },
             title = {
-                CodesDialogTitle(
+                NeoDialogTitle(
                     text = stringResource(
                         when (kind) {
                             ZipShareErrorDialog.NoApp -> R.string.codes_zip_share_no_app_title
@@ -519,8 +389,8 @@ fun CodesScreen(
                     )
                 )
             },
-            text = {
-                CodesDialogBody(
+            subtitle = {
+                NeoDialogBody(
                     text = stringResource(
                         when (kind) {
                             ZipShareErrorDialog.NoApp -> R.string.codes_zip_share_no_app_message
@@ -531,23 +401,15 @@ fun CodesScreen(
                 )
             },
             actions = {
-                val scheme = MaterialTheme.colorScheme
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Button(
+                    NeoPillButton(
+                        text = stringResource(R.string.codes_dialog_ok),
                         onClick = { zipShareError = null },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = scheme.primary,
-                            contentColor = scheme.onPrimary
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = if (isSystemInDarkTheme()) 4.dp else 2.dp
-                        )
-                    ) {
-                        Text(stringResource(R.string.codes_dialog_ok))
-                    }
+                        compact = true,
+                    )
                 }
             }
         )
@@ -560,7 +422,7 @@ fun CodesScreen(
 
     BackHandler(onBack = navigateBackToHome)
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.codes_and_documents_title),
         onNavigateBack = navigateBackToHome,
@@ -614,16 +476,16 @@ private fun CodeAssetGrid(
 
     val saveError = uiState.saveError
     if (saveError != null) {
-        CodesStyledDialog(
+        NeoDialog(
             onDismissRequest = onDismissSaveError,
             title = {
-                CodesDialogTitle(
+                NeoDialogTitle(
                     text = stringResource(R.string.codes_zip_save_error_title),
-                    color = MaterialTheme.colorScheme.error
+                    color = Neo.Negative,
                 )
             },
-            text = {
-                CodesDialogBody(
+            subtitle = {
+                NeoDialogBody(
                     text = stringResource(
                         R.string.codes_zip_save_error_details,
                         saveError
@@ -631,23 +493,15 @@ private fun CodeAssetGrid(
                 )
             },
             actions = {
-                val scheme = MaterialTheme.colorScheme
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Button(
+                    NeoPillButton(
+                        text = stringResource(R.string.codes_dialog_ok),
                         onClick = onDismissSaveError,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = scheme.primary,
-                            contentColor = scheme.onPrimary
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = if (isSystemInDarkTheme()) 4.dp else 2.dp
-                        )
-                    ) {
-                        Text(stringResource(R.string.codes_dialog_ok))
-                    }
+                        compact = true,
+                    )
                 }
             }
         )
@@ -702,10 +556,11 @@ private fun CodeAssetGridItem(
 ) {
     val title = stringResource(assetInfo.titleRes)
 
-    EmitterStyledCard(
+    NeoCard(
         modifier = modifier
             .fillMaxHeight()
-            .clickable(enabled = !isLoading, onClick = onClick)
+            .clickable(enabled = !isLoading, onClick = onClick),
+        contentPadding = 14.dp,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -715,31 +570,26 @@ private fun CodeAssetGridItem(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(48.dp),
-                    color = brandPrimary()
+                    color = Neo.Accent
                 )
             } else {
-                EmitterIconContainer(
-                    icon = assetInfo.icon,
-                    contentDescription = title,
-                    boxSize = 52.dp,
-                    iconSize = 28.dp
-                )
+                NeoIconBadge(icon = assetInfo.icon, size = 56.dp)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                color = Neo.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface
             )
             if (supportingText != null) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = supportingText,
-                    style = MaterialTheme.typography.bodySmall,
+                    color = Neo.TextSecondary,
+                    fontSize = 12.sp,
                     textAlign = TextAlign.Center,
-                    color = mutedTextColor()
                 )
             }
         }

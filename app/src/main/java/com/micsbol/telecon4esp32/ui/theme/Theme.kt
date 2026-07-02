@@ -16,11 +16,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val AppDarkColorScheme = darkColorScheme(
-    primary = TechBlueBright,
+    primary = HudCyan,
     onPrimary = TechOnPrimary,
     primaryContainer = DarkPrimaryContainer,
-    onPrimaryContainer = TechCyanBright,
-    secondary = TechCyanBright,
+    onPrimaryContainer = HudCyanBright,
+    secondary = HudCyanBright,
     onSecondary = TechOnPrimary,
     tertiary = AccentRed,
     onTertiary = DarkOnBackground,
@@ -30,8 +30,8 @@ private val AppDarkColorScheme = darkColorScheme(
     onSurface = DarkOnSurface,
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = DarkOnSurfaceVariant,
-    outline = DarkOutline,
-    outlineVariant = DarkOutline,
+    outline = HudCyan.copy(alpha = 0.5f),
+    outlineVariant = HudCyan.copy(alpha = 0.25f),
     surfaceContainerLow = DarkBackground,
     surfaceContainer = DarkSurface,
     surfaceContainerHigh = DarkSurfaceVariant,
@@ -41,12 +41,12 @@ private val AppDarkColorScheme = darkColorScheme(
 )
 
 private val AppLightColorScheme = lightColorScheme(
-    primary = TechBlue,
+    primary = HudCyan,
     onPrimary = TechOnPrimary,
     primaryContainer = LightPrimaryContainer,
-    onPrimaryContainer = TechBlueDark,
-    secondary = TechCyan,
-    onSecondary = TechOnAccent,
+    onPrimaryContainer = HudCyanBright,
+    secondary = HudCyanBright,
+    onSecondary = TechOnPrimary,
     tertiary = AccentRed,
     onTertiary = LightOnBackground,
     background = LightBackground,
@@ -55,8 +55,8 @@ private val AppLightColorScheme = lightColorScheme(
     onSurface = LightOnSurface,
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = LightOnSurfaceVariant,
-    outline = LightOutline,
-    outlineVariant = LightOutline,
+    outline = HudCyan.copy(alpha = 0.5f),
+    outlineVariant = HudCyan.copy(alpha = 0.25f),
     surfaceContainerLow = LightBackground,
     surfaceContainer = LightSurface,
     surfaceContainerHigh = LightSurfaceVariant,
@@ -87,8 +87,8 @@ fun TeleCon4Esp32Theme(
             window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
             }
         }
     }

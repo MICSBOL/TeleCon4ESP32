@@ -16,16 +16,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
-import com.micsbol.telecon4esp32.ui.components.EmitterSectionTitle
-import com.micsbol.telecon4esp32.ui.components.EmitterStyledCard
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
-import com.micsbol.telecon4esp32.ui.rc_settings.SettingsSection
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.theme.Neo
 
 @Composable
 fun ApplicationProtocolSettingsSection(
@@ -35,22 +35,21 @@ fun ApplicationProtocolSettingsSection(
 ) {
     val supportsAdvanced = applicationId == ApplicationId.CONTROL_PANEL
 
-    SettingsSection(
-        title = stringResource(R.string.app_settings_protocol_section_title),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NeoSectionTitle(text = stringResource(R.string.app_settings_protocol_section_title))
         Text(
             text = stringResource(
                 R.string.app_settings_protocol_prefix_label,
                 applicationId.protocolPrefix(),
             ),
             style = MaterialTheme.typography.bodyMedium,
-            color = mutedTextColor(),
+            color = Neo.TextSecondary,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.app_settings_protocol_section_description),
             style = MaterialTheme.typography.bodySmall,
-            color = mutedTextColor(),
+            color = Neo.TextSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
         Column(Modifier.selectableGroup()) {
@@ -80,7 +79,7 @@ private fun ProtocolModeOption(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    EmitterStyledCard(
+    NeoCard(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(
@@ -89,23 +88,29 @@ private fun ProtocolModeOption(
                 role = Role.RadioButton,
             ),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            androidx.compose.foundation.layout.Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(
-                    selected = selected,
-                    onClick = null,
-                    colors = RadioButtonDefaults.colors(selectedColor = brandPrimary()),
-                )
-                EmitterSectionTitle(text = label)
-            }
+        androidx.compose.foundation.layout.Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = null,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = Neo.Accent,
+                    unselectedColor = Neo.TextSecondary,
+                ),
+            )
             Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = mutedTextColor(),
-                modifier = Modifier.padding(start = 48.dp),
+                text = label,
+                color = Neo.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
             )
         }
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = Neo.TextSecondary,
+            modifier = Modifier.padding(start = 48.dp),
+        )
     }
 }

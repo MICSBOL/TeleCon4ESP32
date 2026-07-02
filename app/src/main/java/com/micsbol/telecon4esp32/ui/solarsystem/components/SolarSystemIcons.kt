@@ -2,12 +2,11 @@ package com.micsbol.telecon4esp32.ui.solarsystem.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,17 +18,18 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.micsbol.telecon4esp32.ui.cyber.components.ChamferShape
+import com.micsbol.telecon4esp32.ui.cyber.components.chamferPath
+import com.micsbol.telecon4esp32.ui.cyber.components.drawNeonGlow
 import com.micsbol.telecon4esp32.ui.solarsystem.SolarIconSize
 import com.micsbol.telecon4esp32.ui.solarsystem.SolarSystemIconType
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
-import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -43,12 +43,12 @@ fun SolarSystemIcon(
     showBadge: Boolean = true,
 ) {
     val badgeSize = when (size) {
-        SolarIconSize.Metric -> 52.dp
+        SolarIconSize.Metric -> 54.dp
         SolarIconSize.PowerFlow -> 76.dp
         SolarIconSize.Hero -> 60.dp
     }
     val iconScale = when (size) {
-        SolarIconSize.Metric -> 0.68f
+        SolarIconSize.Metric -> 0.66f
         SolarIconSize.PowerFlow -> 0.82f
         SolarIconSize.Hero -> 0.78f
     }
@@ -59,11 +59,7 @@ fun SolarSystemIcon(
             size = badgeSize,
             modifier = modifier,
         ) {
-            SolarSystemIconCanvas(
-                type = type,
-                tint = tint,
-                scale = iconScale,
-            )
+            SolarSystemIconCanvas(type = type, tint = tint, scale = iconScale)
         }
     } else {
         Box(
@@ -72,15 +68,12 @@ fun SolarSystemIcon(
                 .solarIconGlow(tint),
             contentAlignment = Alignment.Center,
         ) {
-            SolarSystemIconCanvas(
-                type = type,
-                tint = tint,
-                scale = iconScale,
-            )
+            SolarSystemIconCanvas(type = type, tint = tint, scale = iconScale)
         }
     }
 }
 
+/** Chamfered neon tile that matches the cyber panel language. */
 @Composable
 private fun SolarIconBadge(
     tint: Color,
@@ -88,33 +81,32 @@ private fun SolarIconBadge(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val shape = remember { ChamferShape(9.dp) }
     Box(
         modifier = modifier
             .size(size)
-            .solarIconGlow(tint),
+            .drawBehind {
+                val path = chamferPath(this.size, 9.dp.toPx(), inset = 1.5f)
+                drawNeonGlow(path, tint, blurRadius = 12f, strokeWidth = 3f, alpha = 0.5f)
+                drawPath(path, color = tint, style = Stroke(width = 1.6f))
+            },
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(size)
-                .clip(RoundedCornerShape(14.dp))
+                .matchParentSize()
+                .clip(shape)
                 .background(
-                    brush = Brush.linearGradient(
+                    Brush.linearGradient(
                         colors = listOf(
-                            tint.copy(alpha = 0.28f),
+                            tint.copy(alpha = 0.30f),
                             tint.copy(alpha = 0.10f),
-                            tint.copy(alpha = 0.05f),
+                            tint.copy(alpha = 0.04f),
                         ),
                     ),
-                )
-                .border(
-                    width = 1.dp,
-                    color = tint.copy(alpha = 0.35f),
-                    shape = RoundedCornerShape(14.dp),
                 ),
-            contentAlignment = Alignment.Center,
-            content = content,
         )
+        content()
     }
 }
 
@@ -157,295 +149,312 @@ private fun SolarSystemIconCanvas(
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSolarIcon(bounds: Rect) {
-    val sunYellow = Color(0xFFFFD700)
-    val sunOrange = Color(0xFFFFA500)
-    val panelBlue = Color(0xFF2196F3)
+// --- Shared helpers --------------------------------------------------------
 
-    val sunCenter = Offset(
-        bounds.left + bounds.width * 0.33f,
-        bounds.top + bounds.height * 0.28f,
-    )
-    val sunRadius = bounds.width * 0.135f
-
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(sunYellow, sunOrange),
-            center = sunCenter,
-            radius = sunRadius,
-        ),
-        radius = sunRadius,
-        center = sunCenter,
-    )
-
-    val rayLength = sunRadius * 0.62f
-    val rayThickness = bounds.width * 0.07f
-    repeat(8) { index ->
-        val angle = index * (PI / 4.0) - (PI / 2.0)
-        val inner = sunRadius * 1.05f
-        val outer = sunRadius + rayLength
-        drawLine(
-            color = sunOrange,
-            start = Offset(
-                sunCenter.x + (inner * cos(angle)).toFloat(),
-                sunCenter.y + (inner * sin(angle)).toFloat(),
-            ),
-            end = Offset(
-                sunCenter.x + (outer * cos(angle)).toFloat(),
-                sunCenter.y + (outer * sin(angle)).toFloat(),
-            ),
-            strokeWidth = rayThickness,
-            cap = StrokeCap.Round,
-        )
-    }
-
-    val panelTopLeft = Offset(bounds.left + bounds.width * 0.18f, bounds.top + bounds.height * 0.36f)
-    val panelTopRight = Offset(bounds.right - bounds.width * 0.10f, bounds.top + bounds.height * 0.30f)
-    val panelBottomRight = Offset(bounds.right - bounds.width * 0.06f, bounds.top + bounds.height * 0.70f)
-    val panelBottomLeft = Offset(bounds.left + bounds.width * 0.12f, bounds.top + bounds.height * 0.76f)
-
-    val panelPath = Path().apply {
-        moveTo(panelTopLeft.x, panelTopLeft.y)
-        lineTo(panelTopRight.x, panelTopRight.y)
-        lineTo(panelBottomRight.x, panelBottomRight.y)
-        lineTo(panelBottomLeft.x, panelBottomLeft.y)
-        close()
-    }
-
-    val frameStroke = bounds.width * 0.042f
-    val gridStroke = bounds.width * 0.024f
-    val panelStroke = Stroke(
-        width = frameStroke,
-        cap = StrokeCap.Round,
-        join = StrokeJoin.Round,
-    )
-
-    drawPath(path = panelPath, color = panelBlue, style = panelStroke)
-
-    val verticalFractions = listOf(1f / 3f, 2f / 3f)
-    verticalFractions.forEach { fraction ->
-        val top = lerp(panelTopLeft, panelTopRight, fraction)
-        val bottom = lerp(panelBottomLeft, panelBottomRight, fraction)
-        drawLine(
-            color = panelBlue,
-            start = top,
-            end = bottom,
-            strokeWidth = gridStroke,
-            cap = StrokeCap.Round,
-        )
-    }
-
-    val rowMidLeft = lerp(panelTopLeft, panelBottomLeft, 0.5f)
-    val rowMidRight = lerp(panelTopRight, panelBottomRight, 0.5f)
-    drawLine(
-        color = panelBlue,
-        start = rowMidLeft,
-        end = rowMidRight,
-        strokeWidth = gridStroke,
-        cap = StrokeCap.Round,
-    )
-
-    val standWidth = bounds.width * 0.14f
-    val standHeight = bounds.width * 0.06f
-    val standCenterX = (panelBottomLeft.x + panelBottomRight.x) / 2f
-    val standTop = maxOf(panelBottomLeft.y, panelBottomRight.y) + bounds.height * 0.02f
-    drawRoundRect(
-        color = panelBlue,
-        topLeft = Offset(standCenterX - standWidth / 2f, standTop),
-        size = Size(standWidth, standHeight),
-        cornerRadius = CornerRadius(standHeight * 0.35f),
-    )
-}
+/** A subtle sheen so flat strokes read as polished metal/neon. */
+private fun sheen(tint: Color): Brush =
+    Brush.linearGradient(listOf(lerp(tint, Color.White, 0.4f), tint))
 
 private fun lerp(start: Offset, end: Offset, fraction: Float): Offset = Offset(
     start.x + (end.x - start.x) * fraction,
     start.y + (end.y - start.y) * fraction,
 )
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBatteryIcon(bounds: Rect, tint: Color) {
-    val bodyWidth = bounds.width * 0.46f
+// --- Icons -----------------------------------------------------------------
+
+private fun DrawScope.drawSolarIcon(bounds: Rect) {
+    val w = bounds.width
+    val h = bounds.height
+
+    // Sun (upper-left) with rays.
+    val sunCenter = Offset(bounds.left + w * 0.31f, bounds.top + h * 0.26f)
+    val sunRadius = w * 0.125f
+    val rayInner = sunRadius * 1.4f
+    val rayOuter = sunRadius * 2.05f
+    repeat(8) { index ->
+        val angle = index * (PI / 4.0) - (PI / 2.0)
+        drawLine(
+            brush = Brush.linearGradient(listOf(Color(0xFFFFE082), Color(0xFFFFA000))),
+            start = Offset(
+                sunCenter.x + (rayInner * cos(angle)).toFloat(),
+                sunCenter.y + (rayInner * sin(angle)).toFloat(),
+            ),
+            end = Offset(
+                sunCenter.x + (rayOuter * cos(angle)).toFloat(),
+                sunCenter.y + (rayOuter * sin(angle)).toFloat(),
+            ),
+            strokeWidth = w * 0.05f,
+            cap = StrokeCap.Round,
+        )
+    }
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0xFFFFF8E1), Color(0xFFFFB300)),
+            center = sunCenter,
+            radius = sunRadius,
+        ),
+        radius = sunRadius,
+        center = sunCenter,
+    )
+    drawCircle(
+        color = Color.White.copy(alpha = 0.55f),
+        radius = sunRadius * 0.34f,
+        center = Offset(sunCenter.x - sunRadius * 0.28f, sunCenter.y - sunRadius * 0.28f),
+    )
+
+    // Solar panel (filled parallelogram with grid + frame).
+    val tl = Offset(bounds.left + w * 0.15f, bounds.top + h * 0.44f)
+    val tr = Offset(bounds.right - w * 0.05f, bounds.top + h * 0.37f)
+    val br = Offset(bounds.right - w * 0.01f, bounds.top + h * 0.73f)
+    val bl = Offset(bounds.left + w * 0.10f, bounds.top + h * 0.80f)
+    val panel = Path().apply {
+        moveTo(tl.x, tl.y)
+        lineTo(tr.x, tr.y)
+        lineTo(br.x, br.y)
+        lineTo(bl.x, bl.y)
+        close()
+    }
+    drawPath(
+        path = panel,
+        brush = Brush.verticalGradient(
+            colors = listOf(Color(0xFF4FC3F7), Color(0xFF1565C0)),
+            startY = tr.y,
+            endY = br.y,
+        ),
+    )
+    listOf(0.25f, 0.5f, 0.75f).forEach { f ->
+        drawLine(
+            color = Color.White.copy(alpha = 0.5f),
+            start = lerp(tl, tr, f),
+            end = lerp(bl, br, f),
+            strokeWidth = w * 0.018f,
+        )
+    }
+    drawLine(
+        color = Color.White.copy(alpha = 0.5f),
+        start = lerp(tl, bl, 0.5f),
+        end = lerp(tr, br, 0.5f),
+        strokeWidth = w * 0.018f,
+    )
+    drawPath(
+        path = panel,
+        color = Color(0xFF0D47A1),
+        style = Stroke(width = w * 0.03f, join = StrokeJoin.Round),
+    )
+
+    // Stand / pole.
+    val standCx = (bl.x + br.x) / 2f
+    val standTop = maxOf(bl.y, br.y) + h * 0.01f
+    drawLine(
+        brush = sheen(Color(0xFF90A4AE)),
+        start = Offset(standCx, standTop),
+        end = Offset(standCx, bounds.bottom),
+        strokeWidth = w * 0.05f,
+        cap = StrokeCap.Round,
+    )
+    drawLine(
+        color = Color(0xFF607D8B),
+        start = Offset(standCx - w * 0.12f, bounds.bottom),
+        end = Offset(standCx + w * 0.12f, bounds.bottom),
+        strokeWidth = w * 0.05f,
+        cap = StrokeCap.Round,
+    )
+}
+
+private fun DrawScope.drawBatteryIcon(bounds: Rect, tint: Color) {
+    val bodyWidth = bounds.width * 0.5f
     val bodyHeight = bounds.height * 0.72f
     val left = bounds.center.x - bodyWidth / 2f
-    val top = bounds.top + bounds.height * 0.12f
-    val corner = bounds.width * 0.08f
+    val top = bounds.top + bounds.height * 0.14f
+    val corner = bounds.width * 0.1f
+    val stroke = bounds.width * 0.058f
 
+    // Terminal cap.
+    val capWidth = bodyWidth * 0.42f
+    val capHeight = bounds.height * 0.07f
     drawRoundRect(
-        color = tint.copy(alpha = 0.2f),
-        topLeft = Offset(left - 3f, top - 3f),
-        size = Size(bodyWidth + 6f, bodyHeight + 6f),
-        cornerRadius = CornerRadius(corner + 2f),
+        brush = sheen(tint),
+        topLeft = Offset(bounds.center.x - capWidth / 2f, top - capHeight * 0.9f),
+        size = Size(capWidth, capHeight),
+        cornerRadius = CornerRadius(capHeight * 0.4f),
     )
+
+    // Body fill + frame.
     drawRoundRect(
-        color = tint.copy(alpha = 0.35f),
+        color = tint.copy(alpha = 0.12f),
         topLeft = Offset(left, top),
         size = Size(bodyWidth, bodyHeight),
         cornerRadius = CornerRadius(corner),
-        style = Stroke(width = bounds.width * 0.06f),
     )
-
-    val capWidth = bodyWidth * 0.38f
-    val capHeight = bounds.height * 0.08f
+    // Charge level (gradient) anchored to the bottom.
+    val inset = stroke * 0.9f
+    val fillH = (bodyHeight - inset * 2f) * 0.66f
     drawRoundRect(
-        color = tint,
-        topLeft = Offset(bounds.center.x - capWidth / 2f, top - capHeight * 0.85f),
-        size = Size(capWidth, capHeight),
-        cornerRadius = CornerRadius(2f),
+        brush = Brush.verticalGradient(
+            listOf(lerp(tint, Color.White, 0.35f), tint),
+        ),
+        topLeft = Offset(left + inset, top + bodyHeight - inset - fillH),
+        size = Size(bodyWidth - inset * 2f, fillH),
+        cornerRadius = CornerRadius(corner * 0.5f),
     )
-
-    val fillHeight = bodyHeight * 0.62f
     drawRoundRect(
-        color = tint.copy(alpha = 0.55f),
-        topLeft = Offset(left + bodyWidth * 0.12f, top + bodyHeight - fillHeight - bodyWidth * 0.1f),
-        size = Size(bodyWidth * 0.76f, fillHeight),
-        cornerRadius = CornerRadius(corner * 0.6f),
+        brush = sheen(tint),
+        topLeft = Offset(left, top),
+        size = Size(bodyWidth, bodyHeight),
+        cornerRadius = CornerRadius(corner),
+        style = Stroke(width = stroke),
     )
 
+    // Lightning bolt.
+    val cx = bounds.center.x
     val bolt = Path().apply {
-        moveTo(bounds.center.x, top + bodyHeight * 0.28f)
-        lineTo(bounds.center.x - bodyWidth * 0.12f, bounds.center.y + bodyHeight * 0.02f)
-        lineTo(bounds.center.x + bodyWidth * 0.04f, bounds.center.y + bodyHeight * 0.02f)
-        lineTo(bounds.center.x - bodyWidth * 0.06f, top + bodyHeight * 0.72f)
-        lineTo(bounds.center.x + bodyWidth * 0.14f, bounds.center.y - bodyHeight * 0.04f)
-        lineTo(bounds.center.x - bodyWidth * 0.02f, bounds.center.y - bodyHeight * 0.04f)
+        moveTo(cx + bodyWidth * 0.10f, top + bodyHeight * 0.20f)
+        lineTo(cx - bodyWidth * 0.16f, top + bodyHeight * 0.56f)
+        lineTo(cx - bodyWidth * 0.01f, top + bodyHeight * 0.56f)
+        lineTo(cx - bodyWidth * 0.10f, top + bodyHeight * 0.84f)
+        lineTo(cx + bodyWidth * 0.18f, top + bodyHeight * 0.44f)
+        lineTo(cx + bodyWidth * 0.02f, top + bodyHeight * 0.44f)
         close()
     }
     drawPath(path = bolt, color = Color.White)
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLoadIcon(bounds: Rect, tint: Color) {
-    val houseWidth = bounds.width * 0.72f
-    val houseHeight = bounds.height * 0.52f
+private fun DrawScope.drawLoadIcon(bounds: Rect, tint: Color) {
+    val houseWidth = bounds.width * 0.7f
+    val houseHeight = bounds.height * 0.5f
     val left = bounds.center.x - houseWidth / 2f
-    val baseTop = bounds.top + bounds.height * 0.46f
+    val baseTop = bounds.top + bounds.height * 0.44f
+    val cx = bounds.center.x
+    val corner = bounds.width * 0.05f
 
+    // Roof.
     val roof = Path().apply {
-        moveTo(left - houseWidth * 0.06f, baseTop)
-        lineTo(bounds.center.x, bounds.top + bounds.height * 0.14f)
-        lineTo(left + houseWidth + houseWidth * 0.06f, baseTop)
+        moveTo(left - houseWidth * 0.08f, baseTop + houseHeight * 0.04f)
+        lineTo(cx, bounds.top + bounds.height * 0.12f)
+        lineTo(left + houseWidth + houseWidth * 0.08f, baseTop + houseHeight * 0.04f)
         close()
     }
-    drawPath(path = roof, color = tint.copy(alpha = 0.85f))
+    drawPath(path = roof, brush = sheen(tint))
 
+    // Body.
     drawRoundRect(
-        color = tint.copy(alpha = 0.25f),
+        color = tint.copy(alpha = 0.16f),
         topLeft = Offset(left, baseTop),
         size = Size(houseWidth, houseHeight),
-        cornerRadius = CornerRadius(bounds.width * 0.04f),
+        cornerRadius = CornerRadius(corner),
     )
     drawRoundRect(
-        color = tint,
+        brush = sheen(tint),
         topLeft = Offset(left, baseTop),
         size = Size(houseWidth, houseHeight),
-        cornerRadius = CornerRadius(bounds.width * 0.04f),
-        style = Stroke(width = bounds.width * 0.045f),
+        cornerRadius = CornerRadius(corner),
+        style = Stroke(width = bounds.width * 0.05f),
     )
 
-    val doorWidth = houseWidth * 0.22f
-    val doorHeight = houseHeight * 0.42f
+    // Door.
+    val doorWidth = houseWidth * 0.24f
+    val doorHeight = houseHeight * 0.46f
     drawRoundRect(
-        color = tint.copy(alpha = 0.7f),
-        topLeft = Offset(bounds.center.x - doorWidth / 2f, baseTop + houseHeight - doorHeight),
+        brush = sheen(tint),
+        topLeft = Offset(cx - doorWidth / 2f, baseTop + houseHeight - doorHeight),
         size = Size(doorWidth, doorHeight),
-        cornerRadius = CornerRadius(2f),
+        cornerRadius = CornerRadius(doorWidth * 0.18f, doorWidth * 0.18f),
+    )
+    drawCircle(
+        color = Color.White,
+        radius = bounds.width * 0.012f,
+        center = Offset(cx + doorWidth * 0.28f, baseTop + houseHeight - doorHeight * 0.5f),
     )
 
-    drawRoundRect(
-        color = Color.White.copy(alpha = 0.85f),
-        topLeft = Offset(left + houseWidth * 0.14f, baseTop + houseHeight * 0.18f),
-        size = Size(houseWidth * 0.2f, houseHeight * 0.22f),
-        cornerRadius = CornerRadius(2f),
-    )
-    drawRoundRect(
-        color = Color.White.copy(alpha = 0.85f),
-        topLeft = Offset(left + houseWidth * 0.62f, baseTop + houseHeight * 0.18f),
-        size = Size(houseWidth * 0.2f, houseHeight * 0.22f),
-        cornerRadius = CornerRadius(2f),
-    )
+    // Windows.
+    val winSize = houseWidth * 0.2f
+    val winY = baseTop + houseHeight * 0.18f
+    listOf(left + houseWidth * 0.13f, left + houseWidth * 0.67f).forEach { wx ->
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.9f),
+            topLeft = Offset(wx, winY),
+            size = Size(winSize, winSize),
+            cornerRadius = CornerRadius(winSize * 0.12f),
+        )
+        drawLine(
+            color = tint,
+            start = Offset(wx + winSize / 2f, winY),
+            end = Offset(wx + winSize / 2f, winY + winSize),
+            strokeWidth = bounds.width * 0.014f,
+        )
+        drawLine(
+            color = tint,
+            start = Offset(wx, winY + winSize / 2f),
+            end = Offset(wx + winSize, winY + winSize / 2f),
+            strokeWidth = bounds.width * 0.014f,
+        )
+    }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGridIcon(bounds: Rect, tint: Color) {
-    val stroke = bounds.width * 0.028f
-    val cx = bounds.center.x
+private fun DrawScope.drawGridIcon(bounds: Rect, tint: Color) {
     val w = bounds.width
     val h = bounds.height
+    val cx = bounds.center.x
+    val stroke = w * 0.04f
+    val brush = sheen(tint)
 
-    fun line(start: Offset, end: Offset, alpha: Float = 1f) {
+    fun line(a: Offset, b: Offset, weight: Float = 1f) {
         drawLine(
-            color = tint.copy(alpha = alpha),
-            start = start,
-            end = end,
-            strokeWidth = stroke,
+            brush = brush,
+            start = a,
+            end = b,
+            strokeWidth = stroke * weight,
             cap = StrokeCap.Round,
         )
     }
 
-    fun crossArm(y: Float, halfExtend: Float, hookDrop: Float, hookOut: Float) {
-        val left = cx - halfExtend
-        val right = cx + halfExtend
-        line(Offset(left, y), Offset(right, y))
-        line(Offset(left, y), Offset(left - hookOut, y + hookDrop))
-        line(Offset(right, y), Offset(right + hookOut, y + hookDrop))
+    val baseY = bounds.top + h * 0.94f
+    val topY = bounds.top + h * 0.18f
+    val tipY = bounds.top + h * 0.05f
+    val baseHalf = w * 0.27f
+    val topHalf = w * 0.085f
+
+    fun halfAt(y: Float): Float {
+        val t = ((y - baseY) / (topY - baseY)).coerceIn(0f, 1f)
+        return baseHalf + (topHalf - baseHalf) * t
+    }
+    fun leftAt(y: Float) = Offset(cx - halfAt(y), y)
+    fun rightAt(y: Float) = Offset(cx + halfAt(y), y)
+
+    // Legs + tip.
+    line(leftAt(baseY), leftAt(topY))
+    line(rightAt(baseY), rightAt(topY))
+    line(leftAt(topY), Offset(cx, tipY))
+    line(rightAt(topY), Offset(cx, tipY))
+
+    // Horizontal belts + X braces between section levels.
+    val levels = listOf(baseY, bounds.top + h * 0.72f, bounds.top + h * 0.52f, topY)
+    levels.forEach { y -> line(leftAt(y), rightAt(y), weight = 0.85f) }
+    for (i in 0 until levels.size - 1) {
+        val y0 = levels[i]
+        val y1 = levels[i + 1]
+        line(leftAt(y0), rightAt(y1), weight = 0.7f)
+        line(rightAt(y0), leftAt(y1), weight = 0.7f)
     }
 
-    val baseY = bounds.top + h * 0.90f
-    val midY = bounds.top + h * 0.62f
-    val lowerArmY = bounds.top + h * 0.46f
-    val upperArmY = bounds.top + h * 0.24f
-    val peakY = bounds.top + h * 0.07f
-
-    val baseHalf = w * 0.30f
-    val midHalf = w * 0.22f
-    val lowerHalf = w * 0.17f
-    val upperHalf = w * 0.11f
-
-    val baseLeft = Offset(cx - baseHalf, baseY)
-    val baseRight = Offset(cx + baseHalf, baseY)
-    val midLeft = Offset(cx - midHalf, midY)
-    val midRight = Offset(cx + midHalf, midY)
-    val lowerLeft = Offset(cx - lowerHalf, lowerArmY)
-    val lowerRight = Offset(cx + lowerHalf, lowerArmY)
-    val upperLeft = Offset(cx - upperHalf, upperArmY)
-    val upperRight = Offset(cx + upperHalf, upperArmY)
-    val peak = Offset(cx, peakY)
-
-    line(baseLeft, lowerLeft)
-    line(baseRight, lowerRight)
-    line(lowerLeft, upperLeft)
-    line(lowerRight, upperRight)
-    line(upperLeft, peak)
-    line(upperRight, peak)
-
-    line(baseLeft, baseRight, alpha = 0.85f)
-    line(lowerLeft, lowerRight, alpha = 0.85f)
-    line(upperLeft, upperRight, alpha = 0.85f)
-
-    line(baseLeft, lowerRight, alpha = 0.8f)
-    line(baseRight, lowerLeft, alpha = 0.8f)
-    line(midLeft, midRight, alpha = 0.8f)
-    line(midLeft, lowerRight, alpha = 0.75f)
-    line(midRight, lowerLeft, alpha = 0.75f)
-    line(lowerLeft, upperRight, alpha = 0.75f)
-    line(lowerRight, upperLeft, alpha = 0.75f)
-
-    crossArm(
-        y = lowerArmY,
-        halfExtend = w * 0.36f,
-        hookDrop = h * 0.05f,
-        hookOut = w * 0.04f,
+    // Cross arms with insulators.
+    val arms = listOf(
+        Triple(bounds.top + h * 0.30f, w * 0.34f, w * 0.05f),
+        Triple(bounds.top + h * 0.46f, w * 0.40f, w * 0.06f),
     )
-    crossArm(
-        y = upperArmY,
-        halfExtend = w * 0.26f,
-        hookDrop = h * 0.04f,
-        hookOut = w * 0.035f,
-    )
+    arms.forEach { (y, half, hook) ->
+        line(Offset(cx - half, y), Offset(cx + half, y))
+        line(Offset(cx - half, y), Offset(cx - half - hook * 0.6f, y + hook))
+        line(Offset(cx + half, y), Offset(cx + half + hook * 0.6f, y + hook))
+        drawCircle(color = tint, radius = w * 0.024f, center = Offset(cx - half, y))
+        drawCircle(color = tint, radius = w * 0.024f, center = Offset(cx + half, y))
+    }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVoltageIcon(bounds: Rect, tint: Color) {
-    val gaugeColor = tint
+private fun DrawScope.drawVoltageIcon(bounds: Rect, tint: Color) {
     val center = bounds.center
     val arcHalfWidth = bounds.width * 0.34f
-    val arcHalfHeight = bounds.width * 0.30f
+    val arcHalfHeight = bounds.width * 0.34f
     val arcRect = Rect(
         left = center.x - arcHalfWidth,
         top = center.y - arcHalfHeight,
@@ -454,24 +463,21 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVoltageIcon(bou
     )
     val radiusX = arcRect.width / 2f
     val radiusY = arcRect.height / 2f
-    val pivot = center
-
     val startAngle = 155f
     val sweepAngle = 230f
     val outerStroke = bounds.width * 0.034f
-    val innerStroke = bounds.width * 0.024f
 
     drawArc(
-        color = gaugeColor.copy(alpha = 0.22f),
+        color = tint.copy(alpha = 0.22f),
         startAngle = startAngle,
         sweepAngle = sweepAngle,
         useCenter = false,
         topLeft = arcRect.topLeft,
         size = arcRect.size,
-        style = Stroke(width = outerStroke * 1.75f, cap = StrokeCap.Round),
+        style = Stroke(width = outerStroke * 1.9f, cap = StrokeCap.Round),
     )
     drawArc(
-        color = gaugeColor,
+        brush = sheen(tint),
         startAngle = startAngle,
         sweepAngle = sweepAngle,
         useCenter = false,
@@ -480,96 +486,77 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawVoltageIcon(bou
         style = Stroke(width = outerStroke, cap = StrokeCap.Round),
     )
 
-    val inset = bounds.width * 0.048f
-    val innerRect = Rect(
-        left = arcRect.left + inset,
-        top = arcRect.top + inset,
-        right = arcRect.right - inset,
-        bottom = arcRect.bottom - inset * 0.35f,
-    )
-    val dashEffect = PathEffect.dashPathEffect(
-        intervals = floatArrayOf(bounds.width * 0.038f, bounds.width * 0.032f),
-    )
-    drawArc(
-        color = gaugeColor.copy(alpha = 0.24f),
-        startAngle = startAngle,
-        sweepAngle = sweepAngle,
-        useCenter = false,
-        topLeft = innerRect.topLeft,
-        size = innerRect.size,
-        style = Stroke(
-            width = innerStroke * 1.6f,
-            cap = StrokeCap.Round,
-            pathEffect = dashEffect,
-        ),
-    )
-    drawArc(
-        color = gaugeColor.copy(alpha = 0.88f),
-        startAngle = startAngle,
-        sweepAngle = sweepAngle,
-        useCenter = false,
-        topLeft = innerRect.topLeft,
-        size = innerRect.size,
-        style = Stroke(
-            width = innerStroke,
-            cap = StrokeCap.Round,
-            pathEffect = dashEffect,
-        ),
-    )
+    // Tick marks around the dial.
+    val tickCount = 5
+    repeat(tickCount) { i ->
+        val a = (startAngle + sweepAngle * i / (tickCount - 1)) * PI / 180.0
+        val outer = Offset(
+            center.x + (radiusX * 0.92f * cos(a)).toFloat(),
+            center.y + (radiusY * 0.92f * sin(a)).toFloat(),
+        )
+        val inner = Offset(
+            center.x + (radiusX * 0.72f * cos(a)).toFloat(),
+            center.y + (radiusY * 0.72f * sin(a)).toFloat(),
+        )
+        drawLine(color = tint.copy(alpha = 0.7f), start = inner, end = outer, strokeWidth = bounds.width * 0.02f, cap = StrokeCap.Round)
+    }
 
-    val needleAngleDeg = 328f
-    val needleRad = needleAngleDeg * PI / 180.0
-    val needleLength = minOf(radiusX, radiusY) * 0.72f
+    // Needle.
+    val needleRad = 328f * PI / 180.0
+    val needleLength = minOf(radiusX, radiusY) * 0.74f
     val needleTip = Offset(
-        pivot.x + (needleLength * cos(needleRad)).toFloat(),
-        pivot.y + (needleLength * sin(needleRad)).toFloat(),
+        center.x + (needleLength * cos(needleRad)).toFloat(),
+        center.y + (needleLength * sin(needleRad)).toFloat(),
     )
-    val baseRadius = outerStroke * 0.72f
-
-    drawCircle(
-        color = gaugeColor.copy(alpha = 0.22f),
-        radius = baseRadius * 1.55f,
-        center = pivot,
-    )
-    drawCircle(color = gaugeColor, radius = baseRadius, center = pivot)
-
-    val baseHalf = outerStroke * 0.55f
+    val baseHalf = outerStroke * 0.6f
     val perpX = (-sin(needleRad) * baseHalf).toFloat()
     val perpY = (cos(needleRad) * baseHalf).toFloat()
     val needlePath = Path().apply {
-        moveTo(pivot.x + perpX, pivot.y + perpY)
+        moveTo(center.x + perpX, center.y + perpY)
         lineTo(needleTip.x, needleTip.y)
-        lineTo(pivot.x - perpX, pivot.y - perpY)
+        lineTo(center.x - perpX, center.y - perpY)
         close()
     }
-    drawPath(path = needlePath, color = gaugeColor.copy(alpha = 0.24f))
-    drawPath(path = needlePath, color = gaugeColor)
+    drawPath(path = needlePath, brush = sheen(tint))
+    drawCircle(color = tint.copy(alpha = 0.22f), radius = outerStroke * 1.5f, center = center)
+    drawCircle(color = tint, radius = outerStroke * 0.9f, center = center)
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCurrentIcon(bounds: Rect, tint: Color) {
+private fun DrawScope.drawCurrentIcon(bounds: Rect, tint: Color) {
     val radius = bounds.width * 0.38f
     val center = bounds.center
-    drawCircle(color = tint.copy(alpha = 0.18f), radius = radius * 1.08f, center = center)
+
+    drawCircle(color = tint.copy(alpha = 0.14f), radius = radius * 1.1f, center = center)
     drawCircle(
-        color = tint.copy(alpha = 0.35f),
+        brush = sheen(tint),
         radius = radius,
         center = center,
         style = Stroke(width = bounds.width * 0.045f),
     )
 
-    val wave = Path()
-    val startX = center.x - radius * 0.72f
-    val endX = center.x + radius * 0.72f
-    val step = (endX - startX) / 24f
-    wave.moveTo(startX, center.y)
-    for (i in 0..24) {
-        val x = startX + step * i
-        val y = center.y + sin(i * PI / 4.0).toFloat() * radius * 0.42f
-        wave.lineTo(x, y)
+    fun wave(amplitudeScale: Float): Path {
+        val path = Path()
+        val startX = center.x - radius * 0.74f
+        val endX = center.x + radius * 0.74f
+        val steps = 40
+        val step = (endX - startX) / steps
+        for (i in 0..steps) {
+            val x = startX + step * i
+            val y = center.y + sin(i * 2.0 * PI / steps * 1.5).toFloat() * radius * amplitudeScale
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        return path
     }
+
+    // Faint trailing wave for depth.
     drawPath(
-        path = wave,
-        color = tint,
+        path = wave(0.46f),
+        color = tint.copy(alpha = 0.3f),
         style = Stroke(width = bounds.width * 0.055f, cap = StrokeCap.Round),
+    )
+    drawPath(
+        path = wave(0.42f),
+        brush = sheen(tint),
+        style = Stroke(width = bounds.width * 0.05f, cap = StrokeCap.Round),
     )
 }

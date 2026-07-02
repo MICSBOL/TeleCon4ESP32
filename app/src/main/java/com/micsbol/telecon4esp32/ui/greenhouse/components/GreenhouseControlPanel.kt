@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlass
 
 @Composable
 fun GreenhouseControlPanel(
@@ -74,7 +74,7 @@ fun GreenhouseControlPanel(
                 targetHumidityPercent,
             ),
             style = MaterialTheme.typography.bodySmall,
-            color = mutedTextColor(),
+            color = GreenhouseGlass.TextOnGlassMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()

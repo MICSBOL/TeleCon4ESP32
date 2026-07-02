@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.ui.greenhouse.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlass
 
 @Composable
 fun GreenhouseToggleButton(
@@ -30,25 +30,31 @@ fun GreenhouseToggleButton(
     isActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    activeColor: Color = StatusConnected,
+    activeColor: Color = GreenhouseGlass.AccentGreen,
 ) {
     val backgroundColor = if (isActive) {
-        activeColor.copy(alpha = 0.2f)
+        GreenhouseGlass.ChipBackground.copy(alpha = GreenhouseGlass.ChipSurfaceAlpha + 0.06f)
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        GreenhouseGlass.BadgeBackground.copy(alpha = GreenhouseGlass.ChipSurfaceAlpha)
+    }
+    val borderColor = if (isActive) {
+        GreenhouseGlass.AccentGreen.copy(alpha = 0.45f)
+    } else {
+        Color.White.copy(alpha = GreenhouseGlass.BorderAlpha)
     }
     val contentColor = if (isActive) {
-        activeColor
+        GreenhouseGlass.AccentGreen
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+        GreenhouseGlass.TextOnGlassSecondary
     }
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(GreenhouseGlass.SmallCardShape)
             .background(backgroundColor)
+            .border(1.dp, borderColor, GreenhouseGlass.SmallCardShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

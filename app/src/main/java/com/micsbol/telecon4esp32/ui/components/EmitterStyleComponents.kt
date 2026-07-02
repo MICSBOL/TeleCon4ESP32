@@ -2,18 +2,17 @@ package com.micsbol.telecon4esp32.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,44 +20,47 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.theme.TechBlue
-import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
-import com.micsbol.telecon4esp32.ui.theme.TechBlueDark
-import com.micsbol.telecon4esp32.ui.theme.TechCyan
-import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
-import com.micsbol.telecon4esp32.ui.theme.TechCyanDark
-import com.micsbol.telecon4esp32.ui.theme.TechOnPrimary
+import com.micsbol.telecon4esp32.ui.cyber.components.CyberBackground
+import com.micsbol.telecon4esp32.ui.cyber.theme.CyberColors
+import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelPlasticColors
+import com.micsbol.telecon4esp32.ui.control_panel.components.drawPlasticRaisedRoundRect
+import com.micsbol.telecon4esp32.ui.theme.HudCyan
+import com.micsbol.telecon4esp32.ui.theme.HudCyanBright
 import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
+import com.micsbol.telecon4esp32.ui.theme.syncopate
 
 val EmitterCardShape = RoundedCornerShape(14.dp)
 val EmitterInnerShape = RoundedCornerShape(10.dp)
@@ -79,7 +81,7 @@ fun EmitterBackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = contentDescription,
-            tint = brandPrimary(),
+            tint = HudCyanBright,
         )
     }
 }
@@ -100,21 +102,17 @@ fun EmitterBrandLogo(
 }
 
 @Composable
-fun brandPrimary(): Color =
-    if (isSystemInDarkTheme()) TechBlueBright else TechBlue
+fun brandPrimary(): Color = HudCyan
 
 @Composable
-fun brandSecondary(): Color =
-    if (isSystemInDarkTheme()) TechCyanBright else TechCyan
+fun brandSecondary(): Color = HudCyanBright
 
 @Composable
 fun mutedTextColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 fun actionButtonGradient(): Brush {
-    val start = if (isSystemInDarkTheme()) TechBlueBright else TechBlue
-    val end = if (isSystemInDarkTheme()) TechCyanBright else TechCyanDark
-    return Brush.horizontalGradient(listOf(start, end))
+    return Brush.horizontalGradient(listOf(HudCyan, HudCyanBright))
 }
 
 @Composable
@@ -140,32 +138,35 @@ fun TeleCon4Esp32Scaffold(
         } else {
             EmitterHeaderBrandLogoSize
         }
-    Scaffold(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TeleCon4Esp32TopBar(
-                title = title,
-                subtitle = subtitle,
-                showBrandLogo = showBrandLogo,
-                brandLogoSize = resolvedLogoSize,
-                navigationIcon = resolvedNavigationIcon,
-                actions = actions
-            )
-        },
-        bottomBar = {
-            if (showAdBanner) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.navigationBars),
-                ) {
-                    AdBanner(modifier = Modifier.fillMaxWidth())
+    Box(modifier = modifier.fillMaxSize()) {
+        CyberBackground()
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            topBar = {
+                TeleCon4Esp32TopBar(
+                    title = title,
+                    subtitle = subtitle,
+                    showBrandLogo = showBrandLogo,
+                    brandLogoSize = resolvedLogoSize,
+                    navigationIcon = resolvedNavigationIcon,
+                    actions = actions
+                )
+            },
+            bottomBar = {
+                if (showAdBanner) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(WindowInsets.navigationBars),
+                    ) {
+                        AdBanner(modifier = Modifier.fillMaxWidth())
+                    }
                 }
-            }
-        },
-        content = content
-    )
+            },
+            content = content
+        )
+    }
 }
 
 @Composable
@@ -177,15 +178,15 @@ fun TeleCon4Esp32TopBar(
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val titleGlow = Shadow(
+        color = CyberColors.NeonPrimary.copy(alpha = 0.85f),
+        offset = Offset.Zero,
+        blurRadius = 12f,
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
-            .background(MaterialTheme.colorScheme.surface)
-            .shadow(
-                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            )
     ) {
         Row(
             modifier = Modifier
@@ -216,18 +217,30 @@ fun TeleCon4Esp32TopBar(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Start
+                        text = title.uppercase(),
+                        style = TextStyle(
+                            fontFamily = syncopate,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            letterSpacing = 1.5.sp,
+                            shadow = titleGlow,
+                        ),
+                        color = CyberColors.NeonPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Start,
                     )
                     if (subtitle != null) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = mutedTextColor(),
+                            style = TextStyle(
+                                fontFamily = syncopate,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 10.sp,
+                                letterSpacing = 1.sp,
+                            ),
+                            color = CyberColors.TextSecondary,
                             textAlign = TextAlign.Start
                         )
                     }
@@ -242,12 +255,12 @@ fun TeleCon4Esp32TopBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
+                .height(2.dp)
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            brandPrimary().copy(alpha = 0.85f),
-                            brandSecondary().copy(alpha = 0.85f),
+                            CyberColors.NeonPrimary.copy(alpha = 0.9f),
+                            CyberColors.NeonSecondary.copy(alpha = 0.6f),
                             Color.Transparent
                         )
                     )
@@ -269,7 +282,8 @@ fun EmitterIconContainer(
         modifier = modifier
             .size(boxSize)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(HudCyan.copy(alpha = 0.12f))
+            .border(1.dp, HudCyan.copy(alpha = 0.4f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -286,40 +300,29 @@ fun EmitterStyledCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val elevation = if (isSystemInDarkTheme()) 0.dp else 3.dp
-
-    Surface(
+    val shape = RoundedCornerShape(12.dp)
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(elevation, EmitterCardShape),
-        shape = EmitterCardShape,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = if (isSystemInDarkTheme()) 2.dp else 0.dp,
-        content = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(brandPrimary(), brandSecondary())
-                            )
-                        )
-                )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    content = content
+            .clip(shape)
+            .drawBehind {
+                drawPlasticRaisedRoundRect(
+                    topLeft = Offset.Zero,
+                    size = Size(size.width, size.height),
+                    cornerRadius = CornerRadius(12.dp.toPx()),
                 )
             }
-        }
-    )
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(ControlPanelPlasticColors.ScreenBackground.copy(alpha = 0.92f))
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -328,11 +331,15 @@ fun EmitterSectionTitle(
     modifier: Modifier = Modifier
 ) {
     Text(
-        text = text,
+        text = text.uppercase(),
         modifier = modifier.padding(bottom = 8.dp, start = 4.dp),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onBackground
+        style = TextStyle(
+            fontFamily = syncopate,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            letterSpacing = 1.sp,
+        ),
+        color = HudCyanBright,
     )
 }
 
@@ -349,61 +356,12 @@ fun EmitterQuickStartButton(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .shadow(
-                    elevation = if (enabled) 6.dp else 0.dp,
-                    shape = EmitterPillButtonShape,
-                    ambientColor = brandSecondary().copy(alpha = 0.35f),
-                    spotColor = brandPrimary().copy(alpha = 0.4f)
-                )
-                .clip(EmitterPillButtonShape)
-                .background(
-                    if (enabled) {
-                        actionButtonGradient()
-                    } else {
-                        Brush.horizontalGradient(
-                            listOf(
-                                brandPrimary().copy(alpha = 0.4f),
-                                brandSecondary().copy(alpha = 0.4f)
-                            )
-                        )
-                    }
-                )
-                .clickable(enabled = enabled, onClick = onClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                if (icon != null) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = TechOnPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                }
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TechOnPrimary
-                )
-            }
-        }
-        if (supportingText != null) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = supportingText,
-                style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor()
-            )
-        }
+        ShellPlasticStartButton(
+            title = text,
+            subtitle = supportingText ?: "",
+            onClick = onClick,
+            enabled = enabled,
+        )
     }
 }
 
@@ -414,23 +372,13 @@ fun EmitterFilledButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    Button(
+    ShellPlasticStartButton(
+        title = text,
+        subtitle = "",
         onClick = onClick,
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier.fillMaxWidth(),
-        shape = EmitterPillButtonShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = brandPrimary(),
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
+    )
 }
 
 @Composable

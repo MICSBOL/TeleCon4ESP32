@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -21,24 +20,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.ui.components.ConnectionStatusDot
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlass
 
 @Composable
 fun GreenhouseStatusBadge(
     text: String,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    backgroundColor: Color = GreenhouseGlass.BadgeBackground.copy(alpha = GreenhouseGlass.BadgeSurfaceAlpha),
+    contentColor: Color = GreenhouseGlass.TextOnGlassPrimary,
     showStatusDot: Boolean = false,
     connected: Boolean = true,
     leadingIcon: ImageVector? = null,
-    iconTint: Color = StatusConnected,
+    iconTint: Color = GreenhouseGlass.AccentGreen,
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(GreenhouseGlass.PillShape)
             .background(backgroundColor)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showStatusDot) {
@@ -74,9 +73,9 @@ fun GreenhouseStableBadge(
     GreenhouseStatusBadge(
         text = text,
         modifier = modifier,
-        backgroundColor = StatusConnected.copy(alpha = 0.15f),
-        contentColor = StatusConnected,
+        backgroundColor = GreenhouseGlass.ChipBackground.copy(alpha = GreenhouseGlass.ChipSurfaceAlpha),
+        contentColor = GreenhouseGlass.AccentGreen,
         leadingIcon = Icons.Default.Check,
-        iconTint = StatusConnected,
+        iconTint = GreenhouseGlass.AccentGreen,
     )
 }

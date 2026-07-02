@@ -13,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +27,7 @@ fun PrivacyPolicyScreen(navController: NavController) {
     }
     val rememberedPolicyUrl = remember(policyUrl) { policyUrl }
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(R.string.privacy_policy_title),
         onNavigateBack = { navController.navigateUp() },
     ) { paddingValues ->

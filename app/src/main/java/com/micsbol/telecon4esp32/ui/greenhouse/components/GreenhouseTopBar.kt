@@ -3,31 +3,32 @@ package com.micsbol.telecon4esp32.ui.greenhouse.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlass
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlassIconButton
 
 @Composable
 fun GreenhouseTopBar(
@@ -42,36 +43,55 @@ fun GreenhouseTopBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Black.copy(alpha = 0.42f),
+                        0.75f to Color.Black.copy(alpha = 0.16f),
+                        1f to Color.Transparent,
+                    ),
+                ),
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onMenuClick) {
+            GreenhouseGlassIconButton(onClick = onMenuClick) {
                 Icon(
                     imageVector = Icons.Default.Menu,
                     contentDescription = stringResource(R.string.greenhouse_menu_content_description),
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = GreenhouseGlass.AccentGreen,
+                    modifier = Modifier.size(22.dp),
                 )
             }
+            Spacer(modifier = Modifier.width(10.dp))
+            Icon(
+                imageVector = Icons.Default.Eco,
+                contentDescription = null,
+                tint = GreenhouseGlass.LeafBright,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = stringResource(R.string.greenhouse_screen_title),
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = GreenhouseGlass.TextOnBackgroundPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(8.dp))
             actions()
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             GreenhouseStatusBadge(
                 text = stringResource(
@@ -79,26 +99,41 @@ fun GreenhouseTopBar(
                 ),
                 showStatusDot = true,
                 connected = isOnline,
+                backgroundColor = GreenhouseGlass.BadgeBackground.copy(alpha = GreenhouseGlass.BadgeSurfaceAlpha),
+                contentColor = GreenhouseGlass.TextOnGlassPrimary,
             )
             if (isAutoMode) {
                 GreenhouseStatusBadge(
                     text = stringResource(R.string.greenhouse_mode_auto),
-                    backgroundColor = StatusConnected.copy(alpha = 0.15f),
-                    contentColor = StatusConnected,
+                    backgroundColor = GreenhouseGlass.ChipBackground.copy(
+                        alpha = GreenhouseGlass.ChipSurfaceAlpha,
+                    ),
+                    contentColor = GreenhouseGlass.AccentGreen,
                     leadingIcon = Icons.Default.Eco,
+                    iconTint = GreenhouseGlass.AccentGreen,
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 text = deviceId,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.labelMedium,
-                color = mutedTextColor(),
+                color = GreenhouseGlass.TextOnBackgroundSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.greenhouse_updated_ago, updatedAgo),
                 style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor(),
+                color = GreenhouseGlass.TextOnBackgroundSecondary,
+                maxLines = 1,
+                textAlign = TextAlign.End,
             )
         }
     }

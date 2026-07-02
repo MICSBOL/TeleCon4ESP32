@@ -17,7 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
 import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
@@ -55,6 +58,7 @@ fun Tank3DVisualization(
     width: Dp = 140.dp,
     showScale: Boolean = true,
     animateLevel: Boolean = true,
+    showGlow: Boolean = false,
 ) {
     val clampedLevel = levelPercent.coerceIn(0, 100)
     val animatedLevel by animateIntAsState(
@@ -76,7 +80,8 @@ fun Tank3DVisualization(
             ),
             modifier = Modifier
                 .width(width)
-                .height(height),
+                .height(height)
+                .then(if (showGlow) Modifier.tankGlow() else Modifier),
             contentScale = ContentScale.Fit,
         )
         if (showScale) {
@@ -86,6 +91,25 @@ fun Tank3DVisualization(
             )
         }
     }
+}
+
+/** Soft radial halo drawn behind the tank PNG so it reads as a glowing hero element. */
+private fun Modifier.tankGlow(): Modifier = drawBehind {
+    val radius = size.maxDimension * 0.74f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colorStops = arrayOf(
+                0f to TechCyanBright.copy(alpha = 0.30f),
+                0.45f to TechBlueBright.copy(alpha = 0.12f),
+                0.75f to TechBlueBright.copy(alpha = 0.04f),
+                1f to Color.Transparent,
+            ),
+            center = center,
+            radius = radius,
+        ),
+        radius = radius,
+        center = center,
+    )
 }
 
 @Composable

@@ -1,24 +1,39 @@
 package com.micsbol.telecon4esp32.ui.watertank.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
 import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
 
 @Composable
@@ -37,16 +52,41 @@ fun CurrentLevelCard(
             Tank3DVisualization(
                 levelPercent = levelPercent,
                 showScale = true,
+                showGlow = true,
             )
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.padding(start = 8.dp),
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(TechCyanBright.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WaterDrop,
+                            contentDescription = null,
+                            tint = TechCyanBright,
+                            modifier = Modifier.size(13.dp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.water_tank_current_level),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = mutedTextColor(),
+                    )
+                }
                 Text(
                     text = stringResource(R.string.water_tank_percent_value, levelPercent),
                     style = MaterialTheme.typography.displaySmall.copy(
-                        fontSize = 42.sp,
+                        fontSize = 44.sp,
                         fontWeight = FontWeight.Bold,
                     ),
                     color = TechCyanBright,
@@ -61,12 +101,42 @@ fun CurrentLevelCard(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    text = stringResource(R.string.water_tank_current_level),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = mutedTextColor(),
+                Spacer(modifier = Modifier.height(2.dp))
+                LevelProgressBar(
+                    levelPercent = levelPercent,
+                    modifier = Modifier.width(128.dp),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LevelProgressBar(
+    levelPercent: Int,
+    modifier: Modifier = Modifier,
+) {
+    val fraction by animateFloatAsState(
+        targetValue = levelPercent.coerceIn(0, 100) / 100f,
+        animationSpec = tween(durationMillis = 600),
+        label = "levelBar",
+    )
+    Box(
+        modifier = modifier
+            .height(8.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction)
+                .clip(RoundedCornerShape(50))
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(TechBlueBright, TechCyanBright),
+                    ),
+                ),
+        )
     }
 }

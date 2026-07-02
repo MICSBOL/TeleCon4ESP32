@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.smarthome
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bed
@@ -32,6 +33,7 @@ data class RoomUiModel(
     val id: String,
     @StringRes val nameRes: Int,
     val icon: ImageVector,
+    @DrawableRes val imageRes: Int,
     val accentColor: Color,
     val statusBadge: RoomStatusBadge,
     val onCount: Int = 0,
@@ -88,6 +90,7 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         id = "living_room",
         nameRes = R.string.smart_home_room_living_room,
         icon = Icons.Default.Weekend,
+        imageRes = R.drawable.smart_light_living_room_on,
         accentColor = TechBlueBright,
         statusBadge = RoomStatusBadge.ON_COUNT,
         onCount = 2,
@@ -98,6 +101,7 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         id = "kitchen",
         nameRes = R.string.smart_home_room_kitchen,
         icon = Icons.Default.Kitchen,
+        imageRes = R.drawable.smart_light_kitchen_strip_on,
         accentColor = PlotYellow,
         statusBadge = RoomStatusBadge.ON_COUNT,
         onCount = 1,
@@ -107,6 +111,7 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         id = "bedroom",
         nameRes = R.string.smart_home_room_bedroom,
         icon = Icons.Default.Bed,
+        imageRes = R.drawable.smart_light_bedroom_ceiling_off,
         accentColor = TechCyanBright,
         statusBadge = RoomStatusBadge.OFF,
         temperatureC = 19f,
@@ -115,6 +120,7 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         id = "garage",
         nameRes = R.string.smart_home_room_garage,
         icon = Icons.Default.DirectionsCar,
+        imageRes = R.drawable.smart_light_led_garage_on,
         accentColor = PlotOrange,
         statusBadge = RoomStatusBadge.OPEN,
         temperatureC = 18f,

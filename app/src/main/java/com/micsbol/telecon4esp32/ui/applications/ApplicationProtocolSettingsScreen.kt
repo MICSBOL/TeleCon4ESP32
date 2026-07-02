@@ -19,8 +19,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.theme.Neo
 
 @Composable
 fun ApplicationProtocolSettingsScreen(
@@ -30,7 +30,7 @@ fun ApplicationProtocolSettingsScreen(
 ) {
     val protocolMode by viewModel.protocolMode.collectAsStateWithLifecycle()
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.app_settings_communication_subtitle),
         onNavigateBack = { navController.navigateUp() },
@@ -58,7 +58,7 @@ fun ApplicationProtocolSettingsLoadingScreen(
     navController: NavController,
     applicationId: ApplicationId,
 ) {
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.app_settings_communication_subtitle),
         onNavigateBack = { navController.navigateUp() },
@@ -69,7 +69,7 @@ fun ApplicationProtocolSettingsLoadingScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(color = brandPrimary())
+            CircularProgressIndicator(color = Neo.Accent)
         }
     }
 }
@@ -80,7 +80,7 @@ fun ApplicationProtocolSettingsErrorScreen(
     applicationId: ApplicationId,
     message: String,
 ) {
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.app_settings_communication_subtitle),
         onNavigateBack = { navController.navigateUp() },

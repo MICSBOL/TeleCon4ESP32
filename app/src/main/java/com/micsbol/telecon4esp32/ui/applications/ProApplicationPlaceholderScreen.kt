@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,12 +14,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsIconButton
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.theme.Neo
 
 @Composable
 fun ProApplicationPlaceholderScreen(
@@ -29,7 +29,7 @@ fun ProApplicationPlaceholderScreen(
 ) {
     val catalogItem = defaultApplicationCatalog().first { it.id == applicationId }
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(catalogItem.titleRes),
         subtitle = stringResource(catalogItem.subtitleRes),
         onNavigateBack = { navController.navigateUp() },
@@ -50,15 +50,16 @@ fun ProApplicationPlaceholderScreen(
         ) {
             Text(
                 text = stringResource(R.string.pro_app_placeholder_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
+                color = Neo.TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.pro_app_placeholder_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = mutedTextColor(),
+                color = Neo.TextSecondary,
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
             )
         }

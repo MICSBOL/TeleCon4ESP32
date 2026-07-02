@@ -22,7 +22,7 @@ import com.micsbol.telecon4esp32.domain.model.Entitlement
 import com.micsbol.telecon4esp32.domain.model.has
 import com.micsbol.telecon4esp32.domain.model.isFree
 import com.micsbol.telecon4esp32.domain.model.premiumFeature
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
@@ -32,7 +32,7 @@ fun ApplicationsScreen(navController: NavController) {
     val catalog = remember { defaultApplicationCatalog() }
     var comingSoonAppName by remember { mutableStateOf<String?>(null) }
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(R.string.applications_title),
         subtitle = stringResource(R.string.applications_subtitle),
         onNavigateBack = { navController.navigateUp() },

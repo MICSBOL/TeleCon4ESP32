@@ -58,9 +58,11 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
-import com.micsbol.telecon4esp32.ui.components.EmitterStyledCard
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 private const val TUTORIAL_VIDEO_STEP2_LIGHT = "videos/video_step2_light.mp4"
@@ -150,7 +152,7 @@ fun TutorialScreen(navController: NavController) {
     )
     val pagerState = rememberPagerState(pageCount = { tutorialSteps.size })
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(R.string.home_title),
         subtitle = stringResource(R.string.app_tutorial_title),
         onNavigateBack = { navController.navigateUp() },
@@ -175,8 +177,8 @@ fun TutorialScreen(navController: NavController) {
             ) {
                 repeat(pagerState.pageCount) { iteration ->
                     val color =
-                        if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(
-                            alpha = 0.3f
+                        if (pagerState.currentPage == iteration) Neo.Accent else Neo.TextSecondary.copy(
+                            alpha = 0.4f
                         )
                     Box(
                         modifier = Modifier
@@ -196,11 +198,12 @@ fun TutorialScreen(navController: NavController) {
 fun TutorialPage(step: TutorialStep) {
     val isDarkTheme = isSystemInDarkTheme()
 
-    EmitterStyledCard(
+    NeoCard(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
-            .padding(top = 8.dp)
+            .padding(top = 8.dp),
+        contentPadding = 8.dp,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -208,8 +211,10 @@ fun TutorialPage(step: TutorialStep) {
         ) {
             Text(
                 text = step.title,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 8.dp)
+                color = Neo.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 12.dp, start = 12.dp, end = 12.dp, bottom = 8.dp)
             )
 
             Box(
@@ -262,13 +267,13 @@ fun TutorialPage(step: TutorialStep) {
             ) {
                 HorizontalDivider(
                     thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                    color = Neo.Accent.copy(alpha = 0.25f)
                 )
                 val scrollState = rememberScrollState()
                 Text(
                     text = step.description,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodyLarge,
+                    color = Neo.TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
                         .padding(top = 8.dp)
                         .heightIn(max = 188.dp)

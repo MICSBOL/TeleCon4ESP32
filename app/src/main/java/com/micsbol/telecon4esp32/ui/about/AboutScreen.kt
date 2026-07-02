@@ -40,12 +40,11 @@ import com.micsbol.telecon4esp32.BuildConfig
 import java.util.Locale
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.util.hostedPdfUrl
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
-import com.micsbol.telecon4esp32.ui.components.EmitterSectionTitle
-import com.micsbol.telecon4esp32.ui.components.EmitterStyledCard
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.navigation.Screen
+import com.micsbol.telecon4esp32.ui.theme.Neo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +71,7 @@ fun AboutScreen(navController: NavController) {
 
     fun openPrivacyPolicyInBrowser() = openUrl(privacyPolicyUrl)
 
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(R.string.about_title),
         subtitle = stringResource(R.string.about_subtitle),
         onNavigateBack = { navController.navigateUp() },
@@ -81,7 +80,7 @@ fun AboutScreen(navController: NavController) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = stringResource(R.string.about_open_in_browser),
-                    tint = brandPrimary()
+                    tint = Neo.Accent
                 )
             }
         }
@@ -97,17 +96,17 @@ fun AboutScreen(navController: NavController) {
                 text = stringResource(R.string.about_version_label, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = Neo.TextPrimary
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.about_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = mutedTextColor()
+                color = Neo.TextSecondary
             )
             Spacer(modifier = Modifier.height(20.dp))
-            EmitterSectionTitle(text = stringResource(R.string.about_legal_section_title))
-            EmitterStyledCard(
+            NeoSectionTitle(text = stringResource(R.string.about_legal_section_title))
+            NeoCard(
                 modifier = Modifier.clickable {
                     navController.navigate(Screen.PrivacyPolicy.route)
                 }
@@ -127,19 +126,19 @@ fun AboutScreen(navController: NavController) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                         contentDescription = null,
-                        tint = brandPrimary(),
+                        tint = Neo.Accent,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
                         text = stringResource(R.string.about_open_in_browser),
-                        color = brandPrimary()
+                        color = Neo.Accent
                     )
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
-            EmitterSectionTitle(text = stringResource(R.string.about_documentation_section_title))
-            EmitterStyledCard(
+            NeoSectionTitle(text = stringResource(R.string.about_documentation_section_title))
+            NeoCard(
                 modifier = Modifier.clickable { openUrl(documentationHomeUrl) }
             ) {
                 AboutLinkRow(
@@ -149,7 +148,7 @@ fun AboutScreen(navController: NavController) {
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            EmitterStyledCard(
+            NeoCard(
                 modifier = Modifier.clickable { openUrl(hostedPdfUrl(documentationPdfEnUrl)) }
             ) {
                 AboutLinkRow(
@@ -159,7 +158,7 @@ fun AboutScreen(navController: NavController) {
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            EmitterStyledCard(
+            NeoCard(
                 modifier = Modifier.clickable { openUrl(hostedPdfUrl(documentationPdfEsUrl)) }
             ) {
                 AboutLinkRow(
@@ -169,7 +168,7 @@ fun AboutScreen(navController: NavController) {
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            EmitterStyledCard(
+            NeoCard(
                 modifier = Modifier.clickable { openUrl(documentationRepositoryUrl) }
             ) {
                 AboutLinkRow(
@@ -179,19 +178,19 @@ fun AboutScreen(navController: NavController) {
                 )
             }
             Spacer(modifier = Modifier.height(20.dp))
-            EmitterSectionTitle(text = stringResource(R.string.about_data_section_title))
-            EmitterStyledCard {
+            NeoSectionTitle(text = stringResource(R.string.about_data_section_title))
+            NeoCard {
                 Text(
                     text = stringResource(R.string.about_data_section_body),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = mutedTextColor()
+                    color = Neo.TextSecondary
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.about_contact_label, stringResource(R.string.about_contact_email)),
                 style = MaterialTheme.typography.bodySmall,
-                color = mutedTextColor()
+                color = Neo.TextSecondary
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -212,7 +211,7 @@ private fun AboutLinkRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = brandPrimary(),
+            tint = Neo.TextPrimary,
             modifier = Modifier.size(28.dp)
         )
         Column(modifier = Modifier.weight(1f)) {
@@ -220,19 +219,19 @@ private fun AboutLinkRow(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Neo.TextPrimary
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = mutedTextColor()
+                color = Neo.TextSecondary
             )
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = mutedTextColor(),
+            tint = Neo.TextSecondary,
             modifier = Modifier.size(24.dp)
         )
     }
