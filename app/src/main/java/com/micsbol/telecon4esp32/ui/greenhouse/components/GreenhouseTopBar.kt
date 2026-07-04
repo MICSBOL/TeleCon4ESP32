@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
@@ -112,6 +113,14 @@ fun GreenhouseTopBar(
                     leadingIcon = Icons.Default.Eco,
                     iconTint = GreenhouseGlass.AccentGreen,
                 )
+            } else {
+                GreenhouseStatusBadge(
+                    text = stringResource(R.string.greenhouse_mode_manual),
+                    backgroundColor = GreenhouseGlass.BadgeBackground.copy(
+                        alpha = GreenhouseGlass.BadgeSurfaceAlpha,
+                    ),
+                    contentColor = GreenhouseGlass.TextOnGlassSecondary,
+                )
             }
         }
 
@@ -134,6 +143,60 @@ fun GreenhouseTopBar(
                 color = GreenhouseGlass.TextOnBackgroundSecondary,
                 maxLines = 1,
                 textAlign = TextAlign.End,
+            )
+        }
+    }
+}
+
+@Composable
+fun GreenhouseSubScreenTopBar(
+    title: String,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GreenhouseGlassIconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.greenhouse_settings_back),
+                    tint = GreenhouseGlass.AccentGreen,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Icon(
+                imageVector = Icons.Default.Eco,
+                contentDescription = null,
+                tint = GreenhouseGlass.LeafBright,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = GreenhouseGlass.TextOnGlassPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                modifier = Modifier.padding(start = 54.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = GreenhouseGlass.TextOnGlassSecondary,
             )
         }
     }

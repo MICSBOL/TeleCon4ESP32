@@ -29,10 +29,11 @@ data class EnvironmentalChartData(
 }
 
 data class GreenhouseUiState(
-    val isOnline: Boolean = true,
+    val isOnline: Boolean = false,
     val isAutoMode: Boolean = true,
     val deviceId: String = "ESP32-GH01",
-    val updatedAgo: String = "2m",
+    val updatedAgo: String = "—",
+    val lastTelemetryAtMs: Long = 0L,
     val temperatureC: Float = 26.2f,
     val humidityPercent: Int = 68,
     val vpdKpa: Float = 1.1f,

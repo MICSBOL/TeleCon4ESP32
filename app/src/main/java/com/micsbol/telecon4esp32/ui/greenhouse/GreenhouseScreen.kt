@@ -23,7 +23,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,12 +46,12 @@ import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
-import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
 import com.micsbol.telecon4esp32.ui.greenhouse.components.EnvironmentalChart
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseControlPanel
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseTopBar
 import com.micsbol.telecon4esp32.ui.greenhouse.components.MainStatusCard
 import com.micsbol.telecon4esp32.ui.greenhouse.components.SensorDataGrid
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 private const val GreenhouseIllustrationAspectRatio = 368f / 331f
@@ -122,19 +124,51 @@ fun GreenhouseScreen(
         onFanToggle = viewModel::toggleFan,
         onHeaterToggle = viewModel::toggleHeater,
         onPumpToggle = viewModel::togglePump,
+        onLightsToggle = viewModel::toggleLights,
+        onAutoModeToggle = viewModel::toggleAutoMode,
+        onVentChange = viewModel::updateVentOpenLocal,
+        onVentChangeFinished = viewModel::commitVentOpen,
+        onTargetTempChange = viewModel::updateTargetTempLocal,
+        onTargetHumidityChange = viewModel::updateTargetHumidityLocal,
+        onTargetClimateFinished = viewModel::commitTargetClimate,
         topBarActions = {
-            GreenhouseGlassIconButton(
-                onClick = { navController.navigateToApplicationSettings(ApplicationId.GREENHOUSE) },
+            Row(
+                modifier = Modifier.padding(start = 4.dp, end = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = stringResource(
-                        R.string.applications_settings_content_description,
-                        stringResource(applicationSettingsTitleRes(ApplicationId.GREENHOUSE)),
-                    ),
-                    tint = GreenhouseGlass.AccentGreen,
-                    modifier = Modifier.size(22.dp),
-                )
+                GreenhouseGlassIconButton(
+                    onClick = { navController.navigate(Screen.GreenhouseCamera.route) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Videocam,
+                        contentDescription = stringResource(R.string.greenhouse_camera_content_description),
+                        tint = GreenhouseGlass.AccentGreen,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                GreenhouseGlassIconButton(
+                    onClick = { navController.navigate(Screen.GreenhouseHelp.route) },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = stringResource(R.string.greenhouse_help_content_description),
+                        tint = GreenhouseGlass.AccentGreen,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                GreenhouseGlassIconButton(
+                    onClick = { navController.navigate(Screen.GreenhouseSettings.route) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(
+                            R.string.applications_settings_content_description,
+                            stringResource(applicationSettingsTitleRes(ApplicationId.GREENHOUSE)),
+                        ),
+                        tint = GreenhouseGlass.AccentGreen,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
         },
     )
@@ -147,6 +181,13 @@ fun GreenhouseScreenContent(
     onFanToggle: () -> Unit,
     onHeaterToggle: () -> Unit,
     onPumpToggle: () -> Unit,
+    onLightsToggle: () -> Unit,
+    onAutoModeToggle: () -> Unit,
+    onVentChange: (Int) -> Unit,
+    onVentChangeFinished: () -> Unit,
+    onTargetTempChange: (Int) -> Unit,
+    onTargetHumidityChange: (Int) -> Unit,
+    onTargetClimateFinished: () -> Unit,
     modifier: Modifier = Modifier,
     topBarActions: @Composable () -> Unit = {},
 ) {
@@ -188,6 +229,13 @@ fun GreenhouseScreenContent(
                             onFanToggle = onFanToggle,
                             onHeaterToggle = onHeaterToggle,
                             onPumpToggle = onPumpToggle,
+                            onLightsToggle = onLightsToggle,
+                            onAutoModeToggle = onAutoModeToggle,
+                            onVentChange = onVentChange,
+                            onVentChangeFinished = onVentChangeFinished,
+                            onTargetTempChange = onTargetTempChange,
+                            onTargetHumidityChange = onTargetHumidityChange,
+                            onTargetClimateFinished = onTargetClimateFinished,
                         )
                     }
                 }
@@ -237,11 +285,21 @@ fun GreenhouseScreenContent(
                     fanOn = uiState.fanOn,
                     heaterOn = uiState.heaterOn,
                     pumpOn = uiState.pumpOn,
+                    lightsOn = uiState.lightsOn,
+                    isAutoMode = uiState.isAutoMode,
+                    ventOpenPercent = uiState.ventOpenPercent,
                     targetTempC = uiState.targetTempC,
                     targetHumidityPercent = uiState.targetHumidityPercent,
                     onFanToggle = onFanToggle,
                     onHeaterToggle = onHeaterToggle,
                     onPumpToggle = onPumpToggle,
+                    onLightsToggle = onLightsToggle,
+                    onAutoModeToggle = onAutoModeToggle,
+                    onVentChange = onVentChange,
+                    onVentChangeFinished = onVentChangeFinished,
+                    onTargetTempChange = onTargetTempChange,
+                    onTargetHumidityChange = onTargetHumidityChange,
+                    onTargetClimateFinished = onTargetClimateFinished,
                     modifier = Modifier
                         .fillMaxWidth()
                         .windowInsetsPadding(scrollEdgeInsets.only(WindowInsetsSides.Horizontal))
@@ -260,6 +318,13 @@ private fun WideLayoutContent(
     onFanToggle: () -> Unit,
     onHeaterToggle: () -> Unit,
     onPumpToggle: () -> Unit,
+    onLightsToggle: () -> Unit,
+    onAutoModeToggle: () -> Unit,
+    onVentChange: (Int) -> Unit,
+    onVentChangeFinished: () -> Unit,
+    onTargetTempChange: (Int) -> Unit,
+    onTargetHumidityChange: (Int) -> Unit,
+    onTargetClimateFinished: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -297,14 +362,44 @@ private fun WideLayoutContent(
                 fanOn = uiState.fanOn,
                 heaterOn = uiState.heaterOn,
                 pumpOn = uiState.pumpOn,
+                lightsOn = uiState.lightsOn,
+                isAutoMode = uiState.isAutoMode,
+                ventOpenPercent = uiState.ventOpenPercent,
                 targetTempC = uiState.targetTempC,
                 targetHumidityPercent = uiState.targetHumidityPercent,
                 onFanToggle = onFanToggle,
                 onHeaterToggle = onHeaterToggle,
                 onPumpToggle = onPumpToggle,
+                onLightsToggle = onLightsToggle,
+                onAutoModeToggle = onAutoModeToggle,
+                onVentChange = onVentChange,
+                onVentChangeFinished = onVentChangeFinished,
+                onTargetTempChange = onTargetTempChange,
+                onTargetHumidityChange = onTargetHumidityChange,
+                onTargetClimateFinished = onTargetClimateFinished,
             )
         }
     }
+}
+
+@Composable
+private fun GreenhouseScreenPreviewContent(
+    uiState: GreenhouseUiState = GreenhouseUiState(isOnline = true, updatedAgo = "2m"),
+) {
+    GreenhouseScreenContent(
+        uiState = uiState,
+        onMenuClick = {},
+        onFanToggle = {},
+        onHeaterToggle = {},
+        onPumpToggle = {},
+        onLightsToggle = {},
+        onAutoModeToggle = {},
+        onVentChange = {},
+        onVentChangeFinished = {},
+        onTargetTempChange = {},
+        onTargetHumidityChange = {},
+        onTargetClimateFinished = {},
+    )
 }
 
 @Preview(
@@ -315,13 +410,7 @@ private fun WideLayoutContent(
 @Composable
 private fun GreenhouseScreenPortraitDarkPreview() {
     TeleCon4Esp32Theme(darkTheme = true) {
-        GreenhouseScreenContent(
-            uiState = GreenhouseUiState(),
-            onMenuClick = {},
-            onFanToggle = {},
-            onHeaterToggle = {},
-            onPumpToggle = {},
-        )
+        GreenhouseScreenPreviewContent()
     }
 }
 
@@ -332,13 +421,7 @@ private fun GreenhouseScreenPortraitDarkPreview() {
 @Composable
 private fun GreenhouseScreenPortraitLightPreview() {
     TeleCon4Esp32Theme(darkTheme = false) {
-        GreenhouseScreenContent(
-            uiState = GreenhouseUiState(),
-            onMenuClick = {},
-            onFanToggle = {},
-            onHeaterToggle = {},
-            onPumpToggle = {},
-        )
+        GreenhouseScreenPreviewContent()
     }
 }
 
@@ -351,12 +434,6 @@ private fun GreenhouseScreenPortraitLightPreview() {
 @Composable
 private fun GreenhouseScreenLandscapeDarkPreview() {
     TeleCon4Esp32Theme(darkTheme = true) {
-        GreenhouseScreenContent(
-            uiState = GreenhouseUiState(),
-            onMenuClick = {},
-            onFanToggle = {},
-            onHeaterToggle = {},
-            onPumpToggle = {},
-        )
+        GreenhouseScreenPreviewContent()
     }
 }

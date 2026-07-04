@@ -28,7 +28,10 @@ import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationsScreen
 import com.micsbol.telecon4esp32.ui.applications.ProApplicationPlaceholderScreen
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseCameraScreen
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseHelpScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseScreen
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseSettingsScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeScreen
 import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockScreen
 import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingScreen
@@ -246,6 +249,15 @@ fun AppNavGraph(
         }
         composable(Screen.GreenhousePro.route) {
             GreenhouseScreen(navController = navController)
+        }
+        composable(Screen.GreenhouseHelp.route) {
+            GreenhouseHelpScreen(navController = navController)
+        }
+        composable(Screen.GreenhouseSettings.route) {
+            GreenhouseSettingsScreen(navController = navController)
+        }
+        composable(Screen.GreenhouseCamera.route) {
+            GreenhouseCameraScreen(navController = navController)
         }
         composable(Screen.SolarPro.route) {
             SolarSystemScreen(navController = navController)

@@ -116,9 +116,11 @@ Values match the **binary** plot packet scale: `0` = bottom, `255` = top of the 
 
 ## Greenhouse (`GH`)
 
-**ESP32 → phone:** `GH:DATA,temp,26.2,hum,68,vpd,1.1,soil,42,light,12400,fan,1,heater,0,pump,0`
+**ESP32 → phone:** `GH:DATA,temp,26.2,hum,68,vpd,1.1,soil,42,light,12400,fan,1,heater,0,pump,0,lights,0,vent,40,tank,78,auto,1,target_temp,24,target_hum,65`
 
-**Phone → ESP32:** `GH:SET,fan,1` | `GH:SET,heater,0` | `GH:SET,pump,1`
+**Phone → ESP32:** `GH:SET,fan,1` | `GH:SET,heater,0` | `GH:SET,pump,1` | `GH:SET,lights,1` | `GH:SET,vent,60` | `GH:SET,auto,1` | `GH:SET,target_temp,24,target_hum,65`
+
+Optional history: `hist_temp`, `hist_hum`, `hist_vpd` as pipe-separated floats. See Greenhouse settings in the app for pin map and field guide.
 
 ---
 

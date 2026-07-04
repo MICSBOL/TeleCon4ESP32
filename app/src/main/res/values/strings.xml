@@ -313,6 +313,66 @@
     <string name="greenhouse_pump_on">Pump ON</string>
     <string name="greenhouse_pump_idle">Pump idle</string>
     <string name="greenhouse_target_climate">Target %1$d°C / %2$d%% RH</string>
+    <string name="greenhouse_mode_manual">Manual</string>
+    <string name="greenhouse_controls_title">Controls</string>
+    <string name="greenhouse_controls_expand">Expand controls</string>
+    <string name="greenhouse_controls_collapse">Collapse controls</string>
+    <string name="greenhouse_controls_all_idle">All actuators idle</string>
+    <string name="greenhouse_controls_collapsed_summary">%1$s · %2$s · Vent %3$d%% · Target %4$d°C / %5$d%% RH</string>
+    <string name="greenhouse_vent_slider_label">Roof vent: %1$d%% open</string>
+    <string name="greenhouse_target_temp_slider">Target temperature: %1$d°C</string>
+    <string name="greenhouse_target_humidity_slider">Target humidity: %1$d%%</string>
+    <string name="greenhouse_settings_subtitle">Communication protocol for this module</string>
+    <string name="greenhouse_settings_back">Back to greenhouse</string>
+    <string name="greenhouse_help_title">Greenhouse help</string>
+    <string name="greenhouse_help_subtitle">Screen components, GH protocol, and ESP32 pins</string>
+    <string name="greenhouse_help_content_description">Open greenhouse help</string>
+    <string name="greenhouse_camera_content_description">Open greenhouse camera</string>
+    <string name="greenhouse_camera_fallback_content_description">Greenhouse camera offline placeholder</string>
+    <string name="greenhouse_camera_title">Live camera</string>
+    <string name="greenhouse_camera_connecting">Connecting to ESP32-CAM…</string>
+    <string name="greenhouse_camera_unavailable_title">Camera unavailable</string>
+    <string name="greenhouse_camera_unavailable_body">Connect to the ESP32-CAM Wi‑Fi and open the stream at %1$s</string>
+    <string name="greenhouse_camera_emulator_body">Live ESP32-CAM works on a physical device. This emulator shows a greenhouse preview image.</string>
+    <string name="greenhouse_settings_guide_section_title">Screen components</string>
+    <string name="greenhouse_settings_guide_section_description">Each card on the Greenhouse screen maps to Bluetooth telemetry (GH:DATA) or commands (GH:SET). Wire your ESP32 firmware to match these keys.</string>
+    <string name="greenhouse_settings_pins_section_title">Suggested ESP32 DevKit pins</string>
+    <string name="greenhouse_settings_pins_body">I2C SDA=21, SCL=22 → BME280 (climate) + BH1750 (lux)\nGPIO 4 → DS18B20 outside temperature\nGPIO 34 → soil moisture (analog)\nGPIO 27/33 → tank ultrasonic (trig/echo)\nGPIO 13 → fan relay | 14 → heater | 16 → pump\nGPIO 17 → grow lights | 19 → vent servo PWM\nGPIO 32 → flow sensor pulse (optional)\n\nESP32-CAM (separate board): live video over Wi‑Fi at http://192.168.4.1</string>
+    <string name="greenhouse_guide_read_label">Read (ESP32 → app)</string>
+    <string name="greenhouse_guide_write_label">Write (app → ESP32)</string>
+    <string name="greenhouse_guide_topbar_title">Top bar — connection status</string>
+    <string name="greenhouse_guide_topbar_description">Shows Bluetooth link, Auto/Manual mode, device name, and time since the last GH:DATA line.</string>
+    <string name="greenhouse_guide_topbar_read">GH:DATA,auto,1,device,ESP32-GH01\nOnline = Bluetooth connected. Updated time = last GH:DATA received.</string>
+    <string name="greenhouse_guide_weather_title">Weather card — climate</string>
+    <string name="greenhouse_guide_weather_description">Main inside temperature, humidity, VPD, and stability badge. VPD is vapor pressure deficit (kPa).</string>
+    <string name="greenhouse_guide_weather_read">GH:DATA,temp,26.2,hum,68,vpd,1.1,stable,1\nBME280 on I2C (pins 21/22). ESP32 may compute vpd from temp+hum.</string>
+    <string name="greenhouse_guide_soil_title">Soil card</string>
+    <string name="greenhouse_guide_soil_description">Soil moisture percent and optional target band shown under the value.</string>
+    <string name="greenhouse_guide_soil_read">GH:DATA,soil,42,soil_min,40,soil_max,55\nCapacitive probe on GPIO 34 (ADC).</string>
+    <string name="greenhouse_guide_soil_write">GH:SET,soil_min,40,soil_max,55\nOptional — set moisture targets stored in ESP32 NVS.</string>
+    <string name="greenhouse_guide_light_title">Light card</string>
+    <string name="greenhouse_guide_light_description">Ambient light in lux and grow-light relay state.</string>
+    <string name="greenhouse_guide_light_read">GH:DATA,light,12400,lights,0\nBH1750 on I2C; lights = relay feedback on GPIO 17.</string>
+    <string name="greenhouse_guide_light_write">GH:SET,lights,1\nGPIO 17 → grow-light relay.</string>
+    <string name="greenhouse_guide_delta_title">ΔT / vent card</string>
+    <string name="greenhouse_guide_delta_description">Temperature difference inside vs outside and roof vent opening percent.</string>
+    <string name="greenhouse_guide_delta_read">GH:DATA,temp_out,23.0,vent,40\nOr send delta directly: GH:DATA,delta,3.2\nOutside: DS18B20 on GPIO 4. Vent: servo on GPIO 19.</string>
+    <string name="greenhouse_guide_delta_write">GH:SET,vent,60\nGPIO 19 → vent servo (0–100%%).</string>
+    <string name="greenhouse_guide_tank_title">Tank / irrigation card</string>
+    <string name="greenhouse_guide_tank_description">Water reservoir level and time since last irrigation cycle.</string>
+    <string name="greenhouse_guide_tank_read">GH:DATA,tank,78,last_irr,360\nUltrasonic on GPIO 27/33. last_irr = minutes since last pump run.</string>
+    <string name="greenhouse_guide_tank_write">GH:SET,pump,1\nGH:SET,pump,1,duration,120\nGPIO 16 → main pump relay.</string>
+    <string name="greenhouse_guide_chart_title">24 h environmental chart</string>
+    <string name="greenhouse_guide_chart_description">Temperature, humidity, and VPD history. Uses demo data until the ESP32 sends history arrays.</string>
+    <string name="greenhouse_guide_chart_read">GH:DATA,hist_temp,18|19|20,hist_hum,72|74,hist_vpd,0.4|0.35\nPipe-separated floats logged every 15 min on ESP32.</string>
+    <string name="greenhouse_guide_controls_title">Control panel — actuators</string>
+    <string name="greenhouse_guide_controls_description">Fan, heater, pump, and grow lights. Sliders set vent opening and climate targets.</string>
+    <string name="greenhouse_guide_controls_read">GH:DATA,fan,1,heater,0,pump,0,lights,0,vent,40,target_temp,24,target_hum,65</string>
+    <string name="greenhouse_guide_controls_write">GH:SET,fan,1\nGH:SET,heater,0\nGH:SET,pump,1\nGH:SET,lights,1\nGH:SET,vent,60\nGH:SET,target_temp,24,target_hum,65</string>
+    <string name="greenhouse_guide_auto_title">Auto / manual mode</string>
+    <string name="greenhouse_guide_auto_description">When Auto is on, the ESP32 runs climate rules using target_temp and target_hum. Manual mode keeps app buttons in control.</string>
+    <string name="greenhouse_guide_auto_read">GH:DATA,auto,1,target_temp,24,target_hum,65</string>
+    <string name="greenhouse_guide_auto_write">GH:SET,auto,1\nGH:SET,auto,0</string>
 
     <!-- WaterTankScreen -->
     <string name="water_tank_screen_title">Water Tank Level Monitor</string>

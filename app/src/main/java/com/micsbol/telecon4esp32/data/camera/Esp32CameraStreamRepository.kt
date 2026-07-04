@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.data.camera
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamRepository
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +49,7 @@ class Esp32CameraStreamRepository @Inject constructor() : CameraStreamRepository
                     }
                     connection.disconnect()
                 } catch (e: Exception) {
+                    Log.w(TAG, "Capture failed", e)
                     _streamState.value = CameraStreamState.Error(
                         e.message ?: "Camera connection failed",
                     )
@@ -82,6 +84,7 @@ class Esp32CameraStreamRepository @Inject constructor() : CameraStreamRepository
     }
 
     private companion object {
+        private const val TAG = "Esp32CameraStream"
         const val FRAME_POLL_INTERVAL_MS = 150L
         const val CONNECT_TIMEOUT_MS = 5_000
         const val READ_TIMEOUT_MS = 5_000

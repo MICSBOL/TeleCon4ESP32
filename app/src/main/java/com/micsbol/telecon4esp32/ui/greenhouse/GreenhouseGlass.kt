@@ -82,28 +82,53 @@ object GreenhouseGlass {
 @Composable
 fun GreenhouseBackground(
     modifier: Modifier = Modifier,
+    showPhoto: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(R.drawable.greenhouse_background),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
+        if (showPhoto) {
+            Image(
+                painter = painterResource(R.drawable.greenhouse_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                GreenhouseGlass.MeadowLight,
+                                GreenhouseGlass.ChipBackground,
+                                GreenhouseGlass.MeadowLight.copy(alpha = 0.92f),
+                            ),
+                        ),
+                    ),
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0f to Color.Black.copy(alpha = 0.42f),
-                            0.18f to Color.Black.copy(alpha = 0.18f),
-                            0.42f to Color.White.copy(alpha = 0.16f),
-                            0.62f to Color.White.copy(alpha = 0.12f),
-                            0.82f to Color.Black.copy(alpha = 0.26f),
-                            1f to Color.Black.copy(alpha = 0.52f),
-                        ),
+                        colorStops = if (showPhoto) {
+                            arrayOf(
+                                0f to Color.Black.copy(alpha = 0.42f),
+                                0.18f to Color.Black.copy(alpha = 0.18f),
+                                0.42f to Color.White.copy(alpha = 0.16f),
+                                0.62f to Color.White.copy(alpha = 0.12f),
+                                0.82f to Color.Black.copy(alpha = 0.26f),
+                                1f to Color.Black.copy(alpha = 0.52f),
+                            )
+                        } else {
+                            arrayOf(
+                                0f to Color.White.copy(alpha = 0.28f),
+                                0.5f to Color.Transparent,
+                                1f to GreenhouseGlass.ForestMid.copy(alpha = 0.08f),
+                            )
+                        },
                     ),
                 ),
         )
