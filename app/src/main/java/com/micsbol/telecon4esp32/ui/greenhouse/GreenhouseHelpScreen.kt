@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,8 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.HorizontalDivider
@@ -40,7 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCard
-import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseSubScreenTopBar
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 private data class GreenhouseGuideEntry(
     @StringRes val titleRes: Int,
@@ -53,6 +54,100 @@ private data class GreenhouseGuideEntry(
 @Composable
 fun GreenhouseHelpScreen(
     navController: NavController,
+) {
+    val onBackClick = {
+        GreenhouseEmulatorNavigation.backToGreenhouse(navController, Screen.GreenhouseHelp.route)
+    }
+
+    if (GreenhouseEmulatorSupport.isEmulator()) {
+        GreenhouseHelpEmulatorContent(onBackClick = onBackClick)
+        return
+    }
+
+    GreenhouseHelpFullContent(onBackClick = onBackClick)
+}
+
+@Composable
+private fun GreenhouseHelpEmulatorContent(
+    onBackClick: () -> Unit,
+) {
+    val guideEntries = remember { greenhouseGuideEntries() }
+    var expandedTitleRes by remember { mutableIntStateOf(0) }
+    val edgeInsets = WindowInsets.safeDrawing.only(
+        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    )
+    val scrollState = rememberScrollState()
+
+    GreenhouseBackground(showPhoto = false) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(edgeInsets)
+                .padding(horizontal = 16.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                GreenhouseGlassIconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.greenhouse_settings_back),
+                        tint = GreenhouseGlass.AccentGreen,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.greenhouse_help_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GreenhouseGlass.TextPrimary,
+                )
+            }
+            Text(
+                text = stringResource(R.string.greenhouse_help_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = GreenhouseGlass.TextSecondary,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.greenhouse_settings_guide_section_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GreenhouseGlass.TextSecondary,
+                )
+                guideEntries.forEachIndexed { index, entry ->
+                    GreenhouseHelpTopicRow(
+                        entry = entry,
+                        expanded = expandedTitleRes == entry.titleRes,
+                        onToggle = {
+                            expandedTitleRes = if (expandedTitleRes == entry.titleRes) {
+                                0
+                            } else {
+                                entry.titleRes
+                            }
+                        },
+                    )
+                    if (index < guideEntries.lastIndex) {
+                        HorizontalDivider(color = GreenhouseGlass.ForestMid.copy(alpha = 0.12f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GreenhouseHelpFullContent(
+    onBackClick: () -> Unit,
 ) {
     val guideEntries = remember { greenhouseGuideEntries() }
     var expandedTitleRes by remember { mutableIntStateOf(0) }
@@ -68,59 +163,92 @@ fun GreenhouseHelpScreen(
                 .windowInsetsPadding(edgeInsets)
                 .windowInsetsPadding(bottomInsets),
         ) {
-            GreenhouseSubScreenTopBar(
-                title = stringResource(R.string.greenhouse_help_title),
-                subtitle = stringResource(R.string.greenhouse_help_subtitle),
-                onBackClick = { navController.navigateUp() },
-            )
-            LazyColumn(
+            GreenhouseHelpFullTopBar(onBackClick = onBackClick)
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(bottom = 16.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
-                    GreenhouseCard(elevated = false) {
-                        Text(
-                            text = stringResource(R.string.greenhouse_settings_guide_section_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = GreenhouseGlass.TextOnGlassPrimary,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = stringResource(R.string.greenhouse_settings_guide_section_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = GreenhouseGlass.TextOnGlassSecondary,
-                        )
-                    }
+                GreenhouseCard(elevated = false) {
+                    Text(
+                        text = stringResource(R.string.greenhouse_settings_guide_section_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = GreenhouseGlass.TextOnGlassPrimary,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.greenhouse_settings_guide_section_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GreenhouseGlass.TextOnGlassSecondary,
+                    )
                 }
-                item {
-                    GreenhouseCard(elevated = false) {
-                        guideEntries.forEachIndexed { index, entry ->
-                            GreenhouseHelpTopicRow(
-                                entry = entry,
-                                expanded = expandedTitleRes == entry.titleRes,
-                                onToggle = {
-                                    expandedTitleRes = if (expandedTitleRes == entry.titleRes) {
-                                        0
-                                    } else {
-                                        entry.titleRes
-                                    }
-                                },
+                GreenhouseCard(elevated = false) {
+                    guideEntries.forEachIndexed { index, entry ->
+                        GreenhouseHelpTopicRow(
+                            entry = entry,
+                            expanded = expandedTitleRes == entry.titleRes,
+                            onToggle = {
+                                expandedTitleRes = if (expandedTitleRes == entry.titleRes) {
+                                    0
+                                } else {
+                                    entry.titleRes
+                                }
+                            },
+                        )
+                        if (index < guideEntries.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = GreenhouseGlass.ForestMid.copy(alpha = 0.12f),
                             )
-                            if (index < guideEntries.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 4.dp),
-                                    color = GreenhouseGlass.ForestMid.copy(alpha = 0.12f),
-                                )
-                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GreenhouseHelpFullTopBar(
+    onBackClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GreenhouseGlassIconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.greenhouse_settings_back),
+                    tint = GreenhouseGlass.AccentGreen,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.size(10.dp))
+            Text(
+                text = stringResource(R.string.greenhouse_help_title),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = GreenhouseGlass.TextOnGlassPrimary,
+            )
+        }
+        Text(
+            text = stringResource(R.string.greenhouse_help_subtitle),
+            modifier = Modifier.padding(start = 54.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = GreenhouseGlass.TextOnGlassSecondary,
+        )
     }
 }
 

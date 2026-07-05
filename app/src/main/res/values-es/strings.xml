@@ -327,7 +327,10 @@
     <string name="greenhouse_camera_connecting">Conectando a ESP32-CAM…</string>
     <string name="greenhouse_camera_unavailable_title">Cámara no disponible</string>
     <string name="greenhouse_camera_unavailable_body">Conéctese al Wi‑Fi del ESP32-CAM y abra la transmisión en %1$s</string>
-    <string name="greenhouse_camera_emulator_body">La cámara ESP32-CAM funciona en un dispositivo físico. Este emulador muestra una imagen de vista previa del invernadero.</string>
+    <string name="greenhouse_camera_emulator_body">La cámara ESP32-CAM en vivo solo está disponible en un dispositivo físico. El emulador te mantiene en la pantalla del invernadero para evitar cierres inesperados.</string>
+    <string name="greenhouse_camera_emulator_toast">La vista en vivo de ESP32-CAM requiere un dispositivo físico en la misma red Wi‑Fi.</string>
+    <string name="greenhouse_emulator_help_notice">La ayuda no está disponible en el emulador. Usa un dispositivo físico para leer la guía completa del protocolo.</string>
+    <string name="greenhouse_emulator_settings_notice">Los ajustes no están disponibles en el emulador. Usa un dispositivo físico para cambiar las opciones del protocolo del invernadero.</string>
     <string name="greenhouse_settings_guide_section_title">Componentes de la pantalla</string>
     <string name="greenhouse_settings_guide_section_description">Cada tarjeta de la pantalla Invernadero corresponde a telemetría Bluetooth (GH:DATA) o comandos (GH:SET). Configure su firmware ESP32 con estas claves.</string>
     <string name="greenhouse_settings_pins_section_title">Pines sugeridos ESP32 DevKit</string>

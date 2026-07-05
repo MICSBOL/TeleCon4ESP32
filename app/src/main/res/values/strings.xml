@@ -333,7 +333,10 @@
     <string name="greenhouse_camera_connecting">Connecting to ESP32-CAM…</string>
     <string name="greenhouse_camera_unavailable_title">Camera unavailable</string>
     <string name="greenhouse_camera_unavailable_body">Connect to the ESP32-CAM Wi‑Fi and open the stream at %1$s</string>
-    <string name="greenhouse_camera_emulator_body">Live ESP32-CAM works on a physical device. This emulator shows a greenhouse preview image.</string>
+    <string name="greenhouse_camera_emulator_body">Live ESP32-CAM is only available on a physical device. The emulator keeps you on the greenhouse screen to avoid crashes.</string>
+    <string name="greenhouse_camera_emulator_toast">ESP32-CAM live view requires a physical device on the same Wi‑Fi network.</string>
+    <string name="greenhouse_emulator_help_notice">Help is unavailable on the emulator. Use a physical device to read the full protocol guide.</string>
+    <string name="greenhouse_emulator_settings_notice">Settings are unavailable on the emulator. Use a physical device to change greenhouse protocol options.</string>
     <string name="greenhouse_settings_guide_section_title">Screen components</string>
     <string name="greenhouse_settings_guide_section_description">Each card on the Greenhouse screen maps to Bluetooth telemetry (GH:DATA) or commands (GH:SET). Wire your ESP32 firmware to match these keys.</string>
     <string name="greenhouse_settings_pins_section_title">Suggested ESP32 DevKit pins</string>

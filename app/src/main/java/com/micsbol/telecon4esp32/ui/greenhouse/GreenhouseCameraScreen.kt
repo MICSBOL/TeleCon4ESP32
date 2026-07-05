@@ -52,6 +52,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseStatusBadge
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 @Composable
 fun GreenhouseCameraScreen(
@@ -69,7 +70,9 @@ fun GreenhouseCameraScreen(
 
     GreenhouseCameraScreenContent(
         uiState = uiState,
-        onBackClick = { navController.navigateUp() },
+        onBackClick = {
+            GreenhouseEmulatorNavigation.backToGreenhouse(navController, Screen.GreenhouseCamera.route)
+        },
     )
 }
 
@@ -80,6 +83,14 @@ fun GreenhouseCameraScreenContent(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (uiState.isEmulatorPreview) {
+        GreenhouseCameraEmulatorContent(
+            onBackClick = onBackClick,
+            modifier = modifier,
+        )
+        return
+    }
+
     val edgeInsets = WindowInsets.safeDrawing.only(
         WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
     )
@@ -92,7 +103,7 @@ fun GreenhouseCameraScreenContent(
     ) {
         GreenhouseCameraFeed(
             cameraState = uiState.cameraState,
-            isEmulatorPreview = uiState.isEmulatorPreview,
+            isEmulatorPreview = false,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -259,6 +270,51 @@ fun GreenhouseCameraScreenContent(
 }
 
 @Composable
+private fun GreenhouseCameraEmulatorContent(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val edgeInsets = WindowInsets.safeDrawing.only(
+        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    )
+
+    GreenhouseBackground(modifier = modifier, showPhoto = false) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(edgeInsets)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                GreenhouseGlassIconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.greenhouse_settings_back),
+                        tint = GreenhouseGlass.AccentGreen,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.greenhouse_camera_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GreenhouseGlass.TextPrimary,
+                )
+            }
+            GreenhouseCameraIdleMessage(
+                title = stringResource(R.string.greenhouse_camera_unavailable_title),
+                body = stringResource(R.string.greenhouse_camera_emulator_body),
+                useLightSurface = true,
+            )
+        }
+    }
+}
+
+@Composable
 private fun GreenhouseCameraFeed(
     cameraState: CameraStreamState,
     isEmulatorPreview: Boolean,
@@ -294,9 +350,8 @@ private fun GreenhouseCameraFeed(
                 GreenhouseCameraFallbackBackground()
                 GreenhouseCameraIdleMessage(
                     title = stringResource(R.string.greenhouse_camera_unavailable_title),
-                    body = when {
-                        isEmulatorPreview -> stringResource(R.string.greenhouse_camera_emulator_body)
-                        cameraState is CameraStreamState.Error -> cameraState.message
+                    body = when (cameraState) {
+                        is CameraStreamState.Error -> cameraState.message
                         else -> stringResource(
                             R.string.greenhouse_camera_unavailable_body,
                             Esp32CameraDefaults.DEFAULT_BASE_URL,
@@ -324,17 +379,35 @@ private fun GreenhouseCameraFallbackBackground(
 private fun GreenhouseCameraIdleMessage(
     title: String,
     body: String,
+    useLightSurface: Boolean = false,
 ) {
+    val containerColor = if (useLightSurface) {
+        GreenhouseGlass.BadgeBackground.copy(alpha = GreenhouseGlass.SurfaceAlpha)
+    } else {
+        Color.Black.copy(alpha = 0.48f)
+    }
+    val borderColor = if (useLightSurface) {
+        Color.White.copy(alpha = GreenhouseGlass.BorderAlpha)
+    } else {
+        Color.White.copy(alpha = 0.22f)
+    }
+    val titleColor = if (useLightSurface) GreenhouseGlass.TextPrimary else Color.White
+    val bodyColor = if (useLightSurface) {
+        GreenhouseGlass.TextSecondary
+    } else {
+        Color.White.copy(alpha = 0.82f)
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
+            .fillMaxWidth()
             .padding(horizontal = 28.dp)
             .clip(GreenhouseGlass.SmallCardShape)
-            .background(Color.Black.copy(alpha = 0.48f))
+            .background(containerColor)
             .border(
                 width = 1.dp,
-                color = Color.White.copy(alpha = 0.22f),
+                color = borderColor,
                 shape = GreenhouseGlass.SmallCardShape,
             )
             .padding(horizontal = 18.dp, vertical = 14.dp),
@@ -342,19 +415,19 @@ private fun GreenhouseCameraIdleMessage(
         Icon(
             imageVector = Icons.Default.VideocamOff,
             contentDescription = null,
-            tint = GreenhouseGlass.LeafLime,
+            tint = if (useLightSurface) GreenhouseGlass.AccentGreen else GreenhouseGlass.LeafLime,
             modifier = Modifier.size(36.dp),
         )
         Text(
             text = title,
-            color = Color.White,
+            color = titleColor,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
         )
         Text(
             text = body,
-            color = Color.White.copy(alpha = 0.82f),
+            color = bodyColor,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
         )

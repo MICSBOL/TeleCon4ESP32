@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -83,11 +84,105 @@ fun GreenhouseControlPanel(
         targetHumidityPercent = targetHumidityPercent,
     )
 
-    GreenhouseCard(modifier = modifier) {
+    if (isPortrait) {
+        GreenhouseControlPanelBody(
+            modifier = modifier,
+            expanded = expanded,
+                toggleLabel = toggleLabel,
+                collapsedSummary = collapsedSummary,
+                fanOn = fanOn,
+                heaterOn = heaterOn,
+                pumpOn = pumpOn,
+                lightsOn = lightsOn,
+                isAutoMode = isAutoMode,
+                ventOpenPercent = ventOpenPercent,
+                targetTempC = targetTempC,
+                targetHumidityPercent = targetHumidityPercent,
+                onExpandToggle = { expanded = !expanded },
+                onFanToggle = onFanToggle,
+                onHeaterToggle = onHeaterToggle,
+                onPumpToggle = onPumpToggle,
+                onLightsToggle = onLightsToggle,
+                onAutoModeToggle = onAutoModeToggle,
+                onVentChange = onVentChange,
+                onVentChangeFinished = onVentChangeFinished,
+                onTargetTempChange = onTargetTempChange,
+                onTargetHumidityChange = onTargetHumidityChange,
+                onTargetClimateFinished = onTargetClimateFinished,
+                titleColor = GreenhouseGlass.TextOnBackgroundPrimary,
+                summaryColor = GreenhouseGlass.TextOnBackgroundSecondary,
+                footerColor = GreenhouseGlass.TextOnBackgroundSecondary,
+                sliderLabelColor = GreenhouseGlass.TextOnBackgroundSecondary,
+        )
+    } else {
+        GreenhouseCard(modifier = modifier) {
+            GreenhouseControlPanelBody(
+                expanded = expanded,
+                toggleLabel = toggleLabel,
+                collapsedSummary = collapsedSummary,
+                fanOn = fanOn,
+                heaterOn = heaterOn,
+                pumpOn = pumpOn,
+                lightsOn = lightsOn,
+                isAutoMode = isAutoMode,
+                ventOpenPercent = ventOpenPercent,
+                targetTempC = targetTempC,
+                targetHumidityPercent = targetHumidityPercent,
+                onExpandToggle = { expanded = !expanded },
+                onFanToggle = onFanToggle,
+                onHeaterToggle = onHeaterToggle,
+                onPumpToggle = onPumpToggle,
+                onLightsToggle = onLightsToggle,
+                onAutoModeToggle = onAutoModeToggle,
+                onVentChange = onVentChange,
+                onVentChangeFinished = onVentChangeFinished,
+                onTargetTempChange = onTargetTempChange,
+                onTargetHumidityChange = onTargetHumidityChange,
+                onTargetClimateFinished = onTargetClimateFinished,
+                titleColor = GreenhouseGlass.TextPrimary,
+                summaryColor = GreenhouseGlass.TextOnGlassMuted,
+                footerColor = GreenhouseGlass.TextOnGlassMuted,
+                sliderLabelColor = GreenhouseGlass.TextOnGlassSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GreenhouseControlPanelBody(
+    modifier: Modifier = Modifier,
+    expanded: Boolean,
+    toggleLabel: String,
+    collapsedSummary: String,
+    fanOn: Boolean,
+    heaterOn: Boolean,
+    pumpOn: Boolean,
+    lightsOn: Boolean,
+    isAutoMode: Boolean,
+    ventOpenPercent: Int,
+    targetTempC: Int,
+    targetHumidityPercent: Int,
+    onExpandToggle: () -> Unit,
+    onFanToggle: () -> Unit,
+    onHeaterToggle: () -> Unit,
+    onPumpToggle: () -> Unit,
+    onLightsToggle: () -> Unit,
+    onAutoModeToggle: () -> Unit,
+    onVentChange: (Int) -> Unit,
+    onVentChangeFinished: () -> Unit,
+    onTargetTempChange: (Int) -> Unit,
+    onTargetHumidityChange: (Int) -> Unit,
+    onTargetClimateFinished: () -> Unit,
+    titleColor: Color,
+    summaryColor: Color,
+    footerColor: Color,
+    sliderLabelColor: Color,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
+                .clickable(onClick = onExpandToggle)
                 .semantics { contentDescription = toggleLabel }
                 .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -97,14 +192,14 @@ fun GreenhouseControlPanel(
                     text = stringResource(R.string.greenhouse_controls_title),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = GreenhouseGlass.TextPrimary,
+                    color = titleColor,
                 )
                 if (!expanded) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = collapsedSummary,
                         style = MaterialTheme.typography.labelSmall,
-                        color = GreenhouseGlass.TextOnGlassMuted,
+                        color = summaryColor,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -188,6 +283,7 @@ fun GreenhouseControlPanel(
                     value = ventOpenPercent.toFloat(),
                     valueRange = 0f..100f,
                     steps = 19,
+                    labelColor = sliderLabelColor,
                     onValueChange = { onVentChange(it.toInt()) },
                     onValueChangeFinished = onVentChangeFinished,
                 )
@@ -197,6 +293,7 @@ fun GreenhouseControlPanel(
                     value = targetTempC.toFloat(),
                     valueRange = 10f..40f,
                     steps = 30,
+                    labelColor = sliderLabelColor,
                     onValueChange = { onTargetTempChange(it.toInt()) },
                     onValueChangeFinished = onTargetClimateFinished,
                 )
@@ -209,6 +306,7 @@ fun GreenhouseControlPanel(
                     value = targetHumidityPercent.toFloat(),
                     valueRange = 30f..95f,
                     steps = 65,
+                    labelColor = sliderLabelColor,
                     onValueChange = { onTargetHumidityChange(it.toInt()) },
                     onValueChangeFinished = onTargetClimateFinished,
                 )
@@ -220,7 +318,7 @@ fun GreenhouseControlPanel(
                         targetHumidityPercent,
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = GreenhouseGlass.TextOnGlassMuted,
+                    color = footerColor,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -270,6 +368,7 @@ private fun GreenhouseSliderRow(
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int,
+    labelColor: Color,
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: () -> Unit,
 ) {
@@ -277,7 +376,7 @@ private fun GreenhouseSliderRow(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = GreenhouseGlass.TextOnGlassSecondary,
+            color = labelColor,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Slider(

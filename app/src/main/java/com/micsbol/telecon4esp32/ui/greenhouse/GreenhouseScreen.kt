@@ -27,6 +27,8 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -117,6 +119,7 @@ fun GreenhouseScreen(
     viewModel: GreenhouseViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isEmulator = GreenhouseEmulatorSupport.isEmulator()
 
     GreenhouseScreenContent(
         uiState = uiState,
@@ -137,7 +140,12 @@ fun GreenhouseScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 GreenhouseGlassIconButton(
-                    onClick = { navController.navigate(Screen.GreenhouseCamera.route) },
+                    onClick = {
+                        GreenhouseEmulatorNavigation.openSubScreen(
+                            navController,
+                            Screen.GreenhouseCamera.route,
+                        )
+                    },
                 ) {
                     Icon(
                         imageVector = Icons.Default.Videocam,
@@ -147,7 +155,12 @@ fun GreenhouseScreen(
                     )
                 }
                 GreenhouseGlassIconButton(
-                    onClick = { navController.navigate(Screen.GreenhouseHelp.route) },
+                    onClick = {
+                        GreenhouseEmulatorNavigation.openSubScreen(
+                            navController,
+                            Screen.GreenhouseHelp.route,
+                        )
+                    },
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.HelpOutline,
@@ -157,7 +170,12 @@ fun GreenhouseScreen(
                     )
                 }
                 GreenhouseGlassIconButton(
-                    onClick = { navController.navigate(Screen.GreenhouseSettings.route) },
+                    onClick = {
+                        GreenhouseEmulatorNavigation.openSubScreen(
+                            navController,
+                            Screen.GreenhouseSettings.route,
+                        )
+                    },
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
@@ -171,6 +189,7 @@ fun GreenhouseScreen(
                 }
             }
         },
+        skipHeavyWidgets = isEmulator,
     )
 }
 
@@ -190,6 +209,7 @@ fun GreenhouseScreenContent(
     onTargetClimateFinished: () -> Unit,
     modifier: Modifier = Modifier,
     topBarActions: @Composable () -> Unit = {},
+    skipHeavyWidgets: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -236,6 +256,7 @@ fun GreenhouseScreenContent(
                             onTargetTempChange = onTargetTempChange,
                             onTargetHumidityChange = onTargetHumidityChange,
                             onTargetClimateFinished = onTargetClimateFinished,
+                            skipHeavyWidgets = skipHeavyWidgets,
                         )
                     }
                 }
@@ -277,8 +298,10 @@ fun GreenhouseScreenContent(
                             tankPercent = uiState.tankPercent,
                             lastIrrigationAgo = uiState.lastIrrigationAgo,
                         )
-                        EnvironmentalChart(chartData = uiState.chartData)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        if (!skipHeavyWidgets) {
+                            EnvironmentalChart(chartData = uiState.chartData)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
                 GreenhouseControlPanel(
@@ -325,6 +348,7 @@ private fun WideLayoutContent(
     onTargetTempChange: (Int) -> Unit,
     onTargetHumidityChange: (Int) -> Unit,
     onTargetClimateFinished: () -> Unit,
+    skipHeavyWidgets: Boolean = false,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -357,7 +381,9 @@ private fun WideLayoutContent(
             modifier = Modifier.weight(0.6f),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            EnvironmentalChart(chartData = uiState.chartData)
+            if (!skipHeavyWidgets) {
+                EnvironmentalChart(chartData = uiState.chartData)
+            }
             GreenhouseControlPanel(
                 fanOn = uiState.fanOn,
                 heaterOn = uiState.heaterOn,

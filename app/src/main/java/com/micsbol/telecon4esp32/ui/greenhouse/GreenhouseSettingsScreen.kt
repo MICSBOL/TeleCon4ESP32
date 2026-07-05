@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.ui.greenhouse
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -11,9 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,10 +33,95 @@ import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCard
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseSubScreenTopBar
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 @Composable
 fun GreenhouseSettingsScreen(
     navController: NavController,
+) {
+    val onBackClick = {
+        GreenhouseEmulatorNavigation.backToGreenhouse(navController, Screen.GreenhouseSettings.route)
+    }
+
+    if (GreenhouseEmulatorSupport.isEmulator()) {
+        GreenhouseSettingsEmulatorContent(onBackClick = onBackClick)
+        return
+    }
+
+    GreenhouseSettingsFullContent(onBackClick = onBackClick)
+}
+
+@Composable
+private fun GreenhouseSettingsEmulatorContent(
+    onBackClick: () -> Unit,
+) {
+    val edgeInsets = WindowInsets.safeDrawing.only(
+        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    )
+    val scrollState = rememberScrollState()
+    val title = stringResource(applicationSettingsTitleRes(ApplicationId.GREENHOUSE))
+
+    GreenhouseBackground(showPhoto = false) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(edgeInsets)
+                .padding(horizontal = 16.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                GreenhouseGlassIconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.greenhouse_settings_back),
+                        tint = GreenhouseGlass.AccentGreen,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GreenhouseGlass.TextPrimary,
+                )
+            }
+            Text(
+                text = stringResource(R.string.greenhouse_settings_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = GreenhouseGlass.TextSecondary,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GreenhouseSettingsProtocolSection()
+                Text(
+                    text = stringResource(R.string.app_settings_protocol_simple),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GreenhouseGlass.TextPrimary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = stringResource(R.string.app_settings_protocol_simple_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GreenhouseGlass.TextSecondary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GreenhouseSettingsFullContent(
+    onBackClick: () -> Unit,
 ) {
     val edgeInsets = WindowInsets.safeDrawing.only(
         WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -48,7 +138,7 @@ fun GreenhouseSettingsScreen(
             GreenhouseSubScreenTopBar(
                 title = stringResource(applicationSettingsTitleRes(ApplicationId.GREENHOUSE)),
                 subtitle = stringResource(R.string.greenhouse_settings_subtitle),
-                onBackClick = { navController.navigateUp() },
+                onBackClick = onBackClick,
             )
             Column(
                 modifier = Modifier
@@ -59,27 +149,7 @@ fun GreenhouseSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 GreenhouseCard(elevated = false) {
-                    Text(
-                        text = stringResource(R.string.app_settings_protocol_section_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = GreenhouseGlass.TextOnGlassPrimary,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(
-                            R.string.app_settings_protocol_prefix_label,
-                            ApplicationId.GREENHOUSE.protocolPrefix(),
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = GreenhouseGlass.TextOnGlassSecondary,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.app_settings_protocol_section_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GreenhouseGlass.TextOnGlassSecondary,
-                    )
+                    GreenhouseSettingsProtocolSection()
                 }
                 GreenhouseCard(elevated = false) {
                     Text(
@@ -99,4 +169,29 @@ fun GreenhouseSettingsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun GreenhouseSettingsProtocolSection() {
+    Text(
+        text = stringResource(R.string.app_settings_protocol_section_title),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = GreenhouseGlass.TextOnGlassPrimary,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = stringResource(
+            R.string.app_settings_protocol_prefix_label,
+            ApplicationId.GREENHOUSE.protocolPrefix(),
+        ),
+        style = MaterialTheme.typography.bodyMedium,
+        color = GreenhouseGlass.TextOnGlassSecondary,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = stringResource(R.string.app_settings_protocol_section_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = GreenhouseGlass.TextOnGlassSecondary,
+    )
 }

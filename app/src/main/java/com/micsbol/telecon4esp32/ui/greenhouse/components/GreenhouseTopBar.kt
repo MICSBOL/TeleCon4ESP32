@@ -40,19 +40,35 @@ fun GreenhouseTopBar(
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable () -> Unit = {},
+    contentOnPhoto: Boolean = true,
 ) {
+    val titleColor = if (contentOnPhoto) {
+        GreenhouseGlass.TextOnBackgroundPrimary
+    } else {
+        GreenhouseGlass.TextOnGlassPrimary
+    }
+    val metaColor = if (contentOnPhoto) {
+        GreenhouseGlass.TextOnBackgroundSecondary
+    } else {
+        GreenhouseGlass.TextOnGlassSecondary
+    }
+    val topBarScrim = if (contentOnPhoto) {
+        arrayOf(
+            0f to Color.Black.copy(alpha = 0.42f),
+            0.75f to Color.Black.copy(alpha = 0.16f),
+            1f to Color.Transparent,
+        )
+    } else {
+        arrayOf(
+            0f to Color.White.copy(alpha = 0.18f),
+            1f to Color.Transparent,
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to Color.Black.copy(alpha = 0.42f),
-                        0.75f to Color.Black.copy(alpha = 0.16f),
-                        1f to Color.Transparent,
-                    ),
-                ),
-            )
+            .background(Brush.verticalGradient(colorStops = topBarScrim))
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -81,7 +97,7 @@ fun GreenhouseTopBar(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = GreenhouseGlass.TextOnBackgroundPrimary,
+                color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -132,7 +148,7 @@ fun GreenhouseTopBar(
                 text = deviceId,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.labelMedium,
-                color = GreenhouseGlass.TextOnBackgroundSecondary,
+                color = metaColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -140,7 +156,7 @@ fun GreenhouseTopBar(
             Text(
                 text = stringResource(R.string.greenhouse_updated_ago, updatedAgo),
                 style = MaterialTheme.typography.labelSmall,
-                color = GreenhouseGlass.TextOnBackgroundSecondary,
+                color = metaColor,
                 maxLines = 1,
                 textAlign = TextAlign.End,
             )

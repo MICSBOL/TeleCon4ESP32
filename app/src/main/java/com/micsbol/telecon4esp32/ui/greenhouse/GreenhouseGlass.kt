@@ -140,11 +140,13 @@ fun GreenhouseBackground(
 fun GreenhouseGlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     size: Dp = 44.dp,
     content: @Composable () -> Unit,
 ) {
     IconButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .size(size)
             .clip(CircleShape)

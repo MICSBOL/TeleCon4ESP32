@@ -1,6 +1,5 @@
 package com.micsbol.telecon4esp32.ui.greenhouse
 
-import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
@@ -25,7 +24,7 @@ class GreenhouseCameraViewModel @Inject constructor(
 
     private val appPrefix = ApplicationId.GREENHOUSE.protocolPrefix()
     private val cameraBaseUrl = Esp32CameraDefaults.DEFAULT_BASE_URL
-    private val runningOnEmulator = isEmulatorDevice()
+    private val runningOnEmulator = GreenhouseEmulatorSupport.isEmulator()
 
     private val _uiState = MutableStateFlow(
         GreenhouseCameraUiState(
@@ -99,18 +98,4 @@ private fun String.toBooleanLike(): Boolean = when (lowercase()) {
     "1", "true", "on", "yes" -> true
     "0", "false", "off", "no" -> false
     else -> toIntOrNull()?.let { it != 0 } ?: false
-}
-
-private fun isEmulatorDevice(): Boolean {
-    return Build.FINGERPRINT.startsWith("generic") ||
-        Build.FINGERPRINT.startsWith("unknown") ||
-        Build.MODEL.contains("google_sdk") ||
-        Build.MODEL.contains("Emulator") ||
-        Build.MODEL.contains("Android SDK built for") ||
-        Build.MANUFACTURER.contains("Genymotion") ||
-        (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
-        Build.PRODUCT.contains("sdk_gphone") ||
-        Build.PRODUCT.contains("sdk") ||
-        Build.HARDWARE.contains("goldfish") ||
-        Build.HARDWARE.contains("ranchu")
 }
