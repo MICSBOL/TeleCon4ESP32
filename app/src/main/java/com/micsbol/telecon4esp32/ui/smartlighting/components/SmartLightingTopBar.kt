@@ -1,25 +1,32 @@
 package com.micsbol.telecon4esp32.ui.smartlighting.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingGlass
+import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingGlassIconButton
 
 @Composable
 fun SmartLightingTopBar(
@@ -27,28 +34,54 @@ fun SmartLightingTopBar(
     modifier: Modifier = Modifier,
     actions: @Composable () -> Unit = {},
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to SmartLightingGlass.BackgroundTop.copy(alpha = 0.55f),
+                        0.75f to Color.Transparent,
+                        1f to Color.Transparent,
+                    ),
+                ),
+            )
             .windowInsetsPadding(WindowInsets.statusBars)
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        IconButton(onClick = onBackClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.smart_lighting_back_content_description),
-                tint = MaterialTheme.colorScheme.onSurface,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SmartLightingGlassIconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.smart_lighting_back_content_description),
+                    tint = SmartLightingGlass.TextPrimary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            actions()
+        }
+
+        Column(modifier = Modifier.padding(top = 8.dp, start = 4.dp)) {
+            Text(
+                text = stringResource(R.string.smart_lighting_header_light),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Light,
+                ),
+                color = SmartLightingGlass.TextSecondary,
+            )
+            Text(
+                text = stringResource(R.string.smart_lighting_header_bold),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = SmartLightingGlass.TextPrimary,
             )
         }
-        Text(
-            text = stringResource(R.string.smart_lighting_screen_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        actions()
     }
 }

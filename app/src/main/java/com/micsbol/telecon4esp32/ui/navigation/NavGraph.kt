@@ -35,6 +35,7 @@ import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseSettingsScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeHelpScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeScreen
 import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockScreen
+import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingHelpScreen
 import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingScreen
 import com.micsbol.telecon4esp32.ui.solarsystem.SolarHelpScreen
 import com.micsbol.telecon4esp32.ui.solarsystem.SolarSystemScreen
@@ -285,6 +286,9 @@ fun AppNavGraph(
         }
         composable(Screen.SmartLightingPro.route) {
             SmartLightingScreen(navController = navController)
+        }
+        composable(Screen.SmartLightingHelp.route) {
+            SmartLightingHelpScreen(navController = navController)
         }
         composable(Screen.CustomDashboardPro.route) {
             CustomDashboardScreen(navController = navController)

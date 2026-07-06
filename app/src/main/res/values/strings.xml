@@ -608,6 +608,10 @@
 
     <!-- SmartLightingScreen -->
     <string name="smart_lighting_screen_title">Smart Lighting System</string>
+    <string name="smart_lighting_header_light">Smart</string>
+    <string name="smart_lighting_header_bold">Lighting</string>
+    <string name="smart_lighting_hero_active_lights">Active lights</string>
+    <string name="smart_lighting_hero_lights_count">%1$d of %2$d on</string>
     <string name="smart_lighting_turn_all_on">Turn all on</string>
     <string name="smart_lighting_turn_all_off">Turn all off</string>
     <string name="smart_lighting_all_devices_subtitle">All connected lights</string>
@@ -646,6 +650,54 @@
     <string name="smart_lighting_setting_auto_off_away">Auto-off when away</string>
     <string name="smart_lighting_setting_motion_activation">Motion activation</string>
     <string name="smart_lighting_setting_sunset_sync">Sunset sync</string>
+    <string name="smart_lighting_help_content_description">Open smart lighting help</string>
+    <string name="smart_lighting_help_title">Smart lighting help</string>
+    <string name="smart_lighting_help_subtitle">Screen components, SL protocol, and ESP32 wiring</string>
+    <string name="smart_lighting_help_back">Back to smart lighting</string>
+    <string name="smart_lighting_help_intro_title">DIY ESP32 smart lighting hub</string>
+    <string name="smart_lighting_help_intro_body">This dashboard reads SL:DATA lines over Bluetooth SPP. Control relays and PWM dimmers for bulbs and LED strips, read online/signal status per zone, and apply automation rules (motion, away, sunset). Store device names and schedules in NVS.</string>
+    <string name="smart_lighting_guide_read_label">Read (ESP32 → app)</string>
+    <string name="smart_lighting_guide_write_label">Write (app → ESP32)</string>
+    <string name="smart_lighting_guide_topbar_title">Top bar — navigation and settings</string>
+    <string name="smart_lighting_guide_topbar_description">Shows the Smart Lighting title, back action, help shortcut, and application settings. Bluetooth link state is inferred from incoming SL:DATA lines.</string>
+    <string name="smart_lighting_guide_topbar_read">SL:DATA,device,ESP32-SL01,online,1\nonline: 1 = SPP connected and firmware responding; GPIO 2 status LED mirrors link state.</string>
+    <string name="smart_lighting_guide_hero_title">Hero banner — active lights overview</string>
+    <string name="smart_lighting_guide_hero_description">Room preview with hotspot markers and a count of lights currently on versus total registered devices. Updates whenever any zone state changes.</string>
+    <string name="smart_lighting_guide_hero_read">SL:DATA,on_count,7,total,12,living,1,kitchen,1,bedroom_lamp,0\non_count and total are computed by firmware from relay/PWM states; individual keys mirror device card toggles.</string>
+    <string name="smart_lighting_guide_all_lights_title">Turn all on / off</string>
+    <string name="smart_lighting_guide_all_lights_description">Master control that switches every registered light zone at once. Uses GPIO 4 master relay bus or broadcasts SL:SET to all channels.</string>
+    <string name="smart_lighting_guide_all_lights_read">SL:DATA confirms all zone states after SL:SET,all,1 or SL:SET,all,0.</string>
+    <string name="smart_lighting_guide_all_lights_write">SL:SET,all,1\nSL:SET,all,0</string>
+    <string name="smart_lighting_guide_devices_title">Device cards — per-zone control</string>
+    <string name="smart_lighting_guide_devices_description">Each card shows a room thumbnail, device name, type, online badge, Wi-Fi signal percent, and on/off state. Tap a card to toggle that zone.</string>
+    <string name="smart_lighting_guide_devices_read">SL:DATA,living,1,kitchen,1,bedroom_lamp,0,bedroom_ceiling,1,bedroom_closet,0,hallway,1,dining,0,staircase,1,bathroom,1,office,0,garage,1,patio,0,sig_living,98,sig_kitchen,92\nZone keys: 0=off, 1=on. Optional sig_* keys: 0–100 link quality for BLE mesh nodes.</string>
+    <string name="smart_lighting_guide_devices_write">SL:SET,zone,living,1\nSL:SET,zone,kitchen,0\nSL:SET,zone,bedroom_lamp,1</string>
+    <string name="smart_lighting_guide_add_device_title">Add new device tiles</string>
+    <string name="smart_lighting_guide_add_device_description">Pair a smart bulb over Bluetooth or scan a QR code to register an LED strip controller. New zones are stored in NVS and appear in the matching section.</string>
+    <string name="smart_lighting_guide_add_device_read">SL:DATA,pair_state,0,devices,12\npair_state: 0=idle, 1=discovering, 2=paired. Hold GPIO 5 to enter pairing mode on the ESP32.</string>
+    <string name="smart_lighting_guide_add_device_write">SL:SET,pair,ble,1\nSL:SET,pair,qr,SCAN_RESULT</string>
+    <string name="smart_lighting_guide_settings_title">Automation settings</string>
+    <string name="smart_lighting_guide_settings_description">Toggle auto-off when away, motion-activated lighting, and sunset sync. Motion uses GPIO 32 PIR; sunset uses GPIO 34 LDR or NTP time from Wi-Fi.</string>
+    <string name="smart_lighting_guide_settings_read">SL:DATA,auto_away,1,motion,1,sunset,1\nauto_away: turn all off when no motion for 30 min. motion: turn on hallway/staircase on PIR. sunset: dim warm zones at civil dusk.</string>
+    <string name="smart_lighting_guide_settings_write">SL:SET,auto_away,1\nSL:SET,motion,0\nSL:SET,sunset,1</string>
+    <string name="smart_lighting_guide_pins_title">ESP32 pin map</string>
+    <string name="smart_lighting_guide_pins_description">GPIO assignments for every element on the Smart Lighting dashboard. PWM outputs drive MOSFET dimmers; relay outputs are active-high.</string>
+    <string name="smart_lighting_pin_section_topbar">Top bar</string>
+    <string name="smart_lighting_pin_line">%1$s → GPIO %2$d (%3$s)</string>
+    <string name="smart_lighting_pin_footer">Send SL:DATA every 1–2 s for live zone states; on_count and signal keys every 10–30 s.</string>
+    <string name="smart_lighting_pin_topbar_status">Bluetooth link status LED</string>
+    <string name="smart_lighting_pin_hero_count">Active lights count (on_count)</string>
+    <string name="smart_lighting_pin_all_lights">Turn all on/off (master bus)</string>
+    <string name="smart_lighting_pin_hw_status_led">status LED output</string>
+    <string name="smart_lighting_pin_hw_derived_count">computed from zone states</string>
+    <string name="smart_lighting_pin_hw_master_relay">master relay / broadcast enable</string>
+    <string name="smart_lighting_pin_hw_pwm_dimmer">PWM MOSFET dimmer output</string>
+    <string name="smart_lighting_pin_hw_pwm_strip">PWM LED strip driver</string>
+    <string name="smart_lighting_pin_hw_relay">relay output</string>
+    <string name="smart_lighting_pin_hw_pir">PIR motion, INPUT_PULLUP</string>
+    <string name="smart_lighting_pin_hw_ldr">LDR twilight sensor, analog input</string>
+    <string name="smart_lighting_pin_hw_pair_button">pairing button, INPUT_PULLUP</string>
+    <string name="smart_lighting_pin_hw_ble_only">BLE pairing only, no GPIO</string>
 
     <!-- CustomDashboardScreen -->
     <string name="custom_dashboard_esp32_connected">ESP32 Connected</string>

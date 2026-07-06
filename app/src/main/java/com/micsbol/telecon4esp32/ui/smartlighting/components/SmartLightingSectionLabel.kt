@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingGlass
 
 @Composable
 fun SmartLightingSectionLabel(
@@ -20,6 +20,6 @@ fun SmartLightingSectionLabel(
             letterSpacing = 1.2.sp,
             fontWeight = FontWeight.SemiBold,
         ),
-        color = mutedTextColor(),
+        color = SmartLightingGlass.TextMuted,
     )
 }
