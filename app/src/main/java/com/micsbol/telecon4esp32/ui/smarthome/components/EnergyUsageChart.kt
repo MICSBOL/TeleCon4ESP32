@@ -1,7 +1,7 @@
 package com.micsbol.telecon4esp32.ui.smarthome.components
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,11 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
 import com.micsbol.telecon4esp32.ui.smarthome.EnergyChartData
-import com.micsbol.telecon4esp32.ui.theme.DarkGridLine
-import com.micsbol.telecon4esp32.ui.theme.LightGridLine
-import com.micsbol.telecon4esp32.ui.theme.PlotOrange
+import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeGlass
 import java.util.Locale
 
 private const val POWER_MAX_KW = 3f
@@ -60,9 +56,11 @@ fun SmartHomeSectionHeader(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = SmartHomeGlass.TextPrimary,
         )
         action?.invoke()
     }
@@ -83,19 +81,17 @@ fun EnergyUsageChart(
                 text = stringResource(R.string.smart_home_section_energy_usage),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = SmartHomeGlass.TextPrimary,
             )
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-            ) {
-                Text(
-                    text = stringResource(R.string.smart_home_period_today),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                text = stringResource(R.string.smart_home_period_today),
+                modifier = Modifier
+                    .clip(SmartHomeGlass.PillShape)
+                    .background(SmartHomeGlass.CardSurfaceLight.copy(alpha = SmartHomeGlass.ChipSurfaceAlpha))
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = SmartHomeGlass.TextSecondary,
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         EnergyChartLegend()
@@ -120,7 +116,7 @@ fun EnergyUsageChart(
                             String.format(Locale.US, "%.1f", value),
                         ),
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = PlotOrange,
+                        color = SmartHomeGlass.ChartLine,
                         textAlign = TextAlign.End,
                     )
                 }
@@ -144,7 +140,7 @@ fun EnergyUsageChart(
                         .padding(4.dp),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = PlotOrange,
+                    color = SmartHomeGlass.ChartLine,
                 )
             }
         }
@@ -159,7 +155,7 @@ fun EnergyUsageChart(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = mutedTextColor(),
+                        color = SmartHomeGlass.TextMuted,
                     )
                 }
             }
@@ -170,7 +166,7 @@ fun EnergyUsageChart(
                 .fillMaxWidth()
                 .padding(start = LeftAxisWidth),
             style = MaterialTheme.typography.labelSmall,
-            color = mutedTextColor(),
+            color = SmartHomeGlass.TextMuted,
             textAlign = TextAlign.Center,
         )
     }
@@ -183,12 +179,12 @@ private fun EnergyChartLegend() {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Canvas(modifier = Modifier.size(8.dp)) {
-            drawCircle(color = PlotOrange)
+            drawCircle(color = SmartHomeGlass.ChartLine)
         }
         Text(
             text = stringResource(R.string.smart_home_energy_chart_unit),
             style = MaterialTheme.typography.labelSmall,
-            color = mutedTextColor(),
+            color = SmartHomeGlass.TextMuted,
         )
     }
 }
@@ -199,7 +195,7 @@ private fun EnergyChartCanvas(
     modifier: Modifier = Modifier,
 ) {
     var canvasSize by remember { mutableStateOf(Size.Zero) }
-    val gridColor = if (isSystemInDarkTheme()) DarkGridLine else LightGridLine
+    val gridColor = SmartHomeGlass.TextMuted.copy(alpha = SmartHomeGlass.ChartGridAlpha)
     val currentIndex = remember(chartData.powerSeries) {
         chartData.powerSeries.indices.maxByOrNull { chartData.powerSeries[it] }
             ?: (chartData.powerSeries.size - 1)
@@ -254,8 +250,8 @@ private fun EnergyChartCanvas(
             path = fillPath,
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    PlotOrange.copy(alpha = 0.45f),
-                    PlotOrange.copy(alpha = 0.05f),
+                    SmartHomeGlass.ChartLine.copy(alpha = 0.45f),
+                    SmartHomeGlass.ChartLine.copy(alpha = 0.05f),
                 ),
                 startY = topPad,
                 endY = topPad + chartHeight,
@@ -263,18 +259,18 @@ private fun EnergyChartCanvas(
         )
         drawPath(
             path = linePath,
-            color = PlotOrange,
+            color = SmartHomeGlass.ChartLine,
             style = Stroke(width = 2.5.dp.toPx()),
         )
 
         val currentPoint = pointAt(currentIndex)
         drawCircle(
-            color = PlotOrange,
+            color = SmartHomeGlass.ChartLine,
             radius = 5.dp.toPx(),
             center = currentPoint,
         )
         drawCircle(
-            color = PlotOrange.copy(alpha = 0.25f),
+            color = SmartHomeGlass.ChartLine.copy(alpha = 0.25f),
             radius = 10.dp.toPx(),
             center = currentPoint,
         )

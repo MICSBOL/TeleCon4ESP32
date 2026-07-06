@@ -404,7 +404,7 @@
     <string name="water_tank_last_updated_time">Última actualización: %1$s</string>
 
     <!-- SmartHomeScreen -->
-    <string name="smart_home_screen_title">HOGAR INTELIGENTE</string>
+    <string name="smart_home_screen_title">Hogar inteligente</string>
     <string name="smart_home_menu_content_description">Volver a módulos de control</string>
     <string name="smart_home_all_systems_normal">Todos los sistemas normales</string>
     <string name="smart_home_notifications_content_description">Notificaciones</string>
@@ -418,7 +418,14 @@
     <string name="smart_home_room_kitchen">Cocina</string>
     <string name="smart_home_room_bedroom">Dormitorio</string>
     <string name="smart_home_room_garage">Garaje</string>
-    <string name="smart_home_room_status_on_count">%1$d ENC</string>
+    <string name="smart_home_room_light_toggle_content_description">Alternar luz de %1$s, actualmente %2$s</string>
+    <string name="smart_home_room_devices_active">%1$d dispositivos activos ahora</string>
+    <string name="smart_home_room_devices_active_one">1 dispositivo activo ahora</string>
+    <string name="smart_home_room_devices_off">Todos los dispositivos apagados</string>
+    <string name="smart_home_room_status_on_ratio_prefix">%1$d/%2$d </string>
+    <string name="smart_home_room_status_on_ratio_suffix">encendidos</string>
+    <string name="smart_home_room_status_off_ratio_prefix">0/%1$d </string>
+    <string name="smart_home_room_status_off_ratio_suffix">apagados</string>
     <string name="smart_home_room_status_off">APAG</string>
     <string name="smart_home_room_status_open">ABIERTO</string>
     <string name="smart_home_room_window_open">Ventana abierta</string>
@@ -444,6 +451,69 @@
     <string name="smart_home_event_windows_living_room">Ventanas abiertas en el salón</string>
     <string name="smart_home_event_water_usage">Consumo de agua</string>
     <string name="smart_home_event_time_today">Hoy, %1$s</string>
+    <string name="smart_home_help_content_description">Abrir ayuda de hogar inteligente</string>
+    <string name="smart_home_help_title">Ayuda de hogar inteligente</string>
+    <string name="smart_home_help_subtitle">Componentes de pantalla, protocolo SH y cableado ESP32</string>
+    <string name="smart_home_help_back">Volver al hogar inteligente</string>
+    <string name="smart_home_help_intro_title">Hub DIY ESP32 para hogar inteligente</string>
+    <string name="smart_home_help_intro_body">Este panel lee líneas SH:DATA por Bluetooth SPP. Agrega estados de dispositivos por habitación, sensores de clima, medición de energía, contactos de seguridad y uso de agua desde relés, sensores DHT/BME, INA219, reed de puertas/ventanas y caudalímetros. Guarda eventos en NVS o SPIFFS.</string>
+    <string name="smart_home_guide_read_label">Lectura (ESP32 → app)</string>
+    <string name="smart_home_guide_write_label">Escritura (app → ESP32)</string>
+    <string name="smart_home_guide_topbar_title">Barra superior — estado del sistema</string>
+    <string name="smart_home_guide_topbar_description">Muestra el título Hogar inteligente, acceso a notificaciones y la insignia «Todos los sistemas normales» cuando no hay alertas ni fallos.</string>
+    <string name="smart_home_guide_topbar_read">SH:DATA,status,0,device,ESP32-SH01\nstatus: 0 = todo normal, 1 = aviso (puerta/ventana abierta o fallo).</string>
+    <string name="smart_home_guide_rooms_title">Habitaciones — tarjetas desplazables</string>
+    <string name="smart_home_guide_rooms_description">Tarjetas horizontales con foto, dispositivos activos, proporción encendidos/total e iconos de tipo. Desliza para ver todas las habitaciones.</string>
+    <string name="smart_home_guide_rooms_read">SH:DATA,living_on,2,living_total,5,living_temp,21,living_alert,window,kitchen_on,1,kitchen_total,4,kitchen_temp,23,bedroom_on,0,bedroom_total,3,bedroom_temp,19,garage_on,1,garage_total,3,garage_temp,18,garage_alert,door\nalert: omitir = ninguna, window, door.</string>
+    <string name="smart_home_guide_systems_title">Sistemas — clima, energía, seguridad, agua</string>
+    <string name="smart_home_guide_systems_description">Mosaicos de confort HVAC, potencia doméstica, estado de cerraduras y consumo diario de agua.</string>
+    <string name="smart_home_guide_systems_read">SH:DATA,climate_temp,22,climate_status,0,energy_kw,1.8,security_status,0,water_l,42\nclimate_status: 0=confortable, 1=calefacción, 2=refrigeración. security_status: 0=seguro, 1=contacto abierto.</string>
+    <string name="smart_home_guide_energy_title">Gráfico de consumo de energía</string>
+    <string name="smart_home_guide_energy_description">Gráfico de área de potencia doméstica (kW) a lo largo del día. El punto resaltado es la lectura actual.</string>
+    <string name="smart_home_guide_energy_read">SH:DATA,power_kw,1.8,hist_power,0.4|0.3|0.6|1.2|2.4|2.1|1.8|1.5|1.0|0.5\nhist_power = 24 muestras horarias kW (separadas por |). Envía power_kw cada 1–2 s; historial cada 30–60 s.</string>
+    <string name="smart_home_guide_events_title">Eventos recientes</string>
+    <string name="smart_home_guide_events_description">Registro cronológico de automatización: cerraduras, luces, movimiento, ventanas y agua. Los más recientes arriba.</string>
+    <string name="smart_home_guide_events_read">SH:DATA,event0,door_locked,09:30,event1,light_on,09:15,event2,motion,08:47\nHasta 5 eventos (event0…event4). Códigos: door_locked, light_on, motion, windows, water.</string>
+    <string name="smart_home_guide_device_control_title">Control de dispositivos y habitaciones</string>
+    <string name="smart_home_guide_device_control_description">Activa relés o enchufes por habitación y dispositivo. Pide actualización completa tras cambiar cableado o nombres en NVS.</string>
+    <string name="smart_home_guide_device_control_read">SH:DATA confirma el estado tras cada SH:SET.</string>
+    <string name="smart_home_guide_device_control_write">SH:SET,room,living,device,lamp1,1\nSH:SET,room,living,device,lamp1,0\nSH:SET,refresh,1</string>
+    <string name="smart_home_guide_pins_title">Mapa de pines ESP32</string>
+    <string name="smart_home_guide_pins_description">Asignación de GPIO para cada elemento del panel Hogar inteligente. Las salidas de relé son activas en alto; reed y PIR usan INPUT_PULLUP.</string>
+    <string name="smart_home_pin_section_topbar">Barra superior</string>
+    <string name="smart_home_pin_line">%1$s → GPIO %2$d (%3$s)</string>
+    <string name="smart_home_pin_footer">Envía SH:DATA cada 1–2 s para vatios y temperaturas en vivo; contadores por habitación y eventos cada 30–60 s.</string>
+    <string name="smart_home_pin_topbar_status">Insignia Todos los sistemas normales</string>
+    <string name="smart_home_pin_living_light">Luz salón (alternar en tarjeta)</string>
+    <string name="smart_home_pin_living_ambience">Luz ambiente salón</string>
+    <string name="smart_home_pin_living_outlet">Enchufe inteligente salón</string>
+    <string name="smart_home_pin_living_thermostat">Temperatura salón</string>
+    <string name="smart_home_pin_living_window">Alerta ventana salón</string>
+    <string name="smart_home_pin_kitchen_light">Tira LED cocina (alternar en tarjeta)</string>
+    <string name="smart_home_pin_kitchen_appliance">Relé electrodoméstico cocina</string>
+    <string name="smart_home_pin_kitchen_thermostat">Temperatura cocina</string>
+    <string name="smart_home_pin_kitchen_water">Válvula de agua cocina</string>
+    <string name="smart_home_pin_bedroom_light">Luz techo dormitorio (alternar en tarjeta)</string>
+    <string name="smart_home_pin_bedroom_thermostat">Temperatura dormitorio</string>
+    <string name="smart_home_pin_garage_light">LED garaje (alternar en tarjeta)</string>
+    <string name="smart_home_pin_garage_door">Alerta puerta garaje abierta</string>
+    <string name="smart_home_pin_garage_motion">Sensor de movimiento garaje</string>
+    <string name="smart_home_pin_garage_lock">Relé cerradura garaje</string>
+    <string name="smart_home_pin_energy_scl">SCL monitor de energía</string>
+    <string name="smart_home_pin_energy_chart">Gráfico de potencia en vivo (INA219)</string>
+    <string name="smart_home_pin_hw_status_led">salida LED de estado</string>
+    <string name="smart_home_pin_hw_relay">salida de relé</string>
+    <string name="smart_home_pin_hw_dht22">datos DHT22</string>
+    <string name="smart_home_pin_hw_dht22_bus">DHT22 en GPIO 4/5/12</string>
+    <string name="smart_home_pin_hw_reed">reed, INPUT_PULLUP</string>
+    <string name="smart_home_pin_hw_pir">PIR movimiento, INPUT_PULLUP</string>
+    <string name="smart_home_pin_hw_lock_relay">salida relé cerradura</string>
+    <string name="smart_home_pin_hw_valve">salida válvula solenoide</string>
+    <string name="smart_home_pin_hw_ina219_sda">INA219 SDA, I2C</string>
+    <string name="smart_home_pin_hw_ina219_scl">INA219 SCL, I2C</string>
+    <string name="smart_home_pin_hw_ina219_power">shunt INA219, bus I2C</string>
+    <string name="smart_home_pin_hw_security_inputs">GPIO 32/33 reeds + GPIO 26 cerradura</string>
+    <string name="smart_home_pin_hw_flow_pulse">pulso caudalímetro, interrupción</string>
 
     <!-- SmartDoorLockScreen -->
     <string name="smart_door_lock_back_content_description">Volver a módulos de control</string>

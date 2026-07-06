@@ -410,7 +410,7 @@
     <string name="water_tank_last_updated_time">Last Updated: %1$s</string>
 
     <!-- SmartHomeScreen -->
-    <string name="smart_home_screen_title">SMART HOME</string>
+    <string name="smart_home_screen_title">Smart Home</string>
     <string name="smart_home_menu_content_description">Back to control modules</string>
     <string name="smart_home_all_systems_normal">All Systems Normal</string>
     <string name="smart_home_notifications_content_description">Notifications</string>
@@ -424,7 +424,14 @@
     <string name="smart_home_room_kitchen">Kitchen</string>
     <string name="smart_home_room_bedroom">Bedroom</string>
     <string name="smart_home_room_garage">Garage</string>
-    <string name="smart_home_room_status_on_count">%1$d ON</string>
+    <string name="smart_home_room_light_toggle_content_description">Toggle %1$s light, currently %2$s</string>
+    <string name="smart_home_room_devices_active">%1$d devices are active now</string>
+    <string name="smart_home_room_devices_active_one">1 device is active now</string>
+    <string name="smart_home_room_devices_off">All devices are off</string>
+    <string name="smart_home_room_status_on_ratio_prefix">%1$d/%2$d is </string>
+    <string name="smart_home_room_status_on_ratio_suffix">on</string>
+    <string name="smart_home_room_status_off_ratio_prefix">0/%1$d is </string>
+    <string name="smart_home_room_status_off_ratio_suffix">off</string>
     <string name="smart_home_room_status_off">OFF</string>
     <string name="smart_home_room_status_open">OPEN</string>
     <string name="smart_home_room_window_open">Window Open</string>
@@ -450,6 +457,69 @@
     <string name="smart_home_event_windows_living_room">Windows Opened in Living Room</string>
     <string name="smart_home_event_water_usage">Water Usage</string>
     <string name="smart_home_event_time_today">Today, %1$s</string>
+    <string name="smart_home_help_content_description">Open smart home help</string>
+    <string name="smart_home_help_title">Smart home help</string>
+    <string name="smart_home_help_subtitle">Screen components, SH protocol, and ESP32 wiring</string>
+    <string name="smart_home_help_back">Back to smart home</string>
+    <string name="smart_home_help_intro_title">DIY ESP32 smart home hub</string>
+    <string name="smart_home_help_intro_body">This dashboard reads SH:DATA lines over Bluetooth SPP. Aggregate room device states, climate sensors, energy metering, security contacts, and water usage from relays, DHT/BME sensors, INA219, door/window reed switches, and flow meters. Store event logs in NVS or SPIFFS.</string>
+    <string name="smart_home_guide_read_label">Read (ESP32 → app)</string>
+    <string name="smart_home_guide_write_label">Write (app → ESP32)</string>
+    <string name="smart_home_guide_topbar_title">Top bar — system status</string>
+    <string name="smart_home_guide_topbar_description">Shows the Smart Home title, notifications shortcut, and an “All Systems Normal” badge when no room alerts or fault codes are active.</string>
+    <string name="smart_home_guide_topbar_read">SH:DATA,status,0,device,ESP32-SH01\nstatus: 0 = all normal, 1 = warning (open door/window or fault).</string>
+    <string name="smart_home_guide_rooms_title">Rooms — scrollable room cards</string>
+    <string name="smart_home_guide_rooms_description">Horizontal cards with a room photo, active device count, on/total ratio badge, and device-type icons. Swipe to browse all rooms.</string>
+    <string name="smart_home_guide_rooms_read">SH:DATA,living_on,2,living_total,5,living_temp,21,living_alert,window,kitchen_on,1,kitchen_total,4,kitchen_temp,23,bedroom_on,0,bedroom_total,3,bedroom_temp,19,garage_on,1,garage_total,3,garage_temp,18,garage_alert,door\nalert values: none (omit key), window, door.</string>
+    <string name="smart_home_guide_systems_title">Systems — climate, energy, security, water</string>
+    <string name="smart_home_guide_systems_description">Quick-glance tiles for HVAC comfort, live home power draw, security lock state, and daily water consumption.</string>
+    <string name="smart_home_guide_systems_read">SH:DATA,climate_temp,22,climate_status,0,energy_kw,1.8,security_status,0,water_l,42\nclimate_status: 0=comfortable, 1=heating, 2=cooling. security_status: 0=all secure, 1=open contact.</string>
+    <string name="smart_home_guide_energy_title">Energy usage chart</string>
+    <string name="smart_home_guide_energy_description">Area chart of home power draw (kW) over the day. The highlighted dot marks the current reading; axis labels show time blocks from midnight to midnight.</string>
+    <string name="smart_home_guide_energy_read">SH:DATA,power_kw,1.8,hist_power,0.4|0.3|0.6|1.2|2.4|2.1|1.8|1.5|1.0|0.5\nhist_power = 24 hourly kW samples (pipe-separated). Send power_kw every 1–2 s; history every 30–60 s.</string>
+    <string name="smart_home_guide_events_title">Recent events</string>
+    <string name="smart_home_guide_events_description">Chronological log of automation triggers: locks, lights, motion, windows, and water usage. Newest events appear at the top.</string>
+    <string name="smart_home_guide_events_read">SH:DATA,event0,door_locked,09:30,event1,light_on,09:15,event2,motion,08:47\nUp to 5 events per line set (event0…event4). Codes: door_locked, light_on, motion, windows, water.</string>
+    <string name="smart_home_guide_device_control_title">Device and room control</string>
+    <string name="smart_home_guide_device_control_description">Toggle relays or smart plugs per room and device. Request a full telemetry refresh after changing wiring or room names in NVS.</string>
+    <string name="smart_home_guide_device_control_read">SH:DATA confirms state after each SH:SET.</string>
+    <string name="smart_home_guide_device_control_write">SH:SET,room,living,device,lamp1,1\nSH:SET,room,living,device,lamp1,0\nSH:SET,refresh,1</string>
+    <string name="smart_home_guide_pins_title">ESP32 pin map</string>
+    <string name="smart_home_guide_pins_description">GPIO assignments for every element on the Smart Home dashboard. Relay outputs are active-high; reed switches and PIR use INPUT_PULLUP.</string>
+    <string name="smart_home_pin_section_topbar">Top bar</string>
+    <string name="smart_home_pin_line">%1$s → GPIO %2$d (%3$s)</string>
+    <string name="smart_home_pin_footer">Send SH:DATA every 1–2 s for live watts and temperatures; room counters and event logs every 30–60 s.</string>
+    <string name="smart_home_pin_topbar_status">All Systems Normal badge</string>
+    <string name="smart_home_pin_living_light">Living room light (card toggle)</string>
+    <string name="smart_home_pin_living_ambience">Living room ambience light</string>
+    <string name="smart_home_pin_living_outlet">Living room smart outlet</string>
+    <string name="smart_home_pin_living_thermostat">Living room temperature</string>
+    <string name="smart_home_pin_living_window">Living room window alert</string>
+    <string name="smart_home_pin_kitchen_light">Kitchen strip light (card toggle)</string>
+    <string name="smart_home_pin_kitchen_appliance">Kitchen appliance relay</string>
+    <string name="smart_home_pin_kitchen_thermostat">Kitchen temperature</string>
+    <string name="smart_home_pin_kitchen_water">Kitchen water valve</string>
+    <string name="smart_home_pin_bedroom_light">Bedroom ceiling light (card toggle)</string>
+    <string name="smart_home_pin_bedroom_thermostat">Bedroom temperature</string>
+    <string name="smart_home_pin_garage_light">Garage LED (card toggle)</string>
+    <string name="smart_home_pin_garage_door">Garage door open alert</string>
+    <string name="smart_home_pin_garage_motion">Garage motion sensor</string>
+    <string name="smart_home_pin_garage_lock">Garage lock relay</string>
+    <string name="smart_home_pin_energy_scl">Energy monitor SCL</string>
+    <string name="smart_home_pin_energy_chart">Live power chart (INA219)</string>
+    <string name="smart_home_pin_hw_status_led">status LED output</string>
+    <string name="smart_home_pin_hw_relay">relay output</string>
+    <string name="smart_home_pin_hw_dht22">DHT22 data</string>
+    <string name="smart_home_pin_hw_dht22_bus">DHT22 on GPIO 4/5/12</string>
+    <string name="smart_home_pin_hw_reed">reed switch, INPUT_PULLUP</string>
+    <string name="smart_home_pin_hw_pir">PIR motion, INPUT_PULLUP</string>
+    <string name="smart_home_pin_hw_lock_relay">lock relay output</string>
+    <string name="smart_home_pin_hw_valve">solenoid valve output</string>
+    <string name="smart_home_pin_hw_ina219_sda">INA219 SDA, I2C</string>
+    <string name="smart_home_pin_hw_ina219_scl">INA219 SCL, I2C</string>
+    <string name="smart_home_pin_hw_ina219_power">INA219 shunt, I2C bus</string>
+    <string name="smart_home_pin_hw_security_inputs">GPIO 32/33 reeds + GPIO 26 lock</string>
+    <string name="smart_home_pin_hw_flow_pulse">flow meter pulse, interrupt</string>
 
     <!-- SmartDoorLockScreen -->
     <string name="smart_door_lock_back_content_description">Back to control modules</string>

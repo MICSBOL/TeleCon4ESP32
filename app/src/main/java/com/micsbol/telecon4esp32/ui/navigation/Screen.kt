@@ -21,6 +21,7 @@ sealed class Screen(val route: String) {
     object SolarPro : Screen("solar_pro")
     object SolarHelp : Screen("solar_help")
     object SmartHomePro : Screen("smart_home_pro")
+    object SmartHomeHelp : Screen("smart_home_help")
     object WaterTankPro : Screen("water_tank_pro")
     object SmartDoorLockPro : Screen("smart_door_lock_pro")
     object SmartLightingPro : Screen("smart_lighting_pro")

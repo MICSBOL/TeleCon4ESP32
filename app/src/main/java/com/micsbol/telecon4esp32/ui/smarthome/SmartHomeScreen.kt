@@ -2,8 +2,8 @@ package com.micsbol.telecon4esp32.ui.smarthome
 
 import android.content.res.Configuration
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -13,9 +13,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,7 +34,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsIconButton
+import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.smarthome.components.EnergyUsageChart
 import com.micsbol.telecon4esp32.ui.smarthome.components.RecentEventsList
 import com.micsbol.telecon4esp32.ui.smarthome.components.RoomCard
@@ -47,11 +55,36 @@ fun SmartHomeScreen(
     SmartHomeScreenContent(
         uiState = uiState,
         onMenuClick = { navController.navigateUp() },
+        onRoomLightToggle = viewModel::toggleRoomLight,
         topBarActions = {
-            ApplicationSettingsIconButton(
-                applicationId = ApplicationId.SMART_HOME,
-                navController = navController,
-            )
+            Row(
+                modifier = Modifier.padding(start = 4.dp, end = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SmartHomeGlassIconButton(
+                    onClick = { navController.navigate(Screen.SmartHomeHelp.route) },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = stringResource(R.string.smart_home_help_content_description),
+                        tint = SmartHomeGlass.AccentWarm,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                SmartHomeGlassIconButton(
+                    onClick = { navController.navigateToApplicationSettings(ApplicationId.SMART_HOME) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(
+                            R.string.applications_settings_content_description,
+                            stringResource(applicationSettingsTitleRes(ApplicationId.SMART_HOME)),
+                        ),
+                        tint = SmartHomeGlass.AccentWarm,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
         },
     )
 }
@@ -60,102 +93,111 @@ fun SmartHomeScreen(
 fun SmartHomeScreenContent(
     uiState: SmartHomeUiState,
     onMenuClick: () -> Unit,
+    onRoomLightToggle: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     topBarActions: @Composable () -> Unit = {},
 ) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val scrollState = rememberScrollState()
-    val roomsScrollState = rememberScrollState()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        SmartHomeTopBar(
-            allSystemsNormal = uiState.allSystemsNormal,
-            onMenuClick = onMenuClick,
-            actions = topBarActions,
-        )
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-        ) {
-            val useWideLayout = isLandscape && maxWidth >= 600.dp
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+    SmartHomeBackground(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SmartHomeTopBar(
+                allSystemsNormal = uiState.allSystemsNormal,
+                onMenuClick = onMenuClick,
+                actions = topBarActions,
+            )
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize(),
             ) {
-                SmartHomeSectionHeader(
-                    title = stringResource(R.string.smart_home_section_rooms),
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(roomsScrollState),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    uiState.rooms.forEach { room ->
-                        RoomCard(room = room)
-                    }
-                }
+                val useWideLayout = isLandscape && maxWidth >= 600.dp
+                val sectionPadding = Modifier.padding(horizontal = 16.dp)
 
-                SmartHomeSectionHeader(
-                    title = stringResource(R.string.smart_home_section_systems),
-                )
-                if (useWideLayout) {
-                    Row(
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    SmartHomeSectionHeader(
+                        title = stringResource(R.string.smart_home_section_rooms),
+                        modifier = sectionPadding,
+                    )
+                    LazyRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        uiState.systems.forEach { system ->
-                            SystemTile(
-                                system = system,
+                        items(
+                            items = uiState.rooms,
+                            key = { it.id },
+                        ) { room ->
+                            RoomCard(
+                                room = room,
+                                onLightToggle = { onRoomLightToggle(room.id) },
+                            )
+                        }
+                    }
+
+                    SmartHomeSectionHeader(
+                        title = stringResource(R.string.smart_home_section_systems),
+                        modifier = sectionPadding,
+                    )
+                    if (useWideLayout) {
+                        Row(
+                            modifier = sectionPadding.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            uiState.systems.forEach { system ->
+                                SystemTile(
+                                    system = system,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = sectionPadding
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            uiState.systems.forEach { system ->
+                                SystemTile(
+                                    system = system,
+                                    modifier = Modifier.fillMaxWidth(0.42f),
+                                )
+                            }
+                        }
+                    }
+
+                    if (useWideLayout) {
+                        Row(
+                            modifier = sectionPadding.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            EnergyUsageChart(
+                                chartData = uiState.energyChart,
+                                modifier = Modifier.weight(1f),
+                            )
+                            RecentEventsList(
+                                events = uiState.recentEvents,
                                 modifier = Modifier.weight(1f),
                             )
                         }
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        uiState.systems.forEach { system ->
-                            SystemTile(
-                                system = system,
-                                modifier = Modifier.fillMaxWidth(0.42f),
-                            )
+                    } else {
+                        Column(
+                            modifier = sectionPadding,
+                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                        ) {
+                            EnergyUsageChart(chartData = uiState.energyChart)
+                            RecentEventsList(events = uiState.recentEvents)
                         }
                     }
-                }
 
-                if (useWideLayout) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        EnergyUsageChart(
-                            chartData = uiState.energyChart,
-                            modifier = Modifier.weight(1f),
-                        )
-                        RecentEventsList(
-                            events = uiState.recentEvents,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                } else {
-                    EnergyUsageChart(chartData = uiState.energyChart)
-                    RecentEventsList(events = uiState.recentEvents)
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }

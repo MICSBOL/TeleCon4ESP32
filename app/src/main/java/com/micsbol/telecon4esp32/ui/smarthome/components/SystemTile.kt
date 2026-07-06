@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeGlass
 import com.micsbol.telecon4esp32.ui.smarthome.SystemTileUiModel
 
 @Composable
@@ -47,7 +48,7 @@ fun SystemTile(
             Text(
                 text = stringResource(system.titleRes),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = SmartHomeGlass.TextSecondary,
                 textAlign = TextAlign.Center,
             )
             if (system.value.isNotEmpty()) {
@@ -57,7 +58,7 @@ fun SystemTile(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = SmartHomeGlass.TextPrimary,
                     textAlign = TextAlign.Center,
                 )
             }

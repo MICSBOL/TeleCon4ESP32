@@ -13,17 +13,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
 import com.micsbol.telecon4esp32.ui.smarthome.RecentEventUiModel
+import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeGlass
 
 @Composable
 fun RecentEventsList(
@@ -34,13 +34,14 @@ fun RecentEventsList(
         SmartHomeSectionHeader(
             title = stringResource(R.string.smart_home_section_recent_events),
             action = {
-                TextButton(onClick = { }) {
-                    Text(
-                        text = stringResource(R.string.smart_home_view_all),
-                        style = MaterialTheme.typography.labelMedium,
+                Text(
+                    text = stringResource(R.string.smart_home_view_all),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                    )
-                }
+                    ),
+                    color = SmartHomeGlass.TextSecondary,
+                )
             },
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -78,12 +79,12 @@ private fun RecentEventRow(event: RecentEventUiModel) {
                 text = stringResource(event.titleRes),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = SmartHomeGlass.TextPrimary,
             )
             Text(
                 text = stringResource(R.string.smart_home_event_time_today, event.time),
                 style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor(),
+                color = SmartHomeGlass.TextMuted,
             )
         }
     }

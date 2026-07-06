@@ -32,6 +32,7 @@ import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseCameraScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseHelpScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseSettingsScreen
+import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeHelpScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeScreen
 import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockScreen
 import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingScreen
@@ -268,6 +269,9 @@ fun AppNavGraph(
         }
         composable(Screen.SmartHomePro.route) {
             SmartHomeScreen(navController = navController)
+        }
+        composable(Screen.SmartHomeHelp.route) {
+            SmartHomeHelpScreen(navController = navController)
         }
         composable(Screen.WaterTankPro.route) {
             WaterTankScreen(navController = navController)

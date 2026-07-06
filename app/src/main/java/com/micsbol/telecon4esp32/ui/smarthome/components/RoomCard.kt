@@ -2,6 +2,8 @@ package com.micsbol.telecon4esp32.ui.smarthome.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,76 +23,119 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
+import com.micsbol.telecon4esp32.ui.smarthome.RoomDeviceUiModel
 import com.micsbol.telecon4esp32.ui.smarthome.RoomStatusBadge
 import com.micsbol.telecon4esp32.ui.smarthome.RoomUiModel
-import com.micsbol.telecon4esp32.ui.theme.PlotOrange
-import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
+import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeGlass
+
+private val RoomCardWidth = 280.dp
+private val RoomCardHeight = 453.dp
 
 @Composable
 fun RoomCard(
     room: RoomUiModel,
+    onLightToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SmartHomeCard(
-        modifier = modifier.width(168.dp),
+    Box(
+        modifier = modifier
+            .width(RoomCardWidth)
+            .height(RoomCardHeight)
+            .shadow(
+                elevation = 10.dp,
+                shape = SmartHomeGlass.CardShape,
+                ambientColor = Color.Black.copy(alpha = 0.40f),
+                spotColor = Color.Black.copy(alpha = 0.30f),
+            )
+            .clip(SmartHomeGlass.CardShape)
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = SmartHomeGlass.BorderAlpha),
+                shape = SmartHomeGlass.CardShape,
+            ),
+    ) {
+        Image(
+            painter = painterResource(room.displayImageRes),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.45f to Color.Black.copy(alpha = 0.08f),
+                            1f to Color.Black.copy(alpha = 0.55f),
+                        ),
+                    ),
+                ),
+        )
+        RoomGlassOverlay(
+            room = room,
+            onLightToggle = onLightToggle,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+}
+
+@Composable
+private fun RoomGlassOverlay(
+    room: RoomUiModel,
+    onLightToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(SmartHomeGlass.CardSurface.copy(alpha = SmartHomeGlass.SurfaceAlphaStrong))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
-            Text(
-                text = stringResource(room.nameRes),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            RoomStatusBadgeChip(room = room)
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        RoomImageHero(room = room)
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Thermostat,
-                contentDescription = null,
-                tint = mutedTextColor(),
-                modifier = Modifier.size(14.dp),
-            )
-            Text(
-                text = stringResource(R.string.smart_home_temperature_short, room.temperatureC),
-                style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor(),
-            )
-        }
-        if (room.alertTextRes != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = PlotOrange,
-                    modifier = Modifier.size(14.dp),
-                )
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(room.alertTextRes),
+                    text = stringResource(room.nameRes),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = SmartHomeGlass.TextPrimary,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = roomStatusSubtitle(room),
                     style = MaterialTheme.typography.labelSmall,
-                    color = PlotOrange,
+                    color = SmartHomeGlass.TextSecondary,
+                )
+            }
+            RoomStatusRatioBadge(room = room)
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            room.devices.forEach { device ->
+                RoomDeviceIcon(
+                    device = device,
+                    roomName = stringResource(room.nameRes),
+                    onLightToggle = onLightToggle,
                 )
             }
         }
@@ -102,79 +143,127 @@ fun RoomCard(
 }
 
 @Composable
-private fun RoomImageHero(room: RoomUiModel) {
+private fun RoomDeviceIcon(
+    device: RoomDeviceUiModel,
+    roomName: String,
+    onLightToggle: () -> Unit,
+) {
+    val isActiveLight = device.isLight && device.isOn
+    val backgroundColor = when {
+        isActiveLight -> SmartHomeGlass.AccentWarm.copy(alpha = 0.28f)
+        device.isLight -> Color.White.copy(alpha = 0.08f)
+        device.isOn -> SmartHomeGlass.AccentGreen.copy(alpha = 0.22f)
+        else -> Color.White.copy(alpha = 0.12f)
+    }
+    val borderColor = when {
+        isActiveLight -> SmartHomeGlass.AccentWarm.copy(alpha = 0.55f)
+        else -> Color.White.copy(alpha = 0.10f)
+    }
+    val iconTint = when {
+        isActiveLight -> SmartHomeGlass.AccentWarm
+        device.isLight -> SmartHomeGlass.TextMuted
+        device.isOn -> SmartHomeGlass.AccentGreenBright
+        else -> SmartHomeGlass.TextPrimary
+    }
+    val statusLabel = stringResource(
+        if (device.isOn) R.string.smart_lighting_status_on else R.string.smart_lighting_status_off,
+    )
+
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(96.dp)
-            .clip(RoundedCornerShape(10.dp)),
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .border(width = 1.dp, color = borderColor, shape = CircleShape)
+            .then(
+                if (device.isLight) {
+                    Modifier.clickable(onClick = onLightToggle)
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(room.imageRes),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
+        Icon(
+            imageVector = device.icon,
+            contentDescription = if (device.isLight) {
+                stringResource(R.string.smart_home_room_light_toggle_content_description, roomName, statusLabel)
+            } else {
+                null
+            },
+            tint = iconTint,
+            modifier = Modifier.size(16.dp),
         )
-        // Scrim tinted with the room accent so photos read consistently across the row.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.05f),
-                            room.accentColor.copy(alpha = 0.35f),
-                        ),
-                    ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .padding(8.dp)
-                .size(30.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.35f))
-                .align(Alignment.TopStart),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = room.icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp),
-            )
-        }
     }
 }
 
 @Composable
-private fun RoomStatusBadgeChip(room: RoomUiModel) {
-    val (text, backgroundColor, contentColor) = when (room.statusBadge) {
-        RoomStatusBadge.ON_COUNT -> Triple(
-            stringResource(R.string.smart_home_room_status_on_count, room.onCount),
-            TechBlueBright.copy(alpha = 0.2f),
-            TechBlueBright,
-        )
-        RoomStatusBadge.OFF -> Triple(
-            stringResource(R.string.smart_home_room_status_off),
-            MaterialTheme.colorScheme.surfaceVariant,
-            MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        RoomStatusBadge.OPEN -> Triple(
-            stringResource(R.string.smart_home_room_status_open),
-            PlotOrange.copy(alpha = 0.2f),
-            PlotOrange,
-        )
+private fun roomStatusSubtitle(room: RoomUiModel): String = when (room.statusBadge) {
+    RoomStatusBadge.ON_COUNT -> {
+        if (room.onCount == 1) {
+            stringResource(R.string.smart_home_room_devices_active_one)
+        } else {
+            stringResource(R.string.smart_home_room_devices_active, room.onCount)
+        }
+    }
+    RoomStatusBadge.OFF -> stringResource(R.string.smart_home_room_devices_off)
+    RoomStatusBadge.OPEN -> room.alertTextRes?.let { stringResource(it) }
+        ?: stringResource(R.string.smart_home_room_status_open)
+}
+
+@Composable
+private fun RoomStatusRatioBadge(room: RoomUiModel) {
+    val badgeBackground = SmartHomeGlass.CardSurfaceLight.copy(alpha = SmartHomeGlass.ChipSurfaceAlpha)
+    val baseColor = SmartHomeGlass.TextSecondary
+    val highlightColor = when (room.statusBadge) {
+        RoomStatusBadge.ON_COUNT -> SmartHomeGlass.AccentWarm
+        RoomStatusBadge.OFF -> SmartHomeGlass.TextMuted
+        RoomStatusBadge.OPEN -> SmartHomeGlass.AccentOrange
+    }
+
+    val annotatedText = when (room.statusBadge) {
+        RoomStatusBadge.ON_COUNT -> {
+            val prefix = stringResource(
+                R.string.smart_home_room_status_on_ratio_prefix,
+                room.onCount,
+                room.totalDeviceCount,
+            )
+            val suffix = stringResource(R.string.smart_home_room_status_on_ratio_suffix)
+            buildAnnotatedString {
+                withStyle(SpanStyle(color = baseColor)) {
+                    append(prefix)
+                }
+                withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.SemiBold)) {
+                    append(suffix)
+                }
+            }
+        }
+        RoomStatusBadge.OFF -> buildAnnotatedString {
+            withStyle(SpanStyle(color = baseColor)) {
+                append(
+                    stringResource(
+                        R.string.smart_home_room_status_off_ratio_prefix,
+                        room.totalDeviceCount,
+                    ),
+                )
+            }
+            withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.SemiBold)) {
+                append(stringResource(R.string.smart_home_room_status_off_ratio_suffix))
+            }
+        }
+        RoomStatusBadge.OPEN -> buildAnnotatedString {
+            withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.SemiBold)) {
+                append(stringResource(R.string.smart_home_room_status_open))
+            }
+        }
     }
 
     Text(
-        text = text,
+        text = annotatedText,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .clip(SmartHomeGlass.PillShape)
+            .background(badgeBackground)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = contentColor,
     )
 }
