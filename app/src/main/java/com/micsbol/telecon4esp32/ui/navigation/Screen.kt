@@ -23,6 +23,7 @@ sealed class Screen(val route: String) {
     object SmartHomePro : Screen("smart_home_pro")
     object SmartHomeHelp : Screen("smart_home_help")
     object WaterTankPro : Screen("water_tank_pro")
+    object WaterTankHelp : Screen("water_tank_help")
     object SmartDoorLockPro : Screen("smart_door_lock_pro")
     object SmartLightingPro : Screen("smart_lighting_pro")
     object CustomDashboardPro : Screen("custom_dashboard_pro")

@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
@@ -22,18 +24,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
-import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseStatusBadge
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
-import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
-import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
 import com.micsbol.telecon4esp32.ui.watertank.TankStatus
+import com.micsbol.telecon4esp32.ui.watertank.WaterTankGlass
 
 @Composable
 fun WaterTankMetricRow(
@@ -48,21 +47,21 @@ fun WaterTankMetricRow(
     ) {
         WaterTankMetricChip(
             icon = Icons.Default.WaterDrop,
-            iconTint = TechBlueBright,
+            iconTint = WaterTankGlass.AccentCyan,
             label = stringResource(R.string.water_tank_volume),
             value = stringResource(R.string.water_tank_liters_value, volumeLiters),
             modifier = Modifier.weight(1f),
         )
         WaterTankMetricChip(
             icon = Icons.Default.Opacity,
-            iconTint = Color(0xFF9C7CF4),
+            iconTint = Color(0xFF818CF8),
             label = stringResource(R.string.water_tank_capacity),
             value = stringResource(R.string.water_tank_liters_value, capacityLiters),
             modifier = Modifier.weight(1f),
         )
         WaterTankMetricChip(
             icon = Icons.Default.AccessTime,
-            iconTint = TechCyanBright,
+            iconTint = WaterTankGlass.AccentCyanBright,
             label = stringResource(R.string.water_tank_last_updated),
             value = stringResource(R.string.water_tank_updated_ago, updatedAgo),
             modifier = Modifier.weight(1f),
@@ -72,7 +71,7 @@ fun WaterTankMetricRow(
 
 @Composable
 private fun WaterTankMetricChip(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     iconTint: Color,
     label: String,
     value: String,
@@ -88,7 +87,7 @@ private fun WaterTankMetricChip(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    .background(WaterTankGlass.AccentCyanMuted.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -101,7 +100,7 @@ private fun WaterTankMetricChip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor(),
+                color = WaterTankGlass.TextSecondary,
                 textAlign = TextAlign.Center,
             )
             Text(
@@ -110,7 +109,7 @@ private fun WaterTankMetricChip(
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = WaterTankGlass.TextPrimary,
                 textAlign = TextAlign.Center,
             )
         }
@@ -133,28 +132,60 @@ fun WaterTankStatusRow(
             TankStatus.CRITICAL -> stringResource(R.string.water_tank_status_critical)
         }
         val statusColor = when (tankStatus) {
-            TankStatus.NORMAL -> StatusConnected
-            TankStatus.LOW -> Color(0xFFF59E0B)
-            TankStatus.CRITICAL -> Color(0xFFEF4444)
+            TankStatus.NORMAL -> WaterTankGlass.Positive
+            TankStatus.LOW -> WaterTankGlass.Warning
+            TankStatus.CRITICAL -> WaterTankGlass.Danger
         }
 
-        GreenhouseStatusBadge(
+        WaterTankStatusBadge(
             text = statusText,
             modifier = Modifier.weight(1f),
-            backgroundColor = statusColor.copy(alpha = 0.15f),
+            backgroundColor = statusColor.copy(alpha = 0.12f),
             contentColor = statusColor,
             leadingIcon = Icons.Default.Check,
             iconTint = statusColor,
         )
-        GreenhouseStatusBadge(
+        WaterTankStatusBadge(
             text = stringResource(
                 if (pumpOn) R.string.water_tank_pump_on else R.string.water_tank_pump_off,
             ),
             modifier = Modifier.weight(1f),
-            backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            backgroundColor = WaterTankGlass.AccentCyanMuted.copy(alpha = 0.18f),
+            contentColor = WaterTankGlass.TextSecondary,
             leadingIcon = Icons.Default.Settings,
-            iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconTint = WaterTankGlass.TextMuted,
+        )
+    }
+}
+
+@Composable
+private fun WaterTankStatusBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color,
+    contentColor: Color,
+    leadingIcon: ImageVector,
+    iconTint: Color,
+) {
+    Row(
+        modifier = modifier
+            .clip(WaterTankGlass.PillShape)
+            .background(backgroundColor)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = contentColor,
         )
     }
 }

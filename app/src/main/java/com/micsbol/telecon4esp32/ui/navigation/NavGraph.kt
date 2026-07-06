@@ -38,6 +38,7 @@ import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockScreen
 import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingScreen
 import com.micsbol.telecon4esp32.ui.solarsystem.SolarHelpScreen
 import com.micsbol.telecon4esp32.ui.solarsystem.SolarSystemScreen
+import com.micsbol.telecon4esp32.ui.watertank.WaterTankHelpScreen
 import com.micsbol.telecon4esp32.ui.watertank.WaterTankScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
@@ -275,6 +276,9 @@ fun AppNavGraph(
         }
         composable(Screen.WaterTankPro.route) {
             WaterTankScreen(navController = navController)
+        }
+        composable(Screen.WaterTankHelp.route) {
+            WaterTankHelpScreen(navController = navController)
         }
         composable(Screen.SmartDoorLockPro.route) {
             SmartDoorLockScreen(navController = navController)

@@ -402,6 +402,62 @@
     <string name="water_tank_sensor_online">Sensor en línea</string>
     <string name="water_tank_sensor_offline">Sensor fuera de línea</string>
     <string name="water_tank_last_updated_time">Última actualización: %1$s</string>
+    <string name="water_tank_help_content_description">Abrir ayuda de depósito de agua</string>
+    <string name="water_tank_help_title">Ayuda de depósito de agua</string>
+    <string name="water_tank_help_subtitle">Componentes de pantalla, protocolo WT y cableado ESP32</string>
+    <string name="water_tank_help_back">Volver al depósito de agua</string>
+    <string name="water_tank_help_intro_title">Monitor DIY ESP32 de depósito de agua</string>
+    <string name="water_tank_help_intro_body">Este panel lee líneas WT:DATA por Bluetooth SPP. Sensores ultrasónicos o analógicos informan porcentaje de llenado, volumen, estado de bomba y umbrales de alerta. Guarda el historial de nivel en NVS o SPIFFS para el gráfico.</string>
+    <string name="water_tank_guide_read_label">Lectura (ESP32 → app)</string>
+    <string name="water_tank_guide_write_label">Escritura (app → ESP32)</string>
+    <string name="water_tank_guide_topbar_title">Barra superior — estado de conexión</string>
+    <string name="water_tank_guide_topbar_description">Muestra el título, nombre del dispositivo, acción de actualizar y la insignia ESP32 conectado cuando Bluetooth SPP está activo.</string>
+    <string name="water_tank_guide_topbar_read">WT:DATA,level,74,cap,500,pump,0,status,0,device,ESP32-WT01\nLa insignia de conexión sigue el enlace Bluetooth; no requiere GPIO aparte del LED de estado en GPIO 2.</string>
+    <string name="water_tank_guide_level_title">Tarjeta de nivel actual</string>
+    <string name="water_tank_guide_level_description">Visualización 3D del depósito con porcentaje animado, lectura de volumen/capacidad y barra de progreso. El nivel se calcula desde el sensor ultrasónico o analógico.</string>
+    <string name="water_tank_guide_level_read">WT:DATA,level,74,cap,500\nlevel: 0–100 % lleno. cap: capacidad en litros (guardada en NVS, enviada al conectar o al cambiar).</string>
+    <string name="water_tank_guide_metrics_title">Chips de métricas — volumen, capacidad, última actualización</string>
+    <string name="water_tank_guide_metrics_description">Tres chips bajo la tarjeta de nivel. El volumen se deriva de nivel × capacidad; última actualización muestra segundos desde la última línea WT:DATA.</string>
+    <string name="water_tank_guide_metrics_read">WT:DATA,level,74,cap,500\nLa app calcula volumen = cap × level / 100. Opcional: enviar updated_ago,2 o last_time,10:30 en WT:DATA.</string>
+    <string name="water_tank_guide_status_title">Insignias de estado y bomba</string>
+    <string name="water_tank_guide_status_description">La insignia de estado muestra Normal, Bajo o Crítico según umbrales del firmware o interruptores de flotador. La insignia de bomba refleja el relé de salida.</string>
+    <string name="water_tank_guide_status_read">WT:DATA,pump,0,status,0\nstatus: 0=normal, 1=bajo, 2=crítico. pump: 0=apagada, 1=encendida. El firmware puede fijar status por umbrales de nivel o GPIO 35/36.</string>
+    <string name="water_tank_guide_period_title">Selector de período del gráfico</string>
+    <string name="water_tank_guide_period_description">Cambia el historial entre vistas de 24 horas, 7 días y 30 días. El ESP32 debe guardar buffers separados por período en NVS.</string>
+    <string name="water_tank_guide_period_read">WT:DATA,period,7,hist_level,72|71|70|69|68|67|66\nperiod: 1=24H, 7=7D, 30=30D. hist_level = muestras de porcentaje separadas por | para el período activo.</string>
+    <string name="water_tank_guide_chart_title">Gráfico de nivel en el tiempo</string>
+    <string name="water_tank_guide_chart_description">Gráfico de área del porcentaje de llenado con estadísticas de promedio, mínimo y máximo del período seleccionado.</string>
+    <string name="water_tank_guide_chart_read">WT:DATA,hist_level,72|71|70|69|68|67|66|65|64|63|62|61|60|59|58|59|60|62|65|68|70|72|73|74|74,avg,66,min,58,max,74\nEnvía hist_level cada 30–60 s; nivel en vivo cada 1–2 s.</string>
+    <string name="water_tank_guide_footer_title">Pie de sensor</string>
+    <string name="water_tank_guide_footer_description">Fila inferior con punto en línea/fuera de línea y hora de última actualización. Pasa a fuera de línea si no llega WT:DATA en el tiempo de espera (por defecto 10 s).</string>
+    <string name="water_tank_guide_footer_read">WT:DATA,level,74,online,1,last_time,10:30\nonline: 1=sensor responde, 0=tiempo agotado. Omitir claves para que la app infiera por llegada de mensajes.</string>
+    <string name="water_tank_guide_pump_title">Control de bomba</string>
+    <string name="water_tank_guide_pump_description">Activa el relé de bomba desde la app. El ESP32 confirma el nuevo estado en la siguiente línea WT:DATA.</string>
+    <string name="water_tank_guide_pump_read">WT:DATA confirma el estado de bomba tras cada WT:SET.</string>
+    <string name="water_tank_guide_pump_write">WT:SET,pump,1\nWT:SET,pump,0</string>
+    <string name="water_tank_guide_pins_title">Mapa de pines ESP32</string>
+    <string name="water_tank_guide_pins_description">Asignación de GPIO para cada elemento del panel Depósito de agua. El eco ultrasónico debe usar divisor a 3,3 V; las salidas de relé son activas en alto.</string>
+    <string name="water_tank_pin_section_topbar">Barra superior</string>
+    <string name="water_tank_pin_section_metrics">Chips de métricas</string>
+    <string name="water_tank_pin_section_status">Insignias de estado</string>
+    <string name="water_tank_pin_section_footer">Pie de sensor</string>
+    <string name="water_tank_pin_line">%1$s → GPIO %2$d (%3$s)</string>
+    <string name="water_tank_pin_footer">Envía WT:DATA cada 1–2 s para nivel y bomba en vivo; hist_level y estadísticas cada 30–60 s.</string>
+    <string name="water_tank_pin_topbar_connection">Insignia ESP32 conectado</string>
+    <string name="water_tank_pin_level_percent">Porcentaje de nivel (TRIG ultrasónico)</string>
+    <string name="water_tank_pin_level_echo">Porcentaje de nivel (ECHO ultrasónico)</string>
+    <string name="water_tank_pin_level_analog">Sensor de nivel analógico (opcional)</string>
+    <string name="water_tank_pin_chart_history">Gráfico de historial de nivel</string>
+    <string name="water_tank_pin_hw_status_led">salida LED de estado</string>
+    <string name="water_tank_pin_hw_ultrasonic_trig">salida TRIG HC-SR04</string>
+    <string name="water_tank_pin_hw_ultrasonic_echo">entrada ECHO HC-SR04 (divisor)</string>
+    <string name="water_tank_pin_hw_analog_level">entrada de nivel analógico</string>
+    <string name="water_tank_pin_hw_pump_relay">salida relé de bomba</string>
+    <string name="water_tank_pin_hw_float_switch">interruptor de flotador, INPUT_PULLUP</string>
+    <string name="water_tank_pin_hw_level_derived">calculado desde ultrasónico</string>
+    <string name="water_tank_pin_hw_nvs_capacity">constante de capacidad en NVS</string>
+    <string name="water_tank_pin_hw_level_source">fuente de nivel ultrasónico</string>
+    <string name="water_tank_pin_hw_nvs_history">buffer de historial NVS/SPIFFS</string>
 
     <!-- SmartHomeScreen -->
     <string name="smart_home_screen_title">Hogar inteligente</string>

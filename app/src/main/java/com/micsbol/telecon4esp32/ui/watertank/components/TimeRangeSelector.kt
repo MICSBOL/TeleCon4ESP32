@@ -15,10 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
 import com.micsbol.telecon4esp32.ui.watertank.TankChartPeriod
+import com.micsbol.telecon4esp32.ui.watertank.WaterTankGlass
 
 @Composable
 fun TimeRangeSelector(
@@ -44,13 +45,13 @@ fun TimeRangeSelector(
                     .clip(RoundedCornerShape(20.dp))
                     .then(
                         if (isSelected) {
-                            Modifier.background(TechBlueBright.copy(alpha = 0.2f))
+                            Modifier.background(WaterTankGlass.AccentCyanMuted.copy(alpha = 0.38f))
                         } else {
                             Modifier
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .background(WaterTankGlass.CardSurface.copy(alpha = WaterTankGlass.ChipSurfaceAlpha))
                                 .border(
                                     width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    color = WaterTankGlass.BorderColor.copy(alpha = WaterTankGlass.BorderAlpha),
                                     shape = RoundedCornerShape(20.dp),
                                 )
                         },
@@ -59,8 +60,8 @@ fun TimeRangeSelector(
                     .padding(vertical = 8.dp),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) TechBlueBright else MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                color = if (isSelected) WaterTankGlass.AccentCyanBright else WaterTankGlass.TextMuted,
+                textAlign = TextAlign.Center,
             )
         }
     }

@@ -32,9 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
-import com.micsbol.telecon4esp32.ui.theme.TechBlueBright
-import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
+import com.micsbol.telecon4esp32.ui.watertank.WaterTankGlass
 
 @Composable
 fun CurrentLevelCard(
@@ -67,20 +65,20 @@ fun CurrentLevelCard(
                         modifier = Modifier
                             .size(22.dp)
                             .clip(CircleShape)
-                            .background(TechCyanBright.copy(alpha = 0.15f)),
+                            .background(WaterTankGlass.AccentCyan.copy(alpha = 0.08f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Default.WaterDrop,
                             contentDescription = null,
-                            tint = TechCyanBright,
+                            tint = WaterTankGlass.AccentCyan,
                             modifier = Modifier.size(13.dp),
                         )
                     }
                     Text(
                         text = stringResource(R.string.water_tank_current_level),
                         style = MaterialTheme.typography.labelMedium,
-                        color = mutedTextColor(),
+                        color = WaterTankGlass.TextSecondary,
                     )
                 }
                 Text(
@@ -89,7 +87,7 @@ fun CurrentLevelCard(
                         fontSize = 44.sp,
                         fontWeight = FontWeight.Bold,
                     ),
-                    color = TechCyanBright,
+                    color = WaterTankGlass.AccentCyanBright,
                 )
                 Text(
                     text = stringResource(
@@ -99,7 +97,7 @@ fun CurrentLevelCard(
                     ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = WaterTankGlass.TextPrimary,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 LevelProgressBar(
@@ -125,7 +123,7 @@ private fun LevelProgressBar(
         modifier = modifier
             .height(8.dp)
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(WaterTankGlass.AccentCyanMuted.copy(alpha = 0.22f)),
     ) {
         Box(
             modifier = Modifier
@@ -134,7 +132,7 @@ private fun LevelProgressBar(
                 .clip(RoundedCornerShape(50))
                 .background(
                     brush = Brush.horizontalGradient(
-                        colors = listOf(TechBlueBright, TechCyanBright),
+                        colors = listOf(WaterTankGlass.AccentCyan, WaterTankGlass.AccentCyanBright),
                     ),
                 ),
         )

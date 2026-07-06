@@ -1,7 +1,6 @@
 package com.micsbol.telecon4esp32.ui.watertank.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,12 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.mutedTextColor
-import com.micsbol.telecon4esp32.ui.theme.DarkGridLine
-import com.micsbol.telecon4esp32.ui.theme.LightGridLine
-import com.micsbol.telecon4esp32.ui.theme.PlotCyan
-import com.micsbol.telecon4esp32.ui.theme.TechCyanBright
 import com.micsbol.telecon4esp32.ui.watertank.TankLevelChartData
+import com.micsbol.telecon4esp32.ui.watertank.WaterTankGlass
 
 private val LevelAxisValues = listOf(100, 80, 60, 40, 20, 0)
 private val LeftAxisWidth = 36.dp
@@ -64,19 +59,19 @@ fun TankLevelChart(
                 text = stringResource(R.string.water_tank_chart_title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = WaterTankGlass.TextPrimary,
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Canvas(modifier = Modifier.size(8.dp)) {
-                    drawCircle(color = PlotCyan)
+                    drawCircle(color = WaterTankGlass.ChartLine)
                 }
                 Text(
                     text = stringResource(R.string.water_tank_chart_legend),
                     style = MaterialTheme.typography.labelSmall,
-                    color = mutedTextColor(),
+                    color = WaterTankGlass.TextSecondary,
                 )
             }
         }
@@ -98,7 +93,7 @@ fun TankLevelChart(
                     Text(
                         text = stringResource(R.string.water_tank_percent_value, value),
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = mutedTextColor(),
+                        color = WaterTankGlass.TextSecondary,
                         textAlign = TextAlign.End,
                     )
                 }
@@ -125,7 +120,7 @@ fun TankLevelChart(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = mutedTextColor(),
+                        color = WaterTankGlass.TextSecondary,
                     )
                 }
             }
@@ -175,25 +170,25 @@ private fun ChartStatCard(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = TechCyanBright,
+            tint = WaterTankGlass.AccentCyan,
             modifier = Modifier.size(16.dp),
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = mutedTextColor(),
+            color = WaterTankGlass.TextSecondary,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = WaterTankGlass.TextPrimary,
         )
         if (subtext != null) {
             Text(
                 text = subtext,
                 style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor(),
+                color = WaterTankGlass.TextMuted,
             )
         }
     }
@@ -205,7 +200,7 @@ private fun TankLevelChartCanvas(
     modifier: Modifier = Modifier,
 ) {
     var canvasSize by remember { mutableStateOf(Size.Zero) }
-    val gridColor = if (isSystemInDarkTheme()) DarkGridLine else LightGridLine
+    val gridColor = WaterTankGlass.TextMuted.copy(alpha = WaterTankGlass.ChartGridAlpha)
 
     Canvas(
         modifier = modifier.onGloballyPositioned { coordinates ->
@@ -256,8 +251,8 @@ private fun TankLevelChartCanvas(
             path = fillPath,
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    PlotCyan.copy(alpha = 0.45f),
-                    PlotCyan.copy(alpha = 0.05f),
+                    WaterTankGlass.ChartLine.copy(alpha = 0.45f),
+                    WaterTankGlass.ChartLine.copy(alpha = 0.05f),
                 ),
                 startY = topPad,
                 endY = topPad + chartHeight,
@@ -265,15 +260,15 @@ private fun TankLevelChartCanvas(
         )
         drawPath(
             path = linePath,
-            color = PlotCyan,
+            color = WaterTankGlass.ChartLine,
             style = Stroke(width = 2.5.dp.toPx()),
         )
 
         val lastIndex = chartData.levelSeries.lastIndex
         val lastPoint = pointAt(lastIndex)
-        drawCircle(color = PlotCyan, radius = 4.dp.toPx(), center = lastPoint)
+        drawCircle(color = WaterTankGlass.ChartLine, radius = 4.dp.toPx(), center = lastPoint)
         drawCircle(
-            color = PlotCyan.copy(alpha = 0.25f),
+            color = WaterTankGlass.ChartLine.copy(alpha = 0.25f),
             radius = 8.dp.toPx(),
             center = lastPoint,
         )
@@ -299,11 +294,7 @@ fun WaterTankFooter(
         ) {
             Canvas(modifier = Modifier.size(8.dp)) {
                 drawCircle(
-                    color = if (isOnline) {
-                        androidx.compose.ui.graphics.Color(0xFF10B981)
-                    } else {
-                        androidx.compose.ui.graphics.Color(0xFFF43F5E)
-                    },
+                    color = if (isOnline) WaterTankGlass.Positive else WaterTankGlass.Danger,
                 )
             }
             Text(
@@ -311,13 +302,13 @@ fun WaterTankFooter(
                     if (isOnline) R.string.water_tank_sensor_online else R.string.water_tank_sensor_offline,
                 ),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = WaterTankGlass.TextPrimary,
             )
         }
         Text(
             text = stringResource(R.string.water_tank_last_updated_time, lastUpdatedTime),
             style = MaterialTheme.typography.labelSmall,
-            color = mutedTextColor(),
+            color = WaterTankGlass.TextMuted,
         )
     }
 }
