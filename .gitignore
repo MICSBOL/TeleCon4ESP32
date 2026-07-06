@@ -14,3 +14,10 @@
 .cxx
 local.properties
 .kotlin/
+
+# Cursor IDE / agent artifacts (keep off GitHub)
+.cursor/
+
+# Python
+__pycache__/
+*.pyc

@@ -132,6 +132,77 @@ Optional history: `hist_temp`, `hist_hum`, `hist_vpd` as pipe-separated floats. 
 
 ---
 
+## Solar Power (`SP`)
+
+**ESP32 → phone:**
+
+```
+SP:DATA,solar_w,480,load_w,310,batt_w,170,grid_w,120,batt_pct,89,volt,24.8,amp,19.4,
+      today_kwh,725,month_kwh,523,total_kwh,1800,cons_week_kwh,472,cons_day_kwh,68,
+      prod_kwh,492,export_kwh,183,batt_used_kwh,72,
+      panels,4,status,0,device,ESP32-SP01,panel_name,LinCore,
+      batt_cap_kwh,2000,charge_eta_min,272,total_charge_kwh,112.9,
+      hist_prod,6|14|9|8|18|11|7|16|10|9|20|13|10|22|14|7|15|9|5|12|8,
+      hist_cons,12|7|9|14|8|11|16|9|12|11|7|10|15|8|11|13|6|9|10|5|7
+```
+
+For **week** view the app expects **21** sub-daily samples (3 per day × 7 days). For **today** view it expects **24** hourly samples (3 per hour × 8 blocks labelled 00:00–21:00). If the ESP32 only stores **7 daily totals** (week) or **8 block totals** (day), send those in `hist_prod` and `hist_cons`; the app expands each group into 3 sub-bars automatically.
+
+| Key | Description |
+|-----|-------------|
+| `solar_w` | Solar production (W) |
+| `load_w` | Home load (W) |
+| `batt_w` | Battery charge/discharge (W, positive = charging) |
+| `grid_w` | Grid flow (W, positive = export, negative = import) |
+| `batt_pct` | Battery state of charge (0–100) |
+| `volt` | DC bus voltage (V) |
+| `amp` | DC bus current (A) |
+| `today_kwh` | Energy generated today (kWh) |
+| `month_kwh` | Energy generated this month (kWh) |
+| `total_kwh` | Lifetime energy generated (kWh) |
+| `cons_week_kwh` | Electricity consumed this week (kWh) |
+| `cons_day_kwh` | Electricity consumed today (kWh) |
+| `prod_kwh` | Energy produced in selected period (kWh) |
+| `export_kwh` | Energy exported to grid (kWh) |
+| `batt_used_kwh` | Energy stored/used from battery (kWh) |
+| `panels` | Number of panel strings monitored |
+| `status` | 0=normal, 1=fault |
+| `device` | Device identifier shown in the app |
+| `panel_name` | User-facing panel/inverter label |
+| `batt_cap_kwh` | Battery capacity (kWh) |
+| `charge_eta_min` | Estimated minutes to full charge |
+| `total_charge_kwh` | Energy charged into battery in period (kWh) |
+| `hist_prod` | Produced kWh per chart bar (upward blue bars). 21 values (week) or 24 (today), or 7 daily totals |
+| `hist_cons` | Consumed kWh per chart bar (downward purple bars). Same length as `hist_prod` |
+| `hist_cons_home` | Optional: home-use portion per bar (summed with batt/grid if `hist_cons` omitted) |
+| `hist_cons_batt` | Optional: battery-use portion per bar |
+| `hist_cons_grid` | Optional: grid-use portion per bar |
+| `inverter` | 1=inverter on, 0=off |
+| `grid_mode` | 0=idle, 1=export, 2=import |
+| `panel_eff` | Panel efficiency percent |
+| `fault` | Fault code (0=none) |
+| `to_home_kwh` | Energy routed to home load |
+| `to_batt_kwh` | Energy routed to battery |
+| `to_grid_kwh` | Energy routed to grid |
+| `max_solar_w` | Peak array watts for UI background scaling |
+| `low_batt_pct` | Low-battery warning threshold |
+
+Send `SP:DATA` at ~1–2 Hz for live watts and every 30–60 s for cumulative kWh counters. History keys can be sent less often or after a refresh request.
+
+**Phone → ESP32:**
+
+| Command | Description |
+|---------|-------------|
+| `SP:SET,refresh,1` | Ask ESP32 to resend counters and history |
+| `SP:SET,period,1` | Select chart period (`1` = today, `7` = week) |
+| `SP:SET,inverter,1` | Turn inverter on |
+| `SP:SET,inverter,0` | Turn inverter off |
+| `SP:SET,reset_day,1` | Reset daily kWh counters in ESP32 NVS |
+
+Typical ESP32 inputs: INA219/ACS712 for current, voltage divider for bus voltage, pulse counter or inverter Modbus/serial for kWh totals. Store daily/monthly counters in NVS and reset `today_kwh` at midnight.
+
+---
+
 ## Arduino / ESP32 example (RC + plots)
 
 ```cpp
