@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.ui.applications
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
@@ -26,14 +28,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
-import com.micsbol.telecon4esp32.ui.components.neuRaised
+import com.micsbol.telecon4esp32.ui.components.glassSurface
 import com.micsbol.telecon4esp32.ui.theme.Neo
+import com.micsbol.telecon4esp32.ui.wallet.CoinUnlockPillButton
+
+enum class ApplicationTrailingAction {
+    ENTER,
+    UNLOCK,
+    DEFAULT,
+}
 
 @Composable
 fun ApplicationListItemCard(
@@ -42,6 +52,8 @@ fun ApplicationListItemCard(
     subtitle: String,
     badge: String,
     onClick: () -> Unit,
+    trailingAction: ApplicationTrailingAction = ApplicationTrailingAction.DEFAULT,
+    onUnlockClick: () -> Unit = {},
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -50,9 +62,8 @@ fun ApplicationListItemCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(88.dp)
             .scale(scale)
-            .neuRaised(cornerRadius = 22.dp)
+            .glassSurface(cornerRadius = 22.dp)
             .clip(RoundedCornerShape(22.dp))
             .clickable(
                 interactionSource = interaction,
@@ -86,6 +97,35 @@ fun ApplicationListItemCard(
         Column(horizontalAlignment = Alignment.End) {
             BadgeChip(badge)
             Spacer(modifier = Modifier.height(8.dp))
+            ApplicationTrailingControl(
+                action = trailingAction,
+                onUnlockClick = onUnlockClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ApplicationTrailingControl(
+    action: ApplicationTrailingAction,
+    onUnlockClick: () -> Unit,
+) {
+    when (action) {
+        ApplicationTrailingAction.UNLOCK -> {
+            CoinUnlockPillButton(
+                coinCost = 0,
+                onClick = onUnlockClick,
+                compact = true,
+            )
+        }
+        ApplicationTrailingAction.ENTER -> {
+            Image(
+                painter = painterResource(R.drawable.ic_chevron_enter_gold),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        ApplicationTrailingAction.DEFAULT -> {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
@@ -100,7 +140,8 @@ fun ApplicationListItemCard(
 private fun BadgeChip(badge: String) {
     val accent = when (badge.uppercase()) {
         "PRO" -> Neo.Warning
-        "SOON" -> Neo.TextSecondary
+        "SOON", "PRONTO" -> Neo.TextSecondary
+        "UNLOCKED", "DESBLOQ." -> Neo.Accent
         else -> Neo.Positive
     }
     Box(

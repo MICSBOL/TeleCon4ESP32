@@ -1,21 +1,22 @@
 package com.micsbol.telecon4esp32.ui.smartdoorlock.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,10 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.smartdoorlock.RelayPinState
-import com.micsbol.telecon4esp32.ui.theme.DarkSurfaceVariant
-import com.micsbol.telecon4esp32.ui.theme.TechBlue
+import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockGlass
 
 @Composable
 fun SmartDoorRelayPanel(
@@ -35,63 +34,65 @@ fun SmartDoorRelayPanel(
     onTriggerPulse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    SmartDoorLockCard(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        style = SmartDoorLockCardStyle.Glass,
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(14.dp))
-                .background(DarkSurfaceVariant)
+                .fillMaxWidth()
                 .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Memory,
-                    contentDescription = null,
-                    tint = brandPrimary(),
-                )
-                Text(
-                    text = stringResource(
-                        R.string.smart_door_lock_relay_pin_state,
-                        relayPinState.name,
-                    ),
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Text(
-                text = stringResource(R.string.smart_door_lock_relay_active_low),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Button(
-            onClick = onTriggerPulse,
-            enabled = !isPulseActive,
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(14.dp)),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = DarkSurfaceVariant,
-                contentColor = TechBlue,
-                disabledContainerColor = DarkSurfaceVariant.copy(alpha = 0.6f),
-                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Memory,
+                        contentDescription = null,
+                        tint = SmartDoorLockGlass.AccentGreenBright,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.smart_door_lock_relay_pin_state,
+                            relayPinState.name,
+                        ),
+                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SmartDoorLockGlass.TextPrimary,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.smart_door_lock_relay_active_low),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SmartDoorLockGlass.TextMuted,
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .clip(SmartDoorLockGlass.PillShape)
+                    .background(SmartDoorLockGlass.AccentGreen.copy(alpha = 0.6f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !isPulseActive,
+                        onClick = onTriggerPulse,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Sensors,
                     contentDescription = null,
+                    tint = SmartDoorLockGlass.TextPrimary,
+                    modifier = Modifier.size(20.dp),
                 )
                 Text(
                     text = if (isPulseActive) {
@@ -101,6 +102,7 @@ fun SmartDoorRelayPanel(
                     },
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = SmartDoorLockGlass.TextPrimary,
                 )
             }
         }

@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.ui.ads.InterstitialAdManager
 import com.micsbol.telecon4esp32.ui.ads.LocalInterstitialAdManager
+import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
+import com.micsbol.telecon4esp32.ui.ads.RewardedAdManager
 import com.micsbol.telecon4esp32.ui.navigation.AppNavGraph
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,6 +24,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var interstitialAdManager: InterstitialAdManager
 
+    @Inject
+    lateinit var rewardedAdManager: RewardedAdManager
+
     private var keepSystemSplash = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,6 +39,7 @@ class MainActivity : ComponentActivity() {
             TeleCon4Esp32Theme {
                 CompositionLocalProvider(
                     LocalInterstitialAdManager provides interstitialAdManager,
+                    LocalRewardedAdManager provides rewardedAdManager,
                 ) {
                     AppNavGraph(
                         onComposeSplashReady = {

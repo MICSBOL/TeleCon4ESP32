@@ -9,5 +9,4 @@ fun ApplicationId.protocolPrefix(): String = when (this) {
     ApplicationId.WATER_TANK -> "WT"
     ApplicationId.SMART_DOOR_LOCK -> "DL"
     ApplicationId.SMART_LIGHTING -> "LT"
-    ApplicationId.CUSTOM_DASHBOARD -> "CD"
 }

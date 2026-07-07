@@ -2,20 +2,23 @@ package com.micsbol.telecon4esp32.ui.smartdoorlock
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CallEnd
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,7 +27,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,13 +40,14 @@ import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsIconButton
+import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorLockTopBar
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorMediaControls
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorRelayPanel
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorSignalButtons
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorVideoPanel
-import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 @Composable
@@ -77,10 +84,34 @@ fun SmartDoorLockScreen(
             navController.navigateUp()
         },
         topBarActions = {
-            ApplicationSettingsIconButton(
-                applicationId = ApplicationId.SMART_DOOR_LOCK,
-                navController = navController,
-            )
+            Row(
+                modifier = Modifier.padding(start = 4.dp, end = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SmartDoorLockGlassIconButton(
+                    onClick = { navController.navigate(Screen.SmartDoorLockHelp.route) },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = stringResource(R.string.smart_door_lock_help_content_description),
+                        tint = SmartDoorLockGlass.AccentGreenBright,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                SmartDoorLockGlassIconButton(
+                    onClick = { navController.navigateToApplicationSettings(ApplicationId.SMART_DOOR_LOCK) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(
+                            R.string.applications_settings_content_description,
+                            stringResource(applicationSettingsTitleRes(ApplicationId.SMART_DOOR_LOCK)),
+                        ),
+                        tint = SmartDoorLockGlass.TextPrimary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
         },
     )
 }
@@ -99,79 +130,98 @@ fun SmartDoorLockScreenContent(
     modifier: Modifier = Modifier,
     topBarActions: @Composable () -> Unit = {},
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        SmartDoorLockTopBar(
-            callDurationSeconds = uiState.callDurationSeconds,
-            isConnected = uiState.isEsp32Online,
-            onBackClick = onBackClick,
-            actions = topBarActions,
-        )
+    SmartDoorLockBackground(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SmartDoorLockTopBar(
+                callDurationSeconds = uiState.callDurationSeconds,
+                isConnected = uiState.isEsp32Online,
+                onBackClick = onBackClick,
+                actions = topBarActions,
+            )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SmartDoorVideoPanel(
-                cameraState = uiState.cameraState,
-                doorLockState = uiState.doorLockState,
-                isEsp32Online = uiState.isEsp32Online,
-                wifiSignalDbm = uiState.wifiSignalDbm,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            )
-
-            SmartDoorSignalButtons(
-                onUnlockClick = onUnlockClick,
-                onLockClick = onLockClick,
-            )
-
-            SmartDoorMediaControls(
-                isMicEnabled = uiState.isMicEnabled,
-                isSpeakerEnabled = uiState.isSpeakerEnabled,
-                isCameraEnabled = uiState.isCameraEnabled,
-                onMicToggle = onMicToggle,
-                onSpeakerToggle = onSpeakerToggle,
-                onCameraToggle = onCameraToggle,
-            )
-
-            SmartDoorRelayPanel(
-                relayPinState = uiState.relayPinState,
-                isPulseActive = uiState.isRelayPulseActive,
-                onTriggerPulse = onTriggerPulse,
-            )
-
-            Button(
-                onClick = onEndCall,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = StatusDisconnected,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Default.CallEnd,
-                    contentDescription = null,
+                SmartDoorVideoPanel(
+                    cameraState = uiState.cameraState,
+                    doorLockState = uiState.doorLockState,
+                    isEsp32Online = uiState.isEsp32Online,
+                    wifiSignalDbm = uiState.wifiSignalDbm,
+                    onSwipeUnlock = onUnlockClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                 )
-                Text(
-                    text = stringResource(R.string.smart_door_lock_end_call),
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+
+                SmartDoorSignalButtons(
+                    onUnlockClick = onUnlockClick,
+                    onLockClick = onLockClick,
+                )
+
+                SmartDoorMediaControls(
+                    isMicEnabled = uiState.isMicEnabled,
+                    isSpeakerEnabled = uiState.isSpeakerEnabled,
+                    isCameraEnabled = uiState.isCameraEnabled,
+                    onMicToggle = onMicToggle,
+                    onSpeakerToggle = onSpeakerToggle,
+                    onCameraToggle = onCameraToggle,
+                )
+
+                SmartDoorRelayPanel(
+                    relayPinState = uiState.relayPinState,
+                    isPulseActive = uiState.isRelayPulseActive,
+                    onTriggerPulse = onTriggerPulse,
+                )
+
+                SmartDoorEndCallButton(
+                    onClick = onEndCall,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SmartDoorEndCallButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(SmartDoorLockGlass.PillShape)
+            .background(SmartDoorLockGlass.CardSurfaceTint.copy(alpha = 0.75f))
+            .border(
+                1.dp,
+                SmartDoorLockGlass.BorderColor.copy(alpha = SmartDoorLockGlass.BorderAlpha),
+                SmartDoorLockGlass.PillShape,
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.CallEnd,
+            contentDescription = null,
+            tint = SmartDoorLockGlass.TextPrimary,
+            modifier = Modifier.size(22.dp),
+        )
+        Text(
+            text = stringResource(R.string.smart_door_lock_end_call),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = SmartDoorLockGlass.TextPrimary,
+        )
     }
 }
 

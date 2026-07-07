@@ -26,7 +26,6 @@ fun applicationSettingsTitleRes(applicationId: ApplicationId): Int = when (appli
     ApplicationId.WATER_TANK -> R.string.app_water_tank_settings_title
     ApplicationId.SMART_DOOR_LOCK -> R.string.app_smart_door_lock_settings_title
     ApplicationId.SMART_LIGHTING -> R.string.app_smart_lighting_settings_title
-    ApplicationId.CUSTOM_DASHBOARD -> R.string.app_custom_dashboard_settings_title
 }
 
 @Composable

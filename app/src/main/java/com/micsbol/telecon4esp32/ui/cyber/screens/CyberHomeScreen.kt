@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.ui.cyber.screens
 
 import android.app.Activity
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
+import com.micsbol.telecon4esp32.BuildConfig
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -76,11 +77,17 @@ import com.micsbol.telecon4esp32.ui.components.NeoIconButton
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoStatTile
 import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
-import com.micsbol.telecon4esp32.ui.components.neuRaised
+import com.micsbol.telecon4esp32.ui.components.glassSurface
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.home.HomeHelpDialog
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.Neo
+import com.micsbol.telecon4esp32.ui.wallet.CoinHomeWalletPanel
+import com.micsbol.telecon4esp32.ui.wallet.CoinMessageDialog
+import com.micsbol.telecon4esp32.ui.wallet.CoinPricingTableDialog
+import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
+import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
+import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 
 private data class HomeMenuItem(
     val icon: ImageVector,
@@ -97,7 +104,7 @@ private data class HomeMetric(
 )
 
 /**
- * Soft-UI neumorphic home dashboard.
+ * Dark glassmorphism home dashboard.
  *
  * Vertical structure:
  *  Header -> Quick Status -> Bluetooth -> 2x2 Grid -> Recent Project -> CTA -> Footer
@@ -115,7 +122,14 @@ fun CyberHomeScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     val entitlement = LocalEntitlement.current
+    val wallet = LocalWallet.current
+    val rewardedAdManager = LocalRewardedAdManager.current
     var showHelpDialog by remember { mutableStateOf(false) }
+    var showPricingTable by remember { mutableStateOf(false) }
+    var coinMessage by remember { mutableStateOf<String?>(null) }
+    val adRewardGrantedMessage = stringResource(R.string.coins_ad_reward_granted)
+    val adUnavailableMessage = stringResource(R.string.coins_ad_unavailable)
+    val showCoinWallet = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
 
     BackHandler { activity?.finish() }
 
@@ -199,11 +213,32 @@ fun CyberHomeScreen(
                     isConnected = isBluetoothConnected,
                     onHelpClick = { showHelpDialog = true },
                     onHeaderClick = { navController?.navigate(Screen.About.route) },
+                    showCoins = showCoinWallet,
+                    coinBalance = wallet.balance,
+                    onCoinsClick = { showPricingTable = true },
                 )
             }
 
-            item {
-                QuickStatusPanel(metrics = quickMetrics)
+            if (showCoinWallet) {
+                item {
+                    CoinHomeWalletPanel(
+                        balance = wallet.balance,
+                        onWatchAd = {
+                            if (activity != null && rewardedAdManager != null) {
+                                rewardedAdManager.tryShow(activity) { granted ->
+                                    coinMessage = if (granted) {
+                                        adRewardGrantedMessage
+                                    } else {
+                                        adUnavailableMessage
+                                    }
+                                }
+                            } else {
+                                coinMessage = adUnavailableMessage
+                            }
+                        },
+                        onViewPricing = { showPricingTable = true },
+                    )
+                }
             }
 
             item {
@@ -248,8 +283,6 @@ fun CyberHomeScreen(
                 }
             }
 
-            item { FooterPanel(metrics = footerMetrics) }
-
             if (AdPolicy.hasBanner(Screen.Home.route, entitlement)) {
                 item { AdBanner(modifier = Modifier.fillMaxWidth()) }
             }
@@ -257,6 +290,34 @@ fun CyberHomeScreen(
 
         if (showHelpDialog) {
             HomeHelpDialog(onDismissRequest = { showHelpDialog = false })
+        }
+
+        if (showPricingTable && showCoinWallet) {
+            CoinPricingTableDialog(
+                walletBalance = wallet.balance,
+                onDismiss = { showPricingTable = false },
+                onWatchAd = {
+                    if (activity != null && rewardedAdManager != null) {
+                        rewardedAdManager.tryShow(activity) { granted ->
+                            coinMessage = if (granted) {
+                                adRewardGrantedMessage
+                            } else {
+                                adUnavailableMessage
+                            }
+                            if (granted) showPricingTable = false
+                        }
+                    } else {
+                        coinMessage = adUnavailableMessage
+                    }
+                },
+            )
+        }
+
+        if (coinMessage != null) {
+            CoinMessageDialog(
+                message = coinMessage.orEmpty(),
+                onDismiss = { coinMessage = null },
+            )
         }
 
         if (errorMessage != null) {
@@ -321,6 +382,9 @@ private fun HeaderPanel(
     isConnected: Boolean,
     onHelpClick: () -> Unit,
     onHeaderClick: () -> Unit,
+    showCoins: Boolean = false,
+    coinBalance: Int = 0,
+    onCoinsClick: () -> Unit = {},
 ) {
     NeoCard(
         modifier = Modifier.fillMaxWidth(),
@@ -333,8 +397,7 @@ private fun HeaderPanel(
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .clip(CircleShape)
-                    .background(Neo.SurfaceLow),
+                    .glassSurface(cornerRadius = 28.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -367,6 +430,16 @@ private fun HeaderPanel(
                 StatusLine(isConnected = isConnected)
             }
             Spacer(modifier = Modifier.width(12.dp))
+            if (showCoins) {
+                com.micsbol.telecon4esp32.ui.wallet.CoinBalanceChip(
+                    balance = coinBalance,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(onClick = onCoinsClick)
+                        .padding(horizontal = 4.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             NeoIconButton(
                 icon = Icons.AutoMirrored.Filled.HelpOutline,
                 onClick = onHelpClick,
@@ -396,45 +469,6 @@ private fun StatusLine(isConnected: Boolean) {
             color = if (isConnected) Neo.Positive else Neo.Negative,
             fontSize = 12.sp,
         )
-    }
-}
-
-@Composable
-private fun QuickStatusPanel(metrics: List<HomeMetric>) {
-    NeoCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.cyber_quick_status),
-            color = Neo.TextSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            metrics.forEach { metric ->
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    NeoIconBadge(icon = metric.icon)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = metric.value,
-                        color = metric.valueColor,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = metric.label,
-                        color = Neo.TextSecondary,
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -484,8 +518,7 @@ private fun MenuCard(item: HomeMenuItem, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .height(150.dp)
-            .neuRaised(cornerRadius = 24.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .glassSurface(cornerRadius = 24.dp)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -531,8 +564,7 @@ private fun RecentProjectPanel(onOpenClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(width = 84.dp, height = 64.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Neo.SurfaceLow),
+                    .glassSurface(cornerRadius = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -592,24 +624,6 @@ private fun Tag(text: String) {
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
         )
-    }
-}
-
-@Composable
-private fun FooterPanel(metrics: List<HomeMetric>) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        metrics.take(3).forEach { metric ->
-            NeoStatTile(
-                icon = metric.icon,
-                label = metric.label,
-                value = metric.value,
-                valueColor = metric.valueColor,
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }
 

@@ -1,27 +1,29 @@
 package com.micsbol.telecon4esp32.ui.smartdoorlock.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
-import com.micsbol.telecon4esp32.ui.theme.TechBlue
+import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockGlass
 
 @Composable
 fun SmartDoorSignalButtons(
@@ -33,48 +35,60 @@ fun SmartDoorSignalButtons(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Button(
+        SmartDoorQuickActionCard(
+            label = stringResource(R.string.smart_door_lock_send_unlock_short),
+            icon = Icons.Default.Key,
+            style = SmartDoorLockCardStyle.Green,
             onClick = onUnlockClick,
             modifier = Modifier
                 .weight(1f)
-                .height(56.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = TechBlue,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        ) {
-            Icon(
-                imageVector = Icons.Default.LockOpen,
-                contentDescription = null,
-            )
-            Text(
-                text = stringResource(R.string.smart_door_lock_send_unlock),
-                modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Button(
+                .height(100.dp),
+        )
+        SmartDoorQuickActionCard(
+            label = stringResource(R.string.smart_door_lock_send_lock_short),
+            icon = Icons.Default.Lock,
+            style = SmartDoorLockCardStyle.Gray,
             onClick = onLockClick,
             modifier = Modifier
                 .weight(1f)
-                .height(56.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = StatusConnected,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
+                .height(100.dp),
+        )
+    }
+}
+
+@Composable
+private fun SmartDoorQuickActionCard(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    style: SmartDoorLockCardStyle,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SmartDoorLockActionCard(
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick,
+        ),
+        style = style,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Icon(
-                imageVector = Icons.Default.Lock,
+                imageVector = icon,
                 contentDescription = null,
+                tint = SmartDoorLockGlass.TextPrimary,
+                modifier = Modifier.size(28.dp),
             )
             Text(
-                text = stringResource(R.string.smart_door_lock_send_lock),
-                modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.labelLarge,
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
+                color = SmartDoorLockGlass.TextPrimary,
             )
         }
     }

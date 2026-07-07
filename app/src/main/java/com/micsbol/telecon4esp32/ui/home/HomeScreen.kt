@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,6 +74,16 @@ import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelPlastic
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
+import com.micsbol.telecon4esp32.ui.wallet.CoinBalanceChip
+import com.micsbol.telecon4esp32.ui.wallet.CoinHomeWalletPanel
+import com.micsbol.telecon4esp32.ui.wallet.CoinMessageDialog
+import com.micsbol.telecon4esp32.ui.wallet.CoinPricingTableDialog
+import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
+import com.micsbol.telecon4esp32.domain.model.CoinEconomy
+import com.micsbol.telecon4esp32.domain.model.CoinWalletState
+import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
+import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 
 data class HomeItem(
     val icon: ImageVector,
@@ -93,9 +104,16 @@ fun HomeScreen(
 ) {
     val isLandscape = LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
     val entitlement = LocalEntitlement.current
+    val wallet = LocalWallet.current
+    val rewardedAdManager = LocalRewardedAdManager.current
     val context = LocalContext.current
     val activity = context as? Activity
     var showHelpDialog by remember { mutableStateOf(false) }
+    var showPricingTable by remember { mutableStateOf(false) }
+    var coinMessage by remember { mutableStateOf<String?>(null) }
+    val adRewardGrantedMessage = stringResource(R.string.coins_ad_reward_granted)
+    val adUnavailableMessage = stringResource(R.string.coins_ad_unavailable)
+    val showCoinWallet = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
 
     BackHandler {
         activity?.finish()
@@ -159,7 +177,31 @@ fun HomeScreen(
             HomePlasticHeaderRow(
                 onHelpClick = { showHelpDialog = true },
                 onAboutClick = { navController?.navigate(Screen.About.route) },
+                showCoins = showCoinWallet,
+                coinBalance = wallet.balance,
+                onCoinsClick = { showPricingTable = true },
             )
+
+            if (showCoinWallet) {
+                Spacer(modifier = Modifier.height(10.dp))
+                CoinHomeWalletPanel(
+                    balance = wallet.balance,
+                    onWatchAd = {
+                        if (activity != null && rewardedAdManager != null) {
+                            rewardedAdManager.tryShow(activity) { granted ->
+                                coinMessage = if (granted) {
+                                    adRewardGrantedMessage
+                                } else {
+                                    adUnavailableMessage
+                                }
+                            }
+                        } else {
+                            coinMessage = adUnavailableMessage
+                        }
+                    },
+                    onViewPricing = { showPricingTable = true },
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -240,6 +282,34 @@ fun HomeScreen(
             HomeHelpDialog(onDismissRequest = { showHelpDialog = false })
         }
 
+        if (showPricingTable && showCoinWallet) {
+            CoinPricingTableDialog(
+                walletBalance = wallet.balance,
+                onDismiss = { showPricingTable = false },
+                onWatchAd = {
+                    if (activity != null && rewardedAdManager != null) {
+                        rewardedAdManager.tryShow(activity) { granted ->
+                            coinMessage = if (granted) {
+                                adRewardGrantedMessage
+                            } else {
+                                adUnavailableMessage
+                            }
+                            if (granted) showPricingTable = false
+                        }
+                    } else {
+                        coinMessage = adUnavailableMessage
+                    }
+                },
+            )
+        }
+
+        if (coinMessage != null) {
+            CoinMessageDialog(
+                message = coinMessage.orEmpty(),
+                onDismiss = { coinMessage = null },
+            )
+        }
+
         if (errorMessage != null) {
             AlertDialog(
                 onDismissRequest = onDismissError,
@@ -282,6 +352,9 @@ fun HomeScreen(
 private fun HomePlasticHeaderRow(
     onHelpClick: () -> Unit,
     onAboutClick: () -> Unit,
+    showCoins: Boolean = false,
+    coinBalance: Int = 0,
+    onCoinsClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     Row(
@@ -318,6 +391,13 @@ private fun HomePlasticHeaderRow(
                     )
                 }
             }
+        }
+        if (showCoins) {
+            Spacer(modifier = Modifier.width(8.dp))
+            CoinBalanceChip(
+                balance = coinBalance,
+                modifier = Modifier.clickable(onClick = onCoinsClick),
+            )
         }
         Spacer(modifier = Modifier.width(8.dp))
         ControlPanelPlasticIconButton(
@@ -396,23 +476,80 @@ private fun HomePlasticHeroPanel(
     }
 }
 
-@Preview(showSystemUi = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun HomeScreenPreview() {
+private fun HomeScreenPreviewContent(
+    isConnecting: Boolean = false,
+    isBluetoothConnected: Boolean = false,
+    errorMessage: String? = null,
+    lastDeviceName: String? = null,
+    wallet: CoinWalletState = CoinWalletState(balance = CoinEconomy.DEBUG_STARTING_BALANCE),
+    entitlement: Entitlement = Entitlement.Free,
+) {
+    CompositionLocalProvider(
+        LocalEntitlement provides entitlement,
+        LocalWallet provides wallet,
+    ) {
+        HomeScreen(
+            isConnecting = isConnecting,
+            isBluetoothConnected = isBluetoothConnected,
+            errorMessage = errorMessage,
+            lastDeviceName = lastDeviceName,
+        )
+    }
+}
+
+@Preview(showSystemUi = true, name = "Home Portrait", uiMode = UI_MODE_NIGHT_YES)
+@Composable
+private fun HomeScreenPortraitPreview() {
     TeleCon4Esp32Theme {
-        HomeScreen()
+        HomeScreenPreviewContent()
+    }
+}
+
+@Preview(showSystemUi = true, name = "Home Connected", uiMode = UI_MODE_NIGHT_YES)
+@Composable
+private fun HomeScreenConnectedPreview() {
+    TeleCon4Esp32Theme {
+        HomeScreenPreviewContent(
+            isBluetoothConnected = true,
+            lastDeviceName = "RC Car Pro",
+        )
+    }
+}
+
+@Preview(showSystemUi = true, name = "Home Connecting", uiMode = UI_MODE_NIGHT_YES)
+@Composable
+private fun HomeScreenConnectingPreview() {
+    TeleCon4Esp32Theme {
+        HomeScreenPreviewContent(
+            isConnecting = true,
+            lastDeviceName = "RC Car Pro",
+        )
+    }
+}
+
+@Preview(showSystemUi = true, name = "Home Low Coins", uiMode = UI_MODE_NIGHT_YES)
+@Composable
+private fun HomeScreenLowCoinsPreview() {
+    TeleCon4Esp32Theme {
+        HomeScreenPreviewContent(
+            wallet = CoinWalletState(balance = 5),
+        )
     }
 }
 
 @Preview(
     showSystemUi = true,
-    name = "Landscape",
+    name = "Home Landscape Connected",
     uiMode = UI_MODE_NIGHT_YES,
-    device = "spec:width=840dp,height=420dp,dpi=420,isRound=false,chinSize=0dp,orientation=landscape"
+    device = "spec:width=840dp,height=420dp,dpi=420,isRound=false,chinSize=0dp,orientation=landscape",
 )
 @Composable
-fun HomeScreenLandscapePreview() {
+private fun HomeScreenLandscapeConnectedPreview() {
     TeleCon4Esp32Theme {
-        HomeScreen(isBluetoothConnected = true)
+        HomeScreenPreviewContent(
+            isBluetoothConnected = true,
+            lastDeviceName = "RC Car Pro",
+        )
     }
 }

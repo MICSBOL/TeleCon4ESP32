@@ -3,12 +3,10 @@ package com.micsbol.telecon4esp32.di
 import com.micsbol.telecon4esp32.data.bluetooth.AndroidBluetoothController
 import com.micsbol.telecon4esp32.data.camera.Esp32CameraStreamRepository
 import com.micsbol.telecon4esp32.data.repository.AndroidCodeAssetRepository
-import com.micsbol.telecon4esp32.data.repository.CustomDashboardRepository
 import com.micsbol.telecon4esp32.data.repository.SettingsRepository
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamRepository
 import com.micsbol.telecon4esp32.domain.repository.ICodeAssetRepository
-import com.micsbol.telecon4esp32.domain.repository.ICustomDashboardRepository
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import dagger.Binds
 import dagger.Module
@@ -25,12 +23,6 @@ abstract class AppModule {
     abstract fun bindRemoteController(
         impl: AndroidBluetoothController
     ): RemoteController
-
-    @Binds
-    @Singleton
-    abstract fun bindCustomDashboardRepository(
-        impl: CustomDashboardRepository,
-    ): ICustomDashboardRepository
 
     @Binds
     @Singleton

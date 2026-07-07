@@ -1,7 +1,6 @@
 package com.micsbol.telecon4esp32.ui.applications
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DashboardCustomize
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lightbulb
@@ -80,12 +79,5 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         subtitleRes = com.micsbol.telecon4esp32.R.string.app_smart_lighting_subtitle,
         icon = Icons.Default.Lightbulb,
         route = Screen.SmartLightingPro.route,
-    ),
-    ApplicationCatalogItem(
-        id = ApplicationId.CUSTOM_DASHBOARD,
-        titleRes = com.micsbol.telecon4esp32.R.string.app_custom_dashboard_title,
-        subtitleRes = com.micsbol.telecon4esp32.R.string.app_custom_dashboard_subtitle,
-        icon = Icons.Default.DashboardCustomize,
-        route = Screen.CustomDashboardPro.route,
     ),
 )

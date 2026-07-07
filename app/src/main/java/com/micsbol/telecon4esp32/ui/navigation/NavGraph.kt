@@ -14,6 +14,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,6 +37,7 @@ import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseSettingsScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeHelpScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeScreen
+import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockHelpScreen
 import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockScreen
 import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingHelpScreen
 import com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingScreen
@@ -45,7 +49,6 @@ import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelScreen
-import com.micsbol.telecon4esp32.ui.customdashboard.CustomDashboardScreen
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.cyber.screens.CyberHomeScreen
@@ -54,6 +57,8 @@ import com.micsbol.telecon4esp32.ui.rc_settings.SettingsViewModel
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProScreen
 import com.micsbol.telecon4esp32.ui.splash.SplashScreen
 import com.micsbol.telecon4esp32.ui.tutorial.TutorialScreen
+import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
+import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 
 @Composable
 fun AppNavGraph(
@@ -64,9 +69,26 @@ fun AppNavGraph(
     val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
     val settingsViewModel = hiltViewModel<SettingsViewModel>()
     val entitlementViewModel = hiltViewModel<EntitlementViewModel>()
+    val walletViewModel = hiltViewModel<WalletViewModel>()
     val entitlement by entitlementViewModel.entitlement.collectAsState()
+    val wallet by walletViewModel.wallet.collectAsState()
+    var activeProFeature by remember { mutableStateOf<com.micsbol.telecon4esp32.domain.model.PremiumFeature?>(null) }
 
-    CompositionLocalProvider(LocalEntitlement provides entitlement) {
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { entry ->
+            val route = entry.destination.route
+            val newFeature = ProAppRoutes.featureForRoute(route)
+            if (activeProFeature != null && activeProFeature != newFeature) {
+                walletViewModel.onProAppFeatureChanged(activeProFeature)
+            }
+            activeProFeature = newFeature
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalEntitlement provides entitlement,
+        LocalWallet provides wallet,
+    ) {
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -284,14 +306,14 @@ fun AppNavGraph(
         composable(Screen.SmartDoorLockPro.route) {
             SmartDoorLockScreen(navController = navController)
         }
+        composable(Screen.SmartDoorLockHelp.route) {
+            SmartDoorLockHelpScreen(navController = navController)
+        }
         composable(Screen.SmartLightingPro.route) {
             SmartLightingScreen(navController = navController)
         }
         composable(Screen.SmartLightingHelp.route) {
             SmartLightingHelpScreen(navController = navController)
-        }
-        composable(Screen.CustomDashboardPro.route) {
-            CustomDashboardScreen(navController = navController)
         }
         composable(Screen.Upgrade.route) {
             UpgradeScreen(navController = navController)

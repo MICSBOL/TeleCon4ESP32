@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -52,109 +53,48 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
+import com.micsbol.telecon4esp32.ui.theme.AppGlass
+import com.micsbol.telecon4esp32.ui.theme.AppGlassBackground
 import com.micsbol.telecon4esp32.ui.theme.Neo
-import android.app.Activity
 import android.graphics.BlurMaskFilter
-import androidx.core.view.WindowCompat
+
+/** Frosted glass card surface with a thin light border. */
+fun Modifier.glassSurface(
+    cornerRadius: Dp = 24.dp,
+    alpha: Float = AppGlass.SurfaceAlpha,
+    borderAlpha: Float = AppGlass.BorderAlpha,
+): Modifier {
+    val shape = RoundedCornerShape(cornerRadius)
+    return this
+        .clip(shape)
+        .background(AppGlass.CardSurface.copy(alpha = alpha))
+        .border(1.dp, AppGlass.BorderColor.copy(alpha = borderAlpha), shape)
+}
 
 /**
- * Raised neumorphic surface: a light soft shadow on the top-left and a dark
- * soft shadow on the bottom-right, with the surface fill drawn on top. The
- * shadows are rendered behind the content so callers just place children with
- * padding.
+ * Raised glass surface (replaces legacy neumorphic raised modifier).
  */
 fun Modifier.neuRaised(
     cornerRadius: Dp = 24.dp,
     surface: Color = Neo.Surface,
-): Modifier = this.drawBehind { drawNeuRaised(cornerRadius.toPx(), surface) }
+): Modifier = glassSurface(
+    cornerRadius = cornerRadius,
+    alpha = surface.alpha.takeIf { it > 0f } ?: AppGlass.SurfaceAlpha,
+)
 
-/** Draws a raised neumorphic surface (light top-left + dark bottom-right shadows + fill). */
-private fun DrawScope.drawNeuRaised(radius: Float, surface: Color) {
-    val offset = Neo.ShadowOffset
-    val blur = Neo.ShadowBlur
-    drawIntoCanvas { canvas ->
-        val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
-        paint.isAntiAlias = true
-        paint.maskFilter = BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL)
-        // Dark shadow, bottom-right
-        paint.color = Neo.ShadowDark.toArgb()
-        canvas.nativeCanvas.drawRoundRect(
-            offset, offset, size.width + offset, size.height + offset, radius, radius, paint,
-        )
-        // Light shadow, top-left
-        paint.color = Neo.ShadowLight.toArgb()
-        canvas.nativeCanvas.drawRoundRect(
-            -offset, -offset, size.width - offset, size.height - offset, radius, radius, paint,
-        )
-    }
-    drawRoundRect(
-        color = surface,
-        topLeft = Offset.Zero,
-        size = Size(size.width, size.height),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
-    )
-}
-
-/**
- * Inset (pressed) neumorphic surface: the surface fill with inner soft shadows
- * so the element looks carved into the background.
- */
+/** Inset glass surface — slightly darker / lower alpha for pressed or recessed areas. */
 fun Modifier.neuInset(
     cornerRadius: Dp = 24.dp,
     surface: Color = Neo.SurfaceLow,
-): Modifier = this.drawBehind { drawNeuInset(cornerRadius.toPx(), surface) }
+): Modifier = glassSurface(
+    cornerRadius = cornerRadius,
+    alpha = surface.alpha.takeIf { it > 0f } ?: AppGlass.SurfaceAlpha * 0.65f,
+    borderAlpha = AppGlass.BorderAlpha * 0.7f,
+)
 
-/** Draws an inset (carved-in) neumorphic surface. */
-private fun DrawScope.drawNeuInset(radius: Float, surface: Color) {
-    val blur = Neo.ShadowBlur
-    val offset = Neo.ShadowOffset
-    drawRoundRect(
-        color = surface,
-        topLeft = Offset.Zero,
-        size = Size(size.width, size.height),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
-    )
-    drawIntoCanvas { canvas ->
-        val native = canvas.nativeCanvas
-        val save = native.saveLayer(0f, 0f, size.width, size.height, null)
-        val clip = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
-        clip.isAntiAlias = true
-        clip.style = android.graphics.Paint.Style.STROKE
-        clip.strokeWidth = blur
-        clip.maskFilter = BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL)
-        native.clipRect(0f, 0f, size.width, size.height)
-        clip.color = Neo.ShadowDark.toArgb()
-        native.drawRoundRect(
-            offset, offset, size.width + offset, size.height + offset, radius, radius, clip,
-        )
-        clip.color = Neo.ShadowLight.toArgb()
-        native.drawRoundRect(
-            -offset, -offset, size.width - offset, size.height - offset, radius, radius, clip,
-        )
-        native.restoreToCount(save)
-    }
-}
 @Composable
 fun NeumorphicBackground(modifier: Modifier = Modifier) {
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window
-            if (window != null) {
-                window.statusBarColor = Neo.Background.toArgb()
-                window.navigationBarColor = Neo.Background.toArgb()
-                WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = false
-                    isAppearanceLightNavigationBars = false
-                }
-            }
-        }
-    }
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Neo.Background),
-    )
+    AppGlassBackground(modifier = modifier)
 }
 @Composable
 fun NeoSectionTitle(text: String, modifier: Modifier = Modifier) {
@@ -176,48 +116,31 @@ fun NeoCard(
     contentPadding: Dp = 18.dp,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
+    val shape = RoundedCornerShape(cornerRadius)
     val base = modifier
-        .neuRaised(cornerRadius = cornerRadius)
-        .let { if (onClick != null) it.clip(RoundedCornerShape(cornerRadius)).clickable(onClick = onClick) else it }
+        .glassSurface(cornerRadius = cornerRadius)
+        .let { if (onClick != null) it.clickable(onClick = onClick) else it }
         .padding(contentPadding)
     Column(modifier = base, content = content)
 }
-/**
- * Draws the glowing accent fill used by selected icon buttons: a soft outer
- * halo plus a radial-gradient face (bright highlight near the top-left fading
- * into the accent/pressed blue).
- */
+
+/** Soft orange glow behind selected icon buttons. */
 private fun DrawScope.drawAccentGlow(cornerRadius: Float, pressed: Boolean) {
     val glowColor = if (pressed) Neo.AccentPressed else Neo.Accent
     drawIntoCanvas { canvas ->
         val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
         paint.isAntiAlias = true
-        paint.maskFilter = BlurMaskFilter(Neo.ShadowBlur * 1.6f, BlurMaskFilter.Blur.NORMAL)
-        paint.color = glowColor.copy(alpha = 0.55f).toArgb()
+        paint.maskFilter = BlurMaskFilter(18f, BlurMaskFilter.Blur.NORMAL)
+        paint.color = glowColor.copy(alpha = 0.50f).toArgb()
         canvas.nativeCanvas.drawRoundRect(
-            2f, 4f, size.width - 2f, size.height + 6f, cornerRadius, cornerRadius, paint,
+            2f, 4f, size.width - 2f, size.height + 4f, cornerRadius, cornerRadius, paint,
         )
     }
-    val highlight = if (pressed) Neo.Accent else Neo.AccentHighlight
     drawRoundRect(
         brush = Brush.radialGradient(
-            colors = listOf(highlight, Neo.Accent, Neo.AccentPressed),
+            colors = listOf(Neo.AccentHighlight, Neo.Accent, Neo.AccentPressed),
             center = Offset(size.width * 0.35f, size.height * 0.3f),
             radius = size.maxDimension * 0.9f,
-        ),
-        topLeft = Offset.Zero,
-        size = Size(size.width, size.height),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius, cornerRadius),
-    )
-}
-
-/** Soft top-left sheen overlay that gives a raised surface a spherical look. */
-private fun DrawScope.drawRaisedSheen(cornerRadius: Float) {
-    drawRoundRect(
-        brush = Brush.radialGradient(
-            colors = listOf(Neo.ShadowLight.copy(alpha = 0.55f), Color.Transparent),
-            center = Offset(size.width * 0.32f, size.height * 0.28f),
-            radius = size.maxDimension * 0.75f,
         ),
         topLeft = Offset.Zero,
         size = Size(size.width, size.height),
@@ -291,21 +214,18 @@ private fun NeoIconSurface(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val shape = clipShape
     Box(
         modifier = modifier
             .size(size)
-            .drawBehind {
-                val radiusPx = cornerRadius.toPx()
+            .then(
                 when {
-                    selected -> drawAccentGlow(radiusPx, pressed)
-                    pressed -> drawNeuInset(radiusPx, Neo.SurfaceLow)
-                    else -> {
-                        drawNeuRaised(radiusPx, Neo.Surface)
-                        drawRaisedSheen(radiusPx)
-                    }
-                }
-            }
-            .clip(clipShape)
+                    selected -> Modifier.drawBehind { drawAccentGlow(cornerRadius.toPx(), pressed) }
+                    pressed -> Modifier.glassSurface(cornerRadius, alpha = AppGlass.SurfaceAlpha * 0.65f)
+                    else -> Modifier.glassSurface(cornerRadius, alpha = AppGlass.TopBarButtonAlpha)
+                },
+            )
+            .clip(shape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -322,42 +242,23 @@ private fun NeoIconSurface(
         )
     }
 }
-/** Cushioned 3D accent pill: drop shadow, blue gradient body, top inner highlight. */
-private fun DrawScope.drawCushionedAccentPill(cornerRadius: Float, pressed: Boolean) {
+/** Orange gradient pill body with a soft outer glow. */
+private fun DrawScope.drawAccentPill(cornerRadius: Float, pressed: Boolean) {
     if (!pressed) {
         drawIntoCanvas { canvas ->
             val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
             paint.isAntiAlias = true
-            paint.maskFilter = BlurMaskFilter(Neo.ShadowBlur * 1.5f, BlurMaskFilter.Blur.NORMAL)
-            paint.color = Neo.ShadowDark.copy(alpha = 0.70f).toArgb()
-            canvas.nativeCanvas.drawRoundRect(
-                Neo.ShadowOffset,
-                Neo.ShadowOffset * 1.4f,
-                size.width + Neo.ShadowOffset,
-                size.height + Neo.ShadowOffset * 1.4f,
-                cornerRadius,
-                cornerRadius,
-                paint,
-            )
-        }
-        drawIntoCanvas { canvas ->
-            val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
-            paint.isAntiAlias = true
-            paint.maskFilter = BlurMaskFilter(Neo.ShadowBlur * 1.2f, BlurMaskFilter.Blur.NORMAL)
+            paint.maskFilter = BlurMaskFilter(16f, BlurMaskFilter.Blur.NORMAL)
             paint.color = Neo.Accent.copy(alpha = 0.35f).toArgb()
             canvas.nativeCanvas.drawRoundRect(
-                2f, 5f, size.width - 2f, size.height + 5f, cornerRadius, cornerRadius, paint,
+                2f, 4f, size.width - 2f, size.height + 4f, cornerRadius, cornerRadius, paint,
             )
         }
     }
     val bodyBrush = if (pressed) {
         Brush.verticalGradient(listOf(Neo.AccentPressed, Neo.AccentPressed))
     } else {
-        Brush.verticalGradient(
-            0f to Neo.AccentHighlight,
-            0.42f to Neo.Accent,
-            1f to Neo.AccentPressed,
-        )
+        AppGlass.accentVerticalGradient
     }
     drawRoundRect(
         brush = bodyBrush,
@@ -368,15 +269,15 @@ private fun DrawScope.drawCushionedAccentPill(cornerRadius: Float, pressed: Bool
     if (!pressed) {
         drawRoundRect(
             brush = Brush.verticalGradient(
-                0f to Color.White.copy(alpha = 0.38f),
-                0.38f to Color.White.copy(alpha = 0.10f),
+                0f to Color.White.copy(alpha = 0.28f),
+                0.4f to Color.White.copy(alpha = 0.08f),
                 0.65f to Color.Transparent,
             ),
-            topLeft = Offset(3f, 3f),
-            size = Size(size.width - 6f, size.height * 0.52f),
+            topLeft = Offset(2f, 2f),
+            size = Size(size.width - 4f, size.height * 0.5f),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                (cornerRadius - 3f).coerceAtLeast(0f),
-                (cornerRadius - 3f).coerceAtLeast(0f),
+                (cornerRadius - 2f).coerceAtLeast(0f),
+                (cornerRadius - 2f).coerceAtLeast(0f),
             ),
         )
     }
@@ -406,11 +307,15 @@ fun NeoPillButton(
             .drawBehind {
                 val r = cornerRadius.toPx()
                 if (enabled) {
-                    drawCushionedAccentPill(r, pressed)
+                    drawAccentPill(r, pressed)
                 } else {
-                    drawNeuRaised(r, Neo.SurfaceLow)
+                    // disabled state
                 }
             }
+            .then(
+                if (!enabled) Modifier.glassSurface(cornerRadius, alpha = AppGlass.SurfaceAlpha * 0.5f)
+                else Modifier,
+            )
             .clip(shape)
             .clickable(
                 interactionSource = interaction,
@@ -462,8 +367,8 @@ fun NeoSecondaryButton(
             .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             .height(height)
             .then(
-                if (pressed) Modifier.neuInset(cornerRadius = cornerRadius)
-                else Modifier.neuRaised(cornerRadius = cornerRadius)
+                if (pressed) Modifier.glassSurface(cornerRadius, alpha = AppGlass.SurfaceAlpha * 0.65f)
+                else Modifier.glassSurface(cornerRadius),
             )
             .clip(shape)
             .clickable(
@@ -506,7 +411,21 @@ fun NeoToggle(
     Box(
         modifier = modifier
             .size(trackWidth, trackHeight)
-            .neuInset(cornerRadius = trackHeight / 2, surface = if (checked) Neo.Accent else Neo.SurfaceLow)
+            .glassSurface(
+                cornerRadius = trackHeight / 2,
+                alpha = if (checked) AppGlass.SurfaceAlphaStrong else AppGlass.SurfaceAlpha * 0.65f,
+            )
+            .drawBehind {
+                if (checked) {
+                    drawRoundRect(
+                        color = Neo.Accent.copy(alpha = 0.35f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                            trackHeight.toPx() / 2f,
+                            trackHeight.toPx() / 2f,
+                        ),
+                    )
+                }
+            }
             .clip(RoundedCornerShape(trackHeight / 2))
             .clickable { onCheckedChange(!checked) }
             .padding(4.dp),
@@ -515,7 +434,15 @@ fun NeoToggle(
         Box(
             modifier = Modifier
                 .size(24.dp)
-                .neuRaised(cornerRadius = 12.dp, surface = if (checked) Neo.OnAccent else Neo.TextSecondary),
+                .then(
+                    if (checked) {
+                        Modifier.drawBehind {
+                            drawAccentGlow(12.dp.toPx(), pressed = false)
+                        }
+                    } else {
+                        Modifier.glassSurface(12.dp, alpha = AppGlass.SurfaceAlphaStrong)
+                    },
+                ),
         )
     }
 }
@@ -529,7 +456,7 @@ fun NeoStatTile(
 ) {
     Column(
         modifier = modifier
-            .neuRaised(cornerRadius = 20.dp)
+            .glassSurface(cornerRadius = 20.dp)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.Start,
     ) {
@@ -555,9 +482,8 @@ fun NeoStatTile(
 }
 
 /**
- * Rounded-square icon container. Raised (popped-out) neumorphic surface with a
- * light icon by default; when [selected] it fills with the glowing accent blue
- * and the icon turns white -- matching the room-selector tiles in the design.
+ * Rounded-square icon container on a frosted glass surface.
+ * When [selected] it fills with the glowing orange accent.
  */
 @Composable
 fun NeoIconBadge(
@@ -571,11 +497,13 @@ fun NeoIconBadge(
     Box(
         modifier = modifier
             .size(size)
-            .drawBehind {
-                val radiusPx = cornerRadius.toPx()
-                if (selected) drawAccentGlow(radiusPx, pressed = false)
-                else drawNeuRaised(radiusPx, Neo.Surface)
-            }
+            .then(
+                if (selected) {
+                    Modifier.drawBehind { drawAccentGlow(cornerRadius.toPx(), pressed = false) }
+                } else {
+                    Modifier.glassSurface(cornerRadius, alpha = AppGlass.TopBarButtonAlpha)
+                },
+            )
             .clip(RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center,
     ) {
@@ -603,7 +531,7 @@ fun NeoDialControl(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .neuInset(cornerRadius = diameter / 2)
+                .glassSurface(cornerRadius = diameter / 2, alpha = AppGlass.SurfaceAlpha * 0.65f)
                 .drawBehind {
                     val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
                         width = 14.dp.toPx(),
@@ -681,9 +609,7 @@ fun NeoTopBar(
     }
 }
 /**
- * Neumorphic screen shell: charcoal background, top bar, and a content column.
- * The [content] receives top padding already applied for the top bar; it should
- * add its own horizontal padding and scrolling as needed.
+ * Glass screen shell: photo background, frosted top bar, and content column.
  */
 @Composable
 fun NeoScaffold(
@@ -710,7 +636,7 @@ fun NeoScaffold(
     }
 }
 
-/** Floating neumorphic dialog shell for help, codes export, and similar overlays. */
+/** Frosted glass dialog shell for help, codes export, and similar overlays. */
 @Composable
 fun NeoDialog(
     onDismissRequest: () -> Unit,
@@ -726,8 +652,13 @@ fun NeoDialog(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = horizontalMargin)
-                .neuRaised(cornerRadius = 24.dp)
                 .clip(RoundedCornerShape(24.dp))
+                .background(AppGlass.DialogSurface.copy(alpha = AppGlass.DialogSurfaceAlpha))
+                .border(
+                    1.dp,
+                    AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha),
+                    RoundedCornerShape(24.dp),
+                )
                 .padding(horizontal = 24.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

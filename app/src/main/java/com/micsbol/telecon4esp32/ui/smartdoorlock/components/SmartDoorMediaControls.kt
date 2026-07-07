@@ -1,13 +1,16 @@
 package com.micsbol.telecon4esp32.ui.smartdoorlock.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -16,19 +19,16 @@ import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.theme.DarkSurfaceVariant
-import com.micsbol.telecon4esp32.ui.theme.StatusConnected
+import com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockGlass
 
 @Composable
 fun SmartDoorMediaControls(
@@ -41,73 +41,91 @@ fun SmartDoorMediaControls(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(SmartDoorLockGlass.PillShape)
+            .background(SmartDoorLockGlass.CardSurface.copy(alpha = SmartDoorLockGlass.SurfaceAlphaStrong))
+            .border(
+                1.dp,
+                SmartDoorLockGlass.BorderColor.copy(alpha = SmartDoorLockGlass.BorderAlpha),
+                SmartDoorLockGlass.PillShape,
+            )
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        SmartDoorMediaTile(
-            label = if (isMicEnabled) {
+        SmartDoorMediaIconButton(
+            enabled = isMicEnabled,
+            onClick = onMicToggle,
+            enabledIcon = Icons.Default.Mic,
+            disabledIcon = Icons.Default.MicOff,
+            contentDescription = if (isMicEnabled) {
                 stringResource(R.string.smart_door_lock_mic_on)
             } else {
                 stringResource(R.string.smart_door_lock_mic_off)
             },
-            icon = if (isMicEnabled) Icons.Default.Mic else Icons.Default.MicOff,
-            enabled = isMicEnabled,
-            onClick = onMicToggle,
-            modifier = Modifier.weight(1f),
         )
-        SmartDoorMediaTile(
-            label = if (isSpeakerEnabled) {
+        SmartDoorMediaIconButton(
+            enabled = isSpeakerEnabled,
+            onClick = onSpeakerToggle,
+            enabledIcon = Icons.Default.VolumeUp,
+            disabledIcon = Icons.Default.VolumeOff,
+            contentDescription = if (isSpeakerEnabled) {
                 stringResource(R.string.smart_door_lock_speaker_on)
             } else {
                 stringResource(R.string.smart_door_lock_speaker_off)
             },
-            icon = if (isSpeakerEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-            enabled = isSpeakerEnabled,
-            onClick = onSpeakerToggle,
-            modifier = Modifier.weight(1f),
         )
-        SmartDoorMediaTile(
-            label = if (isCameraEnabled) {
+        SmartDoorMediaIconButton(
+            enabled = isCameraEnabled,
+            onClick = onCameraToggle,
+            enabledIcon = Icons.Default.Videocam,
+            disabledIcon = Icons.Default.VideocamOff,
+            contentDescription = if (isCameraEnabled) {
                 stringResource(R.string.smart_door_lock_camera_on)
             } else {
                 stringResource(R.string.smart_door_lock_camera_off)
             },
-            icon = if (isCameraEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
-            enabled = isCameraEnabled,
-            onClick = onCameraToggle,
-            modifier = Modifier.weight(1f),
         )
     }
 }
 
 @Composable
-private fun SmartDoorMediaTile(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun SmartDoorMediaIconButton(
     enabled: Boolean,
     onClick: () -> Unit,
+    enabledIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    disabledIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(DarkSurfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp, horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(
+                if (enabled) {
+                    SmartDoorLockGlass.TextPrimary
+                } else {
+                    Color.Transparent
+                },
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (enabled) StatusConnected else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            color = if (enabled) StatusConnected else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+            imageVector = if (enabled) enabledIcon else disabledIcon,
+            contentDescription = contentDescription,
+            tint = if (enabled) {
+                SmartDoorLockGlass.AccentGreen
+            } else {
+                SmartDoorLockGlass.TextMuted
+            },
+            modifier = Modifier.size(24.dp),
         )
     }
 }

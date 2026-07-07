@@ -29,7 +29,4 @@ enum class PremiumFeature {
 
     /** Smart lighting devices, scenes, and schedules. */
     SMART_LIGHTING,
-
-    /** User-defined dashboard builder. */
-    CUSTOM_DASHBOARD,
 }

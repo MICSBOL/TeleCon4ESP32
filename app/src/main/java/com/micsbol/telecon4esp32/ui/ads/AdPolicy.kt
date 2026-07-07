@@ -18,6 +18,9 @@ object AdPolicy {
     /** Google sample ad unit — replace before Play release. */
     const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
 
+    /** Google sample rewarded ad unit — replace before Play release. */
+    const val REWARDED_AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
+
     const val MIN_INTERSTITIAL_INTERVAL_MS = 4 * 60 * 1000L
     const val MAX_INTERSTITIALS_PER_SESSION = 3
 
