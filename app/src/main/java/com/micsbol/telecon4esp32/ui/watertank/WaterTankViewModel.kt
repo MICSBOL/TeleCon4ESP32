@@ -5,13 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
+import com.micsbol.telecon4esp32.domain.bluetooth.wt.WtPacketEncoder
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.ObserveEntitlementUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -23,16 +29,35 @@ import javax.inject.Inject
 class WaterTankViewModel @Inject constructor(
     private val remoteController: RemoteController,
     getApplicationProtocolMode: GetApplicationProtocolModeUseCase,
+    observeEntitlement: ObserveEntitlementUseCase,
 ) : ViewModel() {
 
     private val appPrefix = ApplicationId.WATER_TANK.protocolPrefix()
 
-    private val protocolMode = getApplicationProtocolMode(ApplicationId.WATER_TANK)
+    private val storedProtocolMode = getApplicationProtocolMode(ApplicationId.WATER_TANK)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.WATER_TANK),
         )
+
+    private val entitlement: StateFlow<Entitlement> = observeEntitlement()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = Entitlement.Free,
+        )
+
+    val protocolMode: StateFlow<BluetoothProtocolMode> = combine(
+        storedProtocolMode,
+        entitlement,
+    ) { stored, access ->
+        access.effectiveProtocolMode(ApplicationId.WATER_TANK, stored)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.WATER_TANK),
+    )
 
     private val _uiState = MutableStateFlow(WaterTankUiState())
     val uiState = _uiState.asStateFlow()
@@ -78,8 +103,12 @@ class WaterTankViewModel @Inject constructor(
     private fun sendSet(pairs: Map<String, Any>) {
         viewModelScope.launch {
             if (!remoteController.isConnected.value) return@launch
-            if (protocolMode.value != BluetoothProtocolMode.SIMPLE) return@launch
-            remoteController.sendLine(SimpleProtocolEncoder.buildSetLine(appPrefix, pairs))
+            when (protocolMode.value) {
+                BluetoothProtocolMode.SIMPLE ->
+                    remoteController.sendLine(SimpleProtocolEncoder.buildSetLine(appPrefix, pairs))
+                BluetoothProtocolMode.ADVANCED ->
+                    remoteController.sendData(WtPacketEncoder.buildSetPacket(pairs))
+            }
         }
     }
 }

@@ -18,12 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,16 +55,11 @@ fun BluetoothScreen(
 ) {
     val entitlement = LocalEntitlement.current
 
-    if (state.errorMessage != null) {
-        AlertDialog(
-            onDismissRequest = onDismissError,
-            title = { Text(stringResource(R.string.bluetooth_connection_error)) },
-            text = { Text(state.errorMessage) },
-            confirmButton = {
-                TextButton(onClick = onDismissError) { Text(stringResource(R.string.codes_dialog_ok)) }
-            }
-        )
-    }
+    BluetoothConnectionErrorDialog(
+        handshakeFailure = state.handshakeFailure,
+        errorMessage = state.errorMessage,
+        onDismiss = onDismissError,
+    )
 
     val showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route, entitlement)
 

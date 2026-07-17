@@ -19,6 +19,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,7 @@ import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsIconButton
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.control_panel.LockScreenOrientation
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcCameraPanPanel
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcCameraPreview
@@ -44,11 +46,8 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcGlassAccentEdge
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudMetricsRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudTopBarStatusRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcVehicleHudTopBar
-import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcViewfinderBrackets
-import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
-import com.micsbol.telecon4esp32.ui.navigation.Screen
-import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout.CAMERA_PAN_CENTER
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout.CAMERA_PAN_CENTER
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 
 @Composable
@@ -62,6 +61,8 @@ fun RcVehicleProScreen(
     val uiState by viewModel.uiState.collectAsState()
     val rcControlState by bluetoothViewModel.rcControlState.collectAsState()
     val bluetoothConnectionState by bluetoothViewModel.state.collectAsState()
+    val bluetoothSession = LocalApplicationBluetoothSession.current
+    val onBluetoothConnect by rememberUpdatedState(bluetoothSession?.onConnect)
 
     val context = LocalContext.current
     LaunchedEffect(Unit) {
@@ -98,7 +99,7 @@ fun RcVehicleProScreen(
         leftStickPosition = rcControlState.leftStickPosition,
         rightStickPosition = rcControlState.rightStickPosition,
         onNavigateBack = { navController.navigateUp() },
-        onBluetoothDisconnectedClick = { navController.navigate(Screen.Bluetooth.route) },
+        onBluetoothDisconnectedClick = { onBluetoothConnect?.invoke() },
         settingsAction = {
             ApplicationSettingsIconButton(
                 applicationId = ApplicationId.RC_VEHICLE_PRO,
@@ -241,11 +242,6 @@ fun RcVehicleProContent(
                 }
             }
         }
-
-        LiveControlBluetoothDisconnectedBannerOverlay(
-            visible = !uiState.isBluetoothConnected && !isBluetoothConnecting,
-            onClick = onBluetoothDisconnectedClick,
-        )
     }
 }
 

@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.ui.applications
 
 import android.app.Activity
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import com.micsbol.telecon4esp32.BuildConfig
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,14 +21,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.model.CoinUnlockOption
+import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.FeatureGrant
 import com.micsbol.telecon4esp32.domain.model.PremiumFeature
 import com.micsbol.telecon4esp32.domain.model.WalletUnlockResult
-import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.has
 import com.micsbol.telecon4esp32.domain.model.isFree
 import com.micsbol.telecon4esp32.domain.model.premiumFeature
@@ -36,6 +40,7 @@ import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.navigation.Screen
+import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 import com.micsbol.telecon4esp32.ui.wallet.CoinBalanceChip
 import com.micsbol.telecon4esp32.ui.wallet.CoinMessageDialog
 import com.micsbol.telecon4esp32.ui.wallet.CoinPricingTableDialog
@@ -59,70 +64,30 @@ fun ApplicationsScreen(navController: NavController) {
     val adUnavailableMessage = stringResource(R.string.coins_ad_unavailable)
     val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
 
-    NeoScaffold(
-        title = stringResource(R.string.applications_title),
-        subtitle = stringResource(R.string.applications_subtitle),
+    ApplicationsScreenContent(
+        catalog = catalog,
+        entitlement = entitlement,
+        wallet = wallet,
+        requiresCoinEntry = requiresCoinEntry,
         onNavigateBack = { navController.navigateUp() },
-        actions = {
-            if (requiresCoinEntry) {
-                CoinBalanceChip(
-                    balance = wallet.balance,
-                    modifier = Modifier
-                        .clickable { showPricingTable = true }
-                        .padding(end = 4.dp),
-                )
-            }
+        onShowPricingTable = { showPricingTable = true },
+        onCodesClick = { item ->
+            navController.navigate(Screen.ApplicationCodes.createRoute(item.id))
         },
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(catalog, key = { it.id.name }) { item ->
-                val title = stringResource(item.titleRes)
-                val feature = item.id.premiumFeature()
-                val isUnlocked = feature != null &&
-                    hasApplicationEntryAccess(entitlement, feature, wallet)
-                val showCoinsButton = requiresCoinEntry &&
-                    !item.id.isFree() &&
-                    !item.comingSoon &&
-                    feature != null &&
-                    !isUnlocked
-
-                val trailingAction = when {
-                    item.comingSoon -> ApplicationTrailingAction.DEFAULT
-                    item.id.isFree() -> ApplicationTrailingAction.ENTER
-                    isUnlocked -> ApplicationTrailingAction.ENTER
-                    showCoinsButton -> ApplicationTrailingAction.UNLOCK
-                    else -> ApplicationTrailingAction.DEFAULT
-                }
-
-                ApplicationListItemCard(
-                    icon = item.icon,
-                    title = title,
-                    subtitle = stringResource(item.subtitleRes),
-                    badge = applicationBadge(item, entitlement, wallet, requiresCoinEntry),
-                    trailingAction = trailingAction,
-                    onUnlockClick = { unlockTarget = item },
-                    onClick = {
-                        handleApplicationClick(
-                            item = item,
-                            entitlement = entitlement,
-                            wallet = wallet,
-                            requiresCoinEntry = requiresCoinEntry,
-                            navController = navController,
-                            onComingSoon = { comingSoonAppName = title },
-                            onRequestUnlock = { unlockTarget = item },
-                            onRequestUpgrade = { navController.navigate(Screen.Upgrade.route) },
-                        )
-                    },
-                )
-            }
-        }
-    }
+        onUnlockClick = { unlockTarget = it },
+        onItemClick = { item, title ->
+            handleApplicationClick(
+                item = item,
+                entitlement = entitlement,
+                wallet = wallet,
+                requiresCoinEntry = requiresCoinEntry,
+                navController = navController,
+                onComingSoon = { comingSoonAppName = title },
+                onRequestUnlock = { unlockTarget = item },
+                onRequestUpgrade = { navController.navigate(Screen.Upgrade.route) },
+            )
+        },
+    )
 
     val target = unlockTarget
     if (target != null) {
@@ -209,6 +174,74 @@ fun ApplicationsScreen(navController: NavController) {
     }
 }
 
+@Composable
+fun ApplicationsScreenContent(
+    catalog: List<ApplicationCatalogItem>,
+    entitlement: Entitlement,
+    wallet: CoinWalletState,
+    requiresCoinEntry: Boolean,
+    onNavigateBack: () -> Unit,
+    onShowPricingTable: () -> Unit,
+    onCodesClick: (ApplicationCatalogItem) -> Unit,
+    onUnlockClick: (ApplicationCatalogItem) -> Unit,
+    onItemClick: (ApplicationCatalogItem, String) -> Unit,
+) {
+    NeoScaffold(
+        title = stringResource(R.string.applications_title),
+        subtitle = stringResource(R.string.applications_subtitle),
+        onNavigateBack = onNavigateBack,
+        actions = {
+            if (requiresCoinEntry) {
+                CoinBalanceChip(
+                    balance = wallet.balance,
+                    modifier = Modifier
+                        .clickable(onClick = onShowPricingTable)
+                        .padding(end = 4.dp),
+                )
+            }
+        },
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(catalog, key = { it.id.name }) { item ->
+                val title = stringResource(item.titleRes)
+                val feature = item.id.premiumFeature()
+                val isUnlocked = feature != null &&
+                    hasApplicationEntryAccess(entitlement, feature, wallet, requiresCoinEntry)
+                val showCoinsButton = requiresCoinEntry &&
+                    !item.id.isFree() &&
+                    !item.comingSoon &&
+                    feature != null &&
+                    !isUnlocked
+
+                val trailingAction = when {
+                    item.comingSoon -> ApplicationTrailingAction.DEFAULT
+                    item.id.isFree() -> ApplicationTrailingAction.ENTER
+                    isUnlocked -> ApplicationTrailingAction.ENTER
+                    showCoinsButton -> ApplicationTrailingAction.UNLOCK
+                    else -> ApplicationTrailingAction.DEFAULT
+                }
+
+                ApplicationListItemCard(
+                    icon = item.icon,
+                    title = title,
+                    subtitle = stringResource(item.subtitleRes),
+                    badge = applicationBadge(item, entitlement, wallet, requiresCoinEntry),
+                    trailingAction = trailingAction,
+                    onUnlockClick = { onUnlockClick(item) },
+                    onCodesClick = { onCodesClick(item) },
+                    onClick = { onItemClick(item, title) },
+                )
+            }
+        }
+    }
+}
+
 private fun watchRewardedAd(
     activity: Activity?,
     rewardedAdManager: com.micsbol.telecon4esp32.ui.ads.RewardedAdManager?,
@@ -280,14 +313,42 @@ private fun applicationBadge(
         else -> {
             val feature = item.id.premiumFeature()
             if (feature != null && hasApplicationEntryAccess(entitlement, feature, wallet, requiresCoinEntry)) {
-                if (!requiresCoinEntry && entitlement.has(feature)) {
-                    stringResource(R.string.applications_badge_pro_unlocked)
-                } else {
-                    stringResource(R.string.applications_badge_coins_unlocked)
-                }
+                stringResource(R.string.applications_badge_coins_unlocked)
             } else {
                 stringResource(R.string.applications_badge_pro)
             }
         }
+    }
+}
+
+@Preview(showSystemUi = true, name = "Applications", uiMode = UI_MODE_NIGHT_YES)
+@Composable
+private fun ApplicationsScreenPreview() {
+    TeleCon4Esp32Theme {
+        ApplicationsScreenContent(
+            catalog = defaultApplicationCatalog(),
+            entitlement = Entitlement.Free,
+            wallet = CoinWalletState(
+                balance = 84,
+                grants = mapOf(
+                    PremiumFeature.GREENHOUSE to FeatureGrant(
+                        feature = PremiumFeature.GREENHOUSE,
+                        option = CoinUnlockOption.WEEK,
+                        expiresAtEpochMs = Long.MAX_VALUE,
+                    ),
+                    PremiumFeature.SMART_HOME to FeatureGrant(
+                        feature = PremiumFeature.SMART_HOME,
+                        option = CoinUnlockOption.DAYS_3,
+                        expiresAtEpochMs = Long.MAX_VALUE,
+                    ),
+                ),
+            ),
+            requiresCoinEntry = true,
+            onNavigateBack = {},
+            onShowPricingTable = {},
+            onCodesClick = {},
+            onUnlockClick = {},
+            onItemClick = { _, _ -> },
+        )
     }
 }

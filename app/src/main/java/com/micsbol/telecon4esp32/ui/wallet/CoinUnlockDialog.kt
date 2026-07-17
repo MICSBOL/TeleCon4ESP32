@@ -98,10 +98,8 @@ fun CoinUnlockDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                NeoPillButton(
-                    text = stringResource(R.string.coins_watch_ad_button),
+                CoinWatchAdPillButton(
                     onClick = onWatchAd,
-                    compact = true,
                     fillMaxWidth = true,
                 )
                 NeoDialogTextAction(
@@ -164,10 +162,8 @@ fun CoinPricingTableDialog(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 if (onWatchAd != null) {
-                    NeoPillButton(
-                        text = stringResource(R.string.coins_watch_ad_button),
+                    CoinWatchAdPillButton(
                         onClick = onWatchAd,
-                        compact = true,
                         fillMaxWidth = true,
                     )
                 }
@@ -221,7 +217,6 @@ private fun CoinUnlockOptionRow(
 fun CoinHomeWalletPanel(
     balance: Int,
     onWatchAd: () -> Unit,
-    onViewPricing: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     com.micsbol.telecon4esp32.ui.components.NeoCard(modifier = modifier.fillMaxWidth()) {
@@ -246,21 +241,27 @@ fun CoinHomeWalletPanel(
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                NeoPillButton(
-                    text = stringResource(R.string.coins_watch_ad_short),
-                    onClick = onWatchAd,
-                    compact = true,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.coins_view_pricing),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Neo.Accent,
-                    modifier = Modifier.clickable(onClick = onViewPricing),
-                )
+                CoinWatchAdPillButton(onClick = onWatchAd)
             }
         }
     }
+}
+
+@Composable
+fun CoinWatchAdPillButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    compact: Boolean = true,
+    fillMaxWidth: Boolean = false,
+) {
+    NeoPillButton(
+        text = stringResource(R.string.coins_watch_ad_button),
+        onClick = onClick,
+        iconPainter = painterResource(R.drawable.ic_play_gold),
+        compact = compact,
+        fillMaxWidth = fillMaxWidth,
+        modifier = modifier,
+    )
 }
 
 @Composable

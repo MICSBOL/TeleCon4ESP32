@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.toStringRepresentation
@@ -35,10 +36,14 @@ private object PreferencesKeys {
     val PLOT_LABEL_3 = stringPreferencesKey("plot_label_3")
     val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
     val LAST_DEVICE_NAME = stringPreferencesKey("last_device_name")
+    val LAST_APPLICATION_ID = stringPreferencesKey("last_application_id")
 }
 
 private fun protocolModeKey(applicationId: ApplicationId) =
     stringPreferencesKey("protocol_mode_${applicationId.name}")
+
+private fun transportTypeKey(applicationId: ApplicationId) =
+    stringPreferencesKey("transport_type_${applicationId.name}")
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
 
@@ -80,6 +85,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         address to preferences[PreferencesKeys.LAST_DEVICE_NAME]
     }
 
+    override val lastApplicationFlow: Flow<ApplicationId?> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.LAST_APPLICATION_ID]
+            ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+    }
+
     override fun protocolModeFlow(applicationId: ApplicationId): Flow<BluetoothProtocolMode> =
         context.dataStore.data.map { preferences ->
             val stored = preferences[protocolModeKey(applicationId)]
@@ -93,11 +103,31 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
+    override fun transportTypeFlow(applicationId: ApplicationId): Flow<BluetoothTransportType> =
+        context.dataStore.data.map { preferences ->
+            BluetoothTransportType.fromStored(preferences[transportTypeKey(applicationId)])
+        }
+
+    override suspend fun saveTransportType(
+        applicationId: ApplicationId,
+        transport: BluetoothTransportType,
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[transportTypeKey(applicationId)] = transport.name
+        }
+    }
+
     override suspend fun saveLastDevice(address: String, name: String?) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LAST_DEVICE_ADDRESS] = address
             if (name != null) preferences[PreferencesKeys.LAST_DEVICE_NAME] = name
             else preferences.remove(PreferencesKeys.LAST_DEVICE_NAME)
+        }
+    }
+
+    override suspend fun saveLastApplication(applicationId: ApplicationId) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_APPLICATION_ID] = applicationId.name
         }
     }
 

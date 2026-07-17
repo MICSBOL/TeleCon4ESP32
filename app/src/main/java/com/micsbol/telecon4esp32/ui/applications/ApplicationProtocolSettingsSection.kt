@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.ui.components.NeoCard
@@ -30,13 +30,12 @@ import com.micsbol.telecon4esp32.ui.theme.Neo
 @Composable
 fun ApplicationProtocolSettingsSection(
     applicationId: ApplicationId,
-    selectedMode: BluetoothProtocolMode,
-    onModeSelected: (BluetoothProtocolMode) -> Unit,
+    selectedMode: BluetoothConnectionMode,
+    onModeSelected: (BluetoothConnectionMode) -> Unit,
+    canUseAdvanced: Boolean = true,
 ) {
-    val supportsAdvanced = applicationId == ApplicationId.CONTROL_PANEL
-
     Column(modifier = Modifier.fillMaxWidth()) {
-        NeoSectionTitle(text = stringResource(R.string.app_settings_protocol_section_title))
+        NeoSectionTitle(text = stringResource(R.string.app_settings_connection_section_title))
         Text(
             text = stringResource(
                 R.string.app_settings_protocol_prefix_label,
@@ -47,43 +46,68 @@ fun ApplicationProtocolSettingsSection(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.app_settings_protocol_section_description),
+            text = stringResource(R.string.app_settings_connection_section_description),
             style = MaterialTheme.typography.bodySmall,
             color = Neo.TextSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
         Column(Modifier.selectableGroup()) {
-            ProtocolModeOption(
-                label = stringResource(R.string.app_settings_protocol_simple),
-                description = stringResource(R.string.app_settings_protocol_simple_description),
-                selected = selectedMode == BluetoothProtocolMode.SIMPLE,
-                onClick = { onModeSelected(BluetoothProtocolMode.SIMPLE) },
+            ConnectionModeOption(
+                label = stringResource(R.string.app_settings_connection_classic_simple),
+                description = stringResource(R.string.app_settings_connection_classic_simple_description),
+                selected = selectedMode == BluetoothConnectionMode.CLASSIC_SIMPLE,
+                onClick = { onModeSelected(BluetoothConnectionMode.CLASSIC_SIMPLE) },
             )
-            if (supportsAdvanced) {
-                Spacer(modifier = Modifier.height(8.dp))
-                ProtocolModeOption(
-                    label = stringResource(R.string.app_settings_protocol_advanced),
-                    description = stringResource(R.string.app_settings_protocol_advanced_description),
-                    selected = selectedMode == BluetoothProtocolMode.ADVANCED,
-                    onClick = { onModeSelected(BluetoothProtocolMode.ADVANCED) },
-                )
-            }
+            Spacer(modifier = Modifier.height(8.dp))
+            ConnectionModeOption(
+                label = stringResource(R.string.app_settings_connection_classic_binary),
+                description = if (canUseAdvanced) {
+                    stringResource(R.string.app_settings_connection_classic_binary_description)
+                } else {
+                    stringResource(R.string.app_settings_protocol_advanced_premium_required)
+                },
+                selected = selectedMode == BluetoothConnectionMode.CLASSIC_BINARY,
+                enabled = canUseAdvanced,
+                onClick = {
+                    if (canUseAdvanced) {
+                        onModeSelected(BluetoothConnectionMode.CLASSIC_BINARY)
+                    }
+                },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            ConnectionModeOption(
+                label = stringResource(R.string.app_settings_connection_ble_binary),
+                description = if (canUseAdvanced) {
+                    stringResource(R.string.app_settings_connection_ble_binary_description)
+                } else {
+                    stringResource(R.string.app_settings_protocol_advanced_premium_required)
+                },
+                selected = selectedMode == BluetoothConnectionMode.BLE_BINARY,
+                enabled = canUseAdvanced,
+                onClick = {
+                    if (canUseAdvanced) {
+                        onModeSelected(BluetoothConnectionMode.BLE_BINARY)
+                    }
+                },
+            )
         }
     }
 }
 
 @Composable
-private fun ProtocolModeOption(
+private fun ConnectionModeOption(
     label: String,
     description: String,
     selected: Boolean,
     onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     NeoCard(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(
                 selected = selected,
+                enabled = enabled,
                 onClick = onClick,
                 role = Role.RadioButton,
             ),
@@ -94,6 +118,7 @@ private fun ProtocolModeOption(
             RadioButton(
                 selected = selected,
                 onClick = null,
+                enabled = enabled,
                 colors = RadioButtonDefaults.colors(
                     selectedColor = Neo.Accent,
                     unselectedColor = Neo.TextSecondary,

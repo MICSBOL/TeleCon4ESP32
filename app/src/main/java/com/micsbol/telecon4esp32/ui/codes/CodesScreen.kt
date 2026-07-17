@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,8 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Dock
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,20 +31,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.ui.applications.titleRes
 import com.micsbol.telecon4esp32.util.hostedPdfUrl
-import com.micsbol.telecon4esp32.ui.ads.InterstitialTrigger
-import com.micsbol.telecon4esp32.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
@@ -62,23 +57,6 @@ import androidx.compose.ui.unit.sp
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.Locale
-
-private const val ESP32_BT_CONTROLLER_ZIP = "ESP32_BT_Controller-main.zip"
-
-private enum class CodeAssetType {
-    Pdf,
-    Zip
-}
-
-private data class CodeAssetInfo(
-    @StringRes val titleRes: Int,
-    val icon: ImageVector,
-    val type: CodeAssetType,
-    val assetFileName: String? = null,
-    @StringRes val remoteUrlRes: Int? = null,
-    val outputFileName: String = assetFileName ?: "document.pdf",
-)
 
 private enum class PdfOpenResult {
     Success,
@@ -202,56 +180,12 @@ private fun Context.launchPlayStorePdfReaderSearch() {
     }
 }
 
-private fun availableCodeAssets(language: String): List<CodeAssetInfo> {
-    val fastGuide = if (language == "es") {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_fast_guide,
-            icon = Icons.Default.Dock,
-            assetFileName = "fast_guide_esp.pdf",
-            type = CodeAssetType.Pdf
-        )
-    } else {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_fast_guide,
-            icon = Icons.Default.Dock,
-            assetFileName = "fast_guide_eng.pdf",
-            type = CodeAssetType.Pdf
-        )
-    }
-
-    val generalDocumentation = if (language == "es") {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_general,
-            icon = Icons.Default.DocumentScanner,
-            type = CodeAssetType.Pdf,
-            remoteUrlRes = R.string.documentation_pdf_es_url,
-        )
-    } else {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_general,
-            icon = Icons.Default.DocumentScanner,
-            type = CodeAssetType.Pdf,
-            remoteUrlRes = R.string.documentation_pdf_en_url,
-        )
-    }
-
-    return listOf(
-        generalDocumentation,
-        fastGuide,
-        CodeAssetInfo(
-            titleRes = R.string.codes_esp32_bt_controller_zip,
-            icon = Icons.Default.Code,
-            assetFileName = ESP32_BT_CONTROLLER_ZIP,
-            type = CodeAssetType.Zip,
-        )
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodesScreen(
     navController: NavController,
-    viewModel: CodesViewModel = hiltViewModel()
+    applicationId: ApplicationId,
+    viewModel: CodesViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -415,20 +349,17 @@ fun CodesScreen(
         )
     }
 
-    val navigateBackToHome = rememberNavigateWithInterstitial(
-        trigger = InterstitialTrigger.CODES_EXIT,
-        onNavigate = { navController.navigateUp() },
-    )
+    val navigateBack: () -> Unit = { navController.navigateUp() }
 
-    BackHandler(onBack = navigateBackToHome)
+    BackHandler(onBack = navigateBack)
 
     NeoScaffold(
-        title = stringResource(R.string.home_title),
-        subtitle = stringResource(R.string.codes_and_documents_title),
-        onNavigateBack = navigateBackToHome,
+        title = stringResource(applicationId.titleRes()),
+        onNavigateBack = navigateBack,
     ) { paddingValues ->
         CodeAssetGrid(
             modifier = Modifier.padding(paddingValues),
+            applicationId = applicationId,
             uiState = uiState,
             onAssetClick = { asset ->
                 when (asset.type) {
@@ -467,12 +398,15 @@ fun CodesScreen(
 @Composable
 private fun CodeAssetGrid(
     modifier: Modifier = Modifier,
+    applicationId: ApplicationId,
     uiState: CodesUiState,
     onAssetClick: (CodeAssetInfo) -> Unit,
-    onDismissSaveError: () -> Unit
+    onDismissSaveError: () -> Unit,
 ) {
-    val currentLanguage = Locale.getDefault().language
-    val availableAssets = remember(currentLanguage) { availableCodeAssets(currentLanguage) }
+    val currentLanguage = currentCodeAssetLanguage()
+    val availableAssets = remember(applicationId, currentLanguage) {
+        codeAssetsFor(applicationId, currentLanguage)
+    }
 
     val saveError = uiState.saveError
     if (saveError != null) {
@@ -505,6 +439,34 @@ private fun CodeAssetGrid(
                 }
             }
         )
+    }
+
+    if (availableAssets.isEmpty()) {
+        Column(
+            modifier = modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            NeoIconBadge(icon = Icons.Default.DocumentScanner, size = 56.dp)
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = stringResource(R.string.application_codes_empty_title),
+                color = Neo.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.application_codes_empty_message),
+                color = Neo.TextSecondary,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
+        return
     }
 
     Column(

@@ -20,6 +20,16 @@ android {
         versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Keep only app-supported languages (default English + Spanish).
+        resourceConfigurations += listOf("en", "es")
+    }
+
+    // Ensure Spanish resources are always in the install (no Play language splits).
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 
     buildTypes {

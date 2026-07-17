@@ -4,7 +4,7 @@ Human-readable Bluetooth lines for TeleCon4ESP32. Use this when the app’s **Co
 
 **Wire format:** `APP:TYPE,key1,value1,key2,value2,...` + newline (`\n`)
 
-**Bluetooth:** Classic RFCOMM, UUID `00001101-0000-1000-8000-00805F9B34FB` (SPP).
+**Bluetooth:** Classic RFCOMM, UUID `00001101-0000-1000-8000-00805F9B34FB` (SPP), or BLE via the Nordic UART Service (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`) carrying the same byte stream. See [prompts/BLE_ESP32_FIRMWARE_PROMPT.md](prompts/BLE_ESP32_FIRMWARE_PROMPT.md).
 
 ---
 
@@ -116,9 +116,11 @@ Values match the **binary** plot packet scale: `0` = bottom, `255` = top of the 
 
 ## Greenhouse (`GH`)
 
-**ESP32 → phone:** `GH:DATA,temp,26.2,hum,68,vpd,1.1,soil,42,light,12400,fan,1,heater,0,pump,0,lights,0,vent,40,tank,78,auto,1,target_temp,24,target_hum,65`
+**ESP32 → phone:** `GH:DATA,temp,26.2,hum,68,vpd,1.1,soil,42,light,12400,fan,1,heater,0,pump,0,lights,0,vent,40,tank,78,auto,1,target_temp,24,target_hum,65,cam,0`
 
 **Phone → ESP32:** `GH:SET,fan,1` | `GH:SET,heater,0` | `GH:SET,pump,1` | `GH:SET,lights,1` | `GH:SET,vent,60` | `GH:SET,auto,1` | `GH:SET,target_temp,24,target_hum,65`
+
+`cam`: `0` = no ESP32-CAM module; `1` = camera available (Wi‑Fi stream separate). Binary layout: see [BINARY_PROTOCOL_GH.md](BINARY_PROTOCOL_GH.md).
 
 Optional history: `hist_temp`, `hist_hum`, `hist_vpd` as pipe-separated floats. See Greenhouse settings in the app for pin map and field guide.
 

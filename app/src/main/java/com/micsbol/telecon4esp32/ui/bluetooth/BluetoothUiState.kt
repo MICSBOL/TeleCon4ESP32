@@ -1,5 +1,7 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 
+import com.micsbol.telecon4esp32.domain.bluetooth.ActiveBluetoothSession
+import com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 
 data class BluetoothUiState(
@@ -9,4 +11,6 @@ data class BluetoothUiState(
     val isConnecting: Boolean = false,
     val isScanning: Boolean = false,
     val errorMessage: String? = null,
+    val handshakeFailure: HandshakeFailure? = null,
+    val activeSession: ActiveBluetoothSession? = null,
 )

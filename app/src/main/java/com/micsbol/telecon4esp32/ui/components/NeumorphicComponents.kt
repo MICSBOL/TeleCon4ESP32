@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -290,6 +292,7 @@ fun NeoPillButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     icon: ImageVector? = null,
+    iconPainter: Painter? = null,
     compact: Boolean = false,
     fillMaxWidth: Boolean = false,
 ) {
@@ -327,7 +330,14 @@ fun NeoPillButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        if (icon != null) {
+        if (iconPainter != null) {
+            Image(
+                painter = iconPainter,
+                contentDescription = null,
+                modifier = Modifier.size(if (compact) 24.dp else 22.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        } else if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,

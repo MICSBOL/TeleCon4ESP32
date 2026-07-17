@@ -1,0 +1,78 @@
+package com.micsbol.telecon4esp32.ui.bluetooth
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure
+import com.micsbol.telecon4esp32.ui.components.NeoDialog
+import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
+import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
+import com.micsbol.telecon4esp32.ui.components.NeoPillButton
+
+/**
+ * Frosted-glass error dialog for connect failures, including protocol/app handshake mismatches.
+ */
+@Composable
+fun BluetoothConnectionErrorDialog(
+    handshakeFailure: HandshakeFailure?,
+    errorMessage: String?,
+    onDismiss: () -> Unit,
+) {
+    val content = bluetoothConnectionErrorContent(
+        handshakeFailure = handshakeFailure,
+        errorMessage = errorMessage,
+    ) ?: return
+
+    NeoDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            NeoDialogTitle(text = content.title)
+        },
+        subtitle = {
+            NeoDialogBody(text = content.body)
+        },
+        actions = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NeoPillButton(
+                    text = stringResource(R.string.codes_dialog_ok),
+                    onClick = onDismiss,
+                    compact = true,
+                )
+            }
+        },
+    )
+}
+
+private data class BluetoothConnectionErrorContent(
+    val title: String,
+    val body: String,
+)
+
+@Composable
+private fun bluetoothConnectionErrorContent(
+    handshakeFailure: HandshakeFailure?,
+    errorMessage: String?,
+): BluetoothConnectionErrorContent? = when {
+    handshakeFailure != null -> BluetoothConnectionErrorContent(
+        title = handshakeFailureTitle(handshakeFailure),
+        body = handshakeFailureMessage(handshakeFailure),
+    )
+    errorMessage == "missing_session_context" -> BluetoothConnectionErrorContent(
+        title = stringResource(R.string.bluetooth_connection_failed_title),
+        body = stringResource(R.string.bluetooth_missing_session_context),
+    )
+    errorMessage != null -> BluetoothConnectionErrorContent(
+        title = stringResource(R.string.bluetooth_connection_failed_title),
+        body = stringResource(R.string.bluetooth_connection_failed_body, errorMessage),
+    )
+    else -> null
+}

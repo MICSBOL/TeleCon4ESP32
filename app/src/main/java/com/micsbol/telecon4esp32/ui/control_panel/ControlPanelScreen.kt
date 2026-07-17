@@ -53,6 +53,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.domain.bluetooth.IndicatorState
 import com.micsbol.telecon4esp32.domain.bluetooth.PanelState
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothConnectionErrorDialog
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.ui.bluetooth.RcControlState
@@ -116,6 +117,19 @@ fun ControlPanelScreen(
         ?: MutableStateFlow(0)).collectAsState()
     val bluetoothConnectionState by (bluetoothViewModel?.state
         ?: MutableStateFlow(BluetoothUiState())).collectAsState()
+    val controlPanelProtocolMode by (bluetoothViewModel?.controlPanelProtocolMode
+        ?: MutableStateFlow(com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode.defaultFor(ApplicationId.CONTROL_PANEL))).collectAsState()
+    val controlPanelTransportType by (bluetoothViewModel?.controlPanelTransportType
+        ?: MutableStateFlow(com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType.CLASSIC)).collectAsState()
+    val isConnectedForControlPanel =
+        bluetoothConnectionState.isConnected &&
+            bluetoothConnectionState.activeSession?.applicationId == ApplicationId.CONTROL_PANEL
+
+    BluetoothConnectionErrorDialog(
+        handshakeFailure = bluetoothConnectionState.handshakeFailure,
+        errorMessage = bluetoothConnectionState.errorMessage,
+        onDismiss = { bluetoothViewModel?.dismissError() },
+    )
 
     when (val state = collectedUserSettings) {
         is SettingsUiState.Loading -> {
@@ -132,6 +146,7 @@ fun ControlPanelScreen(
 
             LaunchedEffect(actualViewModel) {
                 actualViewModel?.onControlPanelEntered()
+                actualViewModel?.markRecentApplication(ApplicationId.CONTROL_PANEL)
             }
 
             DisposableEffect(actualViewModel) {
@@ -194,8 +209,13 @@ fun ControlPanelScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                val onOpenBluetooth: () -> Unit = remember(actualViewModel, navController) {
+                val onOpenBluetooth: () -> Unit = remember(actualViewModel, navController, controlPanelProtocolMode, controlPanelTransportType) {
                     {
+                        actualViewModel?.requestApplicationConnection(
+                            ApplicationId.CONTROL_PANEL,
+                            controlPanelProtocolMode,
+                            controlPanelTransportType,
+                        )
                         actualViewModel?.preparePostConnectPopBack()
                         if (navController != null) {
                             navController.navigate(Screen.Bluetooth.route)
@@ -205,7 +225,7 @@ fun ControlPanelScreen(
 
                 if (navController != null) {
                     LiveControlBluetoothDisconnectedBannerOverlay(
-                        visible = !bluetoothConnectionState.isConnected &&
+                        visible = !isConnectedForControlPanel &&
                             !bluetoothConnectionState.isConnecting,
                         onClick = onOpenBluetooth,
                     )
@@ -245,7 +265,7 @@ fun ControlPanelScreen(
                         val centerOverlay: @Composable () -> Unit = {
                             if (navController != null) {
                                 ControlPanelOverlayControls(
-                                    isBluetoothConnected = bluetoothConnectionState.isConnected,
+                                    isBluetoothConnected = isConnectedForControlPanel,
                                     isBluetoothConnecting = bluetoothConnectionState.isConnecting,
                                     onBackToModulesClick = {
                                         actualViewModel?.stopSendingRcData()

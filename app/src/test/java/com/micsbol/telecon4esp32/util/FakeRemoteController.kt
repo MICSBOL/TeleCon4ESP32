@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.util
 
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
 import com.micsbol.telecon4esp32.domain.bluetooth.EspMessage
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
@@ -47,17 +48,34 @@ class FakeRemoteController : RemoteController {
     val sentLines = mutableListOf<String>()
     var connectionResults: List<ConnectionResult> = emptyList()
 
-    override fun startDiscovery() {
+    override fun startDiscovery(transport: BluetoothTransportType) {
         discoveryStarted = true
+        lastDiscoveryTransport = transport
     }
 
     override fun stopDiscovery() {
         discoveryStopped = true
     }
 
-    override fun connect(device: RemoteDevice): Flow<ConnectionResult> = flow {
-        connectionResults.forEach { emit(it) }
+    override fun connect(
+        device: RemoteDevice,
+        transport: BluetoothTransportType,
+    ): Flow<ConnectionResult> = flow {
+        lastConnectDevice = device
+        lastConnectTransport = transport
+        connectionResults.forEach { result ->
+            if (result is ConnectionResult.SocketEstablished ||
+                result is ConnectionResult.SessionEstablished
+            ) {
+                _isConnected.update { true }
+            }
+            emit(result)
+        }
     }
+
+    var lastConnectDevice: RemoteDevice? = null
+    var lastConnectTransport: BluetoothTransportType? = null
+    var lastDiscoveryTransport: BluetoothTransportType? = null
 
     override suspend fun sendData(data: ByteArray): Boolean? {
         sentData.add(data)
@@ -77,6 +95,10 @@ class FakeRemoteController : RemoteController {
     override fun release() {
         releaseCalled = true
         _isConnected.update { false }
+    }
+
+    fun setConnected(connected: Boolean) {
+        _isConnected.update { connected }
     }
 
     fun setSavedDevices(devices: List<RemoteDevice>) = _savedDevices.update { devices }

@@ -125,9 +125,10 @@ fun BoxScope.LiveControlBluetoothDisconnectedBannerOverlay(
         LiveControlBluetoothDisconnectedBanner(
             onClick = onClick,
             modifier = modifier
-                .align(Alignment.TopCenter)
+                // Bottom placement avoids covering top-bar Bluetooth / settings actions.
+                .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(top = 8.dp),
+                .padding(bottom = 16.dp),
         )
     }
 }

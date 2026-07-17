@@ -22,38 +22,60 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.domain.model.protocolPrefix
+import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCard
+import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseProtocolSettingsSection
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseSubScreenTopBar
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 @Composable
 fun GreenhouseSettingsScreen(
     navController: NavController,
+    viewModel: GreenhouseViewModel = hiltViewModel(),
 ) {
     val onBackClick = {
         GreenhouseEmulatorNavigation.backToGreenhouse(navController, Screen.GreenhouseSettings.route)
     }
+    val connectionMode by viewModel.connectionMode.collectAsState()
+    val entitlement = LocalEntitlement.current
+    val canUseAdvanced = entitlement.canUseAdvancedProtocol(ApplicationId.GREENHOUSE)
 
     if (GreenhouseEmulatorSupport.isEmulator()) {
-        GreenhouseSettingsEmulatorContent(onBackClick = onBackClick)
+        GreenhouseSettingsEmulatorContent(
+            onBackClick = onBackClick,
+            selectedMode = connectionMode,
+            canUseAdvanced = canUseAdvanced,
+            onModeSelected = viewModel::onConnectionModeChanged,
+        )
         return
     }
 
-    GreenhouseSettingsFullContent(onBackClick = onBackClick)
+    GreenhouseSettingsFullContent(
+        onBackClick = onBackClick,
+        selectedMode = connectionMode,
+        canUseAdvanced = canUseAdvanced,
+        onModeSelected = viewModel::onConnectionModeChanged,
+    )
 }
 
 @Composable
 private fun GreenhouseSettingsEmulatorContent(
     onBackClick: () -> Unit,
+    selectedMode: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode,
+    canUseAdvanced: Boolean,
+    onModeSelected: (com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode) -> Unit,
 ) {
     val edgeInsets = WindowInsets.safeDrawing.only(
         WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -101,16 +123,15 @@ private fun GreenhouseSettingsEmulatorContent(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                GreenhouseSettingsProtocolSection()
+                GreenhouseCard(elevated = false) {
+                    GreenhouseProtocolSettingsSection(
+                        selectedMode = selectedMode,
+                        canUseAdvanced = canUseAdvanced,
+                        onModeSelected = onModeSelected,
+                    )
+                }
                 Text(
-                    text = stringResource(R.string.app_settings_protocol_simple),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GreenhouseGlass.TextPrimary,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = stringResource(R.string.app_settings_protocol_simple_description),
+                    text = stringResource(R.string.greenhouse_emulator_settings_notice),
                     style = MaterialTheme.typography.bodySmall,
                     color = GreenhouseGlass.TextSecondary,
                 )
@@ -122,6 +143,9 @@ private fun GreenhouseSettingsEmulatorContent(
 @Composable
 private fun GreenhouseSettingsFullContent(
     onBackClick: () -> Unit,
+    selectedMode: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode,
+    canUseAdvanced: Boolean,
+    onModeSelected: (com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode) -> Unit,
 ) {
     val edgeInsets = WindowInsets.safeDrawing.only(
         WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -149,11 +173,15 @@ private fun GreenhouseSettingsFullContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 GreenhouseCard(elevated = false) {
-                    GreenhouseSettingsProtocolSection()
+                    GreenhouseProtocolSettingsSection(
+                        selectedMode = selectedMode,
+                        canUseAdvanced = canUseAdvanced,
+                        onModeSelected = onModeSelected,
+                    )
                 }
                 GreenhouseCard(elevated = false) {
                     Text(
-                        text = stringResource(R.string.app_settings_protocol_simple),
+                        text = stringResource(R.string.greenhouse_settings_pins_section_title),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = GreenhouseGlass.TextOnGlassPrimary,
@@ -161,7 +189,7 @@ private fun GreenhouseSettingsFullContent(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = stringResource(R.string.app_settings_protocol_simple_description),
+                        text = stringResource(R.string.greenhouse_settings_pins_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = GreenhouseGlass.TextOnGlassSecondary,
                     )
@@ -169,29 +197,4 @@ private fun GreenhouseSettingsFullContent(
             }
         }
     }
-}
-
-@Composable
-private fun GreenhouseSettingsProtocolSection() {
-    Text(
-        text = stringResource(R.string.app_settings_protocol_section_title),
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = GreenhouseGlass.TextOnGlassPrimary,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    Text(
-        text = stringResource(
-            R.string.app_settings_protocol_prefix_label,
-            ApplicationId.GREENHOUSE.protocolPrefix(),
-        ),
-        style = MaterialTheme.typography.bodyMedium,
-        color = GreenhouseGlass.TextOnGlassSecondary,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    Text(
-        text = stringResource(R.string.app_settings_protocol_section_description),
-        style = MaterialTheme.typography.bodySmall,
-        color = GreenhouseGlass.TextOnGlassSecondary,
-    )
 }

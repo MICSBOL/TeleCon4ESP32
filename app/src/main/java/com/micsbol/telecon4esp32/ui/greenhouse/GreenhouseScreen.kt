@@ -48,6 +48,7 @@ import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
 import com.micsbol.telecon4esp32.ui.greenhouse.components.EnvironmentalChart
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseControlPanel
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseTopBar
@@ -139,20 +140,25 @@ fun GreenhouseScreen(
                 modifier = Modifier.padding(start = 4.dp, end = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                GreenhouseGlassIconButton(
-                    onClick = {
-                        GreenhouseEmulatorNavigation.openSubScreen(
-                            navController,
-                            Screen.GreenhouseCamera.route,
+                ApplicationBluetoothTopBarButton(accent = GreenhouseGlass.AccentGreen) { onClick, enabled, content ->
+                    GreenhouseGlassIconButton(onClick = onClick, enabled = enabled, content = content)
+                }
+                if (uiState.hasCamera) {
+                    GreenhouseGlassIconButton(
+                        onClick = {
+                            GreenhouseEmulatorNavigation.openSubScreen(
+                                navController,
+                                Screen.GreenhouseCamera.route,
+                            )
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Videocam,
+                            contentDescription = stringResource(R.string.greenhouse_camera_content_description),
+                            tint = GreenhouseGlass.AccentGreen,
+                            modifier = Modifier.size(22.dp),
                         )
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Videocam,
-                        contentDescription = stringResource(R.string.greenhouse_camera_content_description),
-                        tint = GreenhouseGlass.AccentGreen,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    }
                 }
                 GreenhouseGlassIconButton(
                     onClick = {

@@ -59,9 +59,7 @@ class DataStoreWalletRepository @Inject constructor(
         scope.launch {
             if (BuildConfig.DEBUG) {
                 context.walletDataStore.edit { preferences ->
-                    if (!preferences.contains(WalletPreferencesKeys.COIN_BALANCE)) {
-                        preferences[WalletPreferencesKeys.COIN_BALANCE] = CoinEconomy.DEBUG_STARTING_BALANCE
-                    }
+                    preferences[WalletPreferencesKeys.COIN_BALANCE] = CoinEconomy.DEBUG_STARTING_BALANCE
                 }
             }
             combine(persistedWallet, sessionGrants) { (balance, timedGrants), sessions ->

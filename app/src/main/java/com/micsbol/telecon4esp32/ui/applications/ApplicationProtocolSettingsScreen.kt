@@ -19,6 +19,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
+import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
@@ -28,7 +30,9 @@ fun ApplicationProtocolSettingsScreen(
     applicationId: ApplicationId,
     viewModel: ApplicationSettingsViewModel = hiltViewModel(),
 ) {
-    val protocolMode by viewModel.protocolMode.collectAsStateWithLifecycle()
+    val connectionMode by viewModel.connectionMode.collectAsStateWithLifecycle()
+    val entitlement = LocalEntitlement.current
+    val canUseAdvanced = entitlement.canUseAdvancedProtocol(applicationId)
 
     NeoScaffold(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
@@ -45,8 +49,9 @@ fun ApplicationProtocolSettingsScreen(
             item {
                 ApplicationProtocolSettingsSection(
                     applicationId = applicationId,
-                    selectedMode = protocolMode,
-                    onModeSelected = viewModel::onProtocolModeChanged,
+                    selectedMode = connectionMode,
+                    onModeSelected = viewModel::onConnectionModeChanged,
+                    canUseAdvanced = canUseAdvanced,
                 )
             }
         }

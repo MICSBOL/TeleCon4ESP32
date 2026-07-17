@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.util
 
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
@@ -20,6 +21,8 @@ class FakeSettingsRepository : ISettingsRepository {
     override val settingsFlow: Flow<UserSettings> = _settings.asStateFlow()
     private val _lastDevice = MutableStateFlow<Pair<String, String?>?>(null)
     override val lastDeviceFlow: Flow<Pair<String, String?>?> = _lastDevice.asStateFlow()
+    private val _lastApplication = MutableStateFlow<ApplicationId?>(null)
+    override val lastApplicationFlow: Flow<ApplicationId?> = _lastApplication.asStateFlow()
     private val _protocolModes = MutableStateFlow<Map<ApplicationId, BluetoothProtocolMode>>(emptyMap())
 
     /** Records the last call to saveLastDevice so tests can assert on it. */
@@ -27,6 +30,10 @@ class FakeSettingsRepository : ISettingsRepository {
     override suspend fun saveLastDevice(address: String, name: String?) {
         savedDevice = address to name
         _lastDevice.update { address to name }
+    }
+
+    override suspend fun saveLastApplication(applicationId: ApplicationId) {
+        _lastApplication.update { applicationId }
     }
     override suspend fun saveLeftStickMode(mode: JoystickMode) {
         _settings.update { it.copy(leftStickMode = mode) }
@@ -78,7 +85,23 @@ class FakeSettingsRepository : ISettingsRepository {
         _protocolModes.update { it + (applicationId to mode) }
     }
 
+    private val _transportTypes =
+        MutableStateFlow<Map<ApplicationId, BluetoothTransportType>>(emptyMap())
+
+    override fun transportTypeFlow(applicationId: ApplicationId): Flow<BluetoothTransportType> =
+        _transportTypes.map { transports ->
+            transports[applicationId] ?: BluetoothTransportType.CLASSIC
+        }
+
+    override suspend fun saveTransportType(
+        applicationId: ApplicationId,
+        transport: BluetoothTransportType,
+    ) {
+        _transportTypes.update { it + (applicationId to transport) }
+    }
+
     // ── Helpers for tests ────────────────────────────────────────────────────
     fun setSettings(settings: UserSettings) = _settings.update { settings }
     fun setLastDevice(address: String, name: String?) = _lastDevice.update { address to name }
+    fun setLastApplication(applicationId: ApplicationId?) = _lastApplication.update { applicationId }
 }

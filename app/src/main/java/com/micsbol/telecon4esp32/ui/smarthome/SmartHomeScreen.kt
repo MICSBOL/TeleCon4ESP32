@@ -36,6 +36,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.smarthome.components.EnergyUsageChart
 import com.micsbol.telecon4esp32.ui.smarthome.components.RecentEventsList
@@ -61,6 +62,9 @@ fun SmartHomeScreen(
                 modifier = Modifier.padding(start = 4.dp, end = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                ApplicationBluetoothTopBarButton(accent = SmartHomeGlass.AccentWarm) { onClick, enabled, content ->
+                    SmartHomeGlassIconButton(onClick = onClick, enabled = enabled, content = content)
+                }
                 SmartHomeGlassIconButton(
                     onClick = { navController.navigate(Screen.SmartHomeHelp.route) },
                 ) {

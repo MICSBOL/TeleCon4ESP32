@@ -35,6 +35,7 @@ import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.solarsystem.components.SolarBatterySummaryCard
 import com.micsbol.telecon4esp32.ui.solarsystem.components.SolarConsumptionCard
@@ -63,6 +64,9 @@ fun SolarSystemScreen(
                 modifier = Modifier.padding(start = 4.dp, end = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                ApplicationBluetoothTopBarButton(accent = SolarGlass.AccentAmber) { onClick, enabled, content ->
+                    SolarGlassIconButton(onClick = onClick, enabled = enabled, content = content)
+                }
                 SolarGlassIconButton(
                     onClick = { navController.navigate(Screen.SolarHelp.route) },
                 ) {

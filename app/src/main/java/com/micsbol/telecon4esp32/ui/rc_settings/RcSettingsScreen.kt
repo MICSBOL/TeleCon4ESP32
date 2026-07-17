@@ -44,13 +44,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.ui.applications.ApplicationProtocolSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsViewModel
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,10 +76,12 @@ fun RcSettingsScreen(
     onDisplayLabelsApplied: (DisplayLabelDraft) -> Unit = {},
 ) {
     val state = uiState ?: viewModel.uiState.collectAsStateWithLifecycle().value
-    val protocolMode = applicationSettingsViewModel
-        ?.protocolMode
+    val connectionMode = applicationSettingsViewModel
+        ?.connectionMode
         ?.collectAsStateWithLifecycle()
         ?.value
+    val entitlement = LocalEntitlement.current
+    val canUseAdvanced = entitlement.canUseAdvancedProtocol(applicationId)
     val labelDraft by viewModel.labelDraft.collectAsStateWithLifecycle()
     val hasUnsavedLabelChanges by viewModel.hasUnsavedLabelChanges.collectAsStateWithLifecycle()
     TeleCon4Esp32Scaffold(
@@ -124,9 +128,10 @@ fun RcSettingsScreen(
                     labelDraft = labelDraft,
                     hasUnsavedLabelChanges = hasUnsavedLabelChanges,
                     applicationId = applicationId,
-                    protocolMode = protocolMode,
-                    onProtocolModeChanged = applicationSettingsViewModel?.let { vm ->
-                        { mode -> vm.onProtocolModeChanged(mode) }
+                    connectionMode = connectionMode,
+                    canUseAdvanced = canUseAdvanced,
+                    onConnectionModeChanged = applicationSettingsViewModel?.let { vm ->
+                        { mode -> vm.onConnectionModeChanged(mode) }
                     },
                     onLeftStickModeChanged = { viewModel.onLeftStickModeChanged(it) },
                     onRightStickModeChanged = { viewModel.onRightStickModeChanged(it) },
@@ -163,8 +168,9 @@ private fun SettingsContent(
     labelDraft: DisplayLabelDraft,
     hasUnsavedLabelChanges: Boolean,
     applicationId: ApplicationId = ApplicationId.CONTROL_PANEL,
-    protocolMode: BluetoothProtocolMode? = null,
-    onProtocolModeChanged: ((BluetoothProtocolMode) -> Unit)? = null,
+    connectionMode: BluetoothConnectionMode? = null,
+    canUseAdvanced: Boolean = true,
+    onConnectionModeChanged: ((BluetoothConnectionMode) -> Unit)? = null,
     onLeftStickModeChanged: (JoystickMode) -> Unit = {},
     onRightStickModeChanged: (JoystickMode) -> Unit = {},
     onSwitchInitialStateChange: (Int, Boolean) -> Unit = { _, _ -> },
@@ -194,12 +200,13 @@ private fun SettingsContent(
             .imePadding(),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        if (protocolMode != null && onProtocolModeChanged != null) {
+        if (connectionMode != null && onConnectionModeChanged != null) {
             item {
                 ApplicationProtocolSettingsSection(
                     applicationId = applicationId,
-                    selectedMode = protocolMode,
-                    onModeSelected = onProtocolModeChanged,
+                    selectedMode = connectionMode,
+                    onModeSelected = onConnectionModeChanged,
+                    canUseAdvanced = canUseAdvanced,
                 )
             }
         }

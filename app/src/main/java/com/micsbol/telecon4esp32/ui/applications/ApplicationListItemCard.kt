@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +54,7 @@ fun ApplicationListItemCard(
     subtitle: String,
     badge: String,
     onClick: () -> Unit,
+    onCodesClick: () -> Unit,
     trailingAction: ApplicationTrailingAction = ApplicationTrailingAction.DEFAULT,
     onUnlockClick: () -> Unit = {},
 ) {
@@ -97,10 +100,22 @@ fun ApplicationListItemCard(
         Column(horizontalAlignment = Alignment.End) {
             BadgeChip(badge)
             Spacer(modifier = Modifier.height(8.dp))
-            ApplicationTrailingControl(
-                action = trailingAction,
-                onUnlockClick = onUnlockClick,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_codes_gold),
+                    contentDescription = stringResource(R.string.applications_codes_content_description),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable(onClick = onCodesClick),
+                )
+                ApplicationTrailingControl(
+                    action = trailingAction,
+                    onUnlockClick = onUnlockClick,
+                )
+            }
         }
     }
 }
@@ -139,9 +154,9 @@ private fun ApplicationTrailingControl(
 @Composable
 private fun BadgeChip(badge: String) {
     val accent = when (badge.uppercase()) {
-        "PRO" -> Neo.Warning
+        "PRO" -> Neo.Negative
         "SOON", "PRONTO" -> Neo.TextSecondary
-        "UNLOCKED", "DESBLOQ." -> Neo.Accent
+        "UNLOCKED", "DESBLOQ." -> Neo.Positive
         else -> Neo.Positive
     }
     Box(

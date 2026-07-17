@@ -5,11 +5,14 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
 import com.micsbol.telecon4esp32.domain.bluetooth.EspMessage
 import com.micsbol.telecon4esp32.domain.bluetooth.LineProtocolCodec
@@ -18,6 +21,14 @@ import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
 import com.micsbol.telecon4esp32.domain.bluetooth.RcBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.gh.GhBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.wt.WtBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.sp.SpBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.sh.ShBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.dl.DlBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.bluetooth.lt.LtBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -193,7 +204,43 @@ class AndroidBluetoothController @Inject constructor(
                 Log.d("BluetoothController_config", "Parsed config packet")
                 parseConfigPacket(bytes)
             }
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x47.toByte() -> parseGhDataPacket(bytes)
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x57.toByte() -> emitAppData(
+                ApplicationId.WATER_TANK,
+                WtBinaryTelemetryMapper.decodeDataPacket(bytes),
+            )
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x53.toByte() -> emitAppData(
+                ApplicationId.SOLAR_POWER,
+                SpBinaryTelemetryMapper.decodeDataPacket(bytes),
+            )
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x48.toByte() -> emitAppData(
+                ApplicationId.SMART_HOME,
+                ShBinaryTelemetryMapper.decodeDataPacket(bytes),
+            )
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x4B.toByte() -> emitAppData(
+                ApplicationId.SMART_DOOR_LOCK,
+                DlBinaryTelemetryMapper.decodeDataPacket(bytes),
+            )
+            bytes[0] == 0xCC.toByte() && bytes[1] == 0x4C.toByte() -> emitAppData(
+                ApplicationId.SMART_LIGHTING,
+                LtBinaryTelemetryMapper.decodeDataPacket(bytes),
+            )
         }
+    }
+
+    private fun emitAppData(applicationId: ApplicationId, values: Map<String, String>?) {
+        if (values == null) return
+        _messages.tryEmit(
+            EspMessage(
+                app = applicationId.protocolPrefix(),
+                type = "DATA",
+                values = values,
+            ),
+        )
+    }
+
+    private fun parseGhDataPacket(bytes: ByteArray) {
+        emitAppData(ApplicationId.GREENHOUSE, GhBinaryTelemetryMapper.decodeDataPacket(bytes))
     }
 
     private fun parseIncomingLine(line: String) {
@@ -353,7 +400,7 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     @Volatile
-    private var dataTransferService: BluetoothDataTransferService? = null
+    private var dataTransferService: BluetoothDataTransport? = null
 
     private val _isConnected = MutableStateFlow(false)
     override val isConnected: StateFlow<Boolean> get() = _isConnected.asStateFlow()
@@ -371,11 +418,14 @@ class AndroidBluetoothController @Inject constructor(
         }
     }
 
+    @Volatile
+    private var bleScanCallback: ScanCallback? = null
+
     init {
         updatePairedDevices()
     }
 
-    override fun startDiscovery() {
+    override fun startDiscovery(transport: BluetoothTransportType) {
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             Log.e("BluetoothController", "Missing BLUETOOTH_SCAN permission")
             return
@@ -383,6 +433,11 @@ class AndroidBluetoothController @Inject constructor(
 
         if (bluetoothAdapter?.isEnabled != true) {
             Log.e("BluetoothController", "Bluetooth adapter is disabled")
+            return
+        }
+
+        if (transport == BluetoothTransportType.BLE) {
+            startBleScan()
             return
         }
         
@@ -419,9 +474,52 @@ class AndroidBluetoothController @Inject constructor(
         Log.d("BluetoothController", "startDiscovery() called, result: $startDiscoveryResult")
     }
 
+    private fun startBleScan() {
+        val scanner = bluetoothAdapter?.bluetoothLeScanner
+        if (scanner == null) {
+            Log.e("BluetoothController", "BLE scanner unavailable")
+            return
+        }
+        stopBleScan()
+        updatePairedDevices()
+
+        val callback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                val name = result.scanRecord?.deviceName ?: result.device.name
+                _discoveredDevices.update { devices ->
+                    val newDevice = com.micsbol.telecon4esp32.domain.bluetooth.BluetoothDevice(
+                        name = name,
+                        address = result.device.address,
+                    )
+                    if (devices.any { it.address == newDevice.address }) devices
+                    else devices + newDevice
+                }
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                Log.e("BluetoothController", "BLE scan failed: $errorCode")
+            }
+        }
+        bleScanCallback = callback
+        scanner.startScan(callback)
+        Log.d("BluetoothController", "BLE scan started")
+    }
+
+    private fun stopBleScan() {
+        val callback = bleScanCallback ?: return
+        bleScanCallback = null
+        try {
+            bluetoothAdapter?.bluetoothLeScanner?.stopScan(callback)
+        } catch (e: Exception) {
+            Log.w("BluetoothController", "Failed to stop BLE scan: ${e.message}")
+        }
+    }
+
     override fun stopDiscovery() {
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) return
-        
+
+        stopBleScan()
+
         if (isReceiverRegistered) {
             try {
                 context.unregisterReceiver(foundDeviceReceiver)
@@ -446,10 +544,14 @@ class AndroidBluetoothController @Inject constructor(
                 Log.w("BluetoothController", "Receiver was not registered or already unregistered: ${e.message}")
             }
         }
+        stopBleScan()
         closeConnection()
     }
 
-    override fun connect(device: RemoteDevice): Flow<ConnectionResult> {
+    override fun connect(
+        device: RemoteDevice,
+        transport: BluetoothTransportType,
+    ): Flow<ConnectionResult> {
         return flow {
             if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) throw SecurityException("No BLUETOOTH_CONNECT permission")
 
@@ -461,6 +563,27 @@ class AndroidBluetoothController @Inject constructor(
             val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
             if (bluetoothDevice == null) {
                 emit(ConnectionResult.Error("Device not found for address: ${device.address}"))
+                return@flow
+            }
+
+            if (transport == BluetoothTransportType.BLE) {
+                val bleService = BleDataTransferService(context, bluetoothDevice)
+                if (!bleService.open()) {
+                    emit(ConnectionResult.Error("BLE connection failed for ${device.address}"))
+                    return@flow
+                }
+                synchronized(this@AndroidBluetoothController) {
+                    dataTransferService = bleService
+                    _isConnected.update { true }
+                }
+                emit(ConnectionResult.SocketEstablished)
+                bleService.listenForIncoming()
+                    .collect { frame ->
+                        when (frame) {
+                            is IncomingBluetoothFrame.BinaryPacket -> parseIncomingPacket(frame.bytes)
+                            is IncomingBluetoothFrame.TextLine -> parseIncomingLine(frame.line)
+                        }
+                    }
                 return@flow
             }
 
@@ -515,7 +638,7 @@ class AndroidBluetoothController @Inject constructor(
                 }
             }
 
-            emit(ConnectionResult.ConnectionEstablished)
+            emit(ConnectionResult.SocketEstablished)
             dataTransferService!!.listenForIncoming()
                 .collect { frame ->
                     when (frame) {

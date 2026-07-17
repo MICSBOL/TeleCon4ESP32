@@ -12,10 +12,13 @@ interface RemoteController {
     val telemetryState: StateFlow<TelemetryState>
     val messages: SharedFlow<EspMessage>
 
-    fun startDiscovery()
+    fun startDiscovery(transport: BluetoothTransportType = BluetoothTransportType.CLASSIC)
     fun stopDiscovery()
 
-    fun connect(device: RemoteDevice): Flow<ConnectionResult>
+    fun connect(
+        device: RemoteDevice,
+        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
+    ): Flow<ConnectionResult>
 
     suspend fun sendData(data: ByteArray): Boolean?
 

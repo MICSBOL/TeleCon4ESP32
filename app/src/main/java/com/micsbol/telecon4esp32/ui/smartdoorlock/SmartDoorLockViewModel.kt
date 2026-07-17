@@ -2,15 +2,30 @@ package com.micsbol.telecon4esp32.ui.smartdoorlock
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
+import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
+import com.micsbol.telecon4esp32.domain.bluetooth.dl.DlPacketEncoder
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamRepository
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
+import com.micsbol.telecon4esp32.domain.model.protocolPrefix
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.ObserveEntitlementUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -19,7 +34,37 @@ import javax.inject.Inject
 @HiltViewModel
 class SmartDoorLockViewModel @Inject constructor(
     private val cameraStreamRepository: CameraStreamRepository,
+    private val remoteController: RemoteController,
+    getApplicationProtocolMode: GetApplicationProtocolModeUseCase,
+    observeEntitlement: ObserveEntitlementUseCase,
 ) : ViewModel() {
+
+    private val appPrefix = ApplicationId.SMART_DOOR_LOCK.protocolPrefix()
+
+    private val storedProtocolMode = getApplicationProtocolMode(ApplicationId.SMART_DOOR_LOCK)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.SMART_DOOR_LOCK),
+        )
+
+    private val entitlement: StateFlow<Entitlement> = observeEntitlement()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = Entitlement.Free,
+        )
+
+    val protocolMode: StateFlow<BluetoothProtocolMode> = combine(
+        storedProtocolMode,
+        entitlement,
+    ) { stored, access ->
+        access.effectiveProtocolMode(ApplicationId.SMART_DOOR_LOCK, stored)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.SMART_DOOR_LOCK),
+    )
 
     private val _uiState = MutableStateFlow(SmartDoorLockUiState())
     val uiState: StateFlow<SmartDoorLockUiState> = _uiState.asStateFlow()
@@ -39,11 +84,20 @@ class SmartDoorLockViewModel @Inject constructor(
                             CameraStreamState.Idle
                         },
                         isEsp32Online = cameraState is CameraStreamState.Frame ||
-                            cameraState is CameraStreamState.Connecting,
+                            cameraState is CameraStreamState.Connecting ||
+                            remoteController.isConnected.value,
                     )
                 }
             }
         }
+
+        remoteController.messages
+            .onEach { message ->
+                if (message.app == appPrefix && message.type == "DATA") {
+                    applyTelemetry(message.values)
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onScreenVisible() {
@@ -58,6 +112,7 @@ class SmartDoorLockViewModel @Inject constructor(
         stopCallTimer()
         relayPulseJob?.cancel()
         cameraStreamRepository.stopStream()
+        sendSet(mapOf("call" to 0))
         _uiState.update {
             it.copy(
                 isCallActive = false,
@@ -75,6 +130,7 @@ class SmartDoorLockViewModel @Inject constructor(
                 lastSignalMessage = "unlock_sent",
             )
         }
+        sendSet(mapOf("unlock" to 1))
     }
 
     fun onSendLockSignal() {
@@ -85,12 +141,14 @@ class SmartDoorLockViewModel @Inject constructor(
                 lastSignalMessage = "lock_sent",
             )
         }
+        sendSet(mapOf("lock" to 1))
     }
 
     fun onTriggerRelayPulse() {
         if (_uiState.value.isRelayPulseActive) return
 
         relayPulseJob?.cancel()
+        sendSet(mapOf("pulse" to 1))
         relayPulseJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -114,16 +172,21 @@ class SmartDoorLockViewModel @Inject constructor(
     }
 
     fun onToggleMic() {
-        _uiState.update { it.copy(isMicEnabled = !it.isMicEnabled) }
+        val enabled = !_uiState.value.isMicEnabled
+        _uiState.update { it.copy(isMicEnabled = enabled) }
+        sendSet(mapOf("mic" to if (enabled) 1 else 0))
     }
 
     fun onToggleSpeaker() {
-        _uiState.update { it.copy(isSpeakerEnabled = !it.isSpeakerEnabled) }
+        val enabled = !_uiState.value.isSpeakerEnabled
+        _uiState.update { it.copy(isSpeakerEnabled = enabled) }
+        sendSet(mapOf("spk" to if (enabled) 1 else 0))
     }
 
     fun onToggleCamera() {
         val enableCamera = !_uiState.value.isCameraEnabled
         _uiState.update { it.copy(isCameraEnabled = enableCamera) }
+        sendSet(mapOf("cam" to if (enableCamera) 1 else 0))
         if (enableCamera && _uiState.value.isCallActive) {
             cameraStreamRepository.startStream(cameraBaseUrl)
         } else {
@@ -138,6 +201,39 @@ class SmartDoorLockViewModel @Inject constructor(
 
     fun clearLastSignalMessage() {
         _uiState.update { it.copy(lastSignalMessage = null) }
+    }
+
+    private fun applyTelemetry(values: Map<String, String>) {
+        _uiState.update { current ->
+            current.copy(
+                isEsp32Online = true,
+                doorLockState = when (values["lock"]) {
+                    "0" -> DoorLockState.UNLOCKED
+                    "1" -> DoorLockState.LOCKED
+                    else -> current.doorLockState
+                },
+                relayPinState = when (values["relay"]?.uppercase()) {
+                    "LOW" -> RelayPinState.LOW
+                    "HIGH" -> RelayPinState.HIGH
+                    else -> current.relayPinState
+                },
+                isMicEnabled = values["mic"]?.toBooleanLike() ?: current.isMicEnabled,
+                isSpeakerEnabled = values["spk"]?.toBooleanLike() ?: current.isSpeakerEnabled,
+                isCameraEnabled = values["cam"]?.toBooleanLike() ?: current.isCameraEnabled,
+            )
+        }
+    }
+
+    private fun sendSet(pairs: Map<String, Any>) {
+        viewModelScope.launch {
+            if (!remoteController.isConnected.value) return@launch
+            when (protocolMode.value) {
+                BluetoothProtocolMode.SIMPLE ->
+                    remoteController.sendLine(SimpleProtocolEncoder.buildSetLine(appPrefix, pairs))
+                BluetoothProtocolMode.ADVANCED ->
+                    remoteController.sendData(DlPacketEncoder.buildSetPacket(pairs))
+            }
+        }
     }
 
     private fun startCallTimer() {
@@ -155,7 +251,12 @@ class SmartDoorLockViewModel @Inject constructor(
         callTimerJob = null
     }
 
-    private companion object {
-        const val RELAY_PULSE_MS = 2_000L
+    companion object {
+        private const val RELAY_PULSE_MS = 2_000L
     }
+}
+
+private fun String.toBooleanLike(): Boolean = when (lowercase()) {
+    "1", "true", "on", "yes" -> true
+    else -> false
 }

@@ -30,6 +30,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.smartlighting.components.AddLightingDeviceTile
 import com.micsbol.telecon4esp32.ui.smartlighting.components.BedroomLightingDeviceCard
@@ -60,6 +61,9 @@ fun SmartLightingScreen(
                 modifier = Modifier.padding(start = 4.dp, end = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                ApplicationBluetoothTopBarButton(accent = SmartLightingGlass.AccentCyan) { onClick, enabled, content ->
+                    SmartLightingGlassIconButton(onClick = onClick, enabled = enabled, content = content)
+                }
                 SmartLightingGlassIconButton(
                     onClick = { navController.navigate(Screen.SmartLightingHelp.route) },
                 ) {

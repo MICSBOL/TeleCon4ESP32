@@ -25,7 +25,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.ui.bluetooth.WrapApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.about.AboutScreen
 import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
@@ -34,6 +36,7 @@ import com.micsbol.telecon4esp32.ui.applications.ProApplicationPlaceholderScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseCameraScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseHelpScreen
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseScreen
+import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseViewModel
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseSettingsScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeHelpScreen
 import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeScreen
@@ -47,6 +50,7 @@ import com.micsbol.telecon4esp32.ui.watertank.WaterTankHelpScreen
 import com.micsbol.telecon4esp32.ui.watertank.WaterTankScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.codes.CodesHubScreen
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelScreen
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
@@ -101,6 +105,7 @@ fun AppNavGraph(
         }
         composable(Screen.Home.route) {
             val state by bluetoothViewModel.state.collectAsState()
+            val lastApplicationId by bluetoothViewModel.lastApplicationId.collectAsState()
             val lastDeviceName by bluetoothViewModel.lastDeviceName.collectAsState()
             val context = LocalContext.current
             val activity = context as? ComponentActivity
@@ -152,28 +157,28 @@ fun AppNavGraph(
                 onReady()
             }
 
-            LaunchedEffect(Unit) {
-                bluetoothViewModel.navigateToScreen.collect { route ->
-                    if (route == BluetoothViewModel.POP_BACK_ON_CONNECT) {
-                        navController.navigateUp()
-                    } else {
-                        navController.navigate(route)
-                    }
-                }
-            }
-
             CyberHomeScreen(
                 navController = navController,
                 isConnecting = state.isConnecting,
-                isBluetoothConnected = state.isConnected,
+                activeSession = state.activeSession,
+                lastApplicationId = lastApplicationId,
+                lastDeviceName = state.activeSession?.deviceName ?: lastDeviceName,
                 errorMessage = state.errorMessage,
-                lastDeviceName = lastDeviceName,
+                handshakeFailure = state.handshakeFailure,
                 onDismissError = bluetoothViewModel::dismissError,
-                onStartClick = {
-                    ensureBluetoothReadyBeforeAction {
-                        bluetoothViewModel.quickConnect()
+                onOpenApplications = { navController.navigate(Screen.Applications.route) },
+                onContinueSession = {
+                    bluetoothViewModel.continueLastSession { route ->
+                        navController.navigate(route)
                     }
-                }
+                },
+                onOpenRecentProject = { applicationId ->
+                    ensureBluetoothReadyBeforeAction {
+                        bluetoothViewModel.openRecentProject(applicationId) { route ->
+                            navController.navigate(route)
+                        }
+                    }
+                },
             )
         }
         composable(Screen.Bluetooth.route) {
@@ -236,7 +241,9 @@ fun AppNavGraph(
                     if (route == BluetoothViewModel.POP_BACK_ON_CONNECT) {
                         navController.navigateUp()
                     } else {
-                        navController.navigate(route)
+                        navController.navigate(route) {
+                            popUpTo(Screen.Bluetooth.route) { inclusive = true }
+                        }
                     }
                 }
             }
@@ -268,13 +275,35 @@ fun AppNavGraph(
             )
         }
         composable(Screen.RcVehiclePro.route) {
-            RcVehicleProScreen(
-                navController = navController,
+            val protocolMode by remember {
+                bluetoothViewModel.observeProtocolMode(ApplicationId.RC_VEHICLE_PRO)
+            }.collectAsState(initial = BluetoothProtocolMode.defaultFor(ApplicationId.RC_VEHICLE_PRO))
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                protocolMode = protocolMode,
                 bluetoothViewModel = bluetoothViewModel,
-            )
+                navController = navController,
+            ) {
+                RcVehicleProScreen(
+                    navController = navController,
+                    bluetoothViewModel = bluetoothViewModel,
+                )
+            }
         }
         composable(Screen.GreenhousePro.route) {
-            GreenhouseScreen(navController = navController)
+            val greenhouseViewModel = hiltViewModel<GreenhouseViewModel>()
+            val protocolMode by greenhouseViewModel.protocolMode.collectAsState()
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.GREENHOUSE,
+                protocolMode = protocolMode,
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            ) {
+                GreenhouseScreen(
+                    navController = navController,
+                    viewModel = greenhouseViewModel,
+                )
+            }
         }
         composable(Screen.GreenhouseHelp.route) {
             GreenhouseHelpScreen(navController = navController)
@@ -286,31 +315,76 @@ fun AppNavGraph(
             GreenhouseCameraScreen(navController = navController)
         }
         composable(Screen.SolarPro.route) {
-            SolarSystemScreen(navController = navController)
+            val solarViewModel = hiltViewModel<com.micsbol.telecon4esp32.ui.solarsystem.SolarSystemViewModel>()
+            val protocolMode by solarViewModel.protocolMode.collectAsState()
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.SOLAR_POWER,
+                protocolMode = protocolMode,
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            ) {
+                SolarSystemScreen(navController = navController, viewModel = solarViewModel)
+            }
         }
         composable(Screen.SolarHelp.route) {
             SolarHelpScreen(navController = navController)
         }
         composable(Screen.SmartHomePro.route) {
-            SmartHomeScreen(navController = navController)
+            val smartHomeViewModel = hiltViewModel<com.micsbol.telecon4esp32.ui.smarthome.SmartHomeViewModel>()
+            val protocolMode by smartHomeViewModel.protocolMode.collectAsState()
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.SMART_HOME,
+                protocolMode = protocolMode,
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            ) {
+                SmartHomeScreen(navController = navController, viewModel = smartHomeViewModel)
+            }
         }
         composable(Screen.SmartHomeHelp.route) {
             SmartHomeHelpScreen(navController = navController)
         }
         composable(Screen.WaterTankPro.route) {
-            WaterTankScreen(navController = navController)
+            val waterTankViewModel = hiltViewModel<com.micsbol.telecon4esp32.ui.watertank.WaterTankViewModel>()
+            val protocolMode by waterTankViewModel.protocolMode.collectAsState()
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.WATER_TANK,
+                protocolMode = protocolMode,
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            ) {
+                WaterTankScreen(navController = navController, viewModel = waterTankViewModel)
+            }
         }
         composable(Screen.WaterTankHelp.route) {
             WaterTankHelpScreen(navController = navController)
         }
         composable(Screen.SmartDoorLockPro.route) {
-            SmartDoorLockScreen(navController = navController)
+            val doorLockViewModel = hiltViewModel<com.micsbol.telecon4esp32.ui.smartdoorlock.SmartDoorLockViewModel>()
+            val protocolMode by doorLockViewModel.protocolMode.collectAsState()
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.SMART_DOOR_LOCK,
+                protocolMode = protocolMode,
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            ) {
+                SmartDoorLockScreen(navController = navController, viewModel = doorLockViewModel)
+            }
         }
         composable(Screen.SmartDoorLockHelp.route) {
             SmartDoorLockHelpScreen(navController = navController)
         }
         composable(Screen.SmartLightingPro.route) {
-            SmartLightingScreen(navController = navController)
+            val lightingViewModel = hiltViewModel<com.micsbol.telecon4esp32.ui.smartlighting.SmartLightingViewModel>()
+            val protocolMode by lightingViewModel.protocolMode.collectAsState()
+            WrapApplicationBluetoothSession(
+                applicationId = ApplicationId.SMART_LIGHTING,
+                protocolMode = protocolMode,
+                bluetoothViewModel = bluetoothViewModel,
+                navController = navController,
+            ) {
+                SmartLightingScreen(navController = navController, viewModel = lightingViewModel)
+            }
         }
         composable(Screen.SmartLightingHelp.route) {
             SmartLightingHelpScreen(navController = navController)
@@ -357,8 +431,23 @@ fun AppNavGraph(
         composable(Screen.Tutorial.route) {
             TutorialScreen(navController = navController)
         }
-        composable(Screen.Codes.route){
-            CodesScreen(navController = navController)
+        composable(Screen.Codes.route) {
+            CodesHubScreen(navController = navController)
+        }
+        composable(
+            route = Screen.ApplicationCodes.route,
+            arguments = listOf(
+                navArgument("applicationId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val applicationId = backStackEntry.arguments
+                ?.getString("applicationId")
+                ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+                ?: return@composable
+            CodesScreen(
+                navController = navController,
+                applicationId = applicationId,
+            )
         }
         composable(Screen.About.route) {
             AboutScreen(navController = navController)

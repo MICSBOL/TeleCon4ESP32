@@ -29,6 +29,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 import com.micsbol.telecon4esp32.ui.watertank.components.CurrentLevelCard
@@ -56,6 +57,9 @@ fun WaterTankScreen(
                 modifier = Modifier.padding(start = 4.dp, end = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                ApplicationBluetoothTopBarButton(accent = WaterTankGlass.AccentCyan) { onClick, enabled, content ->
+                    WaterTankGlassIconButton(onClick = onClick, enabled = enabled, content = content)
+                }
                 WaterTankGlassIconButton(
                     onClick = { navController.navigate(Screen.WaterTankHelp.route) },
                 ) {

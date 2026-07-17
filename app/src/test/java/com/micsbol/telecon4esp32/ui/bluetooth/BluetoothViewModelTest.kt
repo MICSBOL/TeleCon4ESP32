@@ -1,15 +1,22 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 import app.cash.turbine.test
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.EspMessage
+import com.micsbol.telecon4esp32.domain.bluetooth.ProtocolHandshake
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetLastApplicationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetLastDeviceUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetUserSettingsUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLastApplicationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLastDeviceUseCase
+import com.micsbol.telecon4esp32.ui.navigation.mainRoute
 import com.micsbol.telecon4esp32.util.FakeRemoteController
 import com.micsbol.telecon4esp32.util.FakeRemoteDevice
 import com.micsbol.telecon4esp32.util.FakeSettingsRepository
@@ -51,7 +58,10 @@ class BluetoothViewModelTest {
             getUserSettings  = GetUserSettingsUseCase(fakeSettings),
             getLastDevice    = GetLastDeviceUseCase(fakeSettings),
             saveLastDevice   = SaveLastDeviceUseCase(fakeSettings),
+            getLastApplication = GetLastApplicationUseCase(fakeSettings),
+            saveLastApplication = SaveLastApplicationUseCase(fakeSettings),
             getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
+            getApplicationTransportType = GetApplicationTransportTypeUseCase(fakeSettings),
         )
     }
     // ── Initial state ─────────────────────────────────────────────────────────
@@ -105,36 +115,60 @@ class BluetoothViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
-    // ── Connection ────────────────────────────────────────────────────────────
+      private fun requestControlPanelConnect() {
+        viewModel.requestApplicationConnection(
+            ApplicationId.CONTROL_PANEL,
+            BluetoothProtocolMode.ADVANCED,
+        )
+    }
+
+  // ── Connection ────────────────────────────────────────────────────────────
     @Test
     fun `connectToDevice sets isConnecting true`() = runTest {
-        // No results means connection stays in connecting state
         fakeController.connectionResults = emptyList()
         viewModel.state.test {
             awaitItem()
+            requestControlPanelConnect()
             viewModel.connectToDevice(testDevice)
             assertTrue(awaitItem().isConnecting)
             cancelAndIgnoreRemainingEvents()
         }
     }
     @Test
-    fun `ConnectionEstablished sets isConnected true and clears error`() = runTest {
-        fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
+    fun `SocketEstablished with ACK sets isConnected true and active session`() = runTest {
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(
+                    app = "RC",
+                    type = ProtocolHandshake.ACK_TYPE,
+                    values = mapOf("app" to "RC"),
+                ),
+            )
+        }
         viewModel.state.test {
             awaitItem()
+            requestControlPanelConnect()
             viewModel.connectToDevice(testDevice)
             awaitItem() // connecting
             val connected = awaitItem()
             assertTrue(connected.isConnected)
             assertFalse(connected.isConnecting)
-            assertNull(connected.errorMessage)
+            assertEquals(ApplicationId.CONTROL_PANEL, connected.activeSession?.applicationId)
             cancelAndIgnoreRemainingEvents()
         }
     }
     @Test
-    fun `ConnectionEstablished saves last device in repository`() = runTest {
-        fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
+    fun `SocketEstablished saves last device after handshake`() = runTest {
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "RC", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "RC")),
+            )
+        }
+        requestControlPanelConnect()
         viewModel.connectToDevice(testDevice)
+        runCurrent()
         assertNotNull(fakeSettings.savedDevice)
         assertEquals(testDevice.address, fakeSettings.savedDevice?.first)
         assertEquals(testDevice.name, fakeSettings.savedDevice?.second)
@@ -144,6 +178,7 @@ class BluetoothViewModelTest {
         fakeController.connectionResults = listOf(ConnectionResult.Error("Socket refused"))
         viewModel.state.test {
             awaitItem()
+            requestControlPanelConnect()
             viewModel.connectToDevice(testDevice)
             awaitItem() // connecting
             val failed = awaitItem()
@@ -156,19 +191,54 @@ class BluetoothViewModelTest {
     @Test
     fun `dismissError clears errorMessage`() = runTest {
         fakeController.connectionResults = listOf(ConnectionResult.Error("oops"))
+        requestControlPanelConnect()
         viewModel.connectToDevice(testDevice)
         viewModel.dismissError()
         assertNull(viewModel.state.value.errorMessage)
     }
     @Test
     fun `disconnectFromDevice resets connection state and calls disconnect`() = runTest {
-        fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "RC", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "RC")),
+            )
+        }
+        requestControlPanelConnect()
         viewModel.connectToDevice(testDevice)
+        runCurrent()
         viewModel.disconnectFromDevice()
         val state = viewModel.state.value
         assertFalse(state.isConnected)
         assertFalse(state.isConnecting)
         assertTrue(fakeController.disconnectCalled)
+    }
+
+    @Test
+    fun `unexpected remote link drop clears session for reconnect`() = runTest {
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "RC", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "RC")),
+            )
+        }
+        viewModel.state.test {
+            awaitItem()
+            requestControlPanelConnect()
+            viewModel.connectToDevice(testDevice)
+            awaitItem() // connecting
+            val connected = awaitItem()
+            assertTrue(connected.isConnected)
+            assertTrue(viewModel.isSessionActiveFor(ApplicationId.CONTROL_PANEL))
+
+            fakeController.setConnected(false)
+            val dropped = awaitItem()
+            assertFalse(dropped.isConnected)
+            assertFalse(dropped.isConnecting)
+            assertNull(dropped.activeSession)
+            assertFalse(viewModel.isSessionActiveFor(ApplicationId.CONTROL_PANEL))
+            cancelAndIgnoreRemainingEvents()
+        }
     }
     // ── RC control state ──────────────────────────────────────────────────────
     @Test
@@ -222,7 +292,10 @@ class BluetoothViewModelTest {
             getUserSettings = GetUserSettingsUseCase(fakeSettings),
             getLastDevice = GetLastDeviceUseCase(fakeSettings),
             saveLastDevice = SaveLastDeviceUseCase(fakeSettings),
+            getLastApplication = GetLastApplicationUseCase(fakeSettings),
+            saveLastApplication = SaveLastApplicationUseCase(fakeSettings),
             getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
+            getApplicationTransportType = GetApplicationTransportTypeUseCase(fakeSettings),
         )
         val collectJob = launch { coldStartViewModel.userSettings.collect { } }
 
@@ -287,7 +360,10 @@ class BluetoothViewModelTest {
             getUserSettings = GetUserSettingsUseCase(fakeSettings),
             getLastDevice = GetLastDeviceUseCase(fakeSettings),
             saveLastDevice = SaveLastDeviceUseCase(fakeSettings),
+            getLastApplication = GetLastApplicationUseCase(fakeSettings),
+            saveLastApplication = SaveLastApplicationUseCase(fakeSettings),
             getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
+            getApplicationTransportType = GetApplicationTransportTypeUseCase(fakeSettings),
         )
         val collectJob = launch { simpleViewModel.userSettings.collect { } }
         runCurrent()
@@ -308,34 +384,31 @@ class BluetoothViewModelTest {
         collectJob.cancel()
     }
 
-    // ── Quick connect ─────────────────────────────────────────────────────────
+    // ── Continue session / recent project ─────────────────────────────────────
     @Test
-    fun `quickConnect navigates to bluetooth screen when no last device is saved`() = runTest {
-        viewModel.navigateToScreen.test {
-            viewModel.quickConnect()
-            assertEquals("bluetooth", awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
+    fun `continueLastSession navigates to applications when no active session`() = runTest {
+        var navigated: String? = null
+        viewModel.continueLastSession { navigated = it }
+        assertEquals(Screen.Applications.route, navigated)
     }
+
     @Test
-    fun `quickConnect navigates to bluetooth screen when last device is not in paired list`() = runTest {
-        fakeSettings.setLastDevice("DE:AD:BE:EF:00:01", "GhostDevice")
-        // saved devices list is empty — address won't be found
-        viewModel.navigateToScreen.test {
-            viewModel.quickConnect()
-            assertEquals("bluetooth", awaitItem())
-            cancelAndIgnoreRemainingEvents()
+    fun `openRecentProject navigates to bluetooth then app after connect`() = runTest {
+        var navigated: String? = null
+        viewModel.openRecentProject(ApplicationId.GREENHOUSE) { navigated = it }
+        runCurrent()
+        assertEquals(Screen.Bluetooth.route, navigated)
+        assertEquals(ApplicationId.GREENHOUSE, fakeSettings.lastApplicationFlow.first())
+
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "GH", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "GH")),
+            )
         }
-    }
-    @Test
-    fun `quickConnect connects directly when last device is in paired list`() = runTest {
-        fakeSettings.setLastDevice(testDevice.address, testDevice.name)
-        fakeController.setSavedDevices(listOf(testDevice))
-        fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
-        viewModel.quickConnect()
-        // After successful connect the nav event for home is emitted
+        viewModel.connectToDevice(testDevice)
         viewModel.navigateToScreen.test {
-            assertEquals("home", awaitItem())
+            assertEquals(ApplicationId.GREENHOUSE.mainRoute(), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -343,7 +416,13 @@ class BluetoothViewModelTest {
     @Test
     fun `connect pops back when preparePostConnectPopBack was called`() = runTest {
         viewModel.preparePostConnectPopBack()
-        fakeController.connectionResults = listOf(ConnectionResult.ConnectionEstablished)
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "RC", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "RC")),
+            )
+        }
+        requestControlPanelConnect()
         viewModel.connectToDevice(testDevice)
         viewModel.navigateToScreen.test {
             assertEquals(BluetoothViewModel.POP_BACK_ON_CONNECT, awaitItem())

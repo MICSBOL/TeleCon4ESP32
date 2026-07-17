@@ -26,26 +26,16 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Rocket
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,12 +46,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,10 +65,16 @@ import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
 import com.micsbol.telecon4esp32.ui.components.NeoIconButton
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
-import com.micsbol.telecon4esp32.ui.components.NeoStatTile
 import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
 import com.micsbol.telecon4esp32.ui.components.glassSurface
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
+import com.micsbol.telecon4esp32.domain.bluetooth.ActiveBluetoothSession
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.ui.applications.recentTagRes
+import com.micsbol.telecon4esp32.ui.applications.thumbnailRes
+import com.micsbol.telecon4esp32.ui.applications.titleRes
+import com.micsbol.telecon4esp32.ui.bluetooth.handshakeFailureMessage
+import com.micsbol.telecon4esp32.ui.bluetooth.protocolModeLabel
 import com.micsbol.telecon4esp32.ui.home.HomeHelpDialog
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.Neo
@@ -96,27 +92,24 @@ private data class HomeMenuItem(
     val onClick: () -> Unit,
 )
 
-private data class HomeMetric(
-    val icon: ImageVector,
-    val label: String,
-    val value: String,
-    val valueColor: Color = Neo.TextPrimary,
-)
-
 /**
  * Dark glassmorphism home dashboard.
  *
  * Vertical structure:
- *  Header -> Quick Status -> Bluetooth -> 2x2 Grid -> Recent Project -> CTA -> Footer
+ *  Header -> Wallet -> Recent Project -> Codes -> Active Session -> About -> Banner
  */
 @Composable
 fun CyberHomeScreen(
     navController: NavHostController? = null,
     isConnecting: Boolean = false,
-    isBluetoothConnected: Boolean = false,
-    errorMessage: String? = null,
+    activeSession: ActiveBluetoothSession? = null,
+    lastApplicationId: ApplicationId? = null,
     lastDeviceName: String? = null,
-    onStartClick: () -> Unit = {},
+    errorMessage: String? = null,
+    handshakeFailure: com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure? = null,
+    onOpenApplications: () -> Unit = {},
+    onContinueSession: () -> Unit = {},
+    onOpenRecentProject: (ApplicationId) -> Unit = {},
     onDismissError: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -133,68 +126,26 @@ fun CyberHomeScreen(
 
     BackHandler { activity?.finish() }
 
-    val gridItems = listOf(
-        HomeMenuItem(
-            icon = Icons.Filled.GridView,
-            title = stringResource(R.string.cyber_grid_modules_title),
-            description = stringResource(R.string.cyber_grid_modules_desc),
-            onClick = { navController?.navigate(Screen.Applications.route) },
-        ),
-        HomeMenuItem(
-            icon = Icons.Filled.Code,
-            title = stringResource(R.string.cyber_grid_codes_title),
-            description = stringResource(R.string.cyber_grid_codes_desc),
-            onClick = { navController?.navigate(Screen.Codes.route) },
-        ),
-        HomeMenuItem(
-            icon = Icons.Filled.PlayCircleOutline,
-            title = stringResource(R.string.cyber_grid_tutorials_title),
-            description = stringResource(R.string.cyber_grid_tutorials_desc),
-            onClick = { navController?.navigate(Screen.Tutorial.route) },
-        ),
-        HomeMenuItem(
-            icon = Icons.Filled.Info,
-            title = stringResource(R.string.about_title),
-            description = stringResource(R.string.cyber_grid_about_desc),
-            onClick = { navController?.navigate(Screen.About.route) },
-        ),
+    val codesItem = HomeMenuItem(
+        icon = Icons.Filled.Code,
+        title = stringResource(R.string.cyber_grid_codes_title),
+        description = stringResource(R.string.cyber_grid_codes_desc),
+        onClick = { navController?.navigate(Screen.Codes.route) },
     )
 
-    val quickMetrics = connectionMetrics(isBluetoothConnected) + listOf(
-        HomeMetric(
-            icon = Icons.Filled.Bolt,
-            label = stringResource(R.string.cyber_power),
-            value = stringResource(R.string.cyber_power_value),
-        ),
-        HomeMetric(
-            icon = Icons.Filled.Schedule,
-            label = stringResource(R.string.cyber_latency),
-            value = stringResource(R.string.cyber_latency_value),
-        ),
+    val aboutItem = HomeMenuItem(
+        icon = Icons.Filled.Info,
+        title = stringResource(R.string.about_title),
+        description = stringResource(R.string.cyber_grid_about_desc),
+        onClick = { navController?.navigate(Screen.About.route) },
     )
 
-    val footerMetrics = connectionMetrics(isBluetoothConnected) + listOf(
-        HomeMetric(
-            icon = Icons.Filled.Bolt,
-            label = stringResource(R.string.cyber_power),
-            value = stringResource(R.string.cyber_power_value),
-        ),
-        HomeMetric(
-            icon = Icons.Filled.Layers,
-            label = stringResource(R.string.cyber_packets),
-            value = "0",
-        ),
-        HomeMetric(
-            icon = Icons.Filled.MonitorHeart,
-            label = stringResource(R.string.cyber_uptime),
-            value = "00:00:00",
-        ),
-    )
+    val isSessionConnected = activeSession != null
 
-    val startSubtitle = if (lastDeviceName != null) {
-        stringResource(R.string.home_last_devices) + " " + lastDeviceName
-    } else {
-        stringResource(R.string.cyber_start_subtitle)
+    val resolvedError = when {
+        handshakeFailure != null -> handshakeFailureMessage(handshakeFailure)
+        errorMessage != null -> errorMessage
+        else -> null
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -210,7 +161,7 @@ fun CyberHomeScreen(
         ) {
             item {
                 HeaderPanel(
-                    isConnected = isBluetoothConnected,
+                    isConnected = isSessionConnected,
                     onHelpClick = { showHelpDialog = true },
                     onHeaderClick = { navController?.navigate(Screen.About.route) },
                     showCoins = showCoinWallet,
@@ -235,52 +186,35 @@ fun CyberHomeScreen(
                             } else {
                                 coinMessage = adUnavailableMessage
                             }
-                        },
-                        onViewPricing = { showPricingTable = true },
+                        }
                     )
-                }
-            }
-
-            item {
-                BluetoothPanel(
-                    isConnected = isBluetoothConnected,
-                    onConnectClick = { navController?.navigate(Screen.Bluetooth.route) },
-                )
-            }
-
-            items(gridItems.chunked(2)) { rowItems ->
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    rowItems.forEach { gridItem ->
-                        MenuCard(item = gridItem, modifier = Modifier.weight(1f))
-                    }
-                    if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
                 }
             }
 
             item {
                 RecentProjectPanel(
-                    onOpenClick = { navController?.navigate(Screen.Applications.route) },
+                    applicationId = lastApplicationId,
+                    lastDeviceName = lastDeviceName,
+                    onOpenClick = { appId -> onOpenRecentProject(appId) },
+                    onBrowseApplications = onOpenApplications,
                 )
             }
 
             item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    NeoPillButton(
-                        text = stringResource(R.string.cyber_start),
-                        onClick = onStartClick,
-                        icon = Icons.Filled.Rocket,
-                        enabled = !isConnecting,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = startSubtitle,
-                        color = Neo.TextSecondary,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                HomeLinkCard(item = codesItem, showFreeBadge = true)
+            }
+
+            item {
+                ActiveSessionPanel(
+                    activeSession = activeSession,
+                    isConnecting = isConnecting,
+                    onOpenApplications = onOpenApplications,
+                    onContinueSession = onContinueSession,
+                )
+            }
+
+            item {
+                HomeLinkCard(item = aboutItem)
             }
 
             if (AdPolicy.hasBanner(Screen.Home.route, entitlement)) {
@@ -320,11 +254,11 @@ fun CyberHomeScreen(
             )
         }
 
-        if (errorMessage != null) {
+        if (resolvedError != null) {
             AlertDialog(
                 onDismissRequest = onDismissError,
                 title = { Text(stringResource(R.string.bluetooth_connection_error)) },
-                text = { Text(errorMessage) },
+                text = { Text(resolvedError) },
                 confirmButton = {
                     TextButton(onClick = onDismissError) {
                         Text(stringResource(R.string.codes_dialog_ok))
@@ -344,8 +278,10 @@ fun CyberHomeScreen(
                     CircularProgressIndicator(color = Neo.Accent)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = if (lastDeviceName != null) {
-                            stringResource(R.string.home_bluetooth_status_connecting) + " $lastDeviceName"
+                        text = if (activeSession?.deviceName != null) {
+                            stringResource(
+                                R.string.home_bluetooth_status_connecting,
+                            ) + " ${activeSession.deviceName}"
                         } else {
                             stringResource(R.string.home_bluetooth_status_connecting)
                         },
@@ -357,25 +293,6 @@ fun CyberHomeScreen(
         }
     }
 }
-
-@Composable
-private fun connectionMetrics(isConnected: Boolean): List<HomeMetric> = listOf(
-    HomeMetric(
-        icon = Icons.Filled.SignalCellularAlt,
-        label = stringResource(R.string.cyber_signal),
-        value = if (isConnected) {
-            stringResource(R.string.cyber_signal_online)
-        } else {
-            stringResource(R.string.cyber_signal_offline)
-        },
-        valueColor = if (isConnected) Neo.Positive else Neo.Negative,
-    ),
-    HomeMetric(
-        icon = Icons.Filled.Gamepad,
-        label = stringResource(R.string.cyber_mode),
-        value = stringResource(R.string.cyber_mode_remote),
-    ),
-)
 
 @Composable
 private fun HeaderPanel(
@@ -473,113 +390,148 @@ private fun StatusLine(isConnected: Boolean) {
 }
 
 @Composable
-private fun BluetoothPanel(isConnected: Boolean, onConnectClick: () -> Unit) {
+private fun ActiveSessionPanel(
+    activeSession: ActiveBluetoothSession?,
+    isConnecting: Boolean,
+    onOpenApplications: () -> Unit,
+    onContinueSession: () -> Unit,
+) {
+    val primaryText = if (activeSession != null) {
+        stringResource(R.string.home_session_continue)
+    } else {
+        stringResource(R.string.home_session_open_applications)
+    }
+    val subtitle = if (activeSession != null) {
+        stringResource(
+            R.string.home_session_continue_subtitle,
+            stringResource(activeSession.applicationId.titleRes()),
+        )
+    } else {
+        stringResource(R.string.home_session_none_subtitle)
+    }
+
     NeoCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            NeoIconBadge(icon = Icons.Filled.Bluetooth, size = 52.dp)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.home_session_title),
+                color = Neo.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            if (activeSession == null) {
                 Text(
-                    text = stringResource(R.string.cyber_bluetooth),
-                    color = Neo.TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.cyber_bluetooth_subtitle),
+                    text = stringResource(R.string.home_session_none),
                     color = Neo.TextSecondary,
                     fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                StatusLine(isConnected = isConnected)
+                Text(
+                    text = stringResource(R.string.home_session_none_hint),
+                    color = Neo.TextSecondary,
+                    fontSize = 12.sp,
+                )
+            } else {
+                SessionDetailRow(
+                    label = stringResource(R.string.home_session_app_label),
+                    value = stringResource(activeSession.applicationId.titleRes()),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                SessionDetailRow(
+                    label = stringResource(R.string.home_session_device_label),
+                    value = activeSession.deviceName
+                        ?: stringResource(R.string.bluetooth_unknown_device),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                SessionDetailRow(
+                    label = stringResource(R.string.home_session_protocol_label),
+                    value = protocolModeLabel(activeSession.protocolMode),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                StatusLine(isConnected = true)
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             NeoPillButton(
-                text = stringResource(R.string.cyber_connect),
-                onClick = onConnectClick,
-                compact = true,
+                text = primaryText,
+                onClick = {
+                    if (activeSession != null) onContinueSession() else onOpenApplications()
+                },
+                icon = if (activeSession != null) Icons.Filled.Rocket else Icons.Filled.GridView,
+                enabled = !isConnecting,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = subtitle,
+                color = Neo.TextSecondary,
+                fontSize = 12.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
 }
 
 @Composable
-private fun MenuCard(item: HomeMenuItem, modifier: Modifier = Modifier) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Column(
-        modifier = modifier
-            .height(150.dp)
-            .glassSurface(cornerRadius = 24.dp)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = item.onClick,
-            )
-            .padding(18.dp),
-    ) {
-        NeoIconBadge(icon = item.icon, size = 46.dp, selected = pressed)
-        Spacer(modifier = Modifier.weight(1f))
+private fun SessionDetailRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = item.title,
-            color = Neo.TextPrimary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = item.description,
+            text = label,
             color = Neo.TextSecondary,
-            fontSize = 11.sp,
-            maxLines = 2,
+            fontSize = 12.sp,
+            modifier = Modifier.weight(0.45f),
+        )
+        Text(
+            text = value,
+            color = Neo.TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(0.55f),
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 @Composable
-private fun RecentProjectPanel(onOpenClick: () -> Unit) {
-    NeoCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.cyber_recent_project),
-            color = Neo.TextSecondary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+private fun HomeLinkCard(
+    item: HomeMenuItem,
+    showFreeBadge: Boolean = false,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassSurface(cornerRadius = 22.dp)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = item.onClick,
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        if (showFreeBadge) {
+            Text(
+                text = stringResource(R.string.applications_badge_free),
+                color = Neo.Positive,
+                fontSize = 25.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontStyle = FontStyle.Italic,
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = if (showFreeBadge) 72.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 84.dp, height = 64.dp)
-                    .glassSurface(cornerRadius = 14.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.car_bouncing01),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(6.dp),
-                )
-            }
+            NeoIconBadge(icon = item.icon, size = 44.dp, selected = pressed)
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.cyber_recent_name),
+                    text = item.title,
                     color = Neo.TextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
@@ -588,24 +540,112 @@ private fun RecentProjectPanel(onOpenClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = stringResource(R.string.cyber_recent_last),
+                    text = item.description,
                     color = Neo.TextSecondary,
-                    fontSize = 11.sp,
-                    maxLines = 1,
+                    fontSize = 12.sp,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Tag(stringResource(R.string.cyber_tag_robotics))
-                    Tag(stringResource(R.string.cyber_tag_esp32))
-                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            NeoPillButton(
-                text = stringResource(R.string.cyber_open),
-                onClick = onOpenClick,
-                compact = true,
-            )
+        }
+    }
+}
+
+@Composable
+private fun RecentProjectPanel(
+    applicationId: ApplicationId?,
+    lastDeviceName: String?,
+    onOpenClick: (ApplicationId) -> Unit,
+    onBrowseApplications: () -> Unit,
+) {
+    NeoCard(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.cyber_recent_project),
+            color = Neo.TextSecondary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        if (applicationId == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.cyber_recent_none),
+                        color = Neo.TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(R.string.cyber_recent_none_hint),
+                        color = Neo.TextSecondary,
+                        fontSize = 11.sp,
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                NeoPillButton(
+                    text = stringResource(R.string.home_session_open_applications),
+                    onClick = onBrowseApplications,
+                    compact = true,
+                )
+            }
+        } else {
+            val isRcVehicle = applicationId == ApplicationId.RC_VEHICLE_PRO
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 84.dp, height = 64.dp)
+                        .glassSurface(cornerRadius = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(applicationId.thumbnailRes()),
+                        contentDescription = stringResource(applicationId.titleRes()),
+                        contentScale = if (isRcVehicle) ContentScale.Fit else ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(14.dp))
+                            .padding(if (isRcVehicle) 6.dp else 0.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(applicationId.titleRes()),
+                        color = Neo.TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = lastDeviceName
+                            ?: stringResource(R.string.cyber_recent_open_to_connect),
+                        color = Neo.TextSecondary,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Tag(stringResource(applicationId.recentTagRes()))
+                        Tag(stringResource(R.string.cyber_tag_esp32))
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                NeoPillButton(
+                    text = stringResource(R.string.cyber_open),
+                    onClick = { onOpenClick(applicationId) },
+                    compact = true,
+                )
+            }
         }
     }
 }
@@ -636,7 +676,25 @@ private fun CyberHomeScreenPreview() {
 @Preview(showSystemUi = true, uiMode = UI_MODE_NIGHT_YES, name = "Connected")
 @Composable
 private fun CyberHomeScreenConnectedPreview() {
-    CyberHomeScreen(isBluetoothConnected = true)
+    CyberHomeScreen(
+        activeSession = ActiveBluetoothSession(
+            applicationId = ApplicationId.GREENHOUSE,
+            protocolMode = com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode.SIMPLE,
+            deviceName = "ESP32-TeleCon-GH",
+            deviceAddress = "AA:BB:CC:DD:EE:FF",
+        ),
+        lastApplicationId = ApplicationId.GREENHOUSE,
+        lastDeviceName = "ESP32-TeleCon-GH",
+    )
+}
+
+@Preview(showSystemUi = true, uiMode = UI_MODE_NIGHT_YES, name = "Recent RC")
+@Composable
+private fun CyberHomeScreenRecentRcPreview() {
+    CyberHomeScreen(
+        lastApplicationId = ApplicationId.RC_VEHICLE_PRO,
+        lastDeviceName = "ESP32-TeleCon-RC",
+    )
 }
 
 

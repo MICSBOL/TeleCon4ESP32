@@ -3,8 +3,13 @@ package com.micsbol.telecon4esp32.ui.bluetooth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.micsbol.telecon4esp32.domain.bluetooth.ActiveBluetoothSession
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothSessionContext
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
+import com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure
+import com.micsbol.telecon4esp32.domain.bluetooth.ProtocolHandshake
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.RcPacketEncoder
@@ -20,12 +25,18 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.protocolPrefix
+import com.micsbol.telecon4esp32.ui.navigation.Screen
+import com.micsbol.telecon4esp32.ui.navigation.mainRoute
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.domain.model.RcState
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetLastApplicationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetLastDeviceUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetUserSettingsUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLastApplicationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLastDeviceUseCase
 import com.micsbol.telecon4esp32.ui.rc_settings.DisplayLabelDraft
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
@@ -43,6 +54,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -61,16 +74,42 @@ open class BluetoothViewModel @Inject constructor(
     private val getUserSettings: GetUserSettingsUseCase,
     private val getLastDevice: GetLastDeviceUseCase,
     private val saveLastDevice: SaveLastDeviceUseCase,
-    getApplicationProtocolMode: GetApplicationProtocolModeUseCase,
+    private val getLastApplication: GetLastApplicationUseCase,
+    private val saveLastApplication: SaveLastApplicationUseCase,
+    private val getApplicationProtocolMode: GetApplicationProtocolModeUseCase,
+    private val getApplicationTransportType: GetApplicationTransportTypeUseCase,
 ) : ViewModel() {
 
-    private val controlPanelProtocolMode: StateFlow<BluetoothProtocolMode> =
+    val controlPanelProtocolMode: StateFlow<BluetoothProtocolMode> =
         getApplicationProtocolMode(ApplicationId.CONTROL_PANEL)
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.CONTROL_PANEL),
             )
+
+    val controlPanelTransportType: StateFlow<BluetoothTransportType> =
+        getApplicationTransportType(ApplicationId.CONTROL_PANEL)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = BluetoothTransportType.CLASSIC,
+            )
+
+    /** Persisted transport (Classic / BLE) selected for [applicationId]. */
+    fun observeTransportType(applicationId: ApplicationId): Flow<BluetoothTransportType> =
+        getApplicationTransportType(applicationId)
+
+    /** Persisted protocol mode (Simple / Advanced) selected for [applicationId]. */
+    fun observeProtocolMode(applicationId: ApplicationId): Flow<BluetoothProtocolMode> =
+        getApplicationProtocolMode(applicationId)
+
+    val lastApplicationId: StateFlow<ApplicationId?> = getLastApplication()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
 
     private val _navigateToScreen = Channel<String>()
     val navigateToScreen = _navigateToScreen.receiveAsFlow()
@@ -271,15 +310,108 @@ open class BluetoothViewModel @Inject constructor(
 
     companion object {
         private const val RC_PLOT_UI_PERIOD_MS = 33L
+        private const val HANDSHAKE_TIMEOUT_MS = 2_500L
         /** NavGraph pops the back stack when this route is emitted after a successful connect. */
         const val POP_BACK_ON_CONNECT = "__pop_back_on_connect__"
     }
 
-    private var postConnectPopBack = false
+    private var pendingSessionContext: BluetoothSessionContext? = null
+    private var requestedSessionContext: BluetoothSessionContext? = null
+    private var handshakeJob: Job? = null
 
-    /** Call before opening [Screen.Bluetooth] so a successful connect returns to the previous screen. */
+    val activeSession: StateFlow<ActiveBluetoothSession?> = _state
+        .map { it.activeSession }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun isSessionActiveFor(applicationId: ApplicationId): Boolean =
+        _state.value.activeSession?.applicationId == applicationId && _state.value.isConnected
+
+    fun hasSessionConflict(applicationId: ApplicationId): Boolean {
+        val session = _state.value.activeSession ?: return false
+        return _state.value.isConnected && session.applicationId != applicationId
+    }
+
+    fun requestApplicationConnection(
+        applicationId: ApplicationId,
+        protocolMode: BluetoothProtocolMode,
+        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
+    ) {
+        requestedSessionContext = BluetoothSessionContext(applicationId, protocolMode, transport)
+    }
+
+    fun clearRequestedApplicationConnection() {
+        requestedSessionContext = null
+    }
+
+    fun connectForApplication(
+        applicationId: ApplicationId,
+        protocolMode: BluetoothProtocolMode,
+        device: RemoteDevice,
+        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
+    ) {
+        val active = _state.value.activeSession
+        if (active != null && active.applicationId != applicationId && _state.value.isConnected) {
+            disconnectFromDevice()
+        }
+        pendingSessionContext = BluetoothSessionContext(applicationId, protocolMode, transport)
+        requestedSessionContext = BluetoothSessionContext(applicationId, protocolMode, transport)
+        Log.d("BluetoothViewModel", "Connecting to device: ${device.name} for $applicationId over $transport")
+        connectingDevice = device
+        handshakeJob?.cancel()
+        _state.update {
+            it.copy(
+                isConnecting = true,
+                errorMessage = null,
+                handshakeFailure = null,
+            )
+        }
+        deviceConnectionJob = remoteController.connect(device, transport).listen()
+    }
+
+    private var postConnectNavigateRoute: String? = null
+
+    /** Call before opening the in-app connect sheet so success closes the sheet. */
     fun preparePostConnectPopBack() {
-        postConnectPopBack = true
+        postConnectNavigateRoute = POP_BACK_ON_CONNECT
+    }
+
+    /** After a successful connect from Home, navigate to this application route. */
+    fun preparePostConnectNavigateTo(route: String) {
+        postConnectNavigateRoute = route
+    }
+
+    fun markRecentApplication(applicationId: ApplicationId) {
+        viewModelScope.launch {
+            saveLastApplication(applicationId)
+        }
+    }
+
+    /**
+     * Reopens the last project: continue if already connected for that app,
+     * otherwise open the Bluetooth picker and navigate into the app after success.
+     */
+    fun openRecentProject(applicationId: ApplicationId, onNavigate: (String) -> Unit) {
+        if (isSessionActiveFor(applicationId)) {
+            onNavigate(applicationId.mainRoute())
+            return
+        }
+        viewModelScope.launch {
+            val mode = getApplicationProtocolMode(applicationId).first()
+            val transport = getApplicationTransportType(applicationId).first()
+            requestApplicationConnection(applicationId, mode, transport)
+            saveLastApplication(applicationId)
+            preparePostConnectNavigateTo(applicationId.mainRoute())
+            onNavigate(Screen.Bluetooth.route)
+        }
+    }
+
+    fun continueLastSession(onNavigate: (String) -> Unit) {
+        val session = _state.value.activeSession
+        if (session != null && _state.value.isConnected) {
+            onNavigate(session.applicationId.mainRoute())
+            return
+        }
+        onNavigate(Screen.Applications.route)
     }
 
     init {
@@ -300,6 +432,35 @@ open class BluetoothViewModel @Inject constructor(
                         restartRcDataSending()
                     }
                 }
+        }
+        // Keep UI session in sync with the real link so app Bluetooth buttons
+        // turn red/enabled as soon as the ESP32 drops for any reason.
+        viewModelScope.launch {
+            remoteController.isConnected.collect { linked ->
+                if (!linked) {
+                    clearSessionAfterLinkDown()
+                }
+            }
+        }
+    }
+
+    private fun clearSessionAfterLinkDown() {
+        val current = _state.value
+        if (!current.isConnected && current.activeSession == null && !current.isConnecting) {
+            return
+        }
+        handshakeJob?.cancel()
+        pendingSessionContext = null
+        connectingDevice = null
+        if (rcDataSendingActive) {
+            stopSendingRcData()
+        }
+        _state.update {
+            it.copy(
+                isConnecting = false,
+                isConnected = false,
+                activeSession = null,
+            )
         }
     }
 
@@ -455,21 +616,34 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     fun connectToDevice(device: RemoteDevice) {
-        Log.d("BluetoothViewModel", "Connecting to device: ${device.name}")
-        connectingDevice = device
-        _state.update { it.copy(isConnecting = true) }
-        deviceConnectionJob = remoteController.connect(device).listen()
+        val context = requestedSessionContext
+        if (context == null) {
+            _state.update {
+                it.copy(errorMessage = "missing_session_context")
+            }
+            return
+        }
+        connectForApplication(context.applicationId, context.protocolMode, device, context.transport)
     }
 
     fun disconnectFromDevice() {
         deviceConnectionJob?.cancel()
+        handshakeJob?.cancel()
+        pendingSessionContext = null
         remoteController.disconnect()
-        _state.update { it.copy(isConnecting = false, isConnected = false) }
+        _state.update {
+            it.copy(
+                isConnecting = false,
+                isConnected = false,
+                activeSession = null,
+            )
+        }
     }
 
     fun startScan() {
         _state.update { it.copy(isScanning = true) }
-        remoteController.startDiscovery()
+        val transport = requestedSessionContext?.transport ?: BluetoothTransportType.CLASSIC
+        remoteController.startDiscovery(transport)
     }
 
     fun stopScan() {
@@ -478,64 +652,129 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     fun dismissError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(errorMessage = null, handshakeFailure = null) }
     }
 
-    fun quickConnect() {
+    fun openApplications() {
         viewModelScope.launch {
-            val lastDevice = getLastDevice().first()
-            if (lastDevice == null) {
-                Log.d("BluetoothViewModel", "No last device saved, navigating to Bluetooth screen.")
-                _navigateToScreen.send("bluetooth")
-                return@launch
-            }
-            val (address, _) = lastDevice
-            val savedDevice = remoteController.savedDevices.value.find { it.address == address }
-            if (savedDevice == null) {
-                Log.d("BluetoothViewModel", "Last device $address not in paired list, navigating to Bluetooth screen.")
-                _navigateToScreen.send("bluetooth")
-                return@launch
-            }
-            Log.d("BluetoothViewModel", "Quick connecting to last device: ${savedDevice.name}")
-            connectToDevice(savedDevice)
+            _navigateToScreen.send(Screen.Applications.route)
         }
     }
 
     private fun Flow<ConnectionResult>.listen(): Job {
         return onEach { result ->
             when (result) {
-                ConnectionResult.ConnectionEstablished -> {
-                    connectingDevice?.let { device ->
-                        viewModelScope.launch {
-                            saveLastDevice(device.address, device.name)
-                        }
+                ConnectionResult.SocketEstablished -> {
+                    val device = connectingDevice
+                    val context = pendingSessionContext
+                    if (device == null || context == null) {
+                        failConnection("Missing session context for Bluetooth connect.")
+                        return@onEach
                     }
-                    _state.update {
-                        it.copy(isConnected = true, isConnecting = false, errorMessage = null)
-                    }
-                    if (postConnectPopBack) {
-                        postConnectPopBack = false
-                        _navigateToScreen.send(POP_BACK_ON_CONNECT)
-                    } else {
-                        _navigateToScreen.send("home")
-                    }
+                    startHandshake(device, context)
+                }
+                is ConnectionResult.SessionEstablished -> {
+                    // Reserved for controller-driven sessions; handshake completes in ViewModel.
                 }
                 is ConnectionResult.Error -> {
-                    _state.update {
-                        it.copy(isConnected = false, isConnecting = false, errorMessage = result.message)
-                    }
+                    failConnection(result.message)
                 }
             }
         }.catch { throwable ->
-            remoteController.disconnect()
-            _state.update {
-                it.copy(
-                    isConnected = false,
-                    isConnecting = false,
-                    errorMessage = throwable.message ?: "Unknown connection error"
-                )
-            }
+            failConnection(throwable.message ?: "Unknown connection error")
         }.launchIn(viewModelScope)
+    }
+
+    private fun startHandshake(device: RemoteDevice, context: BluetoothSessionContext) {
+        handshakeJob?.cancel()
+        handshakeJob = viewModelScope.launch {
+            val appPrefix = context.applicationId.protocolPrefix()
+            val connectLine = ProtocolHandshake.buildConnectLine(appPrefix, context.protocolMode)
+            remoteController.sendLine(connectLine)
+
+            val response = withTimeoutOrNull(HANDSHAKE_TIMEOUT_MS) {
+                remoteController.messages
+                    .filter { message ->
+                        message.app == appPrefix &&
+                            (message.type == ProtocolHandshake.ACK_TYPE ||
+                                message.type == ProtocolHandshake.NAK_TYPE)
+                    }
+                    .first()
+            }
+
+            when {
+                response?.type == ProtocolHandshake.ACK_TYPE -> {
+                    completeSession(device, context, handshakeConfirmed = true)
+                }
+                response?.type == ProtocolHandshake.NAK_TYPE -> {
+                    val failure = ProtocolHandshake.parseNakReason(response.values)
+                        ?: HandshakeFailure.Unknown("nak")
+                    failHandshake(failure)
+                }
+                else -> {
+                    // Legacy firmware without CONNECT/ACK — accept the session.
+                    completeSession(device, context, handshakeConfirmed = false)
+                }
+            }
+        }
+    }
+
+    private suspend fun completeSession(
+        device: RemoteDevice,
+        context: BluetoothSessionContext,
+        handshakeConfirmed: Boolean,
+    ) {
+        saveLastDevice(device.address, device.name)
+        saveLastApplication(context.applicationId)
+        val session = ActiveBluetoothSession(
+            applicationId = context.applicationId,
+            protocolMode = context.protocolMode,
+            deviceName = device.name,
+            deviceAddress = device.address,
+            handshakeConfirmed = handshakeConfirmed,
+            transport = context.transport,
+        )
+        _state.update {
+            it.copy(
+                isConnected = true,
+                isConnecting = false,
+                errorMessage = null,
+                handshakeFailure = null,
+                activeSession = session,
+            )
+        }
+        pendingSessionContext = null
+        val destination = postConnectNavigateRoute
+        postConnectNavigateRoute = null
+        if (destination != null) {
+            _navigateToScreen.send(destination)
+        }
+    }
+
+    private fun failHandshake(failure: HandshakeFailure) {
+        remoteController.disconnect()
+        pendingSessionContext = null
+        _state.update {
+            it.copy(
+                isConnected = false,
+                isConnecting = false,
+                activeSession = null,
+                handshakeFailure = failure,
+            )
+        }
+    }
+
+    private fun failConnection(message: String) {
+        remoteController.disconnect()
+        pendingSessionContext = null
+        _state.update {
+            it.copy(
+                isConnected = false,
+                isConnecting = false,
+                activeSession = null,
+                errorMessage = message,
+            )
+        }
     }
 
     fun sendButtonEvent(event: ButtonEvent) {

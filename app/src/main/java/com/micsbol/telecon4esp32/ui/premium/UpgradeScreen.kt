@@ -41,6 +41,7 @@ import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.wallet.CoinBalanceChip
 import com.micsbol.telecon4esp32.ui.wallet.CoinMessageDialog
+import com.micsbol.telecon4esp32.ui.wallet.CoinWatchAdPillButton
 import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 
 @Composable
@@ -98,8 +99,7 @@ fun UpgradeScreen(navController: NavController) {
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    NeoPillButton(
-                        text = stringResource(R.string.coins_watch_ad_button),
+                    CoinWatchAdPillButton(
                         onClick = {
                             if (activity != null && rewardedAdManager != null) {
                                 rewardedAdManager.tryShow(activity) { granted ->
@@ -113,6 +113,8 @@ fun UpgradeScreen(navController: NavController) {
                                 coinMessage = adUnavailableMessage
                             }
                         },
+                        compact = false,
+                        fillMaxWidth = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

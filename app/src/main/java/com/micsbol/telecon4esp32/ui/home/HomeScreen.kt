@@ -199,7 +199,6 @@ fun HomeScreen(
                             coinMessage = adUnavailableMessage
                         }
                     },
-                    onViewPricing = { showPricingTable = true },
                 )
             }
 

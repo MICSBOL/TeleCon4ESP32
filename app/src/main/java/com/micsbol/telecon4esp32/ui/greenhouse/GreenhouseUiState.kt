@@ -53,4 +53,6 @@ data class GreenhouseUiState(
     val pumpOn: Boolean = false,
     val targetTempC: Int = 24,
     val targetHumidityPercent: Int = 65,
+    /** Reported by ESP32 (`cam,1` in SIMPLE or FLAG_HAS_CAMERA in binary). */
+    val hasCamera: Boolean = false,
 )
