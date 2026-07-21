@@ -2,7 +2,7 @@
 
 Compact binary frames for the Greenhouse application. Used when the Android app’s **Communication protocol** is **Advanced (binary GH)** for `ApplicationId.GREENHOUSE` (premium users).
 
-**Transport:** Classic Bluetooth SPP, UUID `00001101-0000-1000-8000-00805F9B34FB`, or BLE Nordic UART Service (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`) with the same frames. BLE sessions always use this binary protocol.  
+**Transport:** Classic Bluetooth SPP, UUID `00001101-0000-1000-8000-00805F9B34FB`, or BLE Nordic UART Service (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`) with the same frames. Android settings: **Classic + Binary** or **BLE + Binary**.  
 **Coexistence:** SIMPLE text lines and binary frames share the same Classic SPP socket or BLE NUS stream. See [BINARY_PROTOCOL_APPS.md](BINARY_PROTOCOL_APPS.md) for all application binary layouts.
 
 See also: [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md)

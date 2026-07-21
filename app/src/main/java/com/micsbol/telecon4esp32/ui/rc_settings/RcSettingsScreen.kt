@@ -17,13 +17,19 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,7 +37,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -39,10 +44,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
@@ -52,18 +59,16 @@ import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.ui.applications.ApplicationProtocolSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsViewModel
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoPillButton
+import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.components.NeoToggle
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import com.micsbol.telecon4esp32.ui.components.TeleCon4Esp32Scaffold
-import com.micsbol.telecon4esp32.ui.components.EmitterFilledButton
-import com.micsbol.telecon4esp32.ui.components.EmitterSectionTitle
-import com.micsbol.telecon4esp32.ui.components.EmitterStyledCard
-import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import com.micsbol.telecon4esp32.ui.theme.AppGlass
+import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,7 +89,7 @@ fun RcSettingsScreen(
     val canUseAdvanced = entitlement.canUseAdvancedProtocol(applicationId)
     val labelDraft by viewModel.labelDraft.collectAsStateWithLifecycle()
     val hasUnsavedLabelChanges by viewModel.hasUnsavedLabelChanges.collectAsStateWithLifecycle()
-    TeleCon4Esp32Scaffold(
+    NeoScaffold(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.rc_controller_settings_title),
         onNavigateBack = { navController.navigateUp() },
@@ -97,7 +102,7 @@ fun RcSettingsScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = brandPrimary())
+                    CircularProgressIndicator(color = Neo.Accent)
                 }
             }
             is SettingsUiState.Error -> {
@@ -109,7 +114,7 @@ fun RcSettingsScreen(
                 ) {
                     Text(
                         text = state.message,
-                        color = MaterialTheme.colorScheme.error,
+                        color = Neo.Negative,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -270,11 +275,12 @@ private fun SettingsContent(
             }
         }
         item {
-            EmitterFilledButton(
+            NeoPillButton(
                 text = stringResource(R.string.rc_controller_settings_apply_labels),
                 onClick = onApplyDisplayLabels,
                 enabled = hasUnsavedLabelChanges,
                 modifier = Modifier.fillMaxWidth(),
+                fillMaxWidth = true,
             )
         }
         item {
@@ -296,7 +302,7 @@ fun TelemetryLabelFields(
 ) {
     val textFieldColors = settingsOutlinedTextFieldColors()
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
-        color = MaterialTheme.colorScheme.onSurface,
+        color = Neo.TextPrimary,
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -346,7 +352,7 @@ fun PlotLabelFields(
 ) {
     val textFieldColors = settingsOutlinedTextFieldColors()
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
-        color = MaterialTheme.colorScheme.onSurface,
+        color = Neo.TextPrimary,
     )
     val labelResIds = listOf(
         R.string.rc_controller_settings_plot_label_1,
@@ -435,15 +441,20 @@ private fun SettingsTextField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun settingsOutlinedTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
-    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-    cursorColor = MaterialTheme.colorScheme.primary,
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+    focusedTextColor = Neo.TextPrimary,
+    unfocusedTextColor = Neo.TextPrimary,
+    disabledTextColor = Neo.TextMuted,
+    focusedLabelColor = Neo.Accent,
+    unfocusedLabelColor = Neo.TextSecondary,
+    disabledLabelColor = Neo.TextMuted,
+    focusedPlaceholderColor = Neo.TextMuted,
+    unfocusedPlaceholderColor = Neo.TextMuted,
+    cursorColor = Neo.Accent,
+    focusedBorderColor = Neo.Accent,
+    unfocusedBorderColor = Neo.TextSecondary.copy(alpha = 0.55f),
+    disabledBorderColor = Neo.TextMuted.copy(alpha = 0.35f),
+    focusedContainerColor = AppGlass.CardSurface.copy(alpha = 0.06f),
+    unfocusedContainerColor = AppGlass.CardSurface.copy(alpha = 0.04f),
 )
 
 @Composable
@@ -453,29 +464,47 @@ fun KnobSettingsSliders(
     onLeftChange: (Float) -> Unit,
     onRightChange: (Float) -> Unit
 ) {
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = Neo.Accent,
+        activeTrackColor = Neo.Accent,
+        inactiveTrackColor = Neo.TextMuted.copy(alpha = 0.45f),
+        activeTickColor = Neo.OnAccent,
+        inactiveTickColor = Neo.TextMuted.copy(alpha = 0.35f),
+    )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.rc_controller_settings_left_knob), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            text = stringResource(R.string.rc_controller_settings_left_knob),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Neo.TextPrimary,
+        )
         Slider(
             value = leftValue,
             onValueChange = onLeftChange,
             valueRange = 0f..1f,
-            steps = 9
+            steps = 9,
+            colors = sliderColors,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(stringResource(R.string.rc_controller_settings_right_knob), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            text = stringResource(R.string.rc_controller_settings_right_knob),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Neo.TextPrimary,
+        )
         Slider(
             value = rightValue,
             onValueChange = onRightChange,
             valueRange = 0f..1f,
-            steps = 9
+            steps = 9,
+            colors = sliderColors,
         )
     }
 }
+
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
-        EmitterSectionTitle(text = title)
-        EmitterStyledCard {
+        NeoSectionTitle(text = title)
+        NeoCard {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 content()
             }
@@ -526,10 +555,10 @@ fun SwitchSetting(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Neo.TextPrimary,
         )
         Spacer(modifier = Modifier.padding(2.dp))
-        Switch(checked = isChecked, onCheckedChange = onCheckedChange)
+        NeoToggle(checked = isChecked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -558,8 +587,24 @@ fun JoystickModeSelector(
     var isModeExpanded by remember { mutableStateOf(false) }
     var isPositionExpanded by remember { mutableStateOf(false) }
 
+    val dropdownFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Neo.TextPrimary,
+        unfocusedTextColor = Neo.TextPrimary,
+        focusedBorderColor = Neo.Accent,
+        unfocusedBorderColor = Neo.TextSecondary.copy(alpha = 0.55f),
+        focusedTrailingIconColor = Neo.Accent,
+        unfocusedTrailingIconColor = Neo.TextSecondary,
+        focusedContainerColor = AppGlass.CardSurface.copy(alpha = 0.06f),
+        unfocusedContainerColor = AppGlass.CardSurface.copy(alpha = 0.04f),
+        cursorColor = Neo.Accent,
+    )
     Column {
-        Text(text = label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = Neo.TextPrimary,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ExposedDropdownMenuBox(
                 expanded = isModeExpanded,
@@ -570,15 +615,10 @@ fun JoystickModeSelector(
                     value = selectedMode::class.java.simpleName,
                     onValueChange = {},
                     readOnly = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Neo.TextPrimary),
                     singleLine = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isModeExpanded) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        focusedTrailingIconColor = MaterialTheme.colorScheme.primary
-                    ),
+                    colors = dropdownFieldColors,
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
@@ -586,11 +626,11 @@ fun JoystickModeSelector(
                 ExposedDropdownMenu(
                     expanded = isModeExpanded,
                     onDismissRequest = { isModeExpanded = false },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    modifier = Modifier.background(AppGlass.DialogSurface)
                 ) {
                     allModes.forEach { mode ->
                         DropdownMenuItem(
-                            text = { Text(text = mode::class.java.simpleName, color = MaterialTheme.colorScheme.onSurface) },
+                            text = { Text(text = mode::class.java.simpleName, color = Neo.TextPrimary) },
                             onClick = {
                                 val carriedPosition = sanitizeInitialPositionForMode(mode, selectedMode.initialPosition)
                                 val newMode = mode.withInitialPosition(carriedPosition)
@@ -598,9 +638,9 @@ fun JoystickModeSelector(
                                 isModeExpanded = false
                             },
                             colors = MenuDefaults.itemColors(
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                leadingIconColor = MaterialTheme.colorScheme.onSurface,
-                                trailingIconColor = MaterialTheme.colorScheme.onSurface,
+                                textColor = Neo.TextPrimary,
+                                leadingIconColor = Neo.TextPrimary,
+                                trailingIconColor = Neo.TextPrimary,
                             )
                         )
                     }
@@ -615,13 +655,10 @@ fun JoystickModeSelector(
                     value = allowedInitialPositions.firstOrNull { it.second == selectedMode.initialPosition }?.first ?: "Center",
                     onValueChange = {},
                     readOnly = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Neo.TextPrimary),
                     singleLine = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isPositionExpanded) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
-                    ),
+                    colors = dropdownFieldColors,
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
@@ -629,20 +666,20 @@ fun JoystickModeSelector(
                 ExposedDropdownMenu(
                     expanded = isPositionExpanded,
                     onDismissRequest = { isPositionExpanded = false },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    modifier = Modifier.background(AppGlass.DialogSurface)
                 ) {
                     allowedInitialPositions.forEach { (name, position) ->
                         DropdownMenuItem(
-                            text = { Text(text = name, color = MaterialTheme.colorScheme.onSurface)},
+                            text = { Text(text = name, color = Neo.TextPrimary) },
                             onClick = {
                                 val newMode = selectedMode.withInitialPosition(position)
                                 onModeSelected(newMode)
                                 isPositionExpanded = false
                             },
                             colors = MenuDefaults.itemColors(
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                leadingIconColor = MaterialTheme.colorScheme.onSurface,
-                                trailingIconColor = MaterialTheme.colorScheme.onSurface,
+                                textColor = Neo.TextPrimary,
+                                leadingIconColor = Neo.TextPrimary,
+                                trailingIconColor = Neo.TextPrimary,
                             )
                         )
                     }
@@ -683,7 +720,8 @@ private fun JoystickMode.withInitialPosition(position: Pair<Int, Int>): Joystick
 
 
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "RC Settings Dark")
+@Preview(showBackground = true, name = "RC Settings Light", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO)
 @Composable
 fun RcSettingsScreenPreview() {
     val navController = rememberNavController()

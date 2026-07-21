@@ -58,7 +58,7 @@ class ApplicationProtocolSupportTest {
     }
 
     @Test
-    fun `connection mode maps transport and protocol`() {
+    fun `connection mode maps three options`() {
         assertEquals(
             BluetoothConnectionMode.CLASSIC_SIMPLE,
             BluetoothConnectionMode.from(
@@ -80,10 +80,17 @@ class ApplicationProtocolSupportTest {
                 BluetoothProtocolMode.SIMPLE,
             ),
         )
+        assertEquals(
+            BluetoothConnectionMode.BLE_BINARY,
+            BluetoothConnectionMode.from(
+                BluetoothTransportType.BLE,
+                BluetoothProtocolMode.ADVANCED,
+            ),
+        )
     }
 
     @Test
-    fun `free users cannot select binary connection modes for premium apps`() {
+    fun `free users cannot select binary or ble for premium apps`() {
         assertTrue(
             Entitlement.Free.canUseConnectionMode(
                 ApplicationId.GREENHOUSE,
@@ -100,6 +107,26 @@ class ApplicationProtocolSupportTest {
             Entitlement.Free.canUseConnectionMode(
                 ApplicationId.WATER_TANK,
                 BluetoothConnectionMode.BLE_BINARY,
+            ),
+        )
+    }
+
+    @Test
+    fun `effective connection mode falls back from ble without premium`() {
+        assertEquals(
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
+            Entitlement.Free.effectiveConnectionMode(
+                ApplicationId.GREENHOUSE,
+                BluetoothTransportType.BLE,
+                BluetoothProtocolMode.ADVANCED,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.BLE_BINARY,
+            Entitlement.Premium(PremiumSource.PURCHASE).effectiveConnectionMode(
+                ApplicationId.GREENHOUSE,
+                BluetoothTransportType.BLE,
+                BluetoothProtocolMode.ADVANCED,
             ),
         )
     }

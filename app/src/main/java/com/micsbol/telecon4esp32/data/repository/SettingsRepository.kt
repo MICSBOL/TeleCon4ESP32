@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.toStringRepresentation
 import com.micsbol.telecon4esp32.domain.model.UserSettings
@@ -44,6 +45,9 @@ private fun protocolModeKey(applicationId: ApplicationId) =
 
 private fun transportTypeKey(applicationId: ApplicationId) =
     stringPreferencesKey("transport_type_${applicationId.name}")
+
+private fun boardKey(applicationId: ApplicationId) =
+    stringPreferencesKey("esp32_board_${applicationId.name}")
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
 
@@ -114,6 +118,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     ) {
         context.dataStore.edit { preferences ->
             preferences[transportTypeKey(applicationId)] = transport.name
+        }
+    }
+
+    override fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board> =
+        context.dataStore.data.map { preferences ->
+            val stored = preferences[boardKey(applicationId)]
+            stored?.let { Esp32Board.fromStored(it) } ?: Esp32Board.defaultFor(applicationId)
+        }
+
+    override suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board) {
+        context.dataStore.edit { preferences ->
+            preferences[boardKey(applicationId)] = board.name
         }
     }
 

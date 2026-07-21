@@ -10,13 +10,16 @@ import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
 import com.micsbol.telecon4esp32.domain.bluetooth.gh.GhPacketEncoder
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.canUseConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ObserveEntitlementUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationBoardUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationProtocolModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationTransportTypeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,6 +44,8 @@ class GreenhouseViewModel @Inject constructor(
     private val saveApplicationProtocolMode: SaveApplicationProtocolModeUseCase,
     getApplicationTransportType: GetApplicationTransportTypeUseCase,
     private val saveApplicationTransportType: SaveApplicationTransportTypeUseCase,
+    getApplicationBoard: GetApplicationBoardUseCase,
+    private val saveApplicationBoard: SaveApplicationBoardUseCase,
     observeEntitlement: ObserveEntitlementUseCase,
 ) : ViewModel() {
 
@@ -77,6 +82,19 @@ class GreenhouseViewModel @Inject constructor(
         viewModelScope.launch {
             saveApplicationTransportType(ApplicationId.GREENHOUSE, mode.transport)
             saveApplicationProtocolMode(ApplicationId.GREENHOUSE, mode.protocolMode)
+        }
+    }
+
+    val board: StateFlow<Esp32Board> = getApplicationBoard(ApplicationId.GREENHOUSE)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = Esp32Board.defaultFor(ApplicationId.GREENHOUSE),
+        )
+
+    fun onBoardChanged(board: Esp32Board) {
+        viewModelScope.launch {
+            saveApplicationBoard(ApplicationId.GREENHOUSE, board)
         }
     }
 

@@ -3,6 +3,7 @@ package com.micsbol.telecon4esp32.util
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
@@ -98,6 +99,17 @@ class FakeSettingsRepository : ISettingsRepository {
         transport: BluetoothTransportType,
     ) {
         _transportTypes.update { it + (applicationId to transport) }
+    }
+
+    private val _boards = MutableStateFlow<Map<ApplicationId, Esp32Board>>(emptyMap())
+
+    override fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board> =
+        _boards.map { boards ->
+            boards[applicationId] ?: Esp32Board.defaultFor(applicationId)
+        }
+
+    override suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board) {
+        _boards.update { it + (applicationId to board) }
     }
 
     // ── Helpers for tests ────────────────────────────────────────────────────

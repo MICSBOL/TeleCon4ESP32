@@ -1,10 +1,13 @@
 # TeleCon Simple Protocol — ESP32 Reference
 
-Human-readable Bluetooth lines for TeleCon4ESP32. Use this when the app’s **Communication protocol** setting is **Simple (text lines)** for a given application.
+Human-readable Bluetooth lines for TeleCon4ESP32. Use this when the app’s connection
+setting is **Classic + Simple** for a given application. (BLE is binary-only; see
+[BINARY_PROTOCOL_APPS.md](BINARY_PROTOCOL_APPS.md) and
+[prompts/BLE_ESP32_FIRMWARE_PROMPT.md](prompts/BLE_ESP32_FIRMWARE_PROMPT.md).)
 
 **Wire format:** `APP:TYPE,key1,value1,key2,value2,...` + newline (`\n`)
 
-**Bluetooth:** Classic RFCOMM, UUID `00001101-0000-1000-8000-00805F9B34FB` (SPP), or BLE via the Nordic UART Service (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`) carrying the same byte stream. See [prompts/BLE_ESP32_FIRMWARE_PROMPT.md](prompts/BLE_ESP32_FIRMWARE_PROMPT.md).
+**Bluetooth:** Classic RFCOMM, UUID `00001101-0000-1000-8000-00805F9B34FB` (SPP).
 
 ---
 

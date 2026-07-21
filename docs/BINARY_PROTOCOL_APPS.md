@@ -1,7 +1,8 @@
 # TeleCon binary protocols (all applications)
 
 Compact binary frames for Classic SPP and BLE (Nordic UART). Used when the Android app
-selects **Classic + Binary** or **BLE + Binary**.
+selects **Classic + Binary** or **BLE + Binary**. (**Classic + Simple** uses the text-line
+protocol in [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) instead; BLE is binary-only.)
 
 **Shared framing** (see `AppBinaryFrame.kt`):
 

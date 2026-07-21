@@ -20,6 +20,7 @@ import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
+import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.theme.Neo
@@ -31,6 +32,7 @@ fun ApplicationProtocolSettingsScreen(
     viewModel: ApplicationSettingsViewModel = hiltViewModel(),
 ) {
     val connectionMode by viewModel.connectionMode.collectAsStateWithLifecycle()
+    val selectedBoard by viewModel.board.collectAsStateWithLifecycle()
     val entitlement = LocalEntitlement.current
     val canUseAdvanced = entitlement.canUseAdvancedProtocol(applicationId)
 
@@ -46,6 +48,14 @@ fun ApplicationProtocolSettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
+            if (applicationId.usesCamera()) {
+                item {
+                    ApplicationDeviceSettingsSection(
+                        selectedBoard = selectedBoard,
+                        onBoardSelected = viewModel::onBoardChanged,
+                    )
+                }
+            }
             item {
                 ApplicationProtocolSettingsSection(
                     applicationId = applicationId,

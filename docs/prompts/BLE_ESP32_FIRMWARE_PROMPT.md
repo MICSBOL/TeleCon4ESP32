@@ -54,19 +54,25 @@ Reply within 2.5 s:
 
 ### Protocol rule for BLE
 
-**BLE sessions prefer the binary protocol.** The app forces binary mode over BLE for applications that have one:
+**BLE sessions use the binary protocol only.** The Android app offers three connection modes:
+
+| Mode | Transport | Protocol |
+|------|-----------|----------|
+| Classic + Simple | SPP | Text lines |
+| Classic + Binary | SPP | Binary packets |
+| BLE + Binary | NUS | Binary packets (`proto,binary` handshake) |
 
 | Application | Prefix | Over BLE |
 |-------------|--------|----------|
 | Control Panel / RC | `RC` | Binary: phone→ESP32 `AA 55` control (18 B) and `BB 66` buttons; ESP32→phone `CC 11/22/33/44` telemetry |
 | Greenhouse | `GH` | Binary: phone→ESP32 `AA 47` SET; ESP32→phone `CC 47` DATA (17-B payload) |
 | Water Tank | `WT` | Binary: `AA 57` / `CC 57` — see `docs/BINARY_PROTOCOL_APPS.md` |
-| Solar Power | `SP` | Binary live: `AA 53` / `CC 53` (history charts remain SIMPLE) |
+| Solar Power | `SP` | Binary live: `AA 53` / `CC 53` (history charts remain SIMPLE on Classic) |
 | Smart Home | `SH` | Binary: `AA 48` / `CC 48` |
 | Smart Door Lock | `DL` | Binary: `AA 4B` / `CC 4B` (`K` avoids RC `CC 44` clash) |
 | Smart Lighting | `LT` | Binary: `AA 4C` / `CC 4C` |
 
-Implement at least **GH (binary + SIMPLE fallback)** and **WT (SIMPLE)** fully; stub the others behind the application `#define` with simulated data so any app can be demoed.
+Implement at least **GH** (binary + SIMPLE on Classic) and **WT** (SIMPLE on Classic + binary) fully; stub the others behind the application `#define` with simulated data so any app can be demoed.
 
 ### Framing reminder (shared with SPP)
 
@@ -96,10 +102,10 @@ TeleCon_BLE.ino
 
 ## Acceptance criteria
 
-- [ ] App (Connection type = **BLE** in application settings) discovers `TeleCon-BLE-GH`, connects, enables notifications
+- [ ] App (Connection type = **BLE + Binary** in application settings) discovers `TeleCon-BLE-GH`, connects, enables notifications
 - [ ] `GH:CONNECT,proto,binary` is answered with `GH:ACK,app,GH`
 - [ ] Greenhouse screen shows live binary telemetry (`CC 47`); toggles send `AA 47` SET packets that switch relays/LEDs
-- [ ] With `TELECON_APP APP_WATER_TANK`: `WT:DATA,level,74,cap,500,pump,0,status,0` lines update the Water Tank screen; `WT:SET,pump,1` toggles a pin
+- [ ] With `TELECON_APP APP_WATER_TANK`: `CC 57` / `AA 57` (Binary) work end-to-end
 - [ ] Frames split across notifications reassemble correctly (test with MTU 23 by skipping the MTU request)
 - [ ] Same sketch compiles for ESP32 and ESP32-C3 targets in the Arduino IDE
 

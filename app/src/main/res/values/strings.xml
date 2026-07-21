@@ -70,7 +70,7 @@
     <string name="app_settings_protocol_advanced_description">Legacy binary packets for full RC telemetry, plots, and high-rate joystick updates.</string>
     <string name="app_settings_protocol_advanced_gh">Advanced (binary GH)</string>
     <string name="app_settings_protocol_advanced_gh_description">Compact binary GH packets with checksums for faster telemetry and actuator commands. Requires matching ESP32 firmware.</string>
-    <string name="app_settings_protocol_advanced_premium_required">Premium unlock required for binary and BLE options. Simple Classic text lines remain available on the free tier.</string>
+    <string name="app_settings_protocol_advanced_premium_required">Premium unlock required for binary and BLE options. Classic Simple remains available on the free tier.</string>
     <string name="app_settings_connection_section_title">Bluetooth connection</string>
     <string name="app_settings_connection_section_description">Choose how the app links to your ESP32 and which wire format to use. Reconnect after changing. Firmware must match the selected option.</string>
     <string name="app_settings_connection_classic_simple">Classic + Simple (text lines)</string>
@@ -78,7 +78,13 @@
     <string name="app_settings_connection_classic_binary">Classic + Binary</string>
     <string name="app_settings_connection_classic_binary_description">Bluetooth Classic SPP with compact binary packets. Higher rate and lower overhead; requires matching ESP32 firmware.</string>
     <string name="app_settings_connection_ble_binary">BLE + Binary</string>
-    <string name="app_settings_connection_ble_binary_description">Bluetooth Low Energy (Nordic UART) with the same binary packets. Better for battery life and BLE-only boards (ESP32-C3/C6).</string>
+    <string name="app_settings_connection_ble_binary_description">Bluetooth Low Energy (Nordic UART) with the same binary packets as Classic Binary. Best for battery life and BLE-only boards (ESP32-C3/C6).</string>
+    <string name="app_settings_device_section_title">ESP32 device</string>
+    <string name="app_settings_device_section_description">Choose the board this application connects to. Reconnect after changing.</string>
+    <string name="app_settings_device_dev_kit">ESP32 DevKit (WROOM-32)</string>
+    <string name="app_settings_device_dev_kit_description">General-purpose board for sensors and actuators. No camera.</string>
+    <string name="app_settings_device_cam">ESP32-CAM (AI-Thinker)</string>
+    <string name="app_settings_device_cam_description">Camera board. Video streams over WiFi; controls and telemetry use Bluetooth.</string>
     <string name="rc_vehicle_pro_placeholder_title">RC Vehicle Pro</string>
     <string name="rc_vehicle_pro_placeholder_body">Advanced RC layouts and live camera view will appear here. This Pro application is under development.</string>
     <string name="rc_vehicle_camera_content_description">Live ESP32 camera feed</string>

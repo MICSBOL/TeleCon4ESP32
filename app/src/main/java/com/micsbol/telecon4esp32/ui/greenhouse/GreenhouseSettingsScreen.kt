@@ -36,6 +36,7 @@ import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCard
+import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseDeviceSettingsSection
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseProtocolSettingsSection
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseSubScreenTopBar
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -49,6 +50,7 @@ fun GreenhouseSettingsScreen(
         GreenhouseEmulatorNavigation.backToGreenhouse(navController, Screen.GreenhouseSettings.route)
     }
     val connectionMode by viewModel.connectionMode.collectAsState()
+    val selectedBoard by viewModel.board.collectAsState()
     val entitlement = LocalEntitlement.current
     val canUseAdvanced = entitlement.canUseAdvancedProtocol(ApplicationId.GREENHOUSE)
 
@@ -58,6 +60,8 @@ fun GreenhouseSettingsScreen(
             selectedMode = connectionMode,
             canUseAdvanced = canUseAdvanced,
             onModeSelected = viewModel::onConnectionModeChanged,
+            selectedBoard = selectedBoard,
+            onBoardSelected = viewModel::onBoardChanged,
         )
         return
     }
@@ -67,6 +71,8 @@ fun GreenhouseSettingsScreen(
         selectedMode = connectionMode,
         canUseAdvanced = canUseAdvanced,
         onModeSelected = viewModel::onConnectionModeChanged,
+        selectedBoard = selectedBoard,
+        onBoardSelected = viewModel::onBoardChanged,
     )
 }
 
@@ -76,6 +82,8 @@ private fun GreenhouseSettingsEmulatorContent(
     selectedMode: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode,
     canUseAdvanced: Boolean,
     onModeSelected: (com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode) -> Unit,
+    selectedBoard: com.micsbol.telecon4esp32.domain.model.Esp32Board,
+    onBoardSelected: (com.micsbol.telecon4esp32.domain.model.Esp32Board) -> Unit,
 ) {
     val edgeInsets = WindowInsets.safeDrawing.only(
         WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -124,6 +132,12 @@ private fun GreenhouseSettingsEmulatorContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 GreenhouseCard(elevated = false) {
+                    GreenhouseDeviceSettingsSection(
+                        selectedBoard = selectedBoard,
+                        onBoardSelected = onBoardSelected,
+                    )
+                }
+                GreenhouseCard(elevated = false) {
                     GreenhouseProtocolSettingsSection(
                         selectedMode = selectedMode,
                         canUseAdvanced = canUseAdvanced,
@@ -146,6 +160,8 @@ private fun GreenhouseSettingsFullContent(
     selectedMode: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode,
     canUseAdvanced: Boolean,
     onModeSelected: (com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode) -> Unit,
+    selectedBoard: com.micsbol.telecon4esp32.domain.model.Esp32Board,
+    onBoardSelected: (com.micsbol.telecon4esp32.domain.model.Esp32Board) -> Unit,
 ) {
     val edgeInsets = WindowInsets.safeDrawing.only(
         WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -172,6 +188,12 @@ private fun GreenhouseSettingsFullContent(
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                GreenhouseCard(elevated = false) {
+                    GreenhouseDeviceSettingsSection(
+                        selectedBoard = selectedBoard,
+                        onBoardSelected = onBoardSelected,
+                    )
+                }
                 GreenhouseCard(elevated = false) {
                     GreenhouseProtocolSettingsSection(
                         selectedMode = selectedMode,

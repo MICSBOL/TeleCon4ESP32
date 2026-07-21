@@ -22,10 +22,42 @@ import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.theme.Neo
+
+@Composable
+fun ApplicationDeviceSettingsSection(
+    selectedBoard: Esp32Board,
+    onBoardSelected: (Esp32Board) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NeoSectionTitle(text = stringResource(R.string.app_settings_device_section_title))
+        Text(
+            text = stringResource(R.string.app_settings_device_section_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = Neo.TextSecondary,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(Modifier.selectableGroup()) {
+            ConnectionModeOption(
+                label = stringResource(R.string.app_settings_device_dev_kit),
+                description = stringResource(R.string.app_settings_device_dev_kit_description),
+                selected = selectedBoard == Esp32Board.DEV_KIT,
+                onClick = { onBoardSelected(Esp32Board.DEV_KIT) },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            ConnectionModeOption(
+                label = stringResource(R.string.app_settings_device_cam),
+                description = stringResource(R.string.app_settings_device_cam_description),
+                selected = selectedBoard == Esp32Board.CAM,
+                onClick = { onBoardSelected(Esp32Board.CAM) },
+            )
+        }
+    }
+}
 
 @Composable
 fun ApplicationProtocolSettingsSection(

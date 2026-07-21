@@ -21,8 +21,47 @@ import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.ui.greenhouse.GreenhouseGlass
+
+@Composable
+fun GreenhouseDeviceSettingsSection(
+    selectedBoard: Esp32Board,
+    onBoardSelected: (Esp32Board) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.app_settings_device_section_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = GreenhouseGlass.TextOnGlassPrimary,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.app_settings_device_section_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = GreenhouseGlass.TextOnGlassSecondary,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(Modifier.selectableGroup()) {
+            GreenhouseConnectionModeOption(
+                label = stringResource(R.string.app_settings_device_dev_kit),
+                description = stringResource(R.string.app_settings_device_dev_kit_description),
+                selected = selectedBoard == Esp32Board.DEV_KIT,
+                onClick = { onBoardSelected(Esp32Board.DEV_KIT) },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            GreenhouseConnectionModeOption(
+                label = stringResource(R.string.app_settings_device_cam),
+                description = stringResource(R.string.app_settings_device_cam_description),
+                selected = selectedBoard == Esp32Board.CAM,
+                onClick = { onBoardSelected(Esp32Board.CAM) },
+            )
+        }
+    }
+}
 
 @Composable
 fun GreenhouseProtocolSettingsSection(
@@ -54,7 +93,7 @@ fun GreenhouseProtocolSettingsSection(
             color = GreenhouseGlass.TextOnGlassSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Column(modifier.selectableGroup()) {
+        Column(Modifier.selectableGroup()) {
             GreenhouseConnectionModeOption(
                 label = stringResource(R.string.app_settings_connection_classic_simple),
                 description = stringResource(R.string.app_settings_connection_classic_simple_description),
