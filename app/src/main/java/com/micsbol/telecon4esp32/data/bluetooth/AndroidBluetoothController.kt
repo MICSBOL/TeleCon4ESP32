@@ -27,10 +27,12 @@ import com.micsbol.telecon4esp32.domain.bluetooth.sp.SpBinaryTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.sh.ShBinaryTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.dl.DlBinaryTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.lt.LtBinaryTelemetryMapper
+import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
+import com.micsbol.telecon4esp32.data.wifi.WifiSoftApDataTransferService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -245,6 +247,14 @@ class AndroidBluetoothController @Inject constructor(
 
     private fun parseIncomingLine(line: String) {
         val message = LineProtocolCodec.decode(line) ?: return
+        if (activeTransport == BluetoothTransportType.WIFI &&
+            message.app == SimpleProtocolEncoder.RC_APP
+        ) {
+            when (message.type) {
+                "DATA", "ACK", "NAK" ->
+                    Log.d(RC_WIFI_TAG, "[TELEM RX] $line")
+            }
+        }
         _messages.tryEmit(message)
         if (message.app != SimpleProtocolEncoder.RC_APP) return
 
@@ -401,6 +411,8 @@ class AndroidBluetoothController @Inject constructor(
 
     @Volatile
     private var dataTransferService: BluetoothDataTransport? = null
+    private var activeTransport: BluetoothTransportType? = null
+    private var lastSoftApCtrlLogLine: String? = null
 
     private val _isConnected = MutableStateFlow(false)
     override val isConnected: StateFlow<Boolean> get() = _isConnected.asStateFlow()
@@ -426,6 +438,11 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     override fun startDiscovery(transport: BluetoothTransportType) {
+        if (transport == BluetoothTransportType.WIFI) {
+            Log.d("BluetoothController", "SoftAP mode — skipping Bluetooth discovery")
+            return
+        }
+
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             Log.e("BluetoothController", "Missing BLUETOOTH_SCAN permission")
             return
@@ -553,10 +570,40 @@ class AndroidBluetoothController @Inject constructor(
         transport: BluetoothTransportType,
     ): Flow<ConnectionResult> {
         return flow {
-            if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) throw SecurityException("No BLUETOOTH_CONNECT permission")
-
             closeConnection()
             stopDiscovery()
+
+            if (transport == BluetoothTransportType.WIFI) {
+                val (host, port) = parseSoftApEndpoint(device.address)
+                val wifiService = WifiSoftApDataTransferService(host, port)
+                if (!wifiService.open()) {
+                    emit(
+                        ConnectionResult.Error(
+                            "SoftAP TCP $host:$port unreachable. Join Wi-Fi ${Esp32CameraDefaults.SOFTAP_SSID} first.",
+                        ),
+                    )
+                    return@flow
+                }
+                synchronized(this@AndroidBluetoothController) {
+                    dataTransferService = wifiService
+                    activeTransport = BluetoothTransportType.WIFI
+                    _isConnected.update { true }
+                }
+                emit(ConnectionResult.SocketEstablished)
+                wifiService.listenForIncoming()
+                    .collect { frame ->
+                        when (frame) {
+                            is IncomingBluetoothFrame.BinaryPacket -> parseIncomingPacket(frame.bytes)
+                            is IncomingBluetoothFrame.TextLine -> parseIncomingLine(frame.line)
+                        }
+                    }
+                return@flow
+            }
+
+            if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+                throw SecurityException("No BLUETOOTH_CONNECT permission")
+            }
+
             // Several vendor Bluetooth stacks are timing-sensitive right after cancelDiscovery.
             delay(250L)
 
@@ -569,11 +616,16 @@ class AndroidBluetoothController @Inject constructor(
             if (transport == BluetoothTransportType.BLE) {
                 val bleService = BleDataTransferService(context, bluetoothDevice)
                 if (!bleService.open()) {
-                    emit(ConnectionResult.Error("BLE connection failed for ${device.address}"))
+                    emit(
+                        ConnectionResult.Error(
+                            "BLE (Nordic UART) connection failed. If the ESP32 runs Classic-only firmware, select Classic Simple or Classic Binary in app Settings.",
+                        ),
+                    )
                     return@flow
                 }
                 synchronized(this@AndroidBluetoothController) {
                     dataTransferService = bleService
+                    activeTransport = BluetoothTransportType.BLE
                     _isConnected.update { true }
                 }
                 emit(ConnectionResult.SocketEstablished)
@@ -598,6 +650,7 @@ class AndroidBluetoothController @Inject constructor(
                 secureSocket.connect()
                 synchronized(this@AndroidBluetoothController) {
                     dataTransferService = BluetoothDataTransferService(secureSocket)
+                    activeTransport = BluetoothTransportType.CLASSIC
                     _isConnected.update { true }
                 }
             } catch (secureError: IOException) {
@@ -622,12 +675,13 @@ class AndroidBluetoothController @Inject constructor(
                     insecureSocket.connect()
                     synchronized(this@AndroidBluetoothController) {
                         dataTransferService = BluetoothDataTransferService(insecureSocket)
+                        activeTransport = BluetoothTransportType.CLASSIC
                         _isConnected.update { true }
                     }
                 } catch (insecureError: IOException) {
                     emit(
                         ConnectionResult.Error(
-                            "Connection failed (secure/insecure): ${secureError.message}; ${insecureError.message}"
+                            "Classic SPP (RFCOMM) connection failed. If the ESP32 runs BLE-only firmware, select BLE Binary in app Settings."
                         )
                     )
                     try {
@@ -655,9 +709,24 @@ class AndroidBluetoothController @Inject constructor(
         synchronized(this) {
             dataTransferService?.close()
             dataTransferService = null
+            activeTransport = null
+            lastSoftApCtrlLogLine = null
             _isConnected.update { false }
         }
     }
+
+    private fun parseSoftApEndpoint(address: String): Pair<String, Int> {
+        val trimmed = address.trim()
+        val hostPart = trimmed.substringBefore(':').ifBlank {
+            Esp32CameraDefaults.DEFAULT_SOFTAP_HOST
+        }
+        val portPart = trimmed.substringAfter(':', missingDelimiterValue = "")
+        val port = portPart.toIntOrNull() ?: Esp32CameraDefaults.DEFAULT_CONTROL_PORT
+        return hostPart to port
+    }
+
+    private fun requiresBluetoothPermission(): Boolean =
+        activeTransport != BluetoothTransportType.WIFI
 
 
     private fun updatePairedDevices() {
@@ -685,17 +754,51 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     override suspend fun sendData(data: ByteArray): Boolean? {
-        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
+        if (requiresBluetoothPermission() &&
+            !hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        ) {
+            return null
+        }
+        if (activeTransport == BluetoothTransportType.WIFI) {
+            Log.w(
+                RC_WIFI_TAG,
+                "Refusing binary packet on SoftAP TCP (${data.size} bytes). Use SIMPLE RC:CTRL text.",
+            )
+            return false
+        }
         return dataTransferService?.sendPacket(data)
     }
 
     override suspend fun sendLine(line: String): Boolean? {
-        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) return null
+        if (requiresBluetoothPermission() &&
+            !hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        ) {
+            return null
+        }
+        if (activeTransport == BluetoothTransportType.WIFI) {
+            logSoftApTx(line)
+        }
         val payload = if (line.endsWith("\n")) line else "$line\n"
         return dataTransferService?.sendPacket(payload.toByteArray(Charsets.UTF_8))
     }
 
+    private fun logSoftApTx(line: String) {
+        val trimmed = line.trimEnd('\n')
+        when {
+            trimmed.startsWith("RC:CONNECT") ||
+                trimmed.startsWith("RC:BTN") ->
+                Log.d(RC_WIFI_TAG, "[PANEL TX] $trimmed")
+            trimmed.startsWith("RC:CTRL") -> {
+                if (trimmed != lastSoftApCtrlLogLine) {
+                    lastSoftApCtrlLogLine = trimmed
+                    Log.d(RC_WIFI_TAG, "[PANEL TX] $trimmed")
+                }
+            }
+        }
+    }
+
     companion object {
         const val SERVICE_UUID = "00001101-0000-1000-8000-00805F9B34FB"
+        private const val RC_WIFI_TAG = "RcWifiSoftAp"
     }
 }

@@ -181,6 +181,7 @@ fun CartesianPlot(
     series: List<PlotData> = emptyList(),
     plotRevision: Long = 0L,
 ) {
+    // Four channels: top pane = series 0–1, bottom pane = series 2–3.
     val topSeries = series.take(2)
     val bottomSeries = series.drop(2).take(2)
 

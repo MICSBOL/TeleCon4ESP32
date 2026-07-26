@@ -41,7 +41,7 @@ fun ApplicationDeviceSettingsSection(
             color = Neo.TextSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Column(Modifier.selectableGroup()) {
+        Column(modifier = Modifier.selectableGroup()) {
             ConnectionModeOption(
                 label = stringResource(R.string.app_settings_device_dev_kit),
                 description = stringResource(R.string.app_settings_device_dev_kit_description),
@@ -65,9 +65,18 @@ fun ApplicationProtocolSettingsSection(
     selectedMode: BluetoothConnectionMode,
     onModeSelected: (BluetoothConnectionMode) -> Unit,
     canUseAdvanced: Boolean = true,
+    includeWifiSoftAp: Boolean = false,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        NeoSectionTitle(text = stringResource(R.string.app_settings_connection_section_title))
+        NeoSectionTitle(
+            text = stringResource(
+                if (includeWifiSoftAp) {
+                    R.string.app_settings_connection_section_title_general
+                } else {
+                    R.string.app_settings_connection_section_title
+                },
+            ),
+        )
         Text(
             text = stringResource(
                 R.string.app_settings_protocol_prefix_label,
@@ -78,12 +87,29 @@ fun ApplicationProtocolSettingsSection(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.app_settings_connection_section_description),
+            text = stringResource(
+                if (includeWifiSoftAp) {
+                    R.string.app_settings_connection_section_description_rc_wifi
+                } else {
+                    R.string.app_settings_connection_section_description
+                },
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = Neo.TextSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Column(Modifier.selectableGroup()) {
+        Column(modifier = Modifier.selectableGroup()) {
+            if (includeWifiSoftAp) {
+                ConnectionModeOption(
+                    label = stringResource(R.string.app_settings_connection_wifi_softap),
+                    description = stringResource(
+                        R.string.app_settings_connection_wifi_softap_description,
+                    ),
+                    selected = selectedMode == BluetoothConnectionMode.WIFI_SOFTAP,
+                    onClick = { onModeSelected(BluetoothConnectionMode.WIFI_SOFTAP) },
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             ConnectionModeOption(
                 label = stringResource(R.string.app_settings_connection_classic_simple),
                 description = stringResource(R.string.app_settings_connection_classic_simple_description),

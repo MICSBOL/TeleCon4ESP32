@@ -164,6 +164,7 @@ fun AppNavGraph(
                 lastApplicationId = lastApplicationId,
                 lastDeviceName = state.activeSession?.deviceName ?: lastDeviceName,
                 errorMessage = state.errorMessage,
+                connectFailure = state.connectFailure,
                 handshakeFailure = state.handshakeFailure,
                 onDismissError = bluetoothViewModel::dismissError,
                 onOpenApplications = { navController.navigate(Screen.Applications.route) },

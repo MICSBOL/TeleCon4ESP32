@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothStatusChip
+import com.micsbol.telecon4esp32.ui.components.LiveControlLinkKind
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.brandSecondary
 import com.micsbol.telecon4esp32.ui.components.mutedTextColor
@@ -272,6 +273,7 @@ fun RcHudTopBarStatusRow(
     isBluetoothConnecting: Boolean = false,
     onBluetoothDisconnectedClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    isWifiSoftApMode: Boolean = false,
 ) {
     val camOnline = uiState.isCameraOnline
     val camColor = if (camOnline) brandSecondary() else StatusDisconnected
@@ -290,6 +292,12 @@ fun RcHudTopBarStatusRow(
             isConnected = uiState.isBluetoothConnected,
             isConnecting = isBluetoothConnecting,
             onDisconnectedClick = onBluetoothDisconnectedClick,
+            linkKind = if (isWifiSoftApMode) {
+                LiveControlLinkKind.WifiSoftAp
+            } else {
+                LiveControlLinkKind.Bluetooth
+            },
+            isWifiCameraOnly = isWifiSoftApMode && camOnline,
         )
         RcHudTopBarStatusBadge(
             backgroundColor = brandPrimary().copy(alpha = 0.15f),

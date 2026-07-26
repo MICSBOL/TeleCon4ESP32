@@ -77,7 +77,7 @@ Implement at least **GH** (binary + SIMPLE on Classic) and **WT** (SIMPLE on Cla
 ### Framing reminder (shared with SPP)
 
 - Text lines end with `\n` (CR optional, stripped).
-- Binary frames start with `0xCC` (ESP32→phone) followed by a subtype byte: `0x11` panel (8 B total), `0x22` indicator (6 B), `0x33` plot / `0x44` config / `0x47` GH DATA (length-prefixed: `u16 LE` length, payload, low-byte checksum of bytes 2…end-1).
+- Binary frames start with `0xCC` (ESP32→phone) followed by a subtype byte: `0x11` panel (8 B total), `0x22` indicator (6 B), `0x33` plot / `0x47` GH DATA (length-prefixed: `u16 LE` length, payload, low-byte checksum of bytes 2…end-1). Do **not** send legacy RC `0x44` label-config packets; labels come from Android RC settings.
 - Phone→ESP32 binary starts with `0xAA` (`0x55` RC control, `0x47` GH SET) or `0xBB 0x66` (RC buttons).
 - A notification chunk may contain a partial frame or several frames — buffer bytes and parse incrementally, exactly like the SPP stream.
 

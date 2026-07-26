@@ -1,7 +1,6 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 
 import android.Manifest
-import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Intent
@@ -38,7 +37,7 @@ import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedB
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 /**
- * Wraps an application screen with contextual Bluetooth session UX:
+ * Wraps an application screen with contextual Bluetooth / SoftAP session UX:
  * disconnected banner, session-conflict warning, and connect navigation.
  */
 @Composable
@@ -136,6 +135,18 @@ fun ApplicationBluetoothSessionHost(
         )
     }
 
+    fun ensureReadyThenConnect() {
+        if (transport == BluetoothTransportType.WIFI) {
+            openApplicationWifiSoftAp(
+                bluetoothViewModel = bluetoothViewModel,
+                applicationId = applicationId,
+                protocolMode = protocolMode,
+            )
+            return
+        }
+        ensureBluetoothReadyThenConnect()
+    }
+
     LaunchedEffect(navController) {
         bluetoothViewModel.navigateToScreen.collect { route ->
             if (route == BluetoothViewModel.POP_BACK_ON_CONNECT) {
@@ -156,6 +167,7 @@ fun ApplicationBluetoothSessionHost(
 
     BluetoothConnectionErrorDialog(
         handshakeFailure = state.handshakeFailure,
+        connectFailure = state.connectFailure,
         errorMessage = state.errorMessage,
         onDismiss = bluetoothViewModel::dismissError,
     )
@@ -191,7 +203,7 @@ fun ApplicationBluetoothSessionHost(
         isConnecting = state.isConnecting,
         onConnect = {
             if (navController != null && !hasConflict) {
-                ensureBluetoothReadyThenConnect()
+                ensureReadyThenConnect()
             }
         },
     )
@@ -205,17 +217,32 @@ fun ApplicationBluetoothSessionHost(
             content()
 
             if (navController != null &&
+                transport != BluetoothTransportType.WIFI &&
                 !isConnectedForApp &&
                 !state.isConnecting &&
                 !hasConflict
             ) {
                 LiveControlBluetoothDisconnectedBannerOverlay(
                     visible = true,
-                    onClick = { ensureBluetoothReadyThenConnect() },
+                    onClick = { ensureReadyThenConnect() },
                 )
             }
         }
     }
+}
+
+private fun openApplicationWifiSoftAp(
+    bluetoothViewModel: BluetoothViewModel,
+    applicationId: ApplicationId,
+    protocolMode: BluetoothProtocolMode,
+) {
+    bluetoothViewModel.requestApplicationConnection(
+        applicationId,
+        protocolMode,
+        BluetoothTransportType.WIFI,
+    )
+    // Stay on the app screen — SoftAP connect does not open the BT picker.
+    bluetoothViewModel.connectToWifiSoftAp()
 }
 
 private fun openApplicationBluetooth(

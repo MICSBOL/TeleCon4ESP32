@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.micsbol.telecon4esp32.domain.bluetooth.ActiveBluetoothSession
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectFailure
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothSessionContext
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
+import com.micsbol.telecon4esp32.domain.bluetooth.Esp32SoftApDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure
 import com.micsbol.telecon4esp32.domain.bluetooth.ProtocolHandshake
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
@@ -311,6 +313,9 @@ open class BluetoothViewModel @Inject constructor(
     companion object {
         private const val RC_PLOT_UI_PERIOD_MS = 33L
         private const val HANDSHAKE_TIMEOUT_MS = 2_500L
+        /** SoftAP CTRL heartbeat — must stay under ESP32 TELECON_CTRL_TIMEOUT_MS (~750). */
+        private const val SOFTAP_CTRL_PERIOD_MS = 100L
+        private const val RC_WIFI_TAG = "RcWifiSoftAp"
         /** NavGraph pops the back stack when this route is emitted after a successful connect. */
         const val POP_BACK_ON_CONNECT = "__pop_back_on_connect__"
     }
@@ -362,10 +367,47 @@ open class BluetoothViewModel @Inject constructor(
             it.copy(
                 isConnecting = true,
                 errorMessage = null,
+                connectFailure = null,
                 handshakeFailure = null,
             )
         }
         deviceConnectionJob = remoteController.connect(device, transport).listen()
+    }
+
+    /**
+     * Connects RC control over SoftAP TCP (`192.168.4.1:3333`) without opening the
+     * Bluetooth device picker. Requires [requestApplicationConnection] with WIFI transport.
+     */
+    fun connectToWifiSoftAp() {
+        val context = requestedSessionContext
+        if (context == null || context.transport != BluetoothTransportType.WIFI) {
+            _state.update {
+                it.copy(connectFailure = BluetoothConnectFailure.MissingSessionContext)
+            }
+            return
+        }
+        connectForApplication(
+            applicationId = context.applicationId,
+            protocolMode = BluetoothProtocolMode.SIMPLE,
+            device = Esp32SoftApDevice.Default,
+            transport = BluetoothTransportType.WIFI,
+        )
+    }
+
+    /**
+     * SoftAP HUD helper: open TCP control when the camera proves SoftAP is reachable.
+     * No-ops if already connected/connecting for [applicationId].
+     */
+    fun ensureWifiSoftApConnected(applicationId: ApplicationId = ApplicationId.RC_VEHICLE_PRO) {
+        if (isSessionActiveFor(applicationId)) return
+        if (_state.value.isConnecting) return
+        if (hasSessionConflict(applicationId)) return
+        requestApplicationConnection(
+            applicationId,
+            BluetoothProtocolMode.SIMPLE,
+            BluetoothTransportType.WIFI,
+        )
+        connectToWifiSoftAp()
     }
 
     private var postConnectNavigateRoute: String? = null
@@ -400,6 +442,12 @@ open class BluetoothViewModel @Inject constructor(
             val transport = getApplicationTransportType(applicationId).first()
             requestApplicationConnection(applicationId, mode, transport)
             saveLastApplication(applicationId)
+            if (transport == BluetoothTransportType.WIFI) {
+                // Open the app first so SoftAP errors use the in-app dialog (no BT picker).
+                onNavigate(applicationId.mainRoute())
+                connectToWifiSoftAp()
+                return@launch
+            }
             preparePostConnectNavigateTo(applicationId.mainRoute())
             onNavigate(Screen.Bluetooth.route)
         }
@@ -433,6 +481,17 @@ open class BluetoothViewModel @Inject constructor(
                     }
                 }
         }
+        // RC Vehicle Pro (and Control Panel) send with the active session's protocol.
+        // Restart the TX loop when the session is established or its mode changes.
+        viewModelScope.launch {
+            activeSession
+                .drop(1)
+                .collect {
+                    if (rcDataSendingActive) {
+                        restartRcDataSending()
+                    }
+                }
+        }
         // Keep UI session in sync with the real link so app Bluetooth buttons
         // turn red/enabled as soon as the ESP32 drops for any reason.
         viewModelScope.launch {
@@ -442,6 +501,52 @@ open class BluetoothViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Protocol used for RC CTRL/BTN TX. Prefer the connected (or pending) RC session
+     * so RC Vehicle Pro uses its own Classic Simple / Binary / BLE setting instead of
+     * always following Control Panel DataStore.
+     *
+     * SoftAP TCP firmware only speaks SIMPLE text (`RC:CTRL` / `RC:BTN`); never send
+     * ADVANCED binary (`AA 55`) on that link even if a binary mode was persisted earlier.
+     */
+    private fun currentRcProtocolMode(): BluetoothProtocolMode {
+        if (currentRcTransport() == BluetoothTransportType.WIFI) {
+            return BluetoothProtocolMode.SIMPLE
+        }
+
+        fun BluetoothSessionContext.isRcApp(): Boolean =
+            applicationId == ApplicationId.CONTROL_PANEL ||
+                applicationId == ApplicationId.RC_VEHICLE_PRO
+
+        _state.value.activeSession?.let { session ->
+            if (session.applicationId == ApplicationId.CONTROL_PANEL ||
+                session.applicationId == ApplicationId.RC_VEHICLE_PRO
+            ) {
+                return session.protocolMode
+            }
+        }
+        pendingSessionContext?.takeIf { it.isRcApp() }?.let { return it.protocolMode }
+        requestedSessionContext?.takeIf { it.isRcApp() }?.let { return it.protocolMode }
+        return controlPanelProtocolMode.value
+    }
+
+    private fun currentRcTransport(): BluetoothTransportType? {
+        fun BluetoothSessionContext.isRcApp(): Boolean =
+            applicationId == ApplicationId.CONTROL_PANEL ||
+                applicationId == ApplicationId.RC_VEHICLE_PRO
+
+        _state.value.activeSession?.let { session ->
+            if (session.applicationId == ApplicationId.CONTROL_PANEL ||
+                session.applicationId == ApplicationId.RC_VEHICLE_PRO
+            ) {
+                return session.transport
+            }
+        }
+        pendingSessionContext?.takeIf { it.isRcApp() }?.let { return it.transport }
+        requestedSessionContext?.takeIf { it.isRcApp() }?.let { return it.transport }
+        return null
     }
 
     private fun clearSessionAfterLinkDown() {
@@ -539,7 +644,13 @@ open class BluetoothViewModel @Inject constructor(
 
     private fun restartRcDataSending() {
         sendingJob?.cancel()
-        sendingJob = when (controlPanelProtocolMode.value) {
+        // SoftAP TCP accepts only SIMPLE text lines — never the ADVANCED binary loop.
+        val mode = if (currentRcTransport() == BluetoothTransportType.WIFI) {
+            BluetoothProtocolMode.SIMPLE
+        } else {
+            currentRcProtocolMode()
+        }
+        sendingJob = when (mode) {
             BluetoothProtocolMode.ADVANCED -> startAdvancedRcSendingLoop()
             BluetoothProtocolMode.SIMPLE -> startSimpleRcSendingOnChange()
         }
@@ -557,12 +668,26 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     private fun startSimpleRcSendingOnChange(): Job = viewModelScope.launch {
-        Log.d("BluetoothViewModel", "Starting simple RC data sending on control changes.")
-        rcControlState.collect { controlState ->
-            remoteController.sendRcControl(
-                controlState.toRcState(),
-                BluetoothProtocolMode.SIMPLE,
-            )
+        val softAp = currentRcTransport() == BluetoothTransportType.WIFI
+        if (softAp) {
+            // SoftAP firmware fail-safe (~750 ms) needs a CTRL heartbeat.
+            // ESP32 Serial still prints [PANEL RX] only when the payload changes.
+            Log.d(RC_WIFI_TAG, "Starting SoftAP RC CTRL heartbeat (${SOFTAP_CTRL_PERIOD_MS}ms).")
+            while (isActive) {
+                remoteController.sendRcControl(
+                    rcControlState.value.toRcState(),
+                    BluetoothProtocolMode.SIMPLE,
+                )
+                delay(SOFTAP_CTRL_PERIOD_MS)
+            }
+        } else {
+            Log.d("BluetoothViewModel", "Starting simple RC data sending on control changes.")
+            rcControlState.collect { controlState ->
+                remoteController.sendRcControl(
+                    controlState.toRcState(),
+                    BluetoothProtocolMode.SIMPLE,
+                )
+            }
         }
     }
 
@@ -619,7 +744,7 @@ open class BluetoothViewModel @Inject constructor(
         val context = requestedSessionContext
         if (context == null) {
             _state.update {
-                it.copy(errorMessage = "missing_session_context")
+                it.copy(connectFailure = BluetoothConnectFailure.MissingSessionContext)
             }
             return
         }
@@ -652,7 +777,13 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     fun dismissError() {
-        _state.update { it.copy(errorMessage = null, handshakeFailure = null) }
+        _state.update {
+            it.copy(
+                errorMessage = null,
+                connectFailure = null,
+                handshakeFailure = null,
+            )
+        }
     }
 
     fun openApplications() {
@@ -668,7 +799,7 @@ open class BluetoothViewModel @Inject constructor(
                     val device = connectingDevice
                     val context = pendingSessionContext
                     if (device == null || context == null) {
-                        failConnection("Missing session context for Bluetooth connect.")
+                        failConnection(BluetoothConnectFailure.MissingSessionContext)
                         return@onEach
                     }
                     startHandshake(device, context)
@@ -677,11 +808,20 @@ open class BluetoothViewModel @Inject constructor(
                     // Reserved for controller-driven sessions; handshake completes in ViewModel.
                 }
                 is ConnectionResult.Error -> {
-                    failConnection(result.message)
+                    val transport = pendingSessionContext?.transport
+                    failConnection(
+                        BluetoothConnectFailure.fromLinkError(result.message, transport),
+                    )
                 }
             }
         }.catch { throwable ->
-            failConnection(throwable.message ?: "Unknown connection error")
+            val transport = pendingSessionContext?.transport
+            failConnection(
+                BluetoothConnectFailure.fromLinkError(
+                    throwable.message ?: "Unknown connection error",
+                    transport,
+                ),
+            )
         }.launchIn(viewModelScope)
     }
 
@@ -689,7 +829,11 @@ open class BluetoothViewModel @Inject constructor(
         handshakeJob?.cancel()
         handshakeJob = viewModelScope.launch {
             val appPrefix = context.applicationId.protocolPrefix()
-            val connectLine = ProtocolHandshake.buildConnectLine(appPrefix, context.protocolMode)
+            val connectLine = ProtocolHandshake.buildConnectLine(
+                appPrefix,
+                context.protocolMode,
+                context.transport,
+            )
             remoteController.sendLine(connectLine)
 
             val response = withTimeoutOrNull(HANDSHAKE_TIMEOUT_MS) {
@@ -712,8 +856,8 @@ open class BluetoothViewModel @Inject constructor(
                     failHandshake(failure)
                 }
                 else -> {
-                    // Legacy firmware without CONNECT/ACK — accept the session.
-                    completeSession(device, context, handshakeConfirmed = false)
+                    // No ACK/NAK (wrong firmware, wrong proto build, or silent board).
+                    failHandshake(HandshakeFailure.Timeout)
                 }
             }
         }
@@ -739,11 +883,15 @@ open class BluetoothViewModel @Inject constructor(
                 isConnected = true,
                 isConnecting = false,
                 errorMessage = null,
+                connectFailure = null,
                 handshakeFailure = null,
                 activeSession = session,
             )
         }
         pendingSessionContext = null
+        if (context.transport == BluetoothTransportType.WIFI && rcDataSendingActive) {
+            restartRcDataSending()
+        }
         val destination = postConnectNavigateRoute
         postConnectNavigateRoute = null
         if (destination != null) {
@@ -759,12 +907,14 @@ open class BluetoothViewModel @Inject constructor(
                 isConnected = false,
                 isConnecting = false,
                 activeSession = null,
+                connectFailure = null,
+                errorMessage = null,
                 handshakeFailure = failure,
             )
         }
     }
 
-    private fun failConnection(message: String) {
+    private fun failConnection(failure: BluetoothConnectFailure) {
         remoteController.disconnect()
         pendingSessionContext = null
         _state.update {
@@ -772,14 +922,16 @@ open class BluetoothViewModel @Inject constructor(
                 isConnected = false,
                 isConnecting = false,
                 activeSession = null,
-                errorMessage = message,
+                handshakeFailure = null,
+                errorMessage = null,
+                connectFailure = failure,
             )
         }
     }
 
     fun sendButtonEvent(event: ButtonEvent) {
         viewModelScope.launch {
-            remoteController.sendRcButton(event, controlPanelProtocolMode.value)
+            remoteController.sendRcButton(event, currentRcProtocolMode())
         }
     }
 

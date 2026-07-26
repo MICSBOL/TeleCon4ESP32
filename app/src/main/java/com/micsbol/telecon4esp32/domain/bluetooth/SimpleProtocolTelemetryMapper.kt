@@ -1,11 +1,16 @@
 package com.micsbol.telecon4esp32.domain.bluetooth
 
+import com.micsbol.telecon4esp32.domain.model.UserSettings
+
 /**
  * Maps simple-protocol [EspMessage] payloads into domain state objects.
  */
 object SimpleProtocolTelemetryMapper {
 
     const val MAX_PLOT_POINTS = 100
+
+    /** RC Control Panel center graph supports four channels (two panes × two traces). */
+    const val MAX_PLOT_SERIES = UserSettings.PLOT_LABEL_COUNT
 
     val DEFAULT_PLOT_COLORS_ARGB = listOf(
         0xFF00FFFF.toInt(), // Cyan
@@ -58,9 +63,10 @@ object SimpleProtocolTelemetryMapper {
         plotColors: List<Int> = DEFAULT_PLOT_COLORS_ARGB,
     ): Pair<TelemetryState, Map<Int, String>> {
         val plotNames = parseIndexedEntries(values, keyPrefix = "n")
+            .filterKeys { it in 0 until MAX_PLOT_SERIES }
         if (plotNames.isEmpty()) return current to emptyMap()
 
-        val orderedNames = plotNames.entries.sortedBy { it.key }.map { it.value }
+        val orderedNames = plotNames.entries.sortedBy { it.key }.map { it.value }.take(MAX_PLOT_SERIES)
         val updatedState = current.copy(
             plotState = current.plotState.copy(
                 series = orderedNames.mapIndexed { index, name ->
@@ -87,6 +93,7 @@ object SimpleProtocolTelemetryMapper {
         plotColors: List<Int> = DEFAULT_PLOT_COLORS_ARGB,
     ): TelemetryState {
         val samples = parseIndexedIntEntries(values, keyPrefix = "v")
+            .filterKeys { it in 0 until MAX_PLOT_SERIES }
         if (samples.isEmpty()) return current
 
         val updatedSeries = current.plotState.series.toMutableList()

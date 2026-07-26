@@ -33,6 +33,9 @@ fun Entitlement.effectiveConnectionMode(
     transport: BluetoothTransportType,
     storedProtocol: BluetoothProtocolMode,
 ): BluetoothConnectionMode {
+    if (transport == BluetoothTransportType.WIFI) {
+        return BluetoothConnectionMode.WIFI_SOFTAP
+    }
     val protocol = effectiveProtocolMode(applicationId, storedProtocol)
     val mode = BluetoothConnectionMode.from(transport, protocol)
     // BLE always implies binary when the user is allowed to use advanced.
@@ -50,7 +53,9 @@ fun Entitlement.canUseConnectionMode(
     applicationId: ApplicationId,
     mode: BluetoothConnectionMode,
 ): Boolean = when (mode) {
-    BluetoothConnectionMode.CLASSIC_SIMPLE -> true
+    BluetoothConnectionMode.CLASSIC_SIMPLE,
+    BluetoothConnectionMode.WIFI_SOFTAP,
+    -> true
     BluetoothConnectionMode.CLASSIC_BINARY,
     BluetoothConnectionMode.BLE_BINARY,
     -> canUseAdvancedProtocol(applicationId)

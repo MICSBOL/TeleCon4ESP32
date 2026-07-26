@@ -24,6 +24,30 @@ class ProtocolHandshakeTest {
     }
 
     @Test
+    fun buildConnectLine_usesWifiWireValueForSoftAp() {
+        assertEquals(
+            "RC:CONNECT,proto,wifi",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothProtocolMode.SIMPLE,
+                BluetoothTransportType.WIFI,
+            ),
+        )
+    }
+
+    @Test
+    fun buildConnectLine_classicKeepsSimpleWireValue() {
+        assertEquals(
+            "RC:CONNECT,proto,simple",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothProtocolMode.SIMPLE,
+                BluetoothTransportType.CLASSIC,
+            ),
+        )
+    }
+
+    @Test
     fun parseAckAppId_mapsGhPrefix() {
         assertEquals(
             ApplicationId.GREENHOUSE,
@@ -52,5 +76,16 @@ class ProtocolHandshakeTest {
         // Firmware NAK: expected = device protocol, actual = app CONNECT proto.
         assertEquals("simple", mismatch.device)
         assertEquals("binary", mismatch.requested)
+    }
+
+    @Test
+    fun parseNakReason_protoMismatch_wifi() {
+        val failure = ProtocolHandshake.parseNakReason(
+            mapOf("reason" to "proto_mismatch", "expected" to "wifi", "actual" to "simple"),
+        )
+        assertTrue(failure is HandshakeFailure.ProtocolMismatch)
+        val mismatch = failure as HandshakeFailure.ProtocolMismatch
+        assertEquals("wifi", mismatch.device)
+        assertEquals("simple", mismatch.requested)
     }
 }

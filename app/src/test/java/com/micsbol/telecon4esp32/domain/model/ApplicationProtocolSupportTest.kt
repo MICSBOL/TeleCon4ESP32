@@ -87,6 +87,31 @@ class ApplicationProtocolSupportTest {
                 BluetoothProtocolMode.ADVANCED,
             ),
         )
+        assertEquals(
+            BluetoothConnectionMode.WIFI_SOFTAP,
+            BluetoothConnectionMode.from(
+                BluetoothTransportType.WIFI,
+                BluetoothProtocolMode.SIMPLE,
+            ),
+        )
+    }
+
+    @Test
+    fun `wifi softap is always allowed`() {
+        assertTrue(
+            Entitlement.Free.canUseConnectionMode(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothConnectionMode.WIFI_SOFTAP,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.WIFI_SOFTAP,
+            Entitlement.Free.effectiveConnectionMode(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothTransportType.WIFI,
+                BluetoothProtocolMode.ADVANCED,
+            ),
+        )
     }
 
     @Test

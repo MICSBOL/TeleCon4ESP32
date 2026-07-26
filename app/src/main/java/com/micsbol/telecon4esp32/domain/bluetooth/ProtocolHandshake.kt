@@ -3,7 +3,7 @@ package com.micsbol.telecon4esp32.domain.bluetooth
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 
-/** CONNECT / ACK / NAK line helpers for application-scoped Bluetooth sessions. */
+/** CONNECT / ACK / NAK line helpers for application-scoped sessions. */
 object ProtocolHandshake {
 
     const val CONNECT_TYPE = "CONNECT"
@@ -13,14 +13,18 @@ object ProtocolHandshake {
     fun buildConnectLine(
         appPrefix: String,
         protocolMode: BluetoothProtocolMode,
+        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
     ): String = LineProtocolCodec.encode(
         app = appPrefix,
         type = CONNECT_TYPE,
-        pairs = mapOf("proto" to protocolMode.toWireValue()),
+        pairs = mapOf("proto" to wireProto(protocolMode, transport)),
     )
 
-    fun buildConnectLine(applicationId: ApplicationId, protocolMode: BluetoothProtocolMode): String =
-        buildConnectLine(applicationId.protocolPrefix(), protocolMode)
+    fun buildConnectLine(
+        applicationId: ApplicationId,
+        protocolMode: BluetoothProtocolMode,
+        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
+    ): String = buildConnectLine(applicationId.protocolPrefix(), protocolMode, transport)
 
     fun parseAckAppId(values: Map<String, String>): ApplicationId? =
         values["app"]?.let(::applicationIdFromWire)
@@ -52,6 +56,16 @@ object ProtocolHandshake {
         else -> null
     }
 
+    private fun wireProto(
+        protocolMode: BluetoothProtocolMode,
+        transport: BluetoothTransportType,
+    ): String = when (transport) {
+        BluetoothTransportType.WIFI -> "wifi"
+        BluetoothTransportType.CLASSIC,
+        BluetoothTransportType.BLE,
+        -> protocolMode.toWireValue()
+    }
+
     private fun BluetoothProtocolMode.toWireValue(): String = when (this) {
         BluetoothProtocolMode.SIMPLE -> "simple"
         BluetoothProtocolMode.ADVANCED -> "binary"
@@ -70,6 +84,9 @@ sealed interface HandshakeFailure {
      * @param requested Protocol the phone asked for in CONNECT (NAK `actual`, e.g. `binary`).
      */
     data class ProtocolMismatch(val device: String?, val requested: String?) : HandshakeFailure
+
+    /** ESP32 did not reply with ACK/NAK within the handshake window. */
+    data object Timeout : HandshakeFailure
 
     data class Unknown(val reason: String) : HandshakeFailure
 }

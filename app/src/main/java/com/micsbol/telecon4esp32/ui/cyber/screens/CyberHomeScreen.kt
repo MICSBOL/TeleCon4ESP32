@@ -72,6 +72,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.recentTagRes
 import com.micsbol.telecon4esp32.ui.applications.thumbnailRes
 import com.micsbol.telecon4esp32.ui.applications.titleRes
+import com.micsbol.telecon4esp32.ui.bluetooth.connectFailureMessage
 import com.micsbol.telecon4esp32.ui.bluetooth.handshakeFailureMessage
 import com.micsbol.telecon4esp32.ui.bluetooth.protocolModeLabel
 import com.micsbol.telecon4esp32.ui.home.HomeHelpDialog
@@ -105,6 +106,7 @@ fun CyberHomeScreen(
     lastApplicationId: ApplicationId? = null,
     lastDeviceName: String? = null,
     errorMessage: String? = null,
+    connectFailure: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectFailure? = null,
     handshakeFailure: com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure? = null,
     onOpenApplications: () -> Unit = {},
     onContinueSession: () -> Unit = {},
@@ -143,6 +145,7 @@ fun CyberHomeScreen(
 
     val resolvedError = when {
         handshakeFailure != null -> handshakeFailureMessage(handshakeFailure)
+        connectFailure != null -> connectFailureMessage(connectFailure)
         errorMessage != null -> errorMessage
         else -> null
     }

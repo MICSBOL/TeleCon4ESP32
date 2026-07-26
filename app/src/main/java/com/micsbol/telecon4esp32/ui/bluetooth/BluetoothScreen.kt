@@ -57,6 +57,7 @@ fun BluetoothScreen(
 
     BluetoothConnectionErrorDialog(
         handshakeFailure = state.handshakeFailure,
+        connectFailure = state.connectFailure,
         errorMessage = state.errorMessage,
         onDismiss = onDismissError,
     )

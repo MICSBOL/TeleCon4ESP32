@@ -1,10 +1,11 @@
 package com.micsbol.telecon4esp32.domain.bluetooth
 
 /**
- * User-facing Bluetooth link choice for an application.
+ * User-facing link choice for an application.
  *
  * Classic offers both text and binary wire formats; BLE always uses binary
  * (same frames as Classic ADVANCED over the Nordic UART Service).
+ * Wi‑Fi SoftAP uses SIMPLE text lines over TCP (`proto=wifi` handshake).
  */
 enum class BluetoothConnectionMode {
     /** Classic SPP + SIMPLE text lines. */
@@ -15,17 +16,21 @@ enum class BluetoothConnectionMode {
 
     /** BLE (NUS) + ADVANCED binary packets. */
     BLE_BINARY,
+
+    /** SoftAP TCP + SIMPLE text (`RC:CONNECT,proto,wifi`). RC Vehicle Pro / ESP32-CAM. */
+    WIFI_SOFTAP,
     ;
 
     val transport: BluetoothTransportType
         get() = when (this) {
             CLASSIC_SIMPLE, CLASSIC_BINARY -> BluetoothTransportType.CLASSIC
             BLE_BINARY -> BluetoothTransportType.BLE
+            WIFI_SOFTAP -> BluetoothTransportType.WIFI
         }
 
     val protocolMode: BluetoothProtocolMode
         get() = when (this) {
-            CLASSIC_SIMPLE -> BluetoothProtocolMode.SIMPLE
+            CLASSIC_SIMPLE, WIFI_SOFTAP -> BluetoothProtocolMode.SIMPLE
             CLASSIC_BINARY, BLE_BINARY -> BluetoothProtocolMode.ADVANCED
         }
 
@@ -34,6 +39,7 @@ enum class BluetoothConnectionMode {
             transport: BluetoothTransportType,
             protocolMode: BluetoothProtocolMode,
         ): BluetoothConnectionMode = when (transport) {
+            BluetoothTransportType.WIFI -> WIFI_SOFTAP
             BluetoothTransportType.BLE -> BLE_BINARY
             BluetoothTransportType.CLASSIC -> when (protocolMode) {
                 BluetoothProtocolMode.ADVANCED -> CLASSIC_BINARY

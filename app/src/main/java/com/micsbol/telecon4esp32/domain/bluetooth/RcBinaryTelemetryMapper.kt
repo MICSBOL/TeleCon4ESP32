@@ -1,11 +1,11 @@
 package com.micsbol.telecon4esp32.domain.bluetooth
 
 /**
- * Adapts legacy binary RC telemetry packets (0xCC 0x33 plot, 0xCC 0x44 config)
+ * Adapts legacy binary RC telemetry packets (0xCC 0x33 plot, optional legacy 0xCC 0x44 config)
  * to the same [TelemetryState] shape used by the simple line protocol and UI.
  *
- * ESP32 firmware is unchanged: plot packets still send sequential 0–255 bytes and
- * config section 0x01 still sends an ordered name list.
+ * Plot packets send up to [SimpleProtocolTelemetryMapper.MAX_PLOT_SERIES] (4) sequential
+ * 0–255 sample bytes. Labels come from Android RC settings (do not send CC 44 from new firmware).
  */
 object RcBinaryTelemetryMapper {
 

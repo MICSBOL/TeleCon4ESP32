@@ -125,8 +125,12 @@ fun ControlPanelScreen(
         bluetoothConnectionState.isConnected &&
             bluetoothConnectionState.activeSession?.applicationId == ApplicationId.CONTROL_PANEL
 
+    // Shows RC:CONNECT handshake failures (proto/app mismatch or timeout) after Classic/BLE connect.
+    // Telemetry UI is identical for Classic Simple, Classic Binary, and BLE — bench/simulate
+    // echo (sticks→panels/plots) is firmware-side; see CONTROL_PANEL_DEBUG_PARITY_ESP32_PROMPT.md.
     BluetoothConnectionErrorDialog(
         handshakeFailure = bluetoothConnectionState.handshakeFailure,
+        connectFailure = bluetoothConnectionState.connectFailure,
         errorMessage = bluetoothConnectionState.errorMessage,
         onDismiss = { bluetoothViewModel?.dismissError() },
     )
@@ -211,6 +215,7 @@ fun ControlPanelScreen(
 
                 val onOpenBluetooth: () -> Unit = remember(actualViewModel, navController, controlPanelProtocolMode, controlPanelTransportType) {
                     {
+                        // Passes Classic Simple/Binary or BLE Binary so RC:CONNECT,proto,… matches Settings.
                         actualViewModel?.requestApplicationConnection(
                             ApplicationId.CONTROL_PANEL,
                             controlPanelProtocolMode,
@@ -324,10 +329,11 @@ private fun ControlPanelCenterPlotHost(
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
+    // Center display is two panes × two traces = four plot channels (v0…v3 / CC 33 count=4).
     if (bluetoothViewModel != null) {
         val plotUi by bluetoothViewModel.rcPlotUiState.collectAsState()
         val displaySeries = remember(plotUi.series, plotLabels, settingsSyncGeneration) {
-            plotSeriesForDisplay(plotUi.series, plotLabels)
+            fourPlotSeriesForDisplay(plotUi.series, plotLabels)
         }
         ControlPanelCenterPlot(
             series = displaySeries,
@@ -344,7 +350,7 @@ private fun ControlPanelCenterPlotHost(
             derivedStateOf { telemetry.plotState.revision }
         }
         val displaySeries = remember(series, plotLabels, settingsSyncGeneration) {
-            plotSeriesForDisplay(series, plotLabels)
+            fourPlotSeriesForDisplay(series, plotLabels)
         }
         ControlPanelCenterPlot(
             series = displaySeries,
@@ -355,6 +361,13 @@ private fun ControlPanelCenterPlotHost(
     }
 }
 
+/** Exactly [UserSettings.PLOT_LABEL_COUNT] series for the dual-pane Cartesian plot. */
+private fun fourPlotSeriesForDisplay(
+    telemetrySeries: List<PlotData>,
+    plotLabels: List<String>,
+): List<PlotData> = plotSeriesForDisplay(telemetrySeries, plotLabels)
+    .take(UserSettings.PLOT_LABEL_COUNT)
+
 @Composable
 private fun ControlPanelCenterPlot(
     series: List<PlotData>,
@@ -364,6 +377,7 @@ private fun ControlPanelCenterPlot(
 ) {
     CenterDisplay(
         modifier = modifier,
+        // Indices 0–1 → top pane; 2–3 → bottom pane (see CartesianPlot).
         series = series,
         plotRevision = plotRevision,
         topStartOverlay = topStartOverlay,

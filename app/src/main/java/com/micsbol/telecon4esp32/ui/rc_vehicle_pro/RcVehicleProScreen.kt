@@ -24,6 +24,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
@@ -54,6 +56,7 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcVehicleHudTopBar
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout.CAMERA_PAN_CENTER
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
+import android.widget.Toast
 
 @Composable
 fun RcVehicleProScreen(
@@ -68,8 +71,49 @@ fun RcVehicleProScreen(
     val bluetoothConnectionState by bluetoothViewModel.state.collectAsState()
     val bluetoothSession = LocalApplicationBluetoothSession.current
     val onBluetoothConnect by rememberUpdatedState(bluetoothSession?.onConnect)
-
+    val transport by remember {
+        bluetoothViewModel.observeTransportType(ApplicationId.RC_VEHICLE_PRO)
+    }.collectAsState(initial = BluetoothTransportType.CLASSIC)
+    val isWifiSoftApMode = transport == BluetoothTransportType.WIFI
     val context = LocalContext.current
+
+    // SoftAP: once video works (/stream or /capture), SoftAP is reachable — open TCP control.
+    LaunchedEffect(isWifiSoftApMode, uiState.isCameraOnline) {
+        if (isWifiSoftApMode && uiState.isCameraOnline) {
+            bluetoothViewModel.ensureWifiSoftApConnected(ApplicationId.RC_VEHICLE_PRO)
+        }
+    }
+
+    LaunchedEffect(uiState.photoFeedback) {
+        when (uiState.photoFeedback) {
+            PhotoFeedback.None -> Unit
+            PhotoFeedback.Saved -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.rc_vehicle_photo_saved),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                viewModel.consumePhotoFeedback()
+            }
+            PhotoFeedback.NoFrame -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.rc_vehicle_photo_no_frame),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                viewModel.consumePhotoFeedback()
+            }
+            PhotoFeedback.Failed -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.rc_vehicle_photo_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                viewModel.consumePhotoFeedback()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         val activity = context as? ComponentActivity ?: return@LaunchedEffect
         activity.enableEdgeToEdge(
@@ -101,6 +145,7 @@ fun RcVehicleProScreen(
     RcVehicleProContent(
         uiState = uiState,
         isBluetoothConnecting = bluetoothConnectionState.isConnecting,
+        isWifiSoftApMode = isWifiSoftApMode,
         leftStickPosition = rcControlState.leftStickPosition,
         rightStickPosition = rcControlState.rightStickPosition,
         onNavigateBack = { navController.navigateUp() },
@@ -140,6 +185,7 @@ fun RcVehicleProScreen(
 fun RcVehicleProContent(
     uiState: RcVehicleProUiState,
     isBluetoothConnecting: Boolean = false,
+    isWifiSoftApMode: Boolean = false,
     leftStickPosition: Pair<Float, Float>,
     rightStickPosition: Pair<Float, Float>,
     onNavigateBack: () -> Unit,
@@ -187,6 +233,7 @@ fun RcVehicleProContent(
                         uiState = uiState,
                         isBluetoothConnecting = isBluetoothConnecting,
                         onBluetoothDisconnectedClick = onBluetoothDisconnectedClick,
+                        isWifiSoftApMode = isWifiSoftApMode,
                     )
                 },
                 actions = settingsAction,

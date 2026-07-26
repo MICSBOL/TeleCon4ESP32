@@ -4,15 +4,26 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 
+enum class PhotoFeedback {
+    None,
+    Saved,
+    NoFrame,
+    Failed,
+}
+
 data class RcVehicleProUiState(
     val cameraState: CameraStreamState = CameraStreamState.Idle,
     val isBluetoothConnected: Boolean = false,
     val isCameraOnline: Boolean = false,
+    val isEmulatorPreview: Boolean = false,
     val speedKmh: Float = 0f,
+    /** True when HUD speed comes from ESP32 `RC:DATA` / `CC 11` left panel (speed×10). */
+    val speedFromTelemetry: Boolean = false,
     val batteryPercent: Int = 0,
     val motorTempCelsius: Int = 0,
     val isRecording: Boolean = false,
     val lightsOn: Boolean = false,
+    val photoFeedback: PhotoFeedback = PhotoFeedback.None,
 )
 
 object RcVehicleProGlass {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -32,33 +34,59 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 
+/** How the live-control link status chip should present connection state. */
+enum class LiveControlLinkKind {
+    Bluetooth,
+    WifiSoftAp,
+}
+
 @Composable
 fun LiveControlBluetoothStatusChip(
     isConnected: Boolean,
     isConnecting: Boolean = false,
     onDisconnectedClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    linkKind: LiveControlLinkKind = LiveControlLinkKind.Bluetooth,
+    /** SoftAP: camera stream reachable but control TCP not yet connected. */
+    isWifiCameraOnly: Boolean = false,
 ) {
+    val wifiCameraOnly = linkKind == LiveControlLinkKind.WifiSoftAp &&
+        isWifiCameraOnly &&
+        !isConnected &&
+        !isConnecting
+
     val backgroundColor = when {
         isConnecting -> brandPrimary().copy(alpha = 0.18f)
         isConnected -> StatusConnected.copy(alpha = 0.18f)
+        wifiCameraOnly -> brandPrimary().copy(alpha = 0.18f)
         else -> StatusDisconnected.copy(alpha = 0.18f)
     }
     val contentColor = when {
         isConnecting -> brandPrimary()
         isConnected -> StatusConnected
+        wifiCameraOnly -> brandPrimary()
         else -> StatusDisconnected
     }
     val statusText = when {
         isConnecting -> stringResource(R.string.home_bluetooth_status_connecting)
+        isConnected && linkKind == LiveControlLinkKind.WifiSoftAp ->
+            stringResource(R.string.home_wifi_status_connected)
         isConnected -> stringResource(R.string.home_bluetooth_status_connected)
+        wifiCameraOnly -> stringResource(R.string.home_wifi_status_camera_only)
         else -> stringResource(R.string.home_bluetooth_status_disconnected)
     }
     val accessibilityDescription = when {
         isConnecting -> stringResource(R.string.live_control_bluetooth_connecting_content_description)
+        isConnected && linkKind == LiveControlLinkKind.WifiSoftAp ->
+            stringResource(R.string.live_control_wifi_connected_content_description)
         isConnected -> stringResource(R.string.live_control_bluetooth_connected_content_description)
+        wifiCameraOnly -> stringResource(R.string.live_control_wifi_camera_only_content_description)
+        linkKind == LiveControlLinkKind.WifiSoftAp ->
+            stringResource(R.string.live_control_wifi_disconnected_content_description)
         else -> stringResource(R.string.live_control_bluetooth_disconnected_content_description)
     }
+    val statusIcon: ImageVector =
+        if (linkKind == LiveControlLinkKind.WifiSoftAp) Icons.Default.Wifi else Icons.Default.Bluetooth
     val isTappable = !isConnected && !isConnecting && onDisconnectedClick != null
 
     Row(
@@ -82,7 +110,7 @@ fun LiveControlBluetoothStatusChip(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
-            imageVector = Icons.Default.Bluetooth,
+            imageVector = statusIcon,
             contentDescription = null,
             tint = contentColor,
             modifier = Modifier.size(16.dp),

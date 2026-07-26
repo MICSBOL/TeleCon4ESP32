@@ -8,8 +8,8 @@ import com.micsbol.telecon4esp32.domain.model.RcState
  *
  * Inbound RC telemetry types handled by the app (ESP32 → phone):
  * - `RC:DATA` — panels, indicators, LEDs
- * - `RC:PLOTCFG` — plot series names (`n0`, `n1`, …)
  * - `RC:PLOT` — plot samples (`v0`, `v1`, … as 0–255)
+ * Labels come from Android RC settings. Legacy `RC:PLOTCFG` is still parsed if an old sketch sends it.
  */
 object SimpleProtocolEncoder {
 

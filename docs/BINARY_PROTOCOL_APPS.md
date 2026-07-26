@@ -13,7 +13,22 @@ protocol in [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) instead; BLE is
 
 Checksum = low byte of sum of all bytes after the 2-byte header.
 
-RC Control Panel keeps its legacy layouts (`AA 55`, `CC 11/22/33/44`) — see existing RC firmware.
+RC Control Panel keeps its legacy layouts (`AA 55`, `CC 11/22/33`) — see existing RC firmware.
+Plot packets (`CC 33`) should send **count = 4** sample bytes (0–255) for the dual-pane
+center graph. Do **not** send legacy `CC 44` label-config packets; plot/panel/indicator
+labels come from Android RC settings.
+
+**Handshake (Classic SPP and BLE):** before control/telemetry, the phone sends a text line
+`RC:CONNECT,proto,binary` (or `proto,simple` for Classic Simple firmware). Reply with
+`RC:ACK,app,RC` or `RC:NAK,reason,proto_mismatch|app_mismatch,expected,…,actual,…`.
+See [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) and
+[prompts/CONTROL_PANEL_HANDSHAKE_ESP32_PROMPT.md](prompts/CONTROL_PANEL_HANDSHAKE_ESP32_PROMPT.md).
+
+**Bench debug (RC Control Panel):** default firmware simulate mode should echo phone
+sticks/knobs/switches into `CC 11` / `CC 22` / `CC 33` (same UX as Classic Simple text
+echo). Optional Serial inject forwards typed lines/frames to the phone. Unify Classic
+Binary with BLE via
+[prompts/CONTROL_PANEL_DEBUG_MODE_ESP32_PROMPT.md](prompts/CONTROL_PANEL_DEBUG_MODE_ESP32_PROMPT.md).
 
 ---
 

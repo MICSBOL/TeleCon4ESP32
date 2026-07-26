@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectFailure
 import com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
@@ -15,16 +16,18 @@ import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 
 /**
- * Frosted-glass error dialog for connect failures, including protocol/app handshake mismatches.
+ * Frosted-glass error dialog for link failures and protocol/app handshake mismatches.
  */
 @Composable
 fun BluetoothConnectionErrorDialog(
     handshakeFailure: HandshakeFailure?,
-    errorMessage: String?,
+    connectFailure: BluetoothConnectFailure? = null,
+    errorMessage: String? = null,
     onDismiss: () -> Unit,
 ) {
     val content = bluetoothConnectionErrorContent(
         handshakeFailure = handshakeFailure,
+        connectFailure = connectFailure,
         errorMessage = errorMessage,
     ) ?: return
 
@@ -60,11 +63,16 @@ private data class BluetoothConnectionErrorContent(
 @Composable
 private fun bluetoothConnectionErrorContent(
     handshakeFailure: HandshakeFailure?,
+    connectFailure: BluetoothConnectFailure?,
     errorMessage: String?,
 ): BluetoothConnectionErrorContent? = when {
     handshakeFailure != null -> BluetoothConnectionErrorContent(
         title = handshakeFailureTitle(handshakeFailure),
         body = handshakeFailureMessage(handshakeFailure),
+    )
+    connectFailure != null -> BluetoothConnectionErrorContent(
+        title = connectFailureTitle(connectFailure),
+        body = connectFailureMessage(connectFailure),
     )
     errorMessage == "missing_session_context" -> BluetoothConnectionErrorContent(
         title = stringResource(R.string.bluetooth_connection_failed_title),

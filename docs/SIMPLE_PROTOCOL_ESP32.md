@@ -15,7 +15,7 @@ setting is **Classic + Simple** for a given application. (BLE is binary-only; se
 
 | Prefix | Application        |
 |--------|--------------------|
-| `RC`   | Control Panel / RC |
+| `RC`   | Control Panel **and** RC Vehicle Pro (same wire protocol) |
 | `GH`   | Greenhouse         |
 | `WT`   | Water Tank         |
 | `SH`   | Smart Home         |
@@ -26,7 +26,44 @@ setting is **Classic + Simple** for a given application. (BLE is binary-only; se
 
 ---
 
-## RC (Control Panel)
+## RC (Control Panel / RC Vehicle Pro)
+
+Same `RC:` lines for both Android screens. Vehicle HUD maps `left` panel → speed×10,
+`batt` → battery %, `analog` → motor temp gauge. Full vehicle + Wi‑Fi CAM firmware prompt:
+[prompts/RC_VEHICLE_PRO_ESP32_FIRMWARE_PROMPT.md](prompts/RC_VEHICLE_PRO_ESP32_FIRMWARE_PROMPT.md).
+
+### Handshake (required on connect)
+
+After the RFCOMM / BLE link is up, the phone sends:
+
+```
+RC:CONNECT,proto,simple
+```
+
+or
+
+```
+RC:CONNECT,proto,binary
+```
+
+depending on **RC Settings → connection mode** (Classic Simple vs Classic/BLE Binary).
+
+| ESP32 reply | Meaning |
+|-------------|---------|
+| `RC:ACK,app,RC` | App + protocol match — session continues |
+| `RC:NAK,reason,proto_mismatch,expected,simple,actual,binary` | Wrong mode in the app (or wrong firmware build) |
+| `RC:NAK,reason,app_mismatch,expected,RC,actual,GH` | Wrong application firmware |
+
+`expected` = firmware capability; `actual` = value from the CONNECT line. The Android dialog
+shows these mismatches and does **not** leave a connected session.
+
+**Bench debug:** with auto-telemetry / simulate echo enabled, map `RC:CTRL` sticks and knobs
+into `RC:DATA` / `RC:PLOT` (four series) so the Control Panel UI updates without extra wiring.
+Optional Serial inject forwards typed protocol lines to the phone. Same UX as Classic/BLE
+Binary — see
+[prompts/CONTROL_PANEL_DEBUG_MODE_ESP32_PROMPT.md](prompts/CONTROL_PANEL_DEBUG_MODE_ESP32_PROMPT.md).
+
+---
 
 ### Phone → ESP32
 
@@ -81,39 +118,31 @@ RC:DATA,left,1234,right,5678,lo,1,ro,0,lg,1,rg,0,analog,42,batt,88,led,0F,lt,RPM
 | at, bt | Indicator titles               |
 | led    | LED byte (hex, e.g. `0F`)      |
 
-#### `RC:PLOTCFG` — plot series names (send once at startup or when names change)
-
-```
-RC:PLOTCFG,n0,RPM,n1,Speed,n2,Temp
-```
-
-| Key | Description              |
-|-----|--------------------------|
-| n0  | Name for plot series 0   |
-| n1  | Name for plot series 1   |
-| …   | Up to n5 supported       |
-
-The app assigns fixed colors per index (cyan, red, green, yellow, magenta, white).
-
 #### `RC:PLOT` — live plot samples (send periodically, e.g. 10–30 Hz)
 
 ```
-RC:PLOT,v0,128,v1,200,v2,64
+RC:PLOT,v0,128,v1,200,v2,64,v3,180
 ```
 
 | Key | Description                                      |
 |-----|--------------------------------------------------|
 | v0  | New sample for series 0, integer **0–255**       |
 | v1  | New sample for series 1                          |
+| v2  | New sample for series 2                          |
+| v3  | New sample for series 3                          |
 | …   | One sample per key per line; app keeps last 100 |
 
 Values match the **binary** plot packet scale: `0` = bottom, `255` = top of the graph.
 
+The app shows **four** channels (two traces in the top pane, two in the bottom). Colors are
+fixed by index (cyan, red, green, yellow, …). **Plot / panel / indicator labels are set in
+the Android RC settings** — do **not** send `RC:PLOTCFG` or binary `CC 44` config packets
+from firmware.
+
 **Typical flow:**
 
-1. On connect: send `RC:PLOTCFG,...` with your series names.
-2. In `loop()`: every 50–100 ms send `RC:PLOT,v0,...,vN,...` with current sensor readings mapped to 0–255.
-3. Optionally interleave `RC:DATA,...` for gauges and panels at a lower rate.
+1. In `loop()`: every 50–100 ms send `RC:PLOT,v0,...,v3,...` with current sensor readings mapped to 0–255.
+2. Optionally interleave `RC:DATA,...` for gauges and panels at a lower rate.
 
 ---
 
@@ -223,12 +252,8 @@ int toPlotByte(float value, float minVal, float maxVal) {
   return (int)(t * 255.f + 0.5f);
 }
 
-void sendPlotConfig() {
-  SerialBT.println("RC:PLOTCFG,n0,RPM,n1,Speed");
-}
-
-void sendPlotSample(int rpmByte, int speedByte) {
-  SerialBT.printf("RC:PLOT,v0,%d,v1,%d\n", rpmByte, speedByte);
+void sendPlotSample(int v0, int v1, int v2, int v3) {
+  SerialBT.printf("RC:PLOT,v0,%d,v1,%d,v2,%d,v3,%d\n", v0, v1, v2, v3);
 }
 
 void sendRcData(int analogVal, int battVal) {
@@ -253,7 +278,7 @@ void setup() {
   Serial.begin(115200);
   SerialBT.begin("ESP32-BT");
   delay(500);
-  sendPlotConfig();
+  // Plot labels are configured in the Android RC settings screen.
 }
 
 void loop() {
@@ -265,12 +290,18 @@ void loop() {
 
   unsigned long now = millis();
 
-  // Plot updates ~20 Hz
+  // Plot updates ~20 Hz — four channels for the dual-pane center graph
   if (now - lastPlotMs >= 50) {
     lastPlotMs = now;
-    float rpm = analogRead(34);   // example
-    float speed = analogRead(35);
-    sendPlotSample(toPlotByte(rpm, 0, 4095), toPlotByte(speed, 0, 4095));
+    float a = analogRead(34);
+    float b = analogRead(35);
+    float c = analogRead(32);
+    float d = analogRead(33);
+    sendPlotSample(
+      toPlotByte(a, 0, 4095),
+      toPlotByte(b, 0, 4095),
+      toPlotByte(c, 0, 4095),
+      toPlotByte(d, 0, 4095));
   }
 
   // Slower telemetry ~2 Hz

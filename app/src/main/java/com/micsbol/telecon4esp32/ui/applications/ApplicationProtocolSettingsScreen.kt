@@ -2,7 +2,11 @@ package com.micsbol.telecon4esp32.ui.applications
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,6 +25,8 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.domain.model.usesCamera
+import com.micsbol.telecon4esp32.ui.components.NeoCard
+import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.theme.Neo
@@ -56,14 +62,35 @@ fun ApplicationProtocolSettingsScreen(
                     )
                 }
             }
+            if (applicationId == ApplicationId.RC_VEHICLE_PRO) {
+                item {
+                    RcVehicleCameraWifiSettingsSection()
+                }
+            }
             item {
                 ApplicationProtocolSettingsSection(
                     applicationId = applicationId,
                     selectedMode = connectionMode,
                     onModeSelected = viewModel::onConnectionModeChanged,
                     canUseAdvanced = canUseAdvanced,
+                    includeWifiSoftAp = applicationId == ApplicationId.RC_VEHICLE_PRO,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RcVehicleCameraWifiSettingsSection() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NeoSectionTitle(text = stringResource(R.string.rc_vehicle_camera_wifi_section_title))
+        Spacer(modifier = Modifier.height(8.dp))
+        NeoCard(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.rc_vehicle_camera_wifi_section_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = Neo.TextSecondary,
+            )
         }
     }
 }
