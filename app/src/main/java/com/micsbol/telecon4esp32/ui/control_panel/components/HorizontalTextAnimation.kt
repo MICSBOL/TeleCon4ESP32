@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -43,7 +44,7 @@ fun HorizontalTextAnimation(
     val density = LocalDensity.current
 
     val containerWidthDp = remember(characterThreshold, style, density) {
-        val sample = "0".repeat(characterThreshold)
+        val sample = "0".repeat(characterThreshold.coerceAtLeast(1))
         val widthPx = textMeasurer.measure(sample, style).size.width
         with(density) { widthPx.toDp() }
     }
@@ -54,17 +55,15 @@ fun HorizontalTextAnimation(
         text = text,
         modifier = modifier
             .width(containerWidthDp)
-            // 1. PERFORMANCE OPTIMIZATION:
-            // graphicsLayer isolates the animation to the GPU.
-            // This prevents the marquee from triggering full screen redraws.
+            // Clip so marquee glyphs never paint over neighboring legend rows.
+            .clipToBounds()
+            // PERFORMANCE: isolate marquee animation to the GPU compositor.
             .graphicsLayer()
             .then(
                 if (shouldAnimate) {
                     Modifier.basicMarquee(
                         iterations = Int.MAX_VALUE,
                         repeatDelayMillis = 3000,
-                        // 2. Adjust velocity if needed (default is 30.dp/s)
-                        // Higher velocity uses slightly more CPU.
                         velocity = 30.dp
                     )
                 } else {
@@ -74,7 +73,7 @@ fun HorizontalTextAnimation(
         style = style,
         color = color,
         maxLines = 1,
-        overflow = if (shouldAnimate) TextOverflow.Visible else TextOverflow.Ellipsis
+        overflow = TextOverflow.Clip,
     )
 }
 

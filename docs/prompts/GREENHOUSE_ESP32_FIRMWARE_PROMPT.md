@@ -48,6 +48,7 @@ GH:DATA,temp,26.2,hum,68,vpd,1.1,soil,42,light,12400,fan,1,heater,0,pump,0,light
 GH:SET,fan,1
 GH:SET,vent,60
 GH:SET,target_temp,24,target_hum,65
+GH:SET,cam_pan,50,cam_tilt,50
 ```
 
 ### Binary protocol (premium / advanced)
@@ -55,7 +56,7 @@ GH:SET,target_temp,24,target_hum,65
 **Phone → ESP32 SET:** `0xAA 0x47` + mask u16 LE + values + checksum  
 **ESP32 → phone DATA:** `0xCC 0x47` + length u16 LE + `0x01` + 17-byte payload + checksum  
 
-Full field layout is in `docs/BINARY_PROTOCOL_GH.md`.
+Full field layout is in `docs/BINARY_PROTOCOL_GH.md`. SET mask bits 8–9 are `cam_pan` / `cam_tilt` (0–100, 50 = center).
 
 ### Camera flag
 
@@ -64,7 +65,7 @@ Full field layout is in `docs/BINARY_PROTOCOL_GH.md`.
 | DevKit only | `0` |
 | With ESP32-CAM | `1` |
 
-Camera video is **Wi‑Fi HTTP**, not Bluetooth: `GET http://192.168.4.1/capture` (MJPEG/JPEG poll). Android uses `Esp32CameraStreamRepository`.
+Camera video is **Wi‑Fi HTTP**, not Bluetooth: `GET http://192.168.4.1/capture` (MJPEG/JPEG poll). Android uses `Esp32CameraStreamRepository`. Camera aim (`cam_pan` / `cam_tilt`) rides the control link (BT/BLE/SoftAP).
 
 ---
 
@@ -78,7 +79,8 @@ GPIO 27/33 → tank ultrasonic (trig/echo)
 GPIO 13 → fan relay | 14 → heater | 16 → pump
 GPIO 17 → grow lights | 19 → vent servo PWM
 GPIO 32 → flow sensor pulse (optional)
-ESP32-CAM (CAM variant only): Wi‑Fi AP/stream at 192.168.4.1
+ESP32-CAM (CAM variant / second board): Wi‑Fi AP/stream at 192.168.4.1
+  free pins: GPIO 13 → pan servo | GPIO 12 → tilt servo
 ```
 
 Adjust pins in `pins.h` per board.
@@ -121,7 +123,7 @@ Implement **Option A**: if last command was binary SET, telemetry replies in bin
 
 ### Actuator SET fields
 
-`fan`, `heater`, `pump`, `lights`, `auto`, `vent`, `target_temp`, `target_hum` — same semantics as Android `GreenhouseViewModel`.
+`fan`, `heater`, `pump`, `lights`, `auto`, `vent`, `target_temp`, `target_hum`, `cam_pan`, `cam_tilt` — same semantics as Android `GreenhouseViewModel` / `GreenhouseCameraViewModel`.
 
 ---
 

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -27,9 +26,8 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -45,10 +43,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBanner
+import com.micsbol.telecon4esp32.ui.components.LocalDisconnectedBannerInsets
+import com.micsbol.telecon4esp32.ui.components.rememberClampedSafeHudInsets
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
+import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.greenhouse.components.EnvironmentalChart
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseControlPanel
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseTopBar
@@ -120,7 +123,10 @@ fun GreenhouseScreen(
     viewModel: GreenhouseViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val board by viewModel.board.collectAsState()
     val isEmulator = GreenhouseEmulatorSupport.isEmulator()
+    // Settings board CAM, or firmware `cam,1` / binary camera flag after connect.
+    val showCameraButton = board.usesSoftApCamera || uiState.hasCamera
 
     GreenhouseScreenContent(
         uiState = uiState,
@@ -136,14 +142,22 @@ fun GreenhouseScreen(
         onTargetHumidityChange = viewModel::updateTargetHumidityLocal,
         onTargetClimateFinished = viewModel::commitTargetClimate,
         topBarActions = {
+            val compact = LocalConfiguration.current.screenWidthDp < 400
+            val btnSize = if (compact) 40.dp else 44.dp
+            val iconSize = if (compact) 20.dp else 22.dp
             Row(
-                modifier = Modifier.padding(start = 4.dp, end = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 ApplicationBluetoothTopBarButton(accent = GreenhouseGlass.AccentGreen) { onClick, enabled, content ->
-                    GreenhouseGlassIconButton(onClick = onClick, enabled = enabled, content = content)
+                    GreenhouseGlassIconButton(
+                        onClick = onClick,
+                        enabled = enabled,
+                        size = btnSize,
+                        content = content,
+                    )
                 }
-                if (uiState.hasCamera) {
+                if (showCameraButton) {
                     GreenhouseGlassIconButton(
                         onClick = {
                             GreenhouseEmulatorNavigation.openSubScreen(
@@ -151,12 +165,13 @@ fun GreenhouseScreen(
                                 Screen.GreenhouseCamera.route,
                             )
                         },
+                        size = btnSize,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Videocam,
                             contentDescription = stringResource(R.string.greenhouse_camera_content_description),
                             tint = GreenhouseGlass.AccentGreen,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(iconSize),
                         )
                     }
                 }
@@ -167,12 +182,13 @@ fun GreenhouseScreen(
                             Screen.GreenhouseHelp.route,
                         )
                     },
+                    size = btnSize,
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                         contentDescription = stringResource(R.string.greenhouse_help_content_description),
                         tint = GreenhouseGlass.AccentGreen,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(iconSize),
                     )
                 }
                 GreenhouseGlassIconButton(
@@ -182,6 +198,7 @@ fun GreenhouseScreen(
                             Screen.GreenhouseSettings.route,
                         )
                     },
+                    size = btnSize,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
@@ -190,7 +207,7 @@ fun GreenhouseScreen(
                             stringResource(applicationSettingsTitleRes(ApplicationId.GREENHOUSE)),
                         ),
                         tint = GreenhouseGlass.AccentGreen,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(iconSize),
                     )
                 }
             }
@@ -221,10 +238,28 @@ fun GreenhouseScreenContent(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val useWideLayout = isLandscape && configuration.screenWidthDp >= 600
     val scrollState = rememberScrollState()
-    val scrollEdgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+    val bannerInsets = LocalDisconnectedBannerInsets.current
+    val session = LocalApplicationBluetoothSession.current
+    val scrollEdgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = false,
+        includeHorizontal = true,
     )
-    val contentBottomInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+    val contentBottomInsets = rememberClampedSafeHudInsets(
+        includeTop = false,
+        includeBottom = true,
+        includeHorizontal = false,
+    )
+    val contentHPad = if (configuration.screenWidthDp < 400) 12.dp else 16.dp
+
+    // Keep the sticky Controles panel free of the floating host banner.
+    DisposableEffect(useWideLayout) {
+        bannerInsets.suppressHostOverlay = !useWideLayout
+        onDispose {
+            bannerInsets.suppressHostOverlay = false
+            bannerInsets.bottomClearance = 16.dp
+        }
+    }
 
     GreenhouseBackground(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -284,7 +319,9 @@ fun GreenhouseScreenContent(
                         actions = topBarActions,
                     )
                     Column(
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        modifier = Modifier.padding(
+                            horizontal = if (configuration.screenWidthDp < 400) 12.dp else 16.dp,
+                        ),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         MainStatusCard(
@@ -310,6 +347,16 @@ fun GreenhouseScreenContent(
                         }
                     }
                 }
+                session?.takeIf { !it.isConnected && !it.isConnecting }?.let { activeSession ->
+                    LiveControlBluetoothDisconnectedBanner(
+                        onClick = activeSession.onConnect,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(scrollEdgeInsets.only(WindowInsetsSides.Horizontal))
+                            .padding(horizontal = contentHPad)
+                            .padding(bottom = 4.dp),
+                    )
+                }
                 GreenhouseControlPanel(
                     fanOn = uiState.fanOn,
                     heaterOn = uiState.heaterOn,
@@ -332,7 +379,7 @@ fun GreenhouseScreenContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .windowInsetsPadding(scrollEdgeInsets.only(WindowInsetsSides.Horizontal))
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = contentHPad)
                         .windowInsetsPadding(contentBottomInsets)
                         .padding(bottom = 12.dp, top = 4.dp),
                 )

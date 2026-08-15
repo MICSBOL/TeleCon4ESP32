@@ -37,6 +37,7 @@ fun RcGlassCard(
     surfaceAlpha: Float = RcVehicleProGlass.SURFACE_ALPHA,
     accentEdge: RcGlassAccentEdge = RcGlassAccentEdge.START,
     contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    fillMaxHeight: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceAlpha)
@@ -50,7 +51,13 @@ fun RcGlassCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .then(
+                    if (fillMaxHeight) {
+                        Modifier.fillMaxHeight()
+                    } else {
+                        Modifier.height(IntrinsicSize.Min)
+                    },
+                ),
         ) {
             if (accentEdge == RcGlassAccentEdge.START) {
                 RcGlassAccentBar()
@@ -58,6 +65,7 @@ fun RcGlassCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .then(if (fillMaxHeight) Modifier.fillMaxHeight() else Modifier)
                     .background(surfaceColor)
                     .padding(contentPadding),
                 content = content,

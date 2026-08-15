@@ -1,6 +1,5 @@
 package com.micsbol.telecon4esp32.ui.cyber.components
 
-import android.graphics.BlurMaskFilter
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -23,14 +22,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -70,8 +66,8 @@ class ChamferShape(private val chamfer: Dp) : Shape {
 }
 
 /**
- * Strokes [path] with a soft neon glow using a blur mask filter drawn straight
- * into the native canvas. Used for all panel borders and the CTA halo.
+ * Strokes [path] with a soft neon halo using layered strokes (no BlurMaskFilter —
+ * safer on emulators where software blur can crash the GPU process).
  */
 fun DrawScope.drawNeonGlow(
     path: Path,
@@ -81,15 +77,10 @@ fun DrawScope.drawNeonGlow(
     alpha: Float = 1f,
 ) {
     if (blurRadius <= 0f) return
-    drawIntoCanvas { canvas ->
-        val paint = Paint().apply {
-            this.color = color.copy(alpha = color.alpha * alpha)
-            style = PaintingStyle.Stroke
-            this.strokeWidth = strokeWidth
-            asFrameworkPaint().maskFilter = BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL)
-        }
-        canvas.drawPath(path, paint)
-    }
+    val base = color.copy(alpha = (color.alpha * alpha).coerceIn(0f, 1f))
+    drawPath(path, color = base.copy(alpha = base.alpha * 0.22f), style = Stroke(width = strokeWidth + blurRadius * 1.6f))
+    drawPath(path, color = base.copy(alpha = base.alpha * 0.40f), style = Stroke(width = strokeWidth + blurRadius * 0.7f))
+    drawPath(path, color = base, style = Stroke(width = strokeWidth))
 }
 
 /**

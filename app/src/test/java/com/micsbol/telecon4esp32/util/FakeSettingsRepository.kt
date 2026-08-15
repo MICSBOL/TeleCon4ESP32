@@ -1,10 +1,14 @@
 package com.micsbol.telecon4esp32.util
 
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
+import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -101,6 +105,19 @@ class FakeSettingsRepository : ISettingsRepository {
         _transportTypes.update { it + (applicationId to transport) }
     }
 
+    private val _connectionModes =
+        MutableStateFlow<Map<ApplicationId, BluetoothConnectionMode>>(emptyMap())
+
+    override fun connectionModeFlow(applicationId: ApplicationId): Flow<BluetoothConnectionMode?> =
+        _connectionModes.map { modes -> modes[applicationId] }
+
+    override suspend fun saveConnectionMode(
+        applicationId: ApplicationId,
+        mode: BluetoothConnectionMode,
+    ) {
+        _connectionModes.update { it + (applicationId to mode) }
+    }
+
     private val _boards = MutableStateFlow<Map<ApplicationId, Esp32Board>>(emptyMap())
 
     override fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board> =
@@ -110,6 +127,50 @@ class FakeSettingsRepository : ISettingsRepository {
 
     override suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board) {
         _boards.update { it + (applicationId to board) }
+    }
+
+    private val _softApPresets =
+        MutableStateFlow<Map<ApplicationId, SoftApPerformancePreset>>(emptyMap())
+
+    override fun softApPerformancePresetFlow(
+        applicationId: ApplicationId,
+    ): Flow<SoftApPerformancePreset> =
+        _softApPresets.map { presets ->
+            presets[applicationId] ?: SoftApPerformancePreset.DEFAULT
+        }
+
+    override suspend fun saveSoftApPerformancePreset(
+        applicationId: ApplicationId,
+        preset: SoftApPerformancePreset,
+    ) {
+        _softApPresets.update { it + (applicationId to preset) }
+    }
+
+    private val _softApHudRates =
+        MutableStateFlow<Map<ApplicationId, SoftApHudProcessingRate>>(emptyMap())
+
+    override fun softApHudProcessingRateFlow(
+        applicationId: ApplicationId,
+    ): Flow<SoftApHudProcessingRate> =
+        _softApHudRates.map { rates ->
+            rates[applicationId] ?: SoftApHudProcessingRate.DEFAULT
+        }
+
+    override suspend fun saveSoftApHudProcessingRate(
+        applicationId: ApplicationId,
+        rate: SoftApHudProcessingRate,
+    ) {
+        _softApHudRates.update { it + (applicationId to rate) }
+    }
+
+    private val _rcVehicleProControl =
+        MutableStateFlow(RcVehicleProControlSettings.DEFAULT)
+
+    override fun rcVehicleProControlSettingsFlow(): Flow<RcVehicleProControlSettings> =
+        _rcVehicleProControl.asStateFlow()
+
+    override suspend fun saveRcVehicleProControlSettings(settings: RcVehicleProControlSettings) {
+        _rcVehicleProControl.update { settings }
     }
 
     // ── Helpers for tests ────────────────────────────────────────────────────

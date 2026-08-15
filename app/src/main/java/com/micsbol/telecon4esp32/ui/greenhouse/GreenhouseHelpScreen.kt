@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.rememberClampedSafeHudInsets
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCard
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -73,8 +74,10 @@ private fun GreenhouseHelpEmulatorContent(
 ) {
     val guideEntries = remember { greenhouseGuideEntries() }
     var expandedTitleRes by remember { mutableIntStateOf(0) }
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = true,
+        includeHorizontal = true,
     )
     val scrollState = rememberScrollState()
 
@@ -151,10 +154,16 @@ private fun GreenhouseHelpFullContent(
 ) {
     val guideEntries = remember { greenhouseGuideEntries() }
     var expandedTitleRes by remember { mutableIntStateOf(0) }
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = false,
+        includeHorizontal = true,
     )
-    val bottomInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+    val bottomInsets = rememberClampedSafeHudInsets(
+        includeTop = false,
+        includeBottom = true,
+        includeHorizontal = false,
+    )
 
     GreenhouseBackground(showPhoto = false) {
         Column(
@@ -385,6 +394,12 @@ private fun greenhouseGuideEntries(): List<GreenhouseGuideEntry> = listOf(
         descriptionRes = R.string.greenhouse_guide_controls_description,
         readRes = R.string.greenhouse_guide_controls_read,
         writeRes = R.string.greenhouse_guide_controls_write,
+    ),
+    GreenhouseGuideEntry(
+        titleRes = R.string.greenhouse_guide_camera_title,
+        descriptionRes = R.string.greenhouse_guide_camera_description,
+        readRes = R.string.greenhouse_guide_camera_read,
+        writeRes = R.string.greenhouse_guide_camera_write,
     ),
     GreenhouseGuideEntry(
         titleRes = R.string.greenhouse_guide_auto_title,

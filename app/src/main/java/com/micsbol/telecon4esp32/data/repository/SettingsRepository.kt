@@ -3,16 +3,21 @@ package com.micsbol.telecon4esp32.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
+import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.toStringRepresentation
+import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,6 +43,17 @@ private object PreferencesKeys {
     val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
     val LAST_DEVICE_NAME = stringPreferencesKey("last_device_name")
     val LAST_APPLICATION_ID = stringPreferencesKey("last_application_id")
+
+    val RC_VP_THROTTLE_HOLD = booleanPreferencesKey("rc_vehicle_pro_throttle_hold")
+    val RC_VP_STEERING_HOLD = booleanPreferencesKey("rc_vehicle_pro_steering_hold")
+    val RC_VP_STEER_TRIM = floatPreferencesKey("rc_vehicle_pro_steer_trim")
+    val RC_VP_THROTTLE_TRAVEL = floatPreferencesKey("rc_vehicle_pro_throttle_travel")
+    val RC_VP_STEER_TRAVEL = floatPreferencesKey("rc_vehicle_pro_steer_travel")
+    val RC_VP_REVERSE_THROTTLE = booleanPreferencesKey("rc_vehicle_pro_reverse_throttle")
+    val RC_VP_REVERSE_STEER = booleanPreferencesKey("rc_vehicle_pro_reverse_steer")
+    val RC_VP_STEER_EXPO = floatPreferencesKey("rc_vehicle_pro_steer_expo")
+    val RC_VP_THROTTLE_EXPO = floatPreferencesKey("rc_vehicle_pro_throttle_expo")
+    val RC_VP_DEADZONE = floatPreferencesKey("rc_vehicle_pro_deadzone")
 }
 
 private fun protocolModeKey(applicationId: ApplicationId) =
@@ -46,8 +62,17 @@ private fun protocolModeKey(applicationId: ApplicationId) =
 private fun transportTypeKey(applicationId: ApplicationId) =
     stringPreferencesKey("transport_type_${applicationId.name}")
 
+private fun connectionModeKey(applicationId: ApplicationId) =
+    stringPreferencesKey("connection_mode_${applicationId.name}")
+
 private fun boardKey(applicationId: ApplicationId) =
     stringPreferencesKey("esp32_board_${applicationId.name}")
+
+private fun softApPerformancePresetKey(applicationId: ApplicationId) =
+    stringPreferencesKey("softap_perf_preset_${applicationId.name}")
+
+private fun softApHudProcessingRateKey(applicationId: ApplicationId) =
+    stringPreferencesKey("softap_hud_processing_rate_${applicationId.name}")
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
 
@@ -121,6 +146,22 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
+    override fun connectionModeFlow(applicationId: ApplicationId): Flow<BluetoothConnectionMode?> =
+        context.dataStore.data.map { preferences ->
+            BluetoothConnectionMode.fromStored(preferences[connectionModeKey(applicationId)])
+        }
+
+    override suspend fun saveConnectionMode(
+        applicationId: ApplicationId,
+        mode: BluetoothConnectionMode,
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[connectionModeKey(applicationId)] = mode.name
+            preferences[transportTypeKey(applicationId)] = mode.transport.name
+            preferences[protocolModeKey(applicationId)] = mode.protocolMode.name
+        }
+    }
+
     override fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board> =
         context.dataStore.data.map { preferences ->
             val stored = preferences[boardKey(applicationId)]
@@ -130,6 +171,42 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     override suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board) {
         context.dataStore.edit { preferences ->
             preferences[boardKey(applicationId)] = board.name
+        }
+    }
+
+    override fun softApPerformancePresetFlow(
+        applicationId: ApplicationId,
+    ): Flow<SoftApPerformancePreset> =
+        context.dataStore.data.map { preferences ->
+            SoftApPerformancePreset.fromStored(
+                preferences[softApPerformancePresetKey(applicationId)],
+            )
+        }
+
+    override suspend fun saveSoftApPerformancePreset(
+        applicationId: ApplicationId,
+        preset: SoftApPerformancePreset,
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[softApPerformancePresetKey(applicationId)] = preset.name
+        }
+    }
+
+    override fun softApHudProcessingRateFlow(
+        applicationId: ApplicationId,
+    ): Flow<SoftApHudProcessingRate> =
+        context.dataStore.data.map { preferences ->
+            SoftApHudProcessingRate.fromStored(
+                preferences[softApHudProcessingRateKey(applicationId)],
+            )
+        }
+
+    override suspend fun saveSoftApHudProcessingRate(
+        applicationId: ApplicationId,
+        rate: SoftApHudProcessingRate,
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[softApHudProcessingRateKey(applicationId)] = rate.name
         }
     }
 
@@ -215,6 +292,45 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
         context.dataStore.edit { preferences ->
             preferences[key] = value
+        }
+    }
+
+    override fun rcVehicleProControlSettingsFlow(): Flow<RcVehicleProControlSettings> =
+        context.dataStore.data.map { preferences ->
+            val defaults = RcVehicleProControlSettings.DEFAULT
+            RcVehicleProControlSettings(
+                throttleHold = preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD]
+                    ?: defaults.throttleHold,
+                steeringHold = preferences[PreferencesKeys.RC_VP_STEERING_HOLD]
+                    ?: defaults.steeringHold,
+                steerTrim = preferences[PreferencesKeys.RC_VP_STEER_TRIM] ?: defaults.steerTrim,
+                throttleTravel = preferences[PreferencesKeys.RC_VP_THROTTLE_TRAVEL]
+                    ?: defaults.throttleTravel,
+                steerTravel = preferences[PreferencesKeys.RC_VP_STEER_TRAVEL]
+                    ?: defaults.steerTravel,
+                reverseThrottle = preferences[PreferencesKeys.RC_VP_REVERSE_THROTTLE]
+                    ?: defaults.reverseThrottle,
+                reverseSteer = preferences[PreferencesKeys.RC_VP_REVERSE_STEER]
+                    ?: defaults.reverseSteer,
+                steerExpo = preferences[PreferencesKeys.RC_VP_STEER_EXPO] ?: defaults.steerExpo,
+                throttleExpo = preferences[PreferencesKeys.RC_VP_THROTTLE_EXPO]
+                    ?: defaults.throttleExpo,
+                deadzone = preferences[PreferencesKeys.RC_VP_DEADZONE] ?: defaults.deadzone,
+            )
+        }
+
+    override suspend fun saveRcVehicleProControlSettings(settings: RcVehicleProControlSettings) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD] = settings.throttleHold
+            preferences[PreferencesKeys.RC_VP_STEERING_HOLD] = settings.steeringHold
+            preferences[PreferencesKeys.RC_VP_STEER_TRIM] = settings.steerTrim
+            preferences[PreferencesKeys.RC_VP_THROTTLE_TRAVEL] = settings.throttleTravel
+            preferences[PreferencesKeys.RC_VP_STEER_TRAVEL] = settings.steerTravel
+            preferences[PreferencesKeys.RC_VP_REVERSE_THROTTLE] = settings.reverseThrottle
+            preferences[PreferencesKeys.RC_VP_REVERSE_STEER] = settings.reverseSteer
+            preferences[PreferencesKeys.RC_VP_STEER_EXPO] = settings.steerExpo
+            preferences[PreferencesKeys.RC_VP_THROTTLE_EXPO] = settings.throttleExpo
+            preferences[PreferencesKeys.RC_VP_DEADZONE] = settings.deadzone
         }
     }
 }

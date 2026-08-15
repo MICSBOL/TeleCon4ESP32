@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,8 +21,14 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -65,9 +70,19 @@ fun RcControlZone(
     modifier: Modifier = Modifier,
     accentEdge: RcGlassAccentEdge = RcGlassAccentEdge.START,
     joystickSize: Dp = RcVehicleProLayout.JoystickSize,
+    showTitle: Boolean = true,
     onStopClick: (() -> Unit)? = null,
     onBuzzerClick: (() -> Unit)? = null,
+    isStickHold: Boolean = true,
+    onStickModeToggle: (() -> Unit)? = null,
+    steerTrimMode: Boolean = false,
+    steerTrimChannel: Int = 0,
+    onSteerTrimModeToggle: (() -> Unit)? = null,
+    onSteerTrimNudge: ((Int) -> Unit)? = null,
+    onSteerTrimConfirm: (() -> Unit)? = null,
 ) {
+    val showSteerTrim = onSteerTrimModeToggle != null
+
     RcGlassCard(
         modifier = modifier,
         surfaceAlpha = RcVehicleProGlass.JOYSTICK_ZONE_ALPHA,
@@ -79,30 +94,37 @@ fun RcControlZone(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            if (showTitle) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
             Text(
-                text = title,
+                text = if (steerTrimMode) {
+                    stringResource(R.string.rc_vehicle_steer_trim_value, steerTrimChannel)
+                } else {
+                    stringResource(
+                        R.string.rc_vehicle_control_axis_hint,
+                        negativeLabel,
+                        positiveLabel,
+                    )
+                },
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (steerTrimMode) brandPrimary() else mutedTextColor(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = stringResource(
-                    R.string.rc_vehicle_control_axis_hint,
-                    negativeLabel,
-                    positiveLabel,
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = mutedTextColor(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
+                textAlign = if (showTitle) TextAlign.End else TextAlign.Start,
+                modifier = Modifier.weight(1f, fill = !showTitle),
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -113,25 +135,141 @@ fun RcControlZone(
                 mode = mode,
                 onMove = onMove,
                 size = joystickSize,
+                // Deadzone/expo/travel applied in RcStickMapping before TX.
+                deadzone = 0f,
                 modifier = Modifier.align(Alignment.Center),
             )
-            if (onBuzzerClick != null) {
-                RcBuzzerButton(
-                    onClick = onBuzzerClick,
+            val onModeToggle = onStickModeToggle
+            val showModeAboveBuzzer = onModeToggle != null && onBuzzerClick != null
+            val showModeAboveStop = onModeToggle != null && onStopClick != null
+
+            // Overlay under the STEERING title so both stick zones keep the same stick size.
+            if (showSteerTrim) {
+                RcSteerTrimControls(
+                    trimMode = steerTrimMode,
+                    onToggleMode = onSteerTrimModeToggle,
+                    onNudge = onSteerTrimNudge,
+                    onConfirm = onSteerTrimConfirm,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 2.dp, top = 2.dp),
+                )
+            }
+
+            if (onBuzzerClick != null || showModeAboveBuzzer) {
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(4.dp),
-                )
+                        .padding(2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (onModeToggle != null && showModeAboveBuzzer) {
+                        RcStickModeSwitch(
+                            isHold = isStickHold,
+                            onClick = onModeToggle,
+                        )
+                    }
+                    if (onBuzzerClick != null) {
+                        RcBuzzerButton(onClick = onBuzzerClick)
+                    }
+                }
             }
-            if (onStopClick != null) {
-                RcMotorStopButton(
-                    onClick = onStopClick,
+            if (onStopClick != null || showModeAboveStop) {
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp),
-                )
+                        .padding(2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (onModeToggle != null && showModeAboveStop) {
+                        RcStickModeSwitch(
+                            isHold = isStickHold,
+                            onClick = onModeToggle,
+                        )
+                    }
+                    if (onStopClick != null) {
+                        RcMotorStopButton(onClick = onStopClick)
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun RcSteerTrimControls(
+    trimMode: Boolean,
+    onToggleMode: () -> Unit,
+    onNudge: ((Int) -> Unit)?,
+    onConfirm: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        if (trimMode && onNudge != null && onConfirm != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                RcRoundIconButton(
+                    onClick = { onNudge(-1) },
+                    label = stringResource(R.string.rc_vehicle_steer_trim_left),
+                    icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                )
+                RcRoundIconButton(
+                    onClick = onConfirm,
+                    label = stringResource(R.string.rc_vehicle_steer_trim_confirm),
+                    icon = Icons.Default.Check,
+                )
+                RcRoundIconButton(
+                    onClick = { onNudge(1) },
+                    label = stringResource(R.string.rc_vehicle_steer_trim_right),
+                    icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                )
+            }
+        } else {
+            RcRoundIconButton(
+                onClick = onToggleMode,
+                label = stringResource(R.string.rc_vehicle_steer_trim_enable),
+                icon = Icons.Default.Tune,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RcRoundIconButton(
+    onClick: () -> Unit,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    val background = MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.ACTION_CHIP_ALPHA)
+    val ringColor = brandPrimary().copy(alpha = 0.35f)
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .semantics { contentDescription = label }
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .background(background)
+            .drawBehind {
+                drawCircle(
+                    color = ringColor,
+                    radius = size.minDimension / 2f,
+                    style = Stroke(width = 1.5f.dp.toPx()),
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = brandPrimary(),
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -143,18 +281,80 @@ fun RcCenterControls(
     onRecordClick: () -> Unit,
     onLightsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    throttleTravelPercent: Int = 100,
+    steerTravelPercent: Int = 100,
+    onCycleThrottleTravel: (() -> Unit)? = null,
+    onCycleSteerTravel: (() -> Unit)? = null,
+    onOpenDriveAssist: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (onCycleThrottleTravel != null || onCycleSteerTravel != null || onOpenDriveAssist != null) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onCycleThrottleTravel != null) {
+                    RcTravelChip(
+                        label = stringResource(
+                            R.string.rc_vehicle_travel_throttle_chip,
+                            throttleTravelPercent,
+                        ),
+                        onClick = onCycleThrottleTravel,
+                    )
+                }
+                if (onCycleSteerTravel != null) {
+                    RcTravelChip(
+                        label = stringResource(
+                            R.string.rc_vehicle_travel_steer_chip,
+                            steerTravelPercent,
+                        ),
+                        onClick = onCycleSteerTravel,
+                    )
+                }
+                if (onOpenDriveAssist != null) {
+                    RcRoundIconButton(
+                        onClick = onOpenDriveAssist,
+                        label = stringResource(R.string.rc_vehicle_drive_assist_title),
+                        icon = Icons.Default.Tune,
+                    )
+                }
+            }
+        }
         RcActionBar(
             isRecording = isRecording,
             lightsOn = lightsOn,
             onPhotoClick = onPhotoClick,
             onRecordClick = onRecordClick,
             onLightsClick = onLightsClick,
+        )
+    }
+}
+
+@Composable
+private fun RcTravelChip(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val background = MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.ACTION_CHIP_ALPHA)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .background(background)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = brandPrimary(),
+            maxLines = 1,
         )
     }
 }
@@ -170,11 +370,11 @@ fun RcCameraPanPanel(
         modifier = modifier,
         surfaceAlpha = RcVehicleProGlass.SURFACE_ALPHA,
         accentEdge = RcGlassAccentEdge.END,
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
     ) {
-        Row (verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-//            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             RcCameraKnobControl(
                 value = value,
@@ -193,36 +393,20 @@ private fun RcCameraFrontChip(
     val label = stringResource(R.string.rc_vehicle_action_camera_front)
     val chipBackground = MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.ACTION_CHIP_ALPHA)
 
-    Row(
+    Box(
         modifier = modifier
+            .semantics { contentDescription = label }
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .background(chipBackground)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(8.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
-                )
-                .padding(5.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.CenterFocusStrong,
-                contentDescription = label,
-                tint = brandPrimary(),
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        Icon(
+            imageVector = Icons.Default.CenterFocusStrong,
+            contentDescription = null,
+            tint = brandPrimary(),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -233,21 +417,17 @@ fun RcCameraKnobControl(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+    val panRaw = RcVehicleProLayout.cameraPanRaw(value)
+    val panDescription = stringResource(R.string.rc_vehicle_camera_pan_value, panRaw)
+    Box(
+        modifier = modifier.semantics { contentDescription = panDescription },
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            RcCameraRotationKnob(
-                value = value,
-                onValueChange = onValueChange,
-                knobSize = RcVehicleProLayout.ControlZoneKnobSize,
-            )
-        }
+        RcCameraRotationKnob(
+            value = value,
+            onValueChange = onValueChange,
+            knobSize = RcVehicleProLayout.ControlZoneKnobSize,
+        )
     }
 }
 
@@ -261,7 +441,7 @@ fun RcActionBar(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -270,18 +450,21 @@ fun RcActionBar(
             icon = Icons.Default.Lightbulb,
             iconActive = lightsOn,
             onClick = onLightsClick,
+            modifier = Modifier.weight(1f),
         )
         RcActionChip(
             label = stringResource(R.string.rc_vehicle_action_photo),
             icon = Icons.Default.CameraAlt,
             iconActive = false,
             onClick = onPhotoClick,
+            modifier = Modifier.weight(1f),
         )
         RcActionChip(
             label = stringResource(R.string.rc_vehicle_action_record),
             icon = Icons.Default.FiberManualRecord,
             iconActive = isRecording,
             onClick = onRecordClick,
+            modifier = Modifier.weight(1f),
         )
     }
 }
@@ -314,6 +497,49 @@ private fun RcBuzzerButton(
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun RcStickModeSwitch(
+    isHold: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val modeLabel = stringResource(
+        if (isHold) {
+            R.string.rc_vehicle_stick_mode_hold
+        } else {
+            R.string.rc_vehicle_stick_mode_spring
+        },
+    )
+    val description = stringResource(R.string.rc_vehicle_stick_mode_toggle, modeLabel)
+    val background = MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.ACTION_CHIP_ALPHA)
+    val ringColor = brandPrimary().copy(alpha = 0.35f)
+    val iconColor = brandPrimary()
+
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .semantics { contentDescription = description }
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .background(background)
+            .drawBehind {
+                drawCircle(
+                    color = ringColor,
+                    radius = size.minDimension / 2f,
+                    style = Stroke(width = 1.5f.dp.toPx()),
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (isHold) Icons.Default.Lock else Icons.Default.Sync,
             contentDescription = null,
             tint = iconColor,
             modifier = Modifier.size(20.dp),
@@ -458,6 +684,8 @@ private fun RcActionChip(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
         )
     }
 }

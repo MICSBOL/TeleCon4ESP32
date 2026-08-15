@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -39,11 +41,13 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
@@ -225,9 +229,13 @@ fun CartesianPlot(
 }
 
 @Composable
-private fun PlotLegendItem(plotData: PlotData) {
+private fun PlotLegendItem(
+    plotData: PlotData,
+    textStyle: TextStyle,
+    characterThreshold: Int,
+) {
     Row(
-        modifier = Modifier.padding(vertical = 1.dp),
+        modifier = Modifier.padding(vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {
@@ -240,8 +248,9 @@ private fun PlotLegendItem(plotData: PlotData) {
         Spacer(modifier = Modifier.width(4.dp))
         HorizontalTextAnimation(
             text = plotData.name,
-            style = MaterialTheme.typography.labelSmall,
+            style = textStyle,
             color = Color.LightGray,
+            characterThreshold = characterThreshold,
         )
     }
 }
@@ -252,21 +261,39 @@ private fun CartesianPlotPane(
     series: List<PlotData>,
     plotRevision: Long,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         RealTimePlot(
             modifier = Modifier.fillMaxSize(),
             series = series,
             plotRevision = plotRevision,
         )
+        // Scale legend so two labels never stack-overflow on short landscape panes.
+        val compact = maxHeight < 72.dp
+        val legendStyle = MaterialTheme.typography.labelSmall.copy(
+            fontSize = if (compact) 8.sp else 10.sp,
+            lineHeight = if (compact) 10.sp else 12.sp,
+        )
+        val characterThreshold = when {
+            maxWidth < 100.dp -> 5
+            maxWidth < 160.dp -> 7
+            else -> 10
+        }
+        val legendSpacing = if (compact) 0.dp else 2.dp
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 4.dp, top = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+                .fillMaxWidth(0.55f)
+                .padding(start = 4.dp, top = 10.dp, end = 2.dp)
+                .clipToBounds(),
+            verticalArrangement = Arrangement.spacedBy(legendSpacing),
             horizontalAlignment = Alignment.Start,
         ) {
             series.forEach { plotData ->
-                PlotLegendItem(plotData = plotData)
+                PlotLegendItem(
+                    plotData = plotData,
+                    textStyle = legendStyle,
+                    characterThreshold = characterThreshold,
+                )
             }
         }
     }

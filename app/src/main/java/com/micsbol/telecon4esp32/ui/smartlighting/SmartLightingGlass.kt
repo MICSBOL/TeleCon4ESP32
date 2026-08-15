@@ -149,19 +149,13 @@ fun SmartLightingGlassIconButton(
     size: Dp = 44.dp,
     content: @Composable () -> Unit,
 ) {
-    IconButton(
+    com.micsbol.telecon4esp32.ui.components.GlassChromeIconButton(
         onClick = onClick,
+        background = SmartLightingGlass.CardSurface.copy(alpha = SmartLightingGlass.TopBarButtonAlpha),
+        borderColor = SmartLightingGlass.BorderColor.copy(alpha = SmartLightingGlass.BorderAlpha),
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(SmartLightingGlass.CardSurface.copy(alpha = SmartLightingGlass.TopBarButtonAlpha))
-            .border(
-                1.dp,
-                SmartLightingGlass.BorderColor.copy(alpha = SmartLightingGlass.BorderAlpha),
-                CircleShape,
-            ),
-    ) {
-        content()
-    }
+        size = size,
+        content = content,
+    )
 }

@@ -24,7 +24,7 @@ fun CoinPricingTable(
     Column(modifier = modifier.fillMaxWidth()) {
         CoinPricingTableHeaderRow()
         HorizontalDivider(color = Neo.TextMuted.copy(alpha = 0.3f))
-        CoinUnlockOption.entries.forEach { option ->
+        CoinUnlockOption.entries.filter { it.isCoinPurchasable }.forEach { option ->
             CoinPricingTableDataRow(option = option)
             HorizontalDivider(color = Neo.TextMuted.copy(alpha = 0.15f))
         }
@@ -114,6 +114,7 @@ private fun CoinPricingTableDataRow(option: CoinUnlockOption) {
 @Composable
 private fun optionLabel(option: CoinUnlockOption): String = when (option) {
     CoinUnlockOption.ONE_USE -> stringResource(R.string.coins_table_one_use)
+    CoinUnlockOption.HOURS_4 -> stringResource(R.string.coins_table_4h)
     CoinUnlockOption.HOURS_24 -> stringResource(R.string.coins_table_24h)
     CoinUnlockOption.DAYS_3 -> stringResource(R.string.coins_table_3d)
     CoinUnlockOption.WEEK -> stringResource(R.string.coins_table_week)
@@ -122,6 +123,7 @@ private fun optionLabel(option: CoinUnlockOption): String = when (option) {
 @Composable
 private fun perDayLabel(option: CoinUnlockOption): String = when (option) {
     CoinUnlockOption.ONE_USE -> stringResource(R.string.coins_table_dash)
+    CoinUnlockOption.HOURS_4 -> stringResource(R.string.coins_table_dash)
     CoinUnlockOption.HOURS_24 -> stringResource(R.string.coins_table_per_day_24h)
     CoinUnlockOption.DAYS_3 -> stringResource(R.string.coins_table_per_day_3d)
     CoinUnlockOption.WEEK -> stringResource(R.string.coins_table_per_day_week)

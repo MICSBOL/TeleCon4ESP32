@@ -7,20 +7,27 @@ import java.nio.ByteOrder
 /**
  * Smart Home (`SH`) binary protocol — app byte `0x48` (`H`).
  *
- * Compact system snapshot; room detail stays SIMPLE-friendly for firmware demos.
+ * Compact system snapshot plus device flags; room detail also travels on SIMPLE `SH:DATA`.
  */
 object ShBinaryProtocol {
     const val APP_BYTE: Byte = 0x48
-    const val DATA_PAYLOAD_SIZE: Int = 12
+    /** climate…garage_on (12) + device_flags u16 (2). */
+    const val DATA_PAYLOAD_SIZE: Int = 14
 
     const val MASK_REFRESH: Int = 1 shl 0
     const val MASK_ROOM_DEVICE: Int = 1 shl 1
+    const val MASK_SCENE: Int = 1 shl 2
+
+    const val SCENE_ALL_LIGHTS_OFF: Int = 0
+    const val SCENE_AWAY: Int = 1
 }
 
 object ShPacketEncoder {
     /**
-     * Encodes SET commands. For `room`/`device` toggles, [pairs] must include
-     * `room_id` (u8), `device_id` (u8), and `state` (0/1).
+     * Encodes SET commands.
+     * - Room device: `room_id` (u8), `device_id` (u8), `state` (0/1)
+     * - Scene: `scene` as name ([SmartHomeProtocol.SCENE_*]) or int
+     * - Refresh: `refresh`
      */
     fun buildSetPacket(pairs: Map<String, Any>): ByteArray {
         var mask = 0
@@ -36,8 +43,22 @@ object ShPacketEncoder {
             values += AppBinaryFrame.u8Byte(pairs.getValue("device_id"))
             values += AppBinaryFrame.boolByte(pairs["state"] ?: 1)
         }
+        pairs["scene"]?.let { scene ->
+            mask = mask or ShBinaryProtocol.MASK_SCENE
+            values += sceneByte(scene)
+        }
 
         return AppBinaryFrame.buildSetPacket(ShBinaryProtocol.APP_BYTE, mask, values)
+    }
+
+    private fun sceneByte(value: Any): Byte = when (value) {
+        is Number -> value.toInt().coerceIn(0, 255).toByte()
+        is String -> when (value) {
+            SmartHomeProtocol.SCENE_ALL_LIGHTS_OFF -> ShBinaryProtocol.SCENE_ALL_LIGHTS_OFF
+            SmartHomeProtocol.SCENE_AWAY -> ShBinaryProtocol.SCENE_AWAY
+            else -> value.toIntOrNull()?.coerceIn(0, 255) ?: 0
+        }.toByte()
+        else -> 0
     }
 }
 
@@ -58,19 +79,38 @@ object ShBinaryTelemetryMapper {
         val kitchenOn = buf.get().toInt() and 0xFF
         val bedroomOn = buf.get().toInt() and 0xFF
         val garageOn = buf.get().toInt() and 0xFF
+        val deviceFlags = buf.short.toInt() and 0xFFFF
 
-        return mapOf(
-            "climate_temp" to climateTemp.toString(),
-            "climate_status" to climateStatus.toString(),
-            "energy_kw" to (energyX10 / 10f).toString(),
-            "power_kw" to (energyX10 / 10f).toString(),
-            "security_status" to securityStatus.toString(),
-            "water_l" to waterL.toString(),
-            "status" to status.toString(),
-            "living_on" to livingOn.toString(),
-            "kitchen_on" to kitchenOn.toString(),
-            "bedroom_on" to bedroomOn.toString(),
-            "garage_on" to garageOn.toString(),
-        )
+        return buildMap {
+            put("climate_temp", climateTemp.toString())
+            put("climate_status", climateStatus.toString())
+            put("energy_kw", (energyX10 / 10f).toString())
+            put("power_kw", (energyX10 / 10f).toString())
+            put("security_status", securityStatus.toString())
+            put("water_l", waterL.toString())
+            put("status", status.toString())
+            put("living_on", livingOn.toString())
+            put("kitchen_on", kitchenOn.toString())
+            put("bedroom_on", bedroomOn.toString())
+            put("garage_on", garageOn.toString())
+            put("device_flags", deviceFlags.toString())
+            putDeviceFlagKeys(deviceFlags)
+        }
+    }
+
+    private fun MutableMap<String, String>.putDeviceFlagKeys(flags: Int) {
+        fun putFlag(room: String, device: String) {
+            val bit = SmartHomeProtocol.deviceFlagBit(room, device) ?: return
+            put("${room}_$device", if ((flags and (1 shl bit)) != 0) "1" else "0")
+        }
+        putFlag(SmartHomeProtocol.ROOM_LIVING, SmartHomeProtocol.DEVICE_LIGHT)
+        putFlag(SmartHomeProtocol.ROOM_LIVING, SmartHomeProtocol.DEVICE_AMBIENCE)
+        putFlag(SmartHomeProtocol.ROOM_LIVING, SmartHomeProtocol.DEVICE_OUTLET)
+        putFlag(SmartHomeProtocol.ROOM_KITCHEN, SmartHomeProtocol.DEVICE_LIGHT)
+        putFlag(SmartHomeProtocol.ROOM_KITCHEN, SmartHomeProtocol.DEVICE_APPLIANCE)
+        putFlag(SmartHomeProtocol.ROOM_KITCHEN, SmartHomeProtocol.DEVICE_WATER)
+        putFlag(SmartHomeProtocol.ROOM_BEDROOM, SmartHomeProtocol.DEVICE_LIGHT)
+        putFlag(SmartHomeProtocol.ROOM_GARAGE, SmartHomeProtocol.DEVICE_LIGHT)
+        putFlag(SmartHomeProtocol.ROOM_GARAGE, SmartHomeProtocol.DEVICE_LOCK)
     }
 }

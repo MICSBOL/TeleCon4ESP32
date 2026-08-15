@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,16 +17,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -43,11 +43,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,7 +58,6 @@ import androidx.compose.ui.window.Dialog
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
 import com.micsbol.telecon4esp32.ui.theme.AppGlassBackground
 import com.micsbol.telecon4esp32.ui.theme.Neo
-import android.graphics.BlurMaskFilter
 
 /** Frosted glass card surface with a thin light border. */
 fun Modifier.glassSurface(
@@ -128,18 +125,15 @@ fun NeoCard(
     Column(modifier = base, content = content)
 }
 
-/** Soft orange glow behind selected icon buttons. */
+/** Soft orange glow behind selected icon buttons (no BlurMaskFilter — safer on emulators). */
 private fun DrawScope.drawAccentGlow(cornerRadius: Float, pressed: Boolean) {
     val glowColor = if (pressed) Neo.AccentPressed else Neo.Accent
-    drawIntoCanvas { canvas ->
-        val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
-        paint.isAntiAlias = true
-        paint.maskFilter = BlurMaskFilter(18f, BlurMaskFilter.Blur.NORMAL)
-        paint.color = glowColor.copy(alpha = 0.50f).toArgb()
-        canvas.nativeCanvas.drawRoundRect(
-            2f, 4f, size.width - 2f, size.height + 4f, cornerRadius, cornerRadius, paint,
-        )
-    }
+    drawRoundRect(
+        color = glowColor.copy(alpha = 0.35f),
+        topLeft = Offset(1f, 3f),
+        size = Size(size.width - 2f, size.height),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius, cornerRadius),
+    )
     drawRoundRect(
         brush = Brush.radialGradient(
             colors = listOf(Neo.AccentHighlight, Neo.Accent, Neo.AccentPressed),
@@ -246,18 +240,15 @@ private fun NeoIconSurface(
         )
     }
 }
-/** Orange gradient pill body with a soft outer glow. */
+/** Orange gradient pill body with a soft outer halo (no BlurMaskFilter — safer on emulators). */
 private fun DrawScope.drawAccentPill(cornerRadius: Float, pressed: Boolean) {
     if (!pressed) {
-        drawIntoCanvas { canvas ->
-            val paint = androidx.compose.ui.graphics.Paint().asFrameworkPaint()
-            paint.isAntiAlias = true
-            paint.maskFilter = BlurMaskFilter(16f, BlurMaskFilter.Blur.NORMAL)
-            paint.color = Neo.Accent.copy(alpha = 0.35f).toArgb()
-            canvas.nativeCanvas.drawRoundRect(
-                2f, 4f, size.width - 2f, size.height + 4f, cornerRadius, cornerRadius, paint,
-            )
-        }
+        drawRoundRect(
+            color = Neo.Accent.copy(alpha = 0.28f),
+            topLeft = Offset(1f, 3f),
+            size = Size(size.width - 2f, size.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius, cornerRadius),
+        )
     }
     val bodyBrush = if (pressed) {
         Brush.verticalGradient(listOf(Neo.AccentPressed, Neo.AccentPressed))
@@ -295,6 +286,7 @@ fun NeoPillButton(
     enabled: Boolean = true,
     icon: ImageVector? = null,
     iconPainter: Painter? = null,
+    trailingPainter: Painter? = null,
     compact: Boolean = false,
     fillMaxWidth: Boolean = false,
 ) {
@@ -347,6 +339,15 @@ fun NeoPillButton(
                 modifier = Modifier.size(if (compact) 18.dp else 20.dp),
             )
             Spacer(modifier = Modifier.width(10.dp))
+        }
+
+        if (trailingPainter != null) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Image(
+                painter = trailingPainter,
+                contentDescription = null,
+                modifier = Modifier.size(if (compact) 18.dp else 20.dp),
+            )
         }
         Text(
             text = text,
@@ -582,46 +583,60 @@ fun NeoTopBar(
     onNavigateBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                ),
-            )
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .safeHudPadding(
+                includeTop = true,
+                includeBottom = false,
+                includeHorizontal = true,
+            ),
     ) {
-        if (onNavigateBack != null) {
-            NeoIconButton(
-                icon = Icons.AutoMirrored.Filled.ArrowBack,
-                onClick = onNavigateBack,
-                contentDescription = null,
-                size = 44.dp,
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Neo.TextPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (subtitle != null) {
+        val compact = maxWidth < 400.dp
+        val edgePad = if (compact) 10.dp else 14.dp
+        val backSize = if (compact) 40.dp else 44.dp
+        val titleGap = if (compact) 8.dp else 14.dp
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = edgePad, vertical = if (compact) 10.dp else 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onNavigateBack != null) {
+                NeoIconButton(
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    onClick = onNavigateBack,
+                    contentDescription = null,
+                    size = backSize,
+                )
+                Spacer(modifier = Modifier.width(titleGap))
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(min = 0.dp),
+            ) {
                 Text(
-                    text = subtitle,
-                    color = Neo.TextSecondary,
-                    fontSize = 13.sp,
-                    maxLines = 1,
+                    text = title,
+                    color = Neo.TextPrimary,
+                    fontSize = if (compact) 17.sp else 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        color = Neo.TextSecondary,
+                        fontSize = if (compact) 12.sp else 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            actions()
         }
-        actions()
     }
 }
 /**
@@ -645,16 +660,17 @@ fun NeoScaffold(
                 onNavigateBack = onNavigateBack,
                 actions = actions,
             )
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                    .safeHudPadding(
+                        includeTop = false,
+                        includeBottom = true,
+                        includeHorizontal = true,
                     ),
             ) {
-                content(PaddingValues(horizontal = 18.dp))
+                val contentPad = if (maxWidth < 400.dp) 12.dp else 18.dp
+                content(PaddingValues(horizontal = contentPad))
             }
         }
     }
@@ -671,26 +687,68 @@ fun NeoDialog(
     content: @Composable ColumnScope.() -> Unit = {},
     actions: @Composable () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = horizontalMargin)
-                .clip(RoundedCornerShape(24.dp))
-                .background(AppGlass.DialogSurface.copy(alpha = AppGlass.DialogSurfaceAlpha))
-                .border(
-                    1.dp,
-                    AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha),
-                    RoundedCornerShape(24.dp),
-                )
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    val configuration = LocalConfiguration.current
+    val heightFraction = if (configuration.screenHeightDp < 500) 0.92f else 0.86f
+    val maxDialogHeight = (configuration.screenHeightDp * heightFraction)
+        .dp
+        .coerceAtLeast(220.dp)
+
+    ProvideCappedFontScale(maxFontScale = 1.15f) {
+        Dialog(
+            onDismissRequest = onDismissRequest,
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = true,
+                dismissOnClickOutside = true,
+                dismissOnBackPress = true,
+            ),
         ) {
-            title?.invoke()
-            subtitle?.invoke()
-            content()
-            Spacer(modifier = Modifier.height(4.dp))
-            actions()
+            val scrimInteraction = remember { MutableInteractionSource() }
+            val cardInteraction = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = scrimInteraction,
+                        indication = null,
+                        onClick = onDismissRequest,
+                    )
+                    .padding(horizontal = horizontalMargin, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .heightIn(max = maxDialogHeight)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(AppGlass.DialogSurface.copy(alpha = AppGlass.DialogSurfaceAlpha))
+                        .border(
+                            1.dp,
+                            AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha),
+                            RoundedCornerShape(24.dp),
+                        )
+                        .clickable(
+                            interactionSource = cardInteraction,
+                            indication = null,
+                            onClick = {},
+                        )
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    title?.invoke()
+                    subtitle?.invoke()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        content = content,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    actions()
+                }
+            }
         }
     }
 }
@@ -705,8 +763,10 @@ fun NeoDialogTitle(
         text = text,
         modifier = modifier.fillMaxWidth(),
         color = color,
-        fontSize = 20.sp,
+        fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
+        maxLines = 3,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 

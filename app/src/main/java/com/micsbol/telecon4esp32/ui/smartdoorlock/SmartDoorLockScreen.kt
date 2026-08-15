@@ -39,12 +39,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
 import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothTopBarButton
+import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorLockTopBar
 import com.micsbol.telecon4esp32.ui.smartdoorlock.components.SmartDoorMediaControls
@@ -56,6 +58,7 @@ import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 @Composable
 fun SmartDoorLockScreen(
     navController: NavController,
+    bluetoothViewModel: BluetoothViewModel,
     viewModel: SmartDoorLockViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -67,6 +70,16 @@ fun SmartDoorLockScreen(
     DisposableEffect(Unit) {
         onDispose {
             viewModel.onScreenHidden()
+        }
+    }
+
+    LaunchedEffect(
+        uiState.cameraLinkProfile,
+        uiState.isCameraOnline,
+        uiState.isEsp32Online,
+    ) {
+        if (viewModel.shouldAutoConnectSoftApControl()) {
+            bluetoothViewModel.ensureWifiSoftApConnected(ApplicationId.SMART_DOOR_LOCK)
         }
     }
 
@@ -148,10 +161,10 @@ fun SmartDoorLockScreenContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                    .safeHudPadding(
+                        includeTop = false,
+                        includeBottom = true,
+                        includeHorizontal = true,
                     )
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 16.dp),

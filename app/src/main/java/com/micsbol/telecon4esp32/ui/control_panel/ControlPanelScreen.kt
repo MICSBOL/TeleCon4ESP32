@@ -12,21 +12,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.BoxWithConstraintsScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelOverlayControls
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,12 +39,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.domain.bluetooth.IndicatorState
@@ -55,6 +55,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.PanelState
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothConnectionErrorDialog
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.bluetooth.rememberSoftApConnectAction
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.ui.bluetooth.RcControlState
 import com.micsbol.telecon4esp32.ui.control_panel.components.AnalogIndicator
@@ -125,6 +126,25 @@ fun ControlPanelScreen(
         bluetoothConnectionState.isConnected &&
             bluetoothConnectionState.activeSession?.applicationId == ApplicationId.CONTROL_PANEL
 
+    val softApConnect = rememberSoftApConnectAction(
+        onConnect = {
+            val wifiMode =
+                if (controlPanelProtocolMode == BluetoothProtocolMode.ADVANCED) {
+                    BluetoothConnectionMode.WIFI_BINARY
+                } else {
+                    BluetoothConnectionMode.WIFI_SIMPLE
+                }
+            actualViewModel?.dismissError()
+            actualViewModel?.requestApplicationConnection(
+                applicationId = ApplicationId.CONTROL_PANEL,
+                protocolMode = wifiMode.protocolMode,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = wifiMode,
+            )
+            actualViewModel?.connectToWifiSoftAp()
+        },
+    )
+
     // Shows RC:CONNECT handshake failures (proto/app mismatch or timeout) after Classic/BLE connect.
     // Telemetry UI is identical for Classic Simple, Classic Binary, and BLE — bench/simulate
     // echo (sticks→panels/plots) is firmware-side; see CONTROL_PANEL_DEBUG_PARITY_ESP32_PROMPT.md.
@@ -159,53 +179,7 @@ fun ControlPanelScreen(
                 }
             }
 
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val density = LocalDensity.current
-                LaunchedEffect(Unit) {
-                    val dpWidth = with(density) { maxWidth }
-                    val dpHeight = with(density) { maxHeight }
-                    val dpi = density.density * 160
-                    Log.d("DeviceMetrics", "Width: ${dpWidth}, Height: ${dpHeight}, DPI: $dpi")
-                }
-
-                val screenAspectRatio = maxWidth / maxHeight
-
-                // ── Stable callbacks ───────────────────────────────────────────────────
-                // remember(bluetoothViewModel) means the same lambda object is reused on
-                // every recomposition, allowing Compose to skip ControllerSide entirely
-                // when only the joystick position (which is NOT a ControllerSide param)
-                // changes.
-                val onLeftMove: (Float, Float) -> Unit = remember(bluetoothViewModel) {
-                    { x, y -> bluetoothViewModel?.onLeftStickChanged(x, y) }
-                }
-                val onRightMove: (Float, Float) -> Unit = remember(bluetoothViewModel) {
-                    { x, y -> bluetoothViewModel?.onRightStickChanged(x, y) }
-                }
-                val onLeftSwitchChange: (Int, Boolean) -> Unit = remember(bluetoothViewModel) {
-                    { idx, v -> bluetoothViewModel?.onLeftSwitchChanged(idx, v) }
-                }
-                val onRightSwitchChange: (Int, Boolean) -> Unit = remember(bluetoothViewModel) {
-                    { idx, v -> bluetoothViewModel?.onRightSwitchChanged(idx, v) }
-                }
-                val onLeftKnobChange: (Float) -> Unit = remember(bluetoothViewModel) {
-                    { v -> bluetoothViewModel?.onLeftKnobChanged(v) }
-                }
-                val onRightKnobChange: (Float) -> Unit = remember(bluetoothViewModel) {
-                    { v -> bluetoothViewModel?.onRightKnobChanged(v) }
-                }
-                val onTopLeftPress: () -> Unit = remember(bluetoothViewModel) {
-                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) }
-                }
-                val onBottomLeftPress: () -> Unit = remember(bluetoothViewModel) {
-                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) }
-                }
-                val onTopRightPress: () -> Unit = remember(bluetoothViewModel) {
-                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) }
-                }
-                val onBottomRightPress: () -> Unit = remember(bluetoothViewModel) {
-                    { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) }
-                }
-
+            Box(modifier = Modifier.fillMaxSize()) {
                 Image(
                     painter = painterResource(id = R.drawable.plastic_background),
                     contentDescription = "Background",
@@ -213,17 +187,29 @@ fun ControlPanelScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                val onOpenBluetooth: () -> Unit = remember(actualViewModel, navController, controlPanelProtocolMode, controlPanelTransportType) {
+                val onOpenBluetooth: () -> Unit = remember(
+                    actualViewModel,
+                    navController,
+                    controlPanelProtocolMode,
+                    controlPanelTransportType,
+                    softApConnect,
+                ) {
                     {
-                        // Passes Classic Simple/Binary or BLE Binary so RC:CONNECT,proto,… matches Settings.
-                        actualViewModel?.requestApplicationConnection(
-                            ApplicationId.CONTROL_PANEL,
-                            controlPanelProtocolMode,
-                            controlPanelTransportType,
-                        )
-                        actualViewModel?.preparePostConnectPopBack()
-                        if (navController != null) {
-                            navController.navigate(Screen.Bluetooth.route)
+                        if (controlPanelTransportType == BluetoothTransportType.WIFI) {
+                            // SoftAP: in-app local-only join (API 29+) or system Wi‑Fi settings.
+                            softApConnect()
+                        } else {
+                            // Passes Classic Simple/Binary or BLE Binary so RC:CONNECT,proto,… matches Settings.
+                            actualViewModel?.dismissError()
+                            actualViewModel?.requestApplicationConnection(
+                                ApplicationId.CONTROL_PANEL,
+                                controlPanelProtocolMode,
+                                controlPanelTransportType,
+                            )
+                            actualViewModel?.preparePostConnectPopBack()
+                            if (navController != null) {
+                                navController.navigate(Screen.Bluetooth.route)
+                            }
                         }
                     }
                 }
@@ -236,83 +222,136 @@ fun ControlPanelScreen(
                     )
                 }
 
-                // Row keeps plot/center recompositions isolated from the side controller trees.
-                Row(
+                // Insets applied first so layout metrics use the real usable HUD area.
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .safeHudPadding(
+                            includeTop = true,
+                            includeBottom = true,
+                            includeHorizontal = true,
+                        ),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .wrapContentWidth()
-                            .fillMaxHeight(),
-                    ) {
-                        ControlPanelLeftControllerHost(
-                            bluetoothViewModel = bluetoothViewModel,
-                            telemetryState = actualTelemetryState,
-                            rcControlState = actualRcControlState,
-                            settings = state.settings,
-                            aspectRatio = screenAspectRatio,
-                            settingsSyncGeneration = settingsSyncGeneration,
-                            onMove = onLeftMove,
-                            onSwitchStateChange = onLeftSwitchChange,
-                            onKnobValueChange = onLeftKnobChange,
-                            onTopPress = onTopLeftPress,
-                            onBottomPress = onBottomLeftPress,
+                    val contentWidth = maxWidth
+                    LaunchedEffect(contentWidth, maxHeight) {
+                        Log.d(
+                            "DeviceMetrics",
+                            "ControlPanel content: ${contentWidth}x${maxHeight}",
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
+
+                    // ── Stable callbacks ───────────────────────────────────────────────────
+                    // remember(bluetoothViewModel) means the same lambda object is reused on
+                    // every recomposition, allowing Compose to skip ControllerSide entirely
+                    // when only the joystick position (which is NOT a ControllerSide param)
+                    // changes.
+                    val onLeftMove: (Float, Float) -> Unit = remember(bluetoothViewModel) {
+                        { x, y -> bluetoothViewModel?.onLeftStickChanged(x, y) }
+                    }
+                    val onRightMove: (Float, Float) -> Unit = remember(bluetoothViewModel) {
+                        { x, y -> bluetoothViewModel?.onRightStickChanged(x, y) }
+                    }
+                    val onLeftSwitchChange: (Int, Boolean) -> Unit = remember(bluetoothViewModel) {
+                        { idx, v -> bluetoothViewModel?.onLeftSwitchChanged(idx, v) }
+                    }
+                    val onRightSwitchChange: (Int, Boolean) -> Unit = remember(bluetoothViewModel) {
+                        { idx, v -> bluetoothViewModel?.onRightSwitchChanged(idx, v) }
+                    }
+                    val onLeftKnobChange: (Float) -> Unit = remember(bluetoothViewModel) {
+                        { v -> bluetoothViewModel?.onLeftKnobChanged(v) }
+                    }
+                    val onRightKnobChange: (Float) -> Unit = remember(bluetoothViewModel) {
+                        { v -> bluetoothViewModel?.onRightKnobChanged(v) }
+                    }
+                    val onTopLeftPress: () -> Unit = remember(bluetoothViewModel) {
+                        { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_LEFT) }
+                    }
+                    val onBottomLeftPress: () -> Unit = remember(bluetoothViewModel) {
+                        { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_LEFT) }
+                    }
+                    val onTopRightPress: () -> Unit = remember(bluetoothViewModel) {
+                        { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_TOP_RIGHT) }
+                    }
+                    val onBottomRightPress: () -> Unit = remember(bluetoothViewModel) {
+                        { bluetoothViewModel?.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT) }
+                    }
+
+                    // Row keeps plot/center recompositions isolated from the side controller trees.
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val centerOverlay: @Composable () -> Unit = {
-                            if (navController != null) {
-                                ControlPanelOverlayControls(
-                                    isBluetoothConnected = isConnectedForControlPanel,
-                                    isBluetoothConnecting = bluetoothConnectionState.isConnecting,
-                                    onBackToModulesClick = {
-                                        actualViewModel?.stopSendingRcData()
-                                        navController.navigate(Screen.Applications.route) {
-                                            popUpTo(Screen.Home.route)
-                                            launchSingleTop = true
-                                        }
-                                    },
-                                    onSettingsClick = {
-                                        navController.navigateToApplicationSettings(ApplicationId.CONTROL_PANEL)
-                                    },
-                                    onBluetoothDisconnectedClick = onOpenBluetooth,
-                                )
-                            }
+                        Box(
+                            modifier = Modifier.fillMaxHeight(),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            ControlPanelLeftControllerHost(
+                                bluetoothViewModel = bluetoothViewModel,
+                                telemetryState = actualTelemetryState,
+                                rcControlState = actualRcControlState,
+                                settings = state.settings,
+                                contentWidth = contentWidth,
+                                settingsSyncGeneration = settingsSyncGeneration,
+                                onMove = onLeftMove,
+                                onSwitchStateChange = onLeftSwitchChange,
+                                onKnobValueChange = onLeftKnobChange,
+                                onTopPress = onTopLeftPress,
+                                onBottomPress = onBottomLeftPress,
+                            )
                         }
-                        ControlPanelCenterPlotHost(
-                            bluetoothViewModel = bluetoothViewModel,
-                            telemetryState = actualTelemetryState,
-                            plotLabels = plotLabels,
-                            settingsSyncGeneration = settingsSyncGeneration,
-                            modifier = Modifier.fillMaxSize(),
-                            topStartOverlay = centerOverlay,
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .wrapContentWidth()
-                            .fillMaxHeight(),
-                    ) {
-                        ControlPanelRightControllerHost(
-                            bluetoothViewModel = bluetoothViewModel,
-                            telemetryState = actualTelemetryState,
-                            rcControlState = actualRcControlState,
-                            settings = state.settings,
-                            aspectRatio = screenAspectRatio,
-                            settingsSyncGeneration = settingsSyncGeneration,
-                            onMove = onRightMove,
-                            onSwitchStateChange = onRightSwitchChange,
-                            onKnobValueChange = onRightKnobChange,
-                            onTopPress = onTopRightPress,
-                            onBottomPress = onBottomRightPress,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                        ) {
+                            val centerOverlay: @Composable () -> Unit = {
+                                if (navController != null) {
+                                    ControlPanelOverlayControls(
+                                        isBluetoothConnected = isConnectedForControlPanel,
+                                        isBluetoothConnecting = bluetoothConnectionState.isConnecting,
+                                        usesWifiLink = controlPanelTransportType ==
+                                            com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType.WIFI,
+                                        onBackToModulesClick = {
+                                            actualViewModel?.stopSendingRcData()
+                                            navController.navigate(Screen.Applications.route) {
+                                                popUpTo(Screen.Home.route)
+                                                launchSingleTop = true
+                                            }
+                                        },
+                                        onSettingsClick = {
+                                            navController.navigateToApplicationSettings(ApplicationId.CONTROL_PANEL)
+                                        },
+                                        onBluetoothDisconnectedClick = onOpenBluetooth,
+                                    )
+                                }
+                            }
+                            ControlPanelCenterPlotHost(
+                                bluetoothViewModel = bluetoothViewModel,
+                                telemetryState = actualTelemetryState,
+                                plotLabels = plotLabels,
+                                settingsSyncGeneration = settingsSyncGeneration,
+                                modifier = Modifier.fillMaxSize(),
+                                topStartOverlay = centerOverlay,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier.fillMaxHeight(),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            ControlPanelRightControllerHost(
+                                bluetoothViewModel = bluetoothViewModel,
+                                telemetryState = actualTelemetryState,
+                                rcControlState = actualRcControlState,
+                                settings = state.settings,
+                                contentWidth = contentWidth,
+                                settingsSyncGeneration = settingsSyncGeneration,
+                                onMove = onRightMove,
+                                onSwitchStateChange = onRightSwitchChange,
+                                onKnobValueChange = onRightKnobChange,
+                                onTopPress = onTopRightPress,
+                                onBottomPress = onBottomRightPress,
+                            )
+                        }
                     }
                 }
             }
@@ -390,7 +429,7 @@ private fun ControlPanelLeftControllerHost(
     telemetryState: StateFlow<TelemetryState>,
     rcControlState: StateFlow<RcControlState>,
     settings: UserSettings,
-    aspectRatio: Float,
+    contentWidth: Dp,
     settingsSyncGeneration: Int,
     onMove: (Float, Float) -> Unit,
     onSwitchStateChange: (Int, Boolean) -> Unit,
@@ -402,7 +441,7 @@ private fun ControlPanelLeftControllerHost(
         ControlPanelLeftControllerConnected(
             bluetoothViewModel = bluetoothViewModel,
             settings = settings,
-            aspectRatio = aspectRatio,
+            contentWidth = contentWidth,
             settingsSyncGeneration = settingsSyncGeneration,
             onMove = onMove,
             onSwitchStateChange = onSwitchStateChange,
@@ -426,7 +465,7 @@ private fun ControlPanelLeftControllerHost(
         }
         ControlPanelLeftController(
             settings = settings,
-            aspectRatio = aspectRatio,
+            contentWidth = contentWidth,
             settingsSyncGeneration = settingsSyncGeneration,
             rcState = rcState,
             sideTelemetry = sideTelemetry,
@@ -444,7 +483,7 @@ private fun ControlPanelLeftControllerHost(
 private fun ControlPanelLeftControllerConnected(
     bluetoothViewModel: BluetoothViewModel,
     settings: UserSettings,
-    aspectRatio: Float,
+    contentWidth: Dp,
     settingsSyncGeneration: Int,
     onMove: (Float, Float) -> Unit,
     onSwitchStateChange: (Int, Boolean) -> Unit,
@@ -453,25 +492,34 @@ private fun ControlPanelLeftControllerConnected(
     onBottomPress: () -> Unit,
 ) {
     ControllerSideLayout(
-        aspectRatio = aspectRatio,
         side = ButtonSide.LEFT,
-        modifier = Modifier.wrapContentHeight(),
+        contentWidth = contentWidth,
+        modifier = Modifier.fillMaxHeight(),
     ) { metrics ->
-        ControlPanelLeftTelemetryLayer(
-            metrics = metrics,
-            bluetoothViewModel = bluetoothViewModel,
-        )
-        ControlPanelLeftControlsLayer(
-            metrics = metrics,
-            bluetoothViewModel = bluetoothViewModel,
-            mode = settings.leftStickMode,
-            settingsSyncGeneration = settingsSyncGeneration,
-            onMove = onMove,
-            onSwitchStateChange = onSwitchStateChange,
-            onKnobValueChange = onKnobValueChange,
-            onTopPress = onTopPress,
-            onBottomPress = onBottomPress,
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            ControlPanelLeftTelemetryLayer(
+                metrics = metrics,
+                bluetoothViewModel = bluetoothViewModel,
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                ControlPanelLeftControlsLayer(
+                    metrics = metrics,
+                    bluetoothViewModel = bluetoothViewModel,
+                    mode = settings.leftStickMode,
+                    settingsSyncGeneration = settingsSyncGeneration,
+                    onMove = onMove,
+                    onSwitchStateChange = onSwitchStateChange,
+                    onKnobValueChange = onKnobValueChange,
+                    onTopPress = onTopPress,
+                    onBottomPress = onBottomPress,
+                )
+            }
+        }
     }
 }
 
@@ -481,7 +529,7 @@ private fun ControlPanelRightControllerHost(
     telemetryState: StateFlow<TelemetryState>,
     rcControlState: StateFlow<RcControlState>,
     settings: UserSettings,
-    aspectRatio: Float,
+    contentWidth: Dp,
     settingsSyncGeneration: Int,
     onMove: (Float, Float) -> Unit,
     onSwitchStateChange: (Int, Boolean) -> Unit,
@@ -493,7 +541,7 @@ private fun ControlPanelRightControllerHost(
         ControlPanelRightControllerConnected(
             bluetoothViewModel = bluetoothViewModel,
             settings = settings,
-            aspectRatio = aspectRatio,
+            contentWidth = contentWidth,
             settingsSyncGeneration = settingsSyncGeneration,
             onMove = onMove,
             onSwitchStateChange = onSwitchStateChange,
@@ -517,7 +565,7 @@ private fun ControlPanelRightControllerHost(
         }
         ControlPanelRightController(
             settings = settings,
-            aspectRatio = aspectRatio,
+            contentWidth = contentWidth,
             settingsSyncGeneration = settingsSyncGeneration,
             rcState = rcState,
             sideTelemetry = sideTelemetry,
@@ -535,7 +583,7 @@ private fun ControlPanelRightControllerHost(
 private fun ControlPanelRightControllerConnected(
     bluetoothViewModel: BluetoothViewModel,
     settings: UserSettings,
-    aspectRatio: Float,
+    contentWidth: Dp,
     settingsSyncGeneration: Int,
     onMove: (Float, Float) -> Unit,
     onSwitchStateChange: (Int, Boolean) -> Unit,
@@ -544,41 +592,52 @@ private fun ControlPanelRightControllerConnected(
     onBottomPress: () -> Unit,
 ) {
     ControllerSideLayout(
-        aspectRatio = aspectRatio,
         side = ButtonSide.RIGHT,
-        modifier = Modifier.wrapContentHeight(),
+        contentWidth = contentWidth,
+        modifier = Modifier.fillMaxHeight(),
     ) { metrics ->
-        ControlPanelRightTelemetryLayer(
-            metrics = metrics,
-            bluetoothViewModel = bluetoothViewModel,
-        )
-        ControlPanelRightControlsLayer(
-            metrics = metrics,
-            bluetoothViewModel = bluetoothViewModel,
-            mode = settings.rightStickMode,
-            settingsSyncGeneration = settingsSyncGeneration,
-            onMove = onMove,
-            onSwitchStateChange = onSwitchStateChange,
-            onKnobValueChange = onKnobValueChange,
-            onTopPress = onTopPress,
-            onBottomPress = onBottomPress,
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            ControlPanelRightTelemetryLayer(
+                metrics = metrics,
+                bluetoothViewModel = bluetoothViewModel,
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                ControlPanelRightControlsLayer(
+                    metrics = metrics,
+                    bluetoothViewModel = bluetoothViewModel,
+                    mode = settings.rightStickMode,
+                    settingsSyncGeneration = settingsSyncGeneration,
+                    onMove = onMove,
+                    onSwitchStateChange = onSwitchStateChange,
+                    onKnobValueChange = onKnobValueChange,
+                    onTopPress = onTopPress,
+                    onBottomPress = onBottomPress,
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun BoxWithConstraintsScope.ControlPanelLeftTelemetryLayer(
+private fun ControlPanelLeftTelemetryLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
 ) {
     val sideTelemetry by bluetoothViewModel.rcLeftSideTelemetry.collectAsState()
     val indicator by bluetoothViewModel.rcLeftIndicator.collectAsState()
     ControllerSideTelemetryRow(
-        modifier = Modifier.align(Alignment.TopCenter),
+        modifier = Modifier.fillMaxWidth(),
         side = ButtonSide.LEFT,
         telemetry = sideTelemetry,
         panelWidth = metrics.panelWidth,
         extraContentSize = metrics.extraContentSize,
+        ledSize = metrics.ledSize,
+        ledSpacing = metrics.ledSpacing,
         topExtraContent = { mod ->
             AnalogIndicator(modifier = mod, value = indicator.value, title = indicator.title)
         },
@@ -597,50 +656,59 @@ private fun ControlPanelLeftControlsLayer(
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier.size(metrics.joystickSize),
-        contentAlignment = Alignment.BottomEnd,
-    ) {
-        ControllerSideButtons(
-            side = ButtonSide.LEFT,
-            joystickSize = metrics.joystickSize,
-            onTopPress = onTopPress,
-            onBottomPress = onBottomPress,
-        )
-        ControlPanelStickSlot(
-            side = ButtonSide.LEFT,
-            metrics = metrics,
-            mode = mode,
-            settingsSyncGeneration = settingsSyncGeneration,
-            stickPosition = bluetoothViewModel.rcLeftStickPosition,
-            onMove = onMove,
-        )
-        ControlPanelSwitchesSlot(
-            switchStates = bluetoothViewModel.rcLeftSwitchStates,
-            onSwitchStateChange = onSwitchStateChange,
-            metrics = metrics,
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
         ControlPanelKnobSlot(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = metrics.joystickSize + 6.dp, end = 2.dp),
             knobValue = bluetoothViewModel.rcLeftKnobValue,
             onKnobValueChange = onKnobValueChange,
             metrics = metrics,
         )
+        Box(
+            modifier = Modifier
+                .size(metrics.joystickSize)
+                .align(Alignment.BottomCenter),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            ControllerSideButtons(
+                side = ButtonSide.LEFT,
+                joystickSize = metrics.joystickSize,
+                onTopPress = onTopPress,
+                onBottomPress = onBottomPress,
+            )
+            ControlPanelStickSlot(
+                side = ButtonSide.LEFT,
+                metrics = metrics,
+                mode = mode,
+                settingsSyncGeneration = settingsSyncGeneration,
+                stickPosition = bluetoothViewModel.rcLeftStickPosition,
+                onMove = onMove,
+            )
+            ControlPanelSwitchesSlot(
+                switchStates = bluetoothViewModel.rcLeftSwitchStates,
+                onSwitchStateChange = onSwitchStateChange,
+                metrics = metrics,
+            )
+        }
     }
 }
 
 @Composable
-private fun BoxWithConstraintsScope.ControlPanelRightTelemetryLayer(
+private fun ControlPanelRightTelemetryLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
 ) {
     val sideTelemetry by bluetoothViewModel.rcRightSideTelemetry.collectAsState()
     val indicator by bluetoothViewModel.rcRightIndicator.collectAsState()
     ControllerSideTelemetryRow(
-        modifier = Modifier.align(Alignment.TopCenter),
+        modifier = Modifier.fillMaxWidth(),
         side = ButtonSide.RIGHT,
         telemetry = sideTelemetry,
         panelWidth = metrics.panelWidth,
         extraContentSize = metrics.extraContentSize,
+        ledSize = metrics.ledSize,
+        ledSpacing = metrics.ledSpacing,
         topExtraContent = { mod ->
             BatteryStatus(level = indicator.value, modifier = mod, title = indicator.title)
         },
@@ -659,34 +727,41 @@ private fun ControlPanelRightControlsLayer(
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier.size(metrics.joystickSize),
-        contentAlignment = Alignment.BottomEnd,
-    ) {
-        ControllerSideButtons(
-            side = ButtonSide.RIGHT,
-            joystickSize = metrics.joystickSize,
-            onTopPress = onTopPress,
-            onBottomPress = onBottomPress,
-        )
-        ControlPanelStickSlot(
-            side = ButtonSide.RIGHT,
-            metrics = metrics,
-            mode = mode,
-            settingsSyncGeneration = settingsSyncGeneration,
-            stickPosition = bluetoothViewModel.rcRightStickPosition,
-            onMove = onMove,
-        )
-        ControlPanelSwitchesSlot(
-            switchStates = bluetoothViewModel.rcRightSwitchStates,
-            onSwitchStateChange = onSwitchStateChange,
-            metrics = metrics,
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
         ControlPanelKnobSlot(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = metrics.joystickSize + 6.dp, start = 2.dp),
             knobValue = bluetoothViewModel.rcRightKnobValue,
             onKnobValueChange = onKnobValueChange,
             metrics = metrics,
         )
+        Box(
+            modifier = Modifier
+                .size(metrics.joystickSize)
+                .align(Alignment.BottomCenter),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            ControllerSideButtons(
+                side = ButtonSide.RIGHT,
+                joystickSize = metrics.joystickSize,
+                onTopPress = onTopPress,
+                onBottomPress = onBottomPress,
+            )
+            ControlPanelStickSlot(
+                side = ButtonSide.RIGHT,
+                metrics = metrics,
+                mode = mode,
+                settingsSyncGeneration = settingsSyncGeneration,
+                stickPosition = bluetoothViewModel.rcRightStickPosition,
+                onMove = onMove,
+            )
+            ControlPanelSwitchesSlot(
+                switchStates = bluetoothViewModel.rcRightSwitchStates,
+                onSwitchStateChange = onSwitchStateChange,
+                metrics = metrics,
+            )
+        }
     }
 }
 
@@ -731,17 +806,16 @@ private fun BoxScope.ControlPanelSwitchesSlot(
 }
 
 @Composable
-private fun BoxScope.ControlPanelKnobSlot(
+private fun ControlPanelKnobSlot(
     knobValue: StateFlow<Float>,
     onKnobValueChange: (Float) -> Unit,
     metrics: ControllerSideLayoutMetrics,
+    modifier: Modifier = Modifier,
 ) {
     val value by knobValue.collectAsState()
     ControllerSideKnob(
+        modifier = modifier,
         knobSize = metrics.knobSize,
-        knobXOffset = metrics.knobXOffset,
-        knobYOffset = metrics.knobYOffset,
-        joystickSize = metrics.joystickSize,
         knobValue = value,
         onKnobValueChange = onKnobValueChange,
     )
@@ -750,7 +824,7 @@ private fun BoxScope.ControlPanelKnobSlot(
 @Composable
 private fun ControlPanelLeftController(
     settings: UserSettings,
-    aspectRatio: Float,
+    contentWidth: Dp,
     settingsSyncGeneration: Int,
     rcState: RcControlState,
     sideTelemetry: SideTelemetry,
@@ -767,9 +841,9 @@ private fun ControlPanelLeftController(
     }
 
     ControllerSide(
-        modifier = Modifier.wrapContentHeight(),
+        modifier = Modifier.fillMaxHeight(),
         side = ButtonSide.LEFT,
-        aspectRatio = aspectRatio,
+        contentWidth = contentWidth,
         mode = settings.leftStickMode,
         stickPosition = rcState.leftStickPosition,
         settingsSyncGeneration = settingsSyncGeneration,
@@ -788,7 +862,7 @@ private fun ControlPanelLeftController(
 @Composable
 private fun ControlPanelRightController(
     settings: UserSettings,
-    aspectRatio: Float,
+    contentWidth: Dp,
     settingsSyncGeneration: Int,
     rcState: RcControlState,
     sideTelemetry: SideTelemetry,
@@ -805,9 +879,9 @@ private fun ControlPanelRightController(
     }
 
     ControllerSide(
-        modifier = Modifier.wrapContentHeight(),
+        modifier = Modifier.fillMaxHeight(),
         side = ButtonSide.RIGHT,
-        aspectRatio = aspectRatio,
+        contentWidth = contentWidth,
         mode = settings.rightStickMode,
         stickPosition = rcState.rightStickPosition,
         settingsSyncGeneration = settingsSyncGeneration,

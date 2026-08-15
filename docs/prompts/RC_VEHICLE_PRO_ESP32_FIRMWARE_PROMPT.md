@@ -24,7 +24,13 @@ Create **six firmware variants** (reuse modules; do not invent a new app prefix)
 | BLE Binary noCam | `ESP32_noCam/BLE/TeleCon_RcVehiclePro_BLE_binary/` | BLE NUS | Binary RC | No |
 | Classic Simple CAM | `ESP32_cam/Classic_Simple/TeleCon_RcVehiclePro_CAM_Classic_Simple/` | Classic SPP | SIMPLE | Wi‑Fi `/capture` |
 | Classic Binary CAM | `ESP32_cam/Classic_Binary/TeleCon_RcVehiclePro_CAM_Classic_Binary/` | Classic SPP | Binary RC | Wi‑Fi `/capture` |
-| BLE Binary CAM | `ESP32_cam/BLE/TeleCon_RcVehiclePro_CAM_BLE_binary/` | BLE NUS | Binary RC | Wi‑Fi `/capture` |
+| BLE Binary CAM | `ESP32_cam/BLE/TeleCon_RcVehiclePro_CAM_BLE_binary/` | BLE NUS | Binary RC | Wi‑Fi `/stream` + `/capture` |
+
+**Focused CAM + BLE Binary prompt (Serial debug included):**
+`docs/prompts/RC_VEHICLE_PRO_CAM_BLE_BINARY_ESP32_PROMPT.md` in the Android repo.
+
+**Steering center trim (tickers + NVS save, all connection modes):**
+`docs/prompts/RC_VEHICLE_PRO_STEER_CENTER_TRIM_ESP32_PROMPT.md` in the Android repo.
 
 **Application prefix is always `RC`** (same as Control Panel). Android
 `ApplicationId.RC_VEHICLE_PRO` and `CONTROL_PANEL` both use prefix `"RC"`.
@@ -87,10 +93,12 @@ Android layout (landscape HUD):
 | Buzzer | `RC:BTN` id **2** / `BB 66` `0x02` (`CENTER_TOP_RIGHT`) | Horn pulse |
 | Camera front | knob → 0.5 then `RC:BTN` id **4** / `0x04` (`CENTER_BOTTOM_RIGHT`) | Center pan servo |
 | Emergency STOP | sticks forced to 0 | Immediate motor stop |
+| Steer trim lock | `RC:SET,steer_center,1,rx,N` / `BB 66` `0x10` | Save current steer PWM as center (NVS) |
+| Dual-rate / expo / reverse / deadzone | *(already applied on phone)* | Pass through mapped sticks — see `RC_VEHICLE_PRO_DRIVE_ASSIST_ESP32_PROMPT.md` |
 | Photo / Record | **Local Android only** (gallery JPEG / UI flag) | Do **not** handle over BT |
 
 Sticks are −100…100 on SIMPLE; binary packs them as 12-bit 0…4095
-(`RcPacketEncoder.stickTo12Bit`).
+(`RcPacketEncoder.stickTo12Bit`). Android may send values already scaled by travel/expo.
 
 ---
 

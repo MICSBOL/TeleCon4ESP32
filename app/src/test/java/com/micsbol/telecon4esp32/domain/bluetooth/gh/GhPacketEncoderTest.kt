@@ -42,6 +42,24 @@ class GhPacketEncoderTest {
         assertEquals(24, packet[5].toInt())
         assertEquals(65, packet[6].toInt())
     }
+
+    @Test
+    fun `buildSetPacket encodes cam pan and tilt`() {
+        val packet = GhPacketEncoder.buildSetPacket(
+            mapOf(
+                "cam_pan" to 50,
+                "cam_tilt" to 72,
+            ),
+        )
+
+        val mask = (packet[2].toInt() and 0xFF) or ((packet[3].toInt() and 0xFF) shl 8)
+        assertEquals(
+            GhBinaryProtocol.MASK_CAM_PAN or GhBinaryProtocol.MASK_CAM_TILT,
+            mask,
+        )
+        assertEquals(50, packet[4].toInt())
+        assertEquals(72, packet[5].toInt())
+    }
 }
 
 class GhBinaryTelemetryMapperTest {

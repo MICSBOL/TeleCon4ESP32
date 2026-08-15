@@ -32,4 +32,21 @@ class Esp32CameraDefaultsTest {
             Esp32CameraDefaults.softApHostFromBaseUrl("http://192.168.4.1/capture"),
         )
     }
+
+    @Test
+    fun camConfigUrl_appendsPathAndQuery() {
+        assertEquals(
+            "http://192.168.4.1/camconfig?framesize=qvga&quality=22&fps=10",
+            Esp32CameraDefaults.camConfigUrl(
+                query = "framesize=qvga&quality=22&fps=10",
+            ),
+        )
+        assertEquals(
+            "http://192.168.4.1/camconfig?framesize=vga&quality=15&fps=0",
+            Esp32CameraDefaults.camConfigUrl(
+                "http://192.168.4.1/",
+                "?framesize=vga&quality=15&fps=0",
+            ),
+        )
+    }
 }

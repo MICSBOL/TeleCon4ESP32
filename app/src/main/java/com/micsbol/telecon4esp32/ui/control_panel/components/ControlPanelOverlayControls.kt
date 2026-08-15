@@ -7,9 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,8 +34,8 @@ import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 
-private val ControlPanelOverlayIconSize = 20.dp
-private val ControlPanelOverlayIconSpacing = 2.dp
+private val ControlPanelOverlayIconSize = 34.dp
+private val ControlPanelOverlayIconSpacing = 6.dp
 
 @Composable
 fun ControlPanelPlasticIconButton(
@@ -83,6 +84,7 @@ fun ControlPanelBluetoothStatusButton(
     onDisconnectedClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
+    usesWifiLink: Boolean = false,
 ) {
     val iconTint = when {
         isConnecting -> brandPrimary()
@@ -90,6 +92,12 @@ fun ControlPanelBluetoothStatusButton(
         else -> StatusDisconnected
     }
     val accessibilityDescription = when {
+        usesWifiLink && isConnecting ->
+            stringResource(R.string.live_control_wifi_connecting_content_description)
+        usesWifiLink && isConnected ->
+            stringResource(R.string.live_control_wifi_connected_content_description)
+        usesWifiLink ->
+            stringResource(R.string.live_control_wifi_disconnected_content_description)
         isConnecting -> stringResource(R.string.live_control_bluetooth_connecting_content_description)
         isConnected -> stringResource(R.string.live_control_bluetooth_connected_content_description)
         else -> stringResource(R.string.live_control_bluetooth_disconnected_content_description)
@@ -99,7 +107,7 @@ fun ControlPanelBluetoothStatusButton(
     ControlPanelPlasticIconButton(
         onClick = onDisconnectedClick,
         contentDescription = accessibilityDescription,
-        icon = Icons.Default.Bluetooth,
+        icon = if (usesWifiLink) Icons.Default.Wifi else Icons.Default.Bluetooth,
         modifier = modifier,
         size = size,
         iconTint = iconTint,
@@ -115,6 +123,7 @@ fun ControlPanelOverlayControls(
     onSettingsClick: () -> Unit,
     onBluetoothDisconnectedClick: () -> Unit,
     modifier: Modifier = Modifier,
+    usesWifiLink: Boolean = false,
 ) {
     Column(
         modifier = modifier,
@@ -124,7 +133,7 @@ fun ControlPanelOverlayControls(
         ControlPanelPlasticIconButton(
             onClick = onBackToModulesClick,
             contentDescription = stringResource(R.string.control_panel_back_to_modules_content_description),
-            icon = Icons.Default.Apps,
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
             size = ControlPanelOverlayIconSize,
         )
         ControlPanelPlasticIconButton(
@@ -141,6 +150,7 @@ fun ControlPanelOverlayControls(
             isConnecting = isBluetoothConnecting,
             onDisconnectedClick = onBluetoothDisconnectedClick,
             size = ControlPanelOverlayIconSize,
+            usesWifiLink = usesWifiLink,
         )
     }
 }

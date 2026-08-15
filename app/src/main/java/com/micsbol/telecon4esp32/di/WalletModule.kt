@@ -1,6 +1,8 @@
 package com.micsbol.telecon4esp32.di
 
 import com.micsbol.telecon4esp32.data.repository.DataStoreWalletRepository
+import com.micsbol.telecon4esp32.data.repository.DurableExplorerGiftRepository
+import com.micsbol.telecon4esp32.domain.repository.IExplorerGiftRepository
 import com.micsbol.telecon4esp32.domain.repository.IWalletRepository
 import dagger.Binds
 import dagger.Module
@@ -17,4 +19,10 @@ abstract class WalletModule {
     abstract fun bindWalletRepository(
         impl: DataStoreWalletRepository,
     ): IWalletRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExplorerGiftRepository(
+        impl: DurableExplorerGiftRepository,
+    ): IExplorerGiftRepository
 }

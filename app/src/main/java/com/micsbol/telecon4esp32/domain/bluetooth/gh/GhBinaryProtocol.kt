@@ -29,6 +29,10 @@ object GhBinaryProtocol {
     const val MASK_VENT: Int = 1 shl 5
     const val MASK_TARGET_TEMP: Int = 1 shl 6
     const val MASK_TARGET_HUM: Int = 1 shl 7
+    /** Camera pan servo 0–100 (50 = center). ESP32-CAM free pin, typically GPIO 13. */
+    const val MASK_CAM_PAN: Int = 1 shl 8
+    /** Camera tilt servo 0–100 (50 = center). ESP32-CAM free pin, typically GPIO 12. */
+    const val MASK_CAM_TILT: Int = 1 shl 9
 
     const val FLAG_FAN: Int = 1 shl 0
     const val FLAG_HEATER: Int = 1 shl 1

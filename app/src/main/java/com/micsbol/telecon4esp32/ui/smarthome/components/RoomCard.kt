@@ -46,7 +46,7 @@ private val RoomCardHeight = 453.dp
 @Composable
 fun RoomCard(
     room: RoomUiModel,
-    onLightToggle: () -> Unit,
+    onDeviceToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -87,7 +87,7 @@ fun RoomCard(
         )
         RoomGlassOverlay(
             room = room,
-            onLightToggle = onLightToggle,
+            onDeviceToggle = onDeviceToggle,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -96,7 +96,7 @@ fun RoomCard(
 @Composable
 private fun RoomGlassOverlay(
     room: RoomUiModel,
-    onLightToggle: () -> Unit,
+    onDeviceToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -135,7 +135,7 @@ private fun RoomGlassOverlay(
                 RoomDeviceIcon(
                     device = device,
                     roomName = stringResource(room.nameRes),
-                    onLightToggle = onLightToggle,
+                    onDeviceToggle = { onDeviceToggle(device.id) },
                 )
             }
         }
@@ -146,22 +146,27 @@ private fun RoomGlassOverlay(
 private fun RoomDeviceIcon(
     device: RoomDeviceUiModel,
     roomName: String,
-    onLightToggle: () -> Unit,
+    onDeviceToggle: () -> Unit,
 ) {
     val isActiveLight = device.isLight && device.isOn
     val backgroundColor = when {
         isActiveLight -> SmartHomeGlass.AccentWarm.copy(alpha = 0.28f)
         device.isLight -> Color.White.copy(alpha = 0.08f)
+        device.isControllable && device.isOn -> SmartHomeGlass.AccentGreen.copy(alpha = 0.22f)
+        device.isControllable -> Color.White.copy(alpha = 0.08f)
         device.isOn -> SmartHomeGlass.AccentGreen.copy(alpha = 0.22f)
         else -> Color.White.copy(alpha = 0.12f)
     }
     val borderColor = when {
         isActiveLight -> SmartHomeGlass.AccentWarm.copy(alpha = 0.55f)
+        device.isControllable && device.isOn -> SmartHomeGlass.AccentGreen.copy(alpha = 0.40f)
         else -> Color.White.copy(alpha = 0.10f)
     }
     val iconTint = when {
         isActiveLight -> SmartHomeGlass.AccentWarm
         device.isLight -> SmartHomeGlass.TextMuted
+        device.isControllable && device.isOn -> SmartHomeGlass.AccentGreenBright
+        device.isControllable -> SmartHomeGlass.TextMuted
         device.isOn -> SmartHomeGlass.AccentGreenBright
         else -> SmartHomeGlass.TextPrimary
     }
@@ -176,8 +181,8 @@ private fun RoomDeviceIcon(
             .background(backgroundColor)
             .border(width = 1.dp, color = borderColor, shape = CircleShape)
             .then(
-                if (device.isLight) {
-                    Modifier.clickable(onClick = onLightToggle)
+                if (device.isControllable) {
+                    Modifier.clickable(onClick = onDeviceToggle)
                 } else {
                     Modifier
                 },
@@ -186,8 +191,13 @@ private fun RoomDeviceIcon(
     ) {
         Icon(
             imageVector = device.icon,
-            contentDescription = if (device.isLight) {
-                stringResource(R.string.smart_home_room_light_toggle_content_description, roomName, statusLabel)
+            contentDescription = if (device.isControllable) {
+                stringResource(
+                    R.string.smart_home_room_device_toggle_content_description,
+                    roomName,
+                    device.id,
+                    statusLabel,
+                )
             } else {
                 null
             },

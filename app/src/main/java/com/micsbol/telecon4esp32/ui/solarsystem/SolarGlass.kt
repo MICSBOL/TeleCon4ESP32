@@ -154,15 +154,13 @@ fun SolarGlassIconButton(
     size: Dp = 44.dp,
     content: @Composable () -> Unit,
 ) {
-    IconButton(
+    com.micsbol.telecon4esp32.ui.components.GlassChromeIconButton(
         onClick = onClick,
+        background = SolarGlass.BadgeBackground.copy(alpha = SolarGlass.TopBarButtonAlpha),
+        borderColor = Color.White.copy(alpha = SolarGlass.BorderAlpha),
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(SolarGlass.BadgeBackground.copy(alpha = SolarGlass.TopBarButtonAlpha))
-            .border(1.dp, Color.White.copy(alpha = SolarGlass.BorderAlpha), CircleShape),
-    ) {
-        content()
-    }
+        size = size,
+        content = content,
+    )
 }

@@ -24,9 +24,65 @@ class ProtocolHandshakeTest {
     }
 
     @Test
-    fun buildConnectLine_usesWifiWireValueForSoftAp() {
+    fun buildConnectLine_legacyCamSoftApUsesWifiWireValue() {
         assertEquals(
             "RC:CONNECT,proto,wifi",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothConnectionMode.WIFI_SOFTAP,
+            ),
+        )
+    }
+
+    @Test
+    fun buildConnectLine_camSoftApBinaryUsesBinaryWireValue() {
+        assertEquals(
+            "RC:CONNECT,proto,binary",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothConnectionMode.WIFI_BINARY,
+            ),
+        )
+    }
+
+    @Test
+    fun buildConnectLine_camStarterUsesSimpleWireValue() {
+        assertEquals(
+            "RC:CONNECT,proto,simple",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothConnectionMode.WIFI_CAM_STARTER,
+            ),
+        )
+    }
+
+    @Test
+    fun buildConnectLine_devKitWifiSimpleUsesSimpleWireValue() {
+        assertEquals(
+            "RC:CONNECT,proto,simple",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.CONTROL_PANEL,
+                BluetoothConnectionMode.WIFI_SIMPLE,
+            ),
+        )
+    }
+
+    @Test
+    fun buildConnectLine_devKitWifiBinaryUsesBinaryWireValue() {
+        assertEquals(
+            "RC:CONNECT,proto,binary",
+            ProtocolHandshake.buildConnectLine(
+                ApplicationId.CONTROL_PANEL,
+                BluetoothConnectionMode.WIFI_BINARY,
+            ),
+        )
+    }
+
+    @Test
+    fun buildConnectLine_wifiTransportPlusSimpleDefaultsToDevKitSimpleNotCamWifi() {
+        // Ambiguous transport+mode maps to WIFI_SIMPLE (DevKit); CAM SoftAP Binary uses WIFI_BINARY.
+        assertEquals(
+            "RC:CONNECT,proto,simple",
             ProtocolHandshake.buildConnectLine(
                 ApplicationId.RC_VEHICLE_PRO,
                 BluetoothProtocolMode.SIMPLE,

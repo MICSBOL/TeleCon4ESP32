@@ -1,16 +1,29 @@
 package com.micsbol.telecon4esp32.domain.model
 
 /**
- * Physical ESP32 board the user targets for an application.
+ * Physical ESP32 board setup the user targets for an application.
  *
- * - [DEV_KIT] — ESP32 DevKit (WROOM-32); general-purpose sensors/actuators, no camera.
- * - [CAM] — ESP32-CAM (AI-Thinker); camera node, video streams over WiFi while
- *   controls use Bluetooth.
+ * - [DEV_KIT] — ESP32 DevKit (WROOM-32); Bluetooth and SoftAP Wi‑Fi control only
+ *   ([com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile.CONTROL_ONLY]).
+ * - [CAM] — one ESP32-CAM. Normal SoftAP starter or Advanced Kit A SoftAP Binary
+ *   ([com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile.WIFI_SOFTAP]).
+ * - [CAM_AND_DEV_KIT] — Advanced Kit B: SoftAP video on ESP32-CAM + BLE Binary on DevKit
+ *   ([com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE]).
  */
 enum class Esp32Board {
     DEV_KIT,
     CAM,
+    /** Kit B dual-board: CAM SoftAP video + DevKit BLE control. */
+    CAM_AND_DEV_KIT,
     ;
+
+    /** SoftAP HTTP camera is expected (single CAM or Kit B video half). */
+    val usesSoftApCamera: Boolean
+        get() = this == CAM || this == CAM_AND_DEV_KIT
+
+    /** Advanced Kit B dual-board setup. */
+    val isKitBDual: Boolean
+        get() = this == CAM_AND_DEV_KIT
 
     companion object {
         fun fromStored(value: String?): Esp32Board =

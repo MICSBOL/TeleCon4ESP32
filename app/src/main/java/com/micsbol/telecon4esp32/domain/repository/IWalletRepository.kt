@@ -18,7 +18,16 @@ interface IWalletRepository {
         nowEpochMs: Long = System.currentTimeMillis(),
     ): WalletUnlockResult
 
-    suspend fun clearSessionGrant(feature: PremiumFeature)
+    /**
+     * Grants timed access without spending coins (explorer gift / promotions).
+     */
+    suspend fun grantTimedAccess(
+        feature: PremiumFeature,
+        option: CoinUnlockOption,
+        nowEpochMs: Long = System.currentTimeMillis(),
+    ): WalletUnlockResult
+
+    fun clearSessionGrant(feature: PremiumFeature)
 
     suspend fun pruneExpiredGrants(nowEpochMs: Long = System.currentTimeMillis())
 }

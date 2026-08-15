@@ -1,6 +1,7 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 import app.cash.turbine.test
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectFailure
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.Esp32SoftApDevice
@@ -13,10 +14,13 @@ import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationConnectionModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetLastApplicationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetLastDeviceUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetSoftApPerformancePresetUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetUserSettingsUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLastApplicationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLastDeviceUseCase
@@ -66,6 +70,9 @@ class BluetoothViewModelTest {
             saveLastApplication = SaveLastApplicationUseCase(fakeSettings),
             getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
             getApplicationTransportType = GetApplicationTransportTypeUseCase(fakeSettings),
+            getApplicationConnectionMode = GetApplicationConnectionModeUseCase(fakeSettings),
+            getApplicationBoard = GetApplicationBoardUseCase(fakeSettings),
+            getSoftApPerformancePreset = GetSoftApPerformancePresetUseCase(fakeSettings),
         )
     }
     // ── Initial state ─────────────────────────────────────────────────────────
@@ -295,9 +302,10 @@ class BluetoothViewModelTest {
         viewModel.state.test {
             awaitItem()
             viewModel.requestApplicationConnection(
-                ApplicationId.RC_VEHICLE_PRO,
-                BluetoothProtocolMode.SIMPLE,
-                BluetoothTransportType.WIFI,
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                protocolMode = BluetoothProtocolMode.ADVANCED,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = BluetoothConnectionMode.WIFI_BINARY,
             )
             viewModel.connectToWifiSoftAp()
             awaitItem() // connecting
@@ -306,7 +314,7 @@ class BluetoothViewModelTest {
             assertEquals(ApplicationId.RC_VEHICLE_PRO, connected.activeSession?.applicationId)
             assertEquals(BluetoothTransportType.WIFI, fakeController.lastConnectTransport)
             assertEquals(Esp32SoftApDevice.Default.address, fakeController.lastConnectDevice?.address)
-            assertEquals("RC:CONNECT,proto,wifi", fakeController.sentLines.first())
+            assertEquals("RC:CONNECT,proto,binary", fakeController.sentLines.first())
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -317,9 +325,10 @@ class BluetoothViewModelTest {
         viewModel.state.test {
             awaitItem()
             viewModel.requestApplicationConnection(
-                ApplicationId.RC_VEHICLE_PRO,
-                BluetoothProtocolMode.SIMPLE,
-                BluetoothTransportType.WIFI,
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                protocolMode = BluetoothProtocolMode.ADVANCED,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = BluetoothConnectionMode.WIFI_BINARY,
             )
             viewModel.connectToWifiSoftAp()
             awaitItem() // connecting
@@ -329,6 +338,10 @@ class BluetoothViewModelTest {
             assertTrue(
                 "expected WifiSoftApLinkFailed, got $failure",
                 failure is BluetoothConnectFailure.WifiSoftApLinkFailed,
+            )
+            assertEquals(
+                BluetoothConnectionMode.WIFI_BINARY,
+                (failure as BluetoothConnectFailure.WifiSoftApLinkFailed).connectionMode,
             )
             cancelAndIgnoreRemainingEvents()
         }
@@ -460,6 +473,9 @@ class BluetoothViewModelTest {
             saveLastApplication = SaveLastApplicationUseCase(fakeSettings),
             getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
             getApplicationTransportType = GetApplicationTransportTypeUseCase(fakeSettings),
+            getApplicationConnectionMode = GetApplicationConnectionModeUseCase(fakeSettings),
+            getApplicationBoard = GetApplicationBoardUseCase(fakeSettings),
+            getSoftApPerformancePreset = GetSoftApPerformancePresetUseCase(fakeSettings),
         )
         val collectJob = launch { coldStartViewModel.userSettings.collect { } }
 
@@ -528,6 +544,9 @@ class BluetoothViewModelTest {
             saveLastApplication = SaveLastApplicationUseCase(fakeSettings),
             getApplicationProtocolMode = GetApplicationProtocolModeUseCase(fakeSettings),
             getApplicationTransportType = GetApplicationTransportTypeUseCase(fakeSettings),
+            getApplicationConnectionMode = GetApplicationConnectionModeUseCase(fakeSettings),
+            getApplicationBoard = GetApplicationBoardUseCase(fakeSettings),
+            getSoftApPerformancePreset = GetSoftApPerformancePresetUseCase(fakeSettings),
         )
         val collectJob = launch { simpleViewModel.userSettings.collect { } }
         runCurrent()
@@ -557,24 +576,12 @@ class BluetoothViewModelTest {
     }
 
     @Test
-    fun `openRecentProject navigates to bluetooth then app after connect`() = runTest {
+    fun `openRecentProject navigates to application screen`() = runTest {
         var navigated: String? = null
         viewModel.openRecentProject(ApplicationId.GREENHOUSE) { navigated = it }
         runCurrent()
-        assertEquals(Screen.Bluetooth.route, navigated)
+        assertEquals(ApplicationId.GREENHOUSE.mainRoute(), navigated)
         assertEquals(ApplicationId.GREENHOUSE, fakeSettings.lastApplicationFlow.first())
-
-        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
-        launch {
-            fakeController.emitMessage(
-                EspMessage(app = "GH", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "GH")),
-            )
-        }
-        viewModel.connectToDevice(testDevice)
-        viewModel.navigateToScreen.test {
-            assertEquals(ApplicationId.GREENHOUSE.mainRoute(), awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
     }
 
     @Test
@@ -661,9 +668,10 @@ class BluetoothViewModelTest {
         viewModel.state.test {
             awaitItem()
             viewModel.requestApplicationConnection(
-                ApplicationId.RC_VEHICLE_PRO,
-                BluetoothProtocolMode.SIMPLE,
-                BluetoothTransportType.WIFI,
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                protocolMode = BluetoothProtocolMode.ADVANCED,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = BluetoothConnectionMode.WIFI_BINARY,
             )
             viewModel.connectToWifiSoftAp()
             awaitItem() // connecting
@@ -680,20 +688,22 @@ class BluetoothViewModelTest {
     }
 
     @Test
-    fun `WiFi SoftAP session always sends SIMPLE CTRL even if ADVANCED was requested`() = runTest {
+    fun `CAM SoftAP Binary session sends binary frames not text CTRL`() = runTest {
         fakeSettings.saveProtocolMode(ApplicationId.CONTROL_PANEL, BluetoothProtocolMode.ADVANCED)
         fakeSettings.saveProtocolMode(ApplicationId.RC_VEHICLE_PRO, BluetoothProtocolMode.ADVANCED)
         fakeSettings.saveTransportType(ApplicationId.RC_VEHICLE_PRO, BluetoothTransportType.WIFI)
+        fakeSettings.saveConnectionMode(ApplicationId.RC_VEHICLE_PRO, BluetoothConnectionMode.WIFI_BINARY)
+        fakeSettings.saveBoard(ApplicationId.RC_VEHICLE_PRO, com.micsbol.telecon4esp32.domain.model.Esp32Board.CAM)
         runCurrent()
 
         fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
         viewModel.state.test {
             awaitItem()
-            // Mis-request ADVANCED with WIFI — SoftAP must still handshake wifi + send text CTRL.
             viewModel.requestApplicationConnection(
-                ApplicationId.RC_VEHICLE_PRO,
-                BluetoothProtocolMode.ADVANCED,
-                BluetoothTransportType.WIFI,
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                protocolMode = BluetoothProtocolMode.ADVANCED,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = BluetoothConnectionMode.WIFI_BINARY,
             )
             launch {
                 fakeController.emitMessage(
@@ -708,9 +718,13 @@ class BluetoothViewModelTest {
             awaitItem() // connecting
             val connected = awaitItem()
             assertTrue(connected.isConnected)
-            assertEquals(BluetoothProtocolMode.SIMPLE, connected.activeSession?.protocolMode)
+            assertEquals(BluetoothProtocolMode.ADVANCED, connected.activeSession?.protocolMode)
             assertEquals(BluetoothTransportType.WIFI, connected.activeSession?.transport)
-            assertEquals("RC:CONNECT,proto,wifi", fakeController.sentLines.first())
+            assertEquals(
+                BluetoothConnectionMode.WIFI_BINARY,
+                connected.activeSession?.connectionMode,
+            )
+            assertEquals("RC:CONNECT,proto,binary", fakeController.sentLines.first())
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -721,27 +735,108 @@ class BluetoothViewModelTest {
         advanceTimeBy(100)
         runCurrent()
         assertTrue(
-            "expected RC:CTRL lines, got ${fakeController.sentLines}",
-            fakeController.sentLines.any { it.startsWith("RC:CTRL,") },
+            "expected binary RC frames, got lines=${fakeController.sentLines} data=${fakeController.sentData.size}",
+            fakeController.sentData.isNotEmpty(),
         )
         assertTrue(
-            "ADVANCED binary must never go over SoftAP TCP: ${fakeController.sentData.size}",
-            fakeController.sentData.isEmpty(),
+            "binary SoftAP must not send RC:CTRL text: ${fakeController.sentLines}",
+            fakeController.sentLines.none { it.startsWith("RC:CTRL,") },
         )
 
+        viewModel.stopSendingRcData()
+    }
+
+    @Test
+    fun `DevKit WIFI_BINARY session sends binary frames not text CTRL`() = runTest {
+        fakeSettings.saveProtocolMode(ApplicationId.CONTROL_PANEL, BluetoothProtocolMode.ADVANCED)
+        fakeSettings.saveTransportType(ApplicationId.CONTROL_PANEL, BluetoothTransportType.WIFI)
+        runCurrent()
+
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        viewModel.state.test {
+            awaitItem()
+            viewModel.requestApplicationConnection(
+                applicationId = ApplicationId.CONTROL_PANEL,
+                protocolMode = BluetoothProtocolMode.ADVANCED,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = BluetoothConnectionMode.WIFI_BINARY,
+            )
+            launch {
+                fakeController.emitMessage(
+                    EspMessage(
+                        app = "RC",
+                        type = ProtocolHandshake.ACK_TYPE,
+                        values = mapOf("app" to "RC"),
+                    ),
+                )
+            }
+            viewModel.connectToWifiSoftAp()
+            awaitItem() // connecting
+            val connected = awaitItem()
+            assertTrue(connected.isConnected)
+            assertEquals(BluetoothProtocolMode.ADVANCED, connected.activeSession?.protocolMode)
+            assertEquals(
+                BluetoothConnectionMode.WIFI_BINARY,
+                connected.activeSession?.connectionMode,
+            )
+            assertEquals("RC:CONNECT,proto,binary", fakeController.sentLines.first())
+            assertEquals(
+                Esp32SoftApDevice.forConnectionMode(
+                    BluetoothConnectionMode.WIFI_BINARY,
+                    ApplicationId.CONTROL_PANEL,
+                ).name,
+                fakeController.lastConnectDevice?.name,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+
         fakeController.sentLines.clear()
-        viewModel.onLeftStickChanged(0.3f, -0.5f)
+        fakeController.sentData.clear()
+
+        viewModel.onControlPanelEntered()
         advanceTimeBy(100)
         runCurrent()
         assertTrue(
-            "expected CTRL after stick move, got ${fakeController.sentLines}",
-            fakeController.sentLines.any { it.startsWith("RC:CTRL,") },
+            "expected AA 55 binary frames, got lines=${fakeController.sentLines} data=${fakeController.sentData.size}",
+            fakeController.sentData.isNotEmpty(),
         )
         assertTrue(
-            fakeController.sentLines.any { it.contains("lx,30") && it.contains("ly,-50") },
+            "text CTRL must not go over WIFI_BINARY SoftAP: ${fakeController.sentLines}",
+            fakeController.sentLines.none { it.startsWith("RC:CTRL,") },
         )
-        assertTrue(fakeController.sentData.isEmpty())
+        val frame = fakeController.sentData.first()
+        assertEquals(0xAA.toByte(), frame[0])
+        assertEquals(0x55.toByte(), frame[1])
 
         viewModel.stopSendingRcData()
+    }
+
+    @Test
+    fun `DevKit WIFI_SIMPLE CONNECT uses simple proto`() = runTest {
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "RC", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "RC")),
+            )
+        }
+        viewModel.state.test {
+            awaitItem()
+            viewModel.requestApplicationConnection(
+                applicationId = ApplicationId.CONTROL_PANEL,
+                protocolMode = BluetoothProtocolMode.SIMPLE,
+                transport = BluetoothTransportType.WIFI,
+                connectionMode = BluetoothConnectionMode.WIFI_SIMPLE,
+            )
+            viewModel.connectToWifiSoftAp()
+            awaitItem()
+            val connected = awaitItem()
+            assertTrue(connected.isConnected)
+            assertEquals("RC:CONNECT,proto,simple", fakeController.sentLines.first())
+            assertEquals(
+                "ESP32-TC-RC-WiFi-Simple",
+                fakeController.lastConnectDevice?.name,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

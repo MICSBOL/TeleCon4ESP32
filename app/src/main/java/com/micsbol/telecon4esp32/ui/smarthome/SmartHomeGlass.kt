@@ -128,15 +128,13 @@ fun SmartHomeGlassIconButton(
     size: Dp = 44.dp,
     content: @Composable () -> Unit,
 ) {
-    IconButton(
+    com.micsbol.telecon4esp32.ui.components.GlassChromeIconButton(
         onClick = onClick,
+        background = SmartHomeGlass.CardSurface.copy(alpha = SmartHomeGlass.TopBarButtonAlpha),
+        borderColor = Color.White.copy(alpha = SmartHomeGlass.BorderAlpha),
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(SmartHomeGlass.CardSurface.copy(alpha = SmartHomeGlass.TopBarButtonAlpha))
-            .border(1.dp, Color.White.copy(alpha = SmartHomeGlass.BorderAlpha), CircleShape),
-    ) {
-        content()
-    }
+        size = size,
+        content = content,
+    )
 }

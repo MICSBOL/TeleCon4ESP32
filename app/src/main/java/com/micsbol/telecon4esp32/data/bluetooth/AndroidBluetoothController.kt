@@ -7,7 +7,9 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
@@ -32,6 +34,9 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
+import com.micsbol.telecon4esp32.data.camera.SoftApNetworkResolver
+import com.micsbol.telecon4esp32.data.camera.SoftApWifiLock
+import com.micsbol.telecon4esp32.data.wifi.SoftApWifiSession
 import com.micsbol.telecon4esp32.data.wifi.WifiSoftApDataTransferService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -46,15 +51,21 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.coroutines.resume
 
 @SuppressLint("MissingPermission")
 class AndroidBluetoothController @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val softApNetworkResolver: SoftApNetworkResolver,
+    private val softApWifiLock: SoftApWifiLock,
+    private val softApWifiSession: SoftApWifiSession,
 ) : RemoteController {
 
 
@@ -453,11 +464,15 @@ class AndroidBluetoothController @Inject constructor(
             return
         }
 
-        if (transport == BluetoothTransportType.BLE) {
-            startBleScan()
-            return
-        }
-        
+        updatePairedDevices()
+        _discoveredDevices.value = emptyList()
+        // Scan Classic and BLE together so the picker lists both SPP and GATT devices,
+        // regardless of whether Settings currently selects Classic or BLE for connect.
+        startClassicDiscovery()
+        startBleScan()
+    }
+
+    private fun startClassicDiscovery() {
         if (!isReceiverRegistered) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -485,8 +500,7 @@ class AndroidBluetoothController @Inject constructor(
         if (bluetoothAdapter?.isDiscovering == true) {
             bluetoothAdapter!!.cancelDiscovery()
         }
-        
-        updatePairedDevices()
+
         val startDiscoveryResult = bluetoothAdapter?.startDiscovery()
         Log.d("BluetoothController", "startDiscovery() called, result: $startDiscoveryResult")
     }
@@ -498,7 +512,6 @@ class AndroidBluetoothController @Inject constructor(
             return
         }
         stopBleScan()
-        updatePairedDevices()
 
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -575,11 +588,39 @@ class AndroidBluetoothController @Inject constructor(
 
             if (transport == BluetoothTransportType.WIFI) {
                 val (host, port) = parseSoftApEndpoint(device.address)
-                val wifiService = WifiSoftApDataTransferService(host, port)
+                val softApSsid = device.name?.trim().orEmpty()
+                    .ifBlank { Esp32CameraDefaults.SOFTAP_SSID }
+                when (
+                    val join = softApWifiSession.join(
+                        ssid = softApSsid,
+                        password = Esp32CameraDefaults.SOFTAP_PASSWORD,
+                    )
+                ) {
+                    is SoftApWifiSession.JoinResult.Available,
+                    is SoftApWifiSession.JoinResult.AlreadyBound,
+                    -> Log.i(RC_WIFI_TAG, "SoftAP Wi‑Fi bound for $softApSsid ($join)")
+                    SoftApWifiSession.JoinResult.Unsupported ->
+                        Log.i(
+                            RC_WIFI_TAG,
+                            "SoftAP specifier unsupported — using system Wi‑Fi / resolver for $softApSsid",
+                        )
+                    SoftApWifiSession.JoinResult.RejectedOrTimeout ->
+                        Log.w(
+                            RC_WIFI_TAG,
+                            "SoftAP join cancelled/timeout for $softApSsid — trying TCP anyway",
+                        )
+                }
+                val wifiService = WifiSoftApDataTransferService(
+                    host,
+                    port,
+                    softApNetworkResolver,
+                    softApWifiLock,
+                )
                 if (!wifiService.open()) {
+                    softApWifiSession.release()
                     emit(
                         ConnectionResult.Error(
-                            "SoftAP TCP $host:$port unreachable. Join Wi-Fi ${Esp32CameraDefaults.SOFTAP_SSID} first.",
+                            "SoftAP TCP $host:$port unreachable. Join Wi-Fi $softApSsid first.",
                         ),
                     )
                     return@flow
@@ -612,6 +653,16 @@ class AndroidBluetoothController @Inject constructor(
                 emit(ConnectionResult.Error("Device not found for address: ${device.address}"))
                 return@flow
             }
+
+            if (!ensureBonded(bluetoothDevice)) {
+                emit(
+                    ConnectionResult.Error(
+                        "Pairing failed or was cancelled for ${device.name ?: device.address}.",
+                    ),
+                )
+                return@flow
+            }
+            updatePairedDevices()
 
             if (transport == BluetoothTransportType.BLE) {
                 val bleService = BleDataTransferService(context, bluetoothDevice)
@@ -713,6 +764,108 @@ class AndroidBluetoothController @Inject constructor(
             lastSoftApCtrlLogLine = null
             _isConnected.update { false }
         }
+        softApWifiSession.release()
+    }
+
+    /**
+     * Ensures the remote device is bonded before RFCOMM/GATT connect.
+     * Already-bonded devices return immediately; otherwise creates a bond and waits.
+     */
+    private suspend fun ensureBonded(device: BluetoothDevice): Boolean {
+        if (device.bondState == BluetoothDevice.BOND_BONDED) {
+            return true
+        }
+
+        Log.d("BluetoothController", "Pairing with ${device.address} (bondState=${device.bondState})")
+        val bonded = withTimeoutOrNull(BOND_TIMEOUT_MS) {
+            suspendCancellableCoroutine { cont ->
+                val filter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+                val receiver = object : BroadcastReceiver() {
+                    override fun onReceive(ctx: Context, intent: Intent) {
+                        val changed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            intent.getParcelableExtra(
+                                BluetoothDevice.EXTRA_DEVICE,
+                                BluetoothDevice::class.java,
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                        }
+                        if (changed?.address != device.address) return
+
+                        when (
+                            intent.getIntExtra(
+                                BluetoothDevice.EXTRA_BOND_STATE,
+                                BluetoothDevice.ERROR,
+                            )
+                        ) {
+                            BluetoothDevice.BOND_BONDED -> {
+                                try {
+                                    context.unregisterReceiver(this)
+                                } catch (_: IllegalArgumentException) {
+                                }
+                                if (cont.isActive) cont.resume(true)
+                            }
+                            BluetoothDevice.BOND_NONE -> {
+                                val previous = intent.getIntExtra(
+                                    BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE,
+                                    BluetoothDevice.ERROR,
+                                )
+                                if (previous == BluetoothDevice.BOND_BONDING) {
+                                    try {
+                                        context.unregisterReceiver(this)
+                                    } catch (_: IllegalArgumentException) {
+                                    }
+                                    if (cont.isActive) cont.resume(false)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        context.registerReceiver(receiver, filter)
+                    }
+                } catch (e: Exception) {
+                    Log.e("BluetoothController", "Failed to register bond receiver: ${e.message}", e)
+                    if (cont.isActive) cont.resume(false)
+                    return@suspendCancellableCoroutine
+                }
+
+                cont.invokeOnCancellation {
+                    try {
+                        context.unregisterReceiver(receiver)
+                    } catch (_: IllegalArgumentException) {
+                    }
+                }
+
+                val started = if (device.bondState == BluetoothDevice.BOND_BONDING) {
+                    true
+                } else {
+                    try {
+                        device.createBond()
+                    } catch (e: Exception) {
+                        Log.e("BluetoothController", "createBond failed: ${e.message}", e)
+                        false
+                    }
+                }
+                if (!started) {
+                    try {
+                        context.unregisterReceiver(receiver)
+                    } catch (_: IllegalArgumentException) {
+                    }
+                    if (cont.isActive) cont.resume(device.bondState == BluetoothDevice.BOND_BONDED)
+                }
+            }
+        }
+
+        val success = bonded == true || device.bondState == BluetoothDevice.BOND_BONDED
+        Log.d("BluetoothController", "Pairing result for ${device.address}: $success")
+        return success
     }
 
     private fun parseSoftApEndpoint(address: String): Pair<String, Int> {
@@ -759,12 +912,10 @@ class AndroidBluetoothController @Inject constructor(
         ) {
             return null
         }
+        // SoftAP TCP carries the same AA 55 / BB 66 / CC frames as Classic/BLE Binary
+        // (DevKit WIFI_BINARY). CAM SoftAP stays SIMPLE text and does not use sendData.
         if (activeTransport == BluetoothTransportType.WIFI) {
-            Log.w(
-                RC_WIFI_TAG,
-                "Refusing binary packet on SoftAP TCP (${data.size} bytes). Use SIMPLE RC:CTRL text.",
-            )
-            return false
+            logSoftApBinaryTx(data)
         }
         return dataTransferService?.sendPacket(data)
     }
@@ -780,6 +931,19 @@ class AndroidBluetoothController @Inject constructor(
         }
         val payload = if (line.endsWith("\n")) line else "$line\n"
         return dataTransferService?.sendPacket(payload.toByteArray(Charsets.UTF_8))
+    }
+
+    private fun logSoftApBinaryTx(data: ByteArray) {
+        if (data.size < 2) return
+        // Skip AA 55 stick flood (~20 Hz); log BB 66 buttons and other frames.
+        if (data[0] == 0xAA.toByte() && data[1] == 0x55.toByte()) return
+        Log.d(
+            RC_WIFI_TAG,
+            "[PANEL TX] binary ${data.size} B hdr=%02X %02X".format(
+                data[0].toInt() and 0xFF,
+                data[1].toInt() and 0xFF,
+            ),
+        )
     }
 
     private fun logSoftApTx(line: String) {
@@ -800,5 +964,6 @@ class AndroidBluetoothController @Inject constructor(
     companion object {
         const val SERVICE_UUID = "00001101-0000-1000-8000-00805F9B34FB"
         private const val RC_WIFI_TAG = "RcWifiSoftAp"
+        private const val BOND_TIMEOUT_MS = 30_000L
     }
 }

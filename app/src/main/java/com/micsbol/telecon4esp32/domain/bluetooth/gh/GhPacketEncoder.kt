@@ -26,6 +26,8 @@ object GhPacketEncoder {
         appendIfPresent("vent", GhBinaryProtocol.MASK_VENT) { percentByte(it) }
         appendIfPresent("target_temp", GhBinaryProtocol.MASK_TARGET_TEMP) { percentByte(it) }
         appendIfPresent("target_hum", GhBinaryProtocol.MASK_TARGET_HUM) { percentByte(it) }
+        appendIfPresent("cam_pan", GhBinaryProtocol.MASK_CAM_PAN) { percentByte(it) }
+        appendIfPresent("cam_tilt", GhBinaryProtocol.MASK_CAM_TILT) { percentByte(it) }
 
         val bodySize = 2 + values.size + 1
         val body = ByteArray(bodySize)

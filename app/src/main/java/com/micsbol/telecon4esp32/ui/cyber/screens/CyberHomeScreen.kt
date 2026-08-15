@@ -2,37 +2,29 @@ package com.micsbol.telecon4esp32.ui.cyber.screens
 
 import android.app.Activity
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import com.micsbol.telecon4esp32.BuildConfig
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Rocket
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -45,58 +37,55 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.ads.AdPolicy
-import com.micsbol.telecon4esp32.ui.components.AdBanner
-import com.micsbol.telecon4esp32.ui.components.NeoCard
-import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
-import com.micsbol.telecon4esp32.ui.components.NeoIconButton
-import com.micsbol.telecon4esp32.ui.components.NeoPillButton
-import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
-import com.micsbol.telecon4esp32.ui.components.glassSurface
-import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.domain.bluetooth.ActiveBluetoothSession
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.ui.applications.recentTagRes
+import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.PremiumSource
+import com.micsbol.telecon4esp32.domain.model.resolveHomeFeaturedApplication
+import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.applications.thumbnailRes
 import com.micsbol.telecon4esp32.ui.applications.titleRes
 import com.micsbol.telecon4esp32.ui.bluetooth.connectFailureMessage
 import com.micsbol.telecon4esp32.ui.bluetooth.handshakeFailureMessage
-import com.micsbol.telecon4esp32.ui.bluetooth.protocolModeLabel
+import com.micsbol.telecon4esp32.ui.components.HoloTurntableFlipbook
+import com.micsbol.telecon4esp32.ui.components.NeoIconButton
+import com.micsbol.telecon4esp32.ui.components.NeoPillButton
+import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
+import com.micsbol.telecon4esp32.ui.components.glassSurface
+import com.micsbol.telecon4esp32.ui.components.holoTurntableAssetDir
+import com.micsbol.telecon4esp32.ui.components.safeHudPadding
+import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.home.HomeHelpDialog
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.Neo
-import com.micsbol.telecon4esp32.ui.wallet.CoinHomeWalletPanel
-import com.micsbol.telecon4esp32.ui.wallet.CoinMessageDialog
-import com.micsbol.telecon4esp32.ui.wallet.CoinPricingTableDialog
 import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
-import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
-import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 
-private data class HomeMenuItem(
-    val icon: ImageVector,
-    val title: String,
-    val description: String,
-    val onClick: () -> Unit,
-)
+private val ProGold = Color(0xFFFFD54F)
+private val ProGoldDeep = Color(0xFFFFB300)
 
 /**
- * Dark glassmorphism home dashboard.
- *
- * Vertical structure:
- *  Header -> Wallet -> Recent Project -> Codes -> Active Session -> About -> Banner
+ * Minimal home: compact chrome, last-module hologram, one primary CTA.
+ * Landscape uses a side-by-side layout to fill horizontal space.
  */
 @Composable
 fun CyberHomeScreen(
@@ -115,34 +104,11 @@ fun CyberHomeScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-    val entitlement = LocalEntitlement.current
-    val wallet = LocalWallet.current
-    val rewardedAdManager = LocalRewardedAdManager.current
     var showHelpDialog by remember { mutableStateOf(false) }
-    var showPricingTable by remember { mutableStateOf(false) }
-    var coinMessage by remember { mutableStateOf<String?>(null) }
-    val adRewardGrantedMessage = stringResource(R.string.coins_ad_reward_granted)
-    val adUnavailableMessage = stringResource(R.string.coins_ad_unavailable)
-    val showCoinWallet = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
 
     BackHandler { activity?.finish() }
 
-    val codesItem = HomeMenuItem(
-        icon = Icons.Filled.Code,
-        title = stringResource(R.string.cyber_grid_codes_title),
-        description = stringResource(R.string.cyber_grid_codes_desc),
-        onClick = { navController?.navigate(Screen.Codes.route) },
-    )
-
-    val aboutItem = HomeMenuItem(
-        icon = Icons.Filled.Info,
-        title = stringResource(R.string.about_title),
-        description = stringResource(R.string.cyber_grid_about_desc),
-        onClick = { navController?.navigate(Screen.About.route) },
-    )
-
     val isSessionConnected = activeSession != null
-
     val resolvedError = when {
         handshakeFailure != null -> handshakeFailureMessage(handshakeFailure)
         connectFailure != null -> connectFailureMessage(connectFailure)
@@ -150,109 +116,125 @@ fun CyberHomeScreen(
         else -> null
     }
 
+    val entitlement = LocalEntitlement.current
+    val wallet = LocalWallet.current
+    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+    // Debug builds force Premium via DEBUG_OVERRIDE — still show PRO so subscription UI is reachable.
+    val showProButton = when (entitlement) {
+        is Entitlement.Free -> true
+        is Entitlement.Premium -> entitlement.source == PremiumSource.DEBUG_OVERRIDE
+    }
+    val featuredAppId = resolveHomeFeaturedApplication(
+        activeSessionApplicationId = activeSession?.applicationId,
+        lastApplicationId = lastApplicationId,
+        entitlement = entitlement,
+        wallet = wallet,
+        requiresCoinEntry = requiresCoinEntry,
+    )
+    val deviceSubtitle = when {
+        activeSession?.deviceName != null -> activeSession.deviceName
+        featuredAppId == lastApplicationId && !lastDeviceName.isNullOrBlank() -> lastDeviceName
+        else -> null
+    }
+    val primaryLabel = stringResource(R.string.home_session_open_applications)
+
     Box(modifier = Modifier.fillMaxSize()) {
         NeumorphicBackground()
 
-        LazyColumn(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing),
-            contentPadding = PaddingValues(18.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .safeHudPadding(
+                    includeTop = true,
+                    includeBottom = true,
+                    includeHorizontal = true,
+                ),
         ) {
-            item {
-                HeaderPanel(
-                    isConnected = isSessionConnected,
-                    onHelpClick = { showHelpDialog = true },
-                    onHeaderClick = { navController?.navigate(Screen.About.route) },
-                    showCoins = showCoinWallet,
-                    coinBalance = wallet.balance,
-                    onCoinsClick = { showPricingTable = true },
-                )
-            }
+            val isLandscape = maxWidth > maxHeight
+            val edgePad = if (maxWidth < 400.dp) 16.dp else 20.dp
+            val landscapeHologramSize = minOf(maxWidth * 0.38f, maxHeight * 0.72f)
+                .coerceIn(160.dp, 300.dp)
+            val portraitHologramSize = minOf(maxWidth * 0.72f, maxHeight * 0.42f)
+                .coerceIn(180.dp, 320.dp)
 
-            if (showCoinWallet) {
-                item {
-                    CoinHomeWalletPanel(
-                        balance = wallet.balance,
-                        onWatchAd = {
-                            if (activity != null && rewardedAdManager != null) {
-                                rewardedAdManager.tryShow(activity) { granted ->
-                                    coinMessage = if (granted) {
-                                        adRewardGrantedMessage
-                                    } else {
-                                        adUnavailableMessage
-                                    }
-                                }
-                            } else {
-                                coinMessage = adUnavailableMessage
-                            }
-                        }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = edgePad, vertical = edgePad),
+            ) {
+                MinimalHomeTopBar(
+                    isConnected = isSessionConnected,
+                    showProButton = showProButton,
+                    onProClick = { navController?.navigate(Screen.Upgrade.route) },
+                    onHelpClick = { showHelpDialog = true },
+                    onTitleClick = { navController?.navigate(Screen.About.route) },
+                )
+
+                Spacer(modifier = Modifier.height(if (isLandscape) 12.dp else 8.dp))
+
+                if (isLandscape) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        HomeFeaturedPanel(
+                            featuredAppId = featuredAppId,
+                            deviceSubtitle = deviceSubtitle,
+                            hologramSize = landscapeHologramSize,
+                            isConnecting = isConnecting,
+                            onOpenRecentProject = onOpenRecentProject,
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.CenterStart,
+                            textAlign = TextAlign.Start,
+                            nameBesideImage = true,
+                        )
+                        HomeActionsPanel(
+                            primaryLabel = primaryLabel,
+                            isConnecting = isConnecting,
+                            onOpenApplications = onOpenApplications,
+                            onOpenAbout = { navController?.navigate(Screen.About.route) },
+                            modifier = Modifier.align(Alignment.BottomEnd),
+                            fillButtonWidth = false,
+                            contentAlignment = Alignment.BottomEnd,
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        HomeFeaturedPanel(
+                            featuredAppId = featuredAppId,
+                            deviceSubtitle = deviceSubtitle,
+                            hologramSize = portraitHologramSize,
+                            isConnecting = isConnecting,
+                            onOpenRecentProject = onOpenRecentProject,
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    HomeActionsPanel(
+                        primaryLabel = primaryLabel,
+                        isConnecting = isConnecting,
+                        onOpenApplications = onOpenApplications,
+                        onOpenAbout = { navController?.navigate(Screen.About.route) },
+                        modifier = Modifier.fillMaxWidth(),
+                        fillButtonWidth = true,
+                        contentAlignment = Alignment.Center,
                     )
                 }
-            }
-
-            item {
-                RecentProjectPanel(
-                    applicationId = lastApplicationId,
-                    lastDeviceName = lastDeviceName,
-                    onOpenClick = { appId -> onOpenRecentProject(appId) },
-                    onBrowseApplications = onOpenApplications,
-                )
-            }
-
-            item {
-                HomeLinkCard(item = codesItem, showFreeBadge = true)
-            }
-
-            item {
-                ActiveSessionPanel(
-                    activeSession = activeSession,
-                    isConnecting = isConnecting,
-                    onOpenApplications = onOpenApplications,
-                    onContinueSession = onContinueSession,
-                )
-            }
-
-            item {
-                HomeLinkCard(item = aboutItem)
-            }
-
-            if (AdPolicy.hasBanner(Screen.Home.route, entitlement)) {
-                item { AdBanner(modifier = Modifier.fillMaxWidth()) }
             }
         }
 
         if (showHelpDialog) {
             HomeHelpDialog(onDismissRequest = { showHelpDialog = false })
-        }
-
-        if (showPricingTable && showCoinWallet) {
-            CoinPricingTableDialog(
-                walletBalance = wallet.balance,
-                onDismiss = { showPricingTable = false },
-                onWatchAd = {
-                    if (activity != null && rewardedAdManager != null) {
-                        rewardedAdManager.tryShow(activity) { granted ->
-                            coinMessage = if (granted) {
-                                adRewardGrantedMessage
-                            } else {
-                                adUnavailableMessage
-                            }
-                            if (granted) showPricingTable = false
-                        }
-                    } else {
-                        coinMessage = adUnavailableMessage
-                    }
-                },
-            )
-        }
-
-        if (coinMessage != null) {
-            CoinMessageDialog(
-                message = coinMessage.orEmpty(),
-                onDismiss = { coinMessage = null },
-            )
         }
 
         if (resolvedError != null) {
@@ -280,9 +262,8 @@ fun CyberHomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = if (activeSession?.deviceName != null) {
-                            stringResource(
-                                R.string.home_bluetooth_status_connecting,
-                            ) + " ${activeSession.deviceName}"
+                            stringResource(R.string.home_bluetooth_status_connecting) +
+                                " ${activeSession.deviceName}"
                         } else {
                             stringResource(R.string.home_bluetooth_status_connecting)
                         },
@@ -296,374 +277,319 @@ fun CyberHomeScreen(
 }
 
 @Composable
-private fun HeaderPanel(
-    isConnected: Boolean,
-    onHelpClick: () -> Unit,
-    onHeaderClick: () -> Unit,
-    showCoins: Boolean = false,
-    coinBalance: Int = 0,
-    onCoinsClick: () -> Unit = {},
-) {
-    NeoCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onHeaderClick,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .glassSurface(cornerRadius = 28.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_telecon4esp32_icon),
-                    contentDescription = stringResource(R.string.about_logo_content_description),
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape),
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.home_hud_title),
-                    color = Neo.TextPrimary,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = stringResource(R.string.cyber_header_subtitle),
-                    color = Neo.TextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                StatusLine(isConnected = isConnected)
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            if (showCoins) {
-                com.micsbol.telecon4esp32.ui.wallet.CoinBalanceChip(
-                    balance = coinBalance,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(onClick = onCoinsClick)
-                        .padding(horizontal = 4.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            NeoIconButton(
-                icon = Icons.AutoMirrored.Filled.HelpOutline,
-                onClick = onHelpClick,
-                contentDescription = stringResource(R.string.home_help),
-                size = 44.dp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatusLine(isConnected: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(if (isConnected) Neo.Positive else Neo.Negative),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = if (isConnected) {
-                stringResource(R.string.cyber_device_connected)
-            } else {
-                stringResource(R.string.cyber_device_disconnected)
-            },
-            color = if (isConnected) Neo.Positive else Neo.Negative,
-            fontSize = 12.sp,
-        )
-    }
-}
-
-@Composable
-private fun ActiveSessionPanel(
-    activeSession: ActiveBluetoothSession?,
+private fun FeaturedAppHologram(
+    featuredAppId: ApplicationId,
+    hologramSize: Dp,
     isConnecting: Boolean,
-    onOpenApplications: () -> Unit,
-    onContinueSession: () -> Unit,
+    onOpenRecentProject: (ApplicationId) -> Unit,
 ) {
-    val primaryText = if (activeSession != null) {
-        stringResource(R.string.home_session_continue)
-    } else {
-        stringResource(R.string.home_session_open_applications)
-    }
-    val subtitle = if (activeSession != null) {
-        stringResource(
-            R.string.home_session_continue_subtitle,
-            stringResource(activeSession.applicationId.titleRes()),
+    val contentDescription = stringResource(featuredAppId.titleRes())
+    val shape = RoundedCornerShape(28.dp)
+    val hologramModifier = Modifier
+        .size(hologramSize)
+        .clip(shape)
+        .border(
+            1.dp,
+            Neo.AccentHighlight.copy(alpha = 0.35f),
+            shape,
         )
-    } else {
-        stringResource(R.string.home_session_none_subtitle)
-    }
-
-    NeoCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.home_session_title),
-                color = Neo.TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            if (activeSession == null) {
-                Text(
-                    text = stringResource(R.string.home_session_none),
-                    color = Neo.TextSecondary,
-                    fontSize = 12.sp,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.home_session_none_hint),
-                    color = Neo.TextSecondary,
-                    fontSize = 12.sp,
-                )
-            } else {
-                SessionDetailRow(
-                    label = stringResource(R.string.home_session_app_label),
-                    value = stringResource(activeSession.applicationId.titleRes()),
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                SessionDetailRow(
-                    label = stringResource(R.string.home_session_device_label),
-                    value = activeSession.deviceName
-                        ?: stringResource(R.string.bluetooth_unknown_device),
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                SessionDetailRow(
-                    label = stringResource(R.string.home_session_protocol_label),
-                    value = protocolModeLabel(activeSession.protocolMode),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                StatusLine(isConnected = true)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            NeoPillButton(
-                text = primaryText,
-                onClick = {
-                    if (activeSession != null) onContinueSession() else onOpenApplications()
-                },
-                icon = if (activeSession != null) Icons.Filled.Rocket else Icons.Filled.GridView,
-                enabled = !isConnecting,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = subtitle,
-                color = Neo.TextSecondary,
-                fontSize = 12.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        .clickable(enabled = !isConnecting) {
+            onOpenRecentProject(featuredAppId)
         }
-    }
-}
 
-@Composable
-private fun SessionDetailRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            color = Neo.TextSecondary,
-            fontSize = 12.sp,
-            modifier = Modifier.weight(0.45f),
+    val turntableDir = featuredAppId.holoTurntableAssetDir()
+    if (turntableDir != null) {
+        HoloTurntableFlipbook(
+            assetDir = turntableDir,
+            contentDescription = contentDescription,
+            modifier = hologramModifier,
+            contentScale = ContentScale.Crop,
         )
-        Text(
-            text = value,
-            color = Neo.TextPrimary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(0.55f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+    } else {
+        Image(
+            painter = painterResource(featuredAppId.thumbnailRes()),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = hologramModifier,
         )
     }
 }
 
 @Composable
-private fun HomeLinkCard(
-    item: HomeMenuItem,
-    showFreeBadge: Boolean = false,
+private fun HomeFeaturedPanel(
+    featuredAppId: ApplicationId?,
+    deviceSubtitle: String?,
+    hologramSize: Dp,
+    isConnecting: Boolean,
+    onOpenRecentProject: (ApplicationId) -> Unit,
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.Center,
+    textAlign: TextAlign = TextAlign.Center,
+    nameBesideImage: Boolean = false,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .glassSurface(cornerRadius = 22.dp)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = item.onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = modifier,
+        contentAlignment = contentAlignment,
     ) {
-        if (showFreeBadge) {
-            Text(
-                text = stringResource(R.string.applications_badge_free),
-                color = Neo.Positive,
-                fontSize = 25.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontStyle = FontStyle.Italic,
-                modifier = Modifier.align(Alignment.TopEnd),
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = if (showFreeBadge) 72.dp else 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            NeoIconBadge(icon = item.icon, size = 44.dp, selected = pressed)
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    color = Neo.TextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = item.description,
-                    color = Neo.TextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentProjectPanel(
-    applicationId: ApplicationId?,
-    lastDeviceName: String?,
-    onOpenClick: (ApplicationId) -> Unit,
-    onBrowseApplications: () -> Unit,
-) {
-    NeoCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.cyber_recent_project),
-            color = Neo.TextSecondary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        if (applicationId == null) {
+        if (featuredAppId != null && nameBesideImage) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                FeaturedAppHologram(
+                    featuredAppId = featuredAppId,
+                    hologramSize = hologramSize,
+                    isConnecting = isConnecting,
+                    onOpenRecentProject = onOpenRecentProject,
+                )
+                Column(
+                    modifier = Modifier.widthIn(max = 280.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(featuredAppId.titleRes()),
+                        color = Neo.TextPrimary,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Start,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!deviceSubtitle.isNullOrBlank()) {
+                        Text(
+                            text = deviceSubtitle,
+                            color = Neo.TextMuted,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Start,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        } else {
+            Column(
+                horizontalAlignment = when (textAlign) {
+                    TextAlign.End -> Alignment.End
+                    TextAlign.Start -> Alignment.Start
+                    else -> Alignment.CenterHorizontally
+                },
+            ) {
+                if (featuredAppId != null) {
+                    FeaturedAppHologram(
+                        featuredAppId = featuredAppId,
+                        hologramSize = hologramSize,
+                        isConnecting = isConnecting,
+                        onOpenRecentProject = onOpenRecentProject,
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = stringResource(featuredAppId.titleRes()),
+                        color = Neo.TextPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = textAlign,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = hologramSize + 24.dp),
+                    )
+                    if (!deviceSubtitle.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = deviceSubtitle,
+                            color = Neo.TextMuted,
+                            fontSize = 13.sp,
+                            textAlign = textAlign,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = hologramSize + 24.dp),
+                        )
+                    }
+                } else {
                     Text(
                         text = stringResource(R.string.cyber_recent_none),
                         color = Neo.TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = stringResource(R.string.cyber_recent_none_hint),
-                        color = Neo.TextSecondary,
-                        fontSize = 11.sp,
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                NeoPillButton(
-                    text = stringResource(R.string.home_session_open_applications),
-                    onClick = onBrowseApplications,
-                    compact = true,
-                )
-            }
-        } else {
-            val isRcVehicle = applicationId == ApplicationId.RC_VEHICLE_PRO
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 84.dp, height = 64.dp)
-                        .glassSurface(cornerRadius = 14.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        painter = painterResource(applicationId.thumbnailRes()),
-                        contentDescription = stringResource(applicationId.titleRes()),
-                        contentScale = if (isRcVehicle) ContentScale.Fit else ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(14.dp))
-                            .padding(if (isRcVehicle) 6.dp else 0.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(applicationId.titleRes()),
-                        color = Neo.TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = lastDeviceName
-                            ?: stringResource(R.string.cyber_recent_open_to_connect),
-                        color = Neo.TextSecondary,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = textAlign,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Tag(stringResource(applicationId.recentTagRes()))
-                        Tag(stringResource(R.string.cyber_tag_esp32))
-                    }
+                    Text(
+                        text = stringResource(R.string.home_session_none_hint),
+                        color = Neo.TextSecondary,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        textAlign = textAlign,
+                        modifier = Modifier.widthIn(max = 280.dp),
+                    )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                NeoPillButton(
-                    text = stringResource(R.string.cyber_open),
-                    onClick = { onOpenClick(applicationId) },
-                    compact = true,
-                )
             }
         }
     }
 }
 
 @Composable
-private fun Tag(text: String) {
+private fun HomeActionsPanel(
+    primaryLabel: String,
+    isConnecting: Boolean,
+    onOpenApplications: () -> Unit,
+    onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier,
+    fillButtonWidth: Boolean,
+    contentAlignment: Alignment = Alignment.Center,
+) {
+    val context = LocalContext.current
+    val horizontalAlignment = when (contentAlignment) {
+        Alignment.BottomEnd, Alignment.CenterEnd, Alignment.TopEnd -> Alignment.End
+        Alignment.BottomStart, Alignment.CenterStart, Alignment.TopStart -> Alignment.Start
+        else -> Alignment.CenterHorizontally
+    }
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Neo.Accent.copy(alpha = 0.16f))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+        modifier = modifier,
+        contentAlignment = contentAlignment,
+    ) {
+        Column(
+            horizontalAlignment = horizontalAlignment,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NeoPillButton(
+                text = primaryLabel,
+                onClick = onOpenApplications,
+                icon = Icons.Filled.GridView,
+                enabled = !isConnecting,
+                fillMaxWidth = fillButtonWidth,
+                compact = false,
+                modifier = if (fillButtonWidth) {
+                    Modifier.fillMaxWidth()
+                } else {
+                    Modifier.widthIn(min = 200.dp, max = 320.dp)
+                },
+            )
+            Text(
+                text = stringResource(R.string.home_version_info, BuildConfig.VERSION_NAME),
+                color = Neo.TextMuted.copy(alpha = 0.85f),
+                fontSize = 12.sp,
+                textAlign = when (horizontalAlignment) {
+                    Alignment.End -> TextAlign.End
+                    Alignment.Start -> TextAlign.Start
+                    else -> TextAlign.Center
+                },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onOpenAbout)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = context.getString(R.string.home_about_content_description)
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun MinimalHomeTopBar(
+    isConnected: Boolean,
+    showProButton: Boolean,
+    onProClick: () -> Unit,
+    onHelpClick: () -> Unit,
+    onTitleClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_telecon4esp32_icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .glassSurface(cornerRadius = 18.dp)
+                .clickable(onClick = onTitleClick)
+                .padding(4.dp),
+        )
+        Spacer(modifier = Modifier.size(10.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onTitleClick),
+        ) {
+            Text(
+                text = stringResource(R.string.home_hud_title),
+                color = Neo.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(if (isConnected) Neo.Positive else Neo.Negative),
+                )
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(
+                    text = if (isConnected) {
+                        stringResource(R.string.cyber_device_connected)
+                    } else {
+                        stringResource(R.string.cyber_device_disconnected)
+                    },
+                    color = if (isConnected) Neo.Positive else Neo.Negative,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (showProButton) {
+            HomeProButton(onClick = onProClick)
+            Spacer(modifier = Modifier.size(8.dp))
+        }
+        NeoIconButton(
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
+            onClick = onHelpClick,
+            contentDescription = stringResource(R.string.home_help),
+            size = 40.dp,
+        )
+    }
+}
+
+@Composable
+private fun HomeProButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(R.string.home_pro_button_content_description)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        ProGold.copy(alpha = 0.28f),
+                        ProGoldDeep.copy(alpha = 0.18f),
+                    ),
+                ),
+            )
+            .border(1.dp, ProGold.copy(alpha = 0.75f), RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = description
+            }
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = text,
-            color = Neo.Accent,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
+            text = stringResource(R.string.home_pro_button),
+            color = ProGold,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
         )
     }
 }
@@ -672,6 +598,21 @@ private fun Tag(text: String) {
 @Composable
 private fun CyberHomeScreenPreview() {
     CyberHomeScreen()
+}
+
+@Preview(
+    showSystemUi = true,
+    uiMode = UI_MODE_NIGHT_YES,
+    name = "Landscape",
+    widthDp = 800,
+    heightDp = 360,
+)
+@Composable
+private fun CyberHomeScreenLandscapePreview() {
+    CyberHomeScreen(
+        lastApplicationId = ApplicationId.CONTROL_PANEL,
+        lastDeviceName = null,
+    )
 }
 
 @Preview(showSystemUi = true, uiMode = UI_MODE_NIGHT_YES, name = "Connected")
@@ -697,8 +638,3 @@ private fun CyberHomeScreenRecentRcPreview() {
         lastDeviceName = "ESP32-TeleCon-RC",
     )
 }
-
-
-
-
-

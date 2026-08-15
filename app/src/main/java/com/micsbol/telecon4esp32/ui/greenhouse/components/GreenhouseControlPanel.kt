@@ -206,7 +206,7 @@ private fun GreenhouseControlPanelBody(
                 }
             }
             Icon(
-                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                 contentDescription = null,
                 tint = GreenhouseGlass.AccentGreen,
                 modifier = Modifier.size(24.dp),

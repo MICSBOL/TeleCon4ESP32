@@ -147,19 +147,13 @@ fun SmartDoorLockGlassIconButton(
     size: Dp = 44.dp,
     content: @Composable () -> Unit,
 ) {
-    IconButton(
+    com.micsbol.telecon4esp32.ui.components.GlassChromeIconButton(
         onClick = onClick,
+        background = SmartDoorLockGlass.CardSurface.copy(alpha = SmartDoorLockGlass.TopBarButtonAlpha),
+        borderColor = SmartDoorLockGlass.BorderColor.copy(alpha = SmartDoorLockGlass.BorderAlpha),
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(SmartDoorLockGlass.CardSurface.copy(alpha = SmartDoorLockGlass.TopBarButtonAlpha))
-            .border(
-                1.dp,
-                SmartDoorLockGlass.BorderColor.copy(alpha = SmartDoorLockGlass.BorderAlpha),
-                CircleShape,
-            ),
-    ) {
-        content()
-    }
+        size = size,
+        content = content,
+    )
 }

@@ -48,15 +48,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.rememberClampedSafeHudInsets
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCameraGimbalPad
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseStatusBadge
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 @Composable
 fun GreenhouseCameraScreen(
     navController: NavController,
+    bluetoothViewModel: BluetoothViewModel,
     viewModel: GreenhouseCameraViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -68,11 +73,24 @@ fun GreenhouseCameraScreen(
         onDispose { viewModel.onScreenHidden() }
     }
 
+    LaunchedEffect(
+        uiState.cameraLinkProfile,
+        uiState.isCameraOnline,
+        uiState.isBluetoothOnline,
+    ) {
+        if (viewModel.shouldAutoConnectSoftApControl()) {
+            bluetoothViewModel.ensureWifiSoftApConnected(ApplicationId.GREENHOUSE)
+        }
+    }
+
     GreenhouseCameraScreenContent(
         uiState = uiState,
         onBackClick = {
             GreenhouseEmulatorNavigation.backToGreenhouse(navController, Screen.GreenhouseCamera.route)
         },
+        onCamGimbalChange = viewModel::setCamGimbal,
+        onCamGimbalChangeFinished = viewModel::commitCamGimbal,
+        onCamGimbalCenter = viewModel::centerCamGimbal,
     )
 }
 
@@ -81,6 +99,9 @@ fun GreenhouseCameraScreen(
 fun GreenhouseCameraScreenContent(
     uiState: GreenhouseCameraUiState,
     onBackClick: () -> Unit,
+    onCamGimbalChange: (panPercent: Int, tiltPercent: Int) -> Unit = { _, _ -> },
+    onCamGimbalChangeFinished: () -> Unit = {},
+    onCamGimbalCenter: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (uiState.isEmulatorPreview) {
@@ -91,10 +112,16 @@ fun GreenhouseCameraScreenContent(
         return
     }
 
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = false,
+        includeHorizontal = true,
     )
-    val bottomInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+    val bottomInsets = rememberClampedSafeHudInsets(
+        includeTop = false,
+        includeBottom = true,
+        includeHorizontal = false,
+    )
 
     Box(
         modifier = modifier
@@ -172,98 +199,113 @@ fun GreenhouseCameraScreenContent(
                 )
             }
 
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    GreenhouseHudMetric(
-                        label = stringResource(R.string.greenhouse_weather_label),
-                        value = stringResource(
-                            R.string.greenhouse_temperature_reading,
-                            uiState.temperatureC,
-                        ),
-                    )
-                    GreenhouseHudMetric(
-                        label = stringResource(R.string.greenhouse_humidity_label),
-                        value = stringResource(
-                            R.string.greenhouse_percent_value,
-                            uiState.humidityPercent,
-                        ),
-                    )
-                    GreenhouseHudMetric(
-                        label = stringResource(R.string.greenhouse_vpd_label),
-                        value = stringResource(
-                            R.string.greenhouse_vpd_value,
-                            String.format("%.1f", uiState.vpdKpa),
-                        ),
-                    )
-                    GreenhouseHudMetric(
-                        label = stringResource(R.string.greenhouse_soil),
-                        value = stringResource(
-                            R.string.greenhouse_percent_value,
-                            uiState.soilPercent,
-                        ),
-                    )
-                    GreenhouseHudMetric(
-                        label = stringResource(R.string.greenhouse_tank),
-                        value = stringResource(
-                            R.string.greenhouse_percent_value,
-                            uiState.tankPercent,
-                        ),
-                    )
-                }
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    GreenhouseStatusBadge(
-                        text = stringResource(
-                            if (uiState.isAutoMode) {
-                                R.string.greenhouse_mode_auto
-                            } else {
-                                R.string.greenhouse_mode_manual
-                            },
-                        ),
-                        backgroundColor = Color.Black.copy(alpha = 0.42f),
-                        contentColor = GreenhouseGlass.LeafBright,
-                        leadingIcon = Icons.Default.Eco,
-                        iconTint = GreenhouseGlass.LeafBright,
-                    )
-                    if (uiState.isStable) {
-                        GreenhouseStatusBadge(
-                            text = stringResource(R.string.greenhouse_stable),
-                            backgroundColor = Color.Black.copy(alpha = 0.42f),
-                            contentColor = GreenhouseGlass.LeafLime,
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        GreenhouseHudMetric(
+                            label = stringResource(R.string.greenhouse_weather_label),
+                            value = stringResource(
+                                R.string.greenhouse_temperature_reading,
+                                uiState.temperatureC,
+                            ),
+                        )
+                        GreenhouseHudMetric(
+                            label = stringResource(R.string.greenhouse_humidity_label),
+                            value = stringResource(
+                                R.string.greenhouse_percent_value,
+                                uiState.humidityPercent,
+                            ),
+                        )
+                        GreenhouseHudMetric(
+                            label = stringResource(R.string.greenhouse_vpd_label),
+                            value = stringResource(
+                                R.string.greenhouse_vpd_value,
+                                String.format("%.1f", uiState.vpdKpa),
+                            ),
+                        )
+                        GreenhouseHudMetric(
+                            label = stringResource(R.string.greenhouse_soil),
+                            value = stringResource(
+                                R.string.greenhouse_percent_value,
+                                uiState.soilPercent,
+                            ),
+                        )
+                        GreenhouseHudMetric(
+                            label = stringResource(R.string.greenhouse_tank),
+                            value = stringResource(
+                                R.string.greenhouse_percent_value,
+                                uiState.tankPercent,
+                            ),
                         )
                     }
-                    GreenhouseStatusBadge(
-                        text = stringResource(
-                            if (uiState.fanOn) {
-                                R.string.greenhouse_fan_on
-                            } else {
-                                R.string.greenhouse_fan_off
-                            },
-                        ),
-                        backgroundColor = Color.Black.copy(alpha = 0.42f),
-                        contentColor = Color.White,
-                    )
-                    GreenhouseStatusBadge(
-                        text = stringResource(
-                            if (uiState.lightsOn) {
-                                R.string.greenhouse_lights_on
-                            } else {
-                                R.string.greenhouse_lights_off
-                            },
-                        ),
-                        backgroundColor = Color.Black.copy(alpha = 0.42f),
-                        contentColor = Color.White,
-                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        GreenhouseStatusBadge(
+                            text = stringResource(
+                                if (uiState.isAutoMode) {
+                                    R.string.greenhouse_mode_auto
+                                } else {
+                                    R.string.greenhouse_mode_manual
+                                },
+                            ),
+                            backgroundColor = Color.Black.copy(alpha = 0.42f),
+                            contentColor = GreenhouseGlass.LeafBright,
+                            leadingIcon = Icons.Default.Eco,
+                            iconTint = GreenhouseGlass.LeafBright,
+                        )
+                        if (uiState.isStable) {
+                            GreenhouseStatusBadge(
+                                text = stringResource(R.string.greenhouse_stable),
+                                backgroundColor = Color.Black.copy(alpha = 0.42f),
+                                contentColor = GreenhouseGlass.LeafLime,
+                            )
+                        }
+                        GreenhouseStatusBadge(
+                            text = stringResource(
+                                if (uiState.fanOn) {
+                                    R.string.greenhouse_fan_on
+                                } else {
+                                    R.string.greenhouse_fan_off
+                                },
+                            ),
+                            backgroundColor = Color.Black.copy(alpha = 0.42f),
+                            contentColor = Color.White,
+                        )
+                        GreenhouseStatusBadge(
+                            text = stringResource(
+                                if (uiState.lightsOn) {
+                                    R.string.greenhouse_lights_on
+                                } else {
+                                    R.string.greenhouse_lights_off
+                                },
+                            ),
+                            backgroundColor = Color.Black.copy(alpha = 0.42f),
+                            contentColor = Color.White,
+                        )
+                    }
                 }
+
+                GreenhouseCameraGimbalPad(
+                    panPercent = uiState.camPanPercent,
+                    tiltPercent = uiState.camTiltPercent,
+                    onGimbalChange = onCamGimbalChange,
+                    onGimbalChangeFinished = onCamGimbalChangeFinished,
+                    onCenterClick = onCamGimbalCenter,
+                    enabled = uiState.isBluetoothOnline,
+                )
             }
         }
     }
@@ -274,8 +316,10 @@ private fun GreenhouseCameraEmulatorContent(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = true,
+        includeHorizontal = true,
     )
 
     GreenhouseBackground(modifier = modifier, showPhoto = false) {

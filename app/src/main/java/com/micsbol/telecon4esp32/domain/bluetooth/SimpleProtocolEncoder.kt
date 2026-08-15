@@ -37,6 +37,18 @@ object SimpleProtocolEncoder {
 
     fun buildSetLine(appPrefix: String, pairs: Map<String, Any>): String =
         LineProtocolCodec.encode(appPrefix, "SET", pairs)
+
+    /**
+     * Ask firmware to store the current steering PWM as mechanical center.
+     * [rxChannel] is the live −100…100 value being sent (includes app trim).
+     */
+    fun buildSteerCenterSaveLine(rxChannel: Int): String = buildSetLine(
+        appPrefix = RC_APP,
+        pairs = mapOf(
+            "steer_center" to 1,
+            "rx" to rxChannel.coerceIn(-100, 100),
+        ),
+    )
 }
 
 private fun buildSwitchHex(state: RcState): String {

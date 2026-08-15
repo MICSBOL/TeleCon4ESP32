@@ -112,7 +112,7 @@ object SmartHomePinMap {
                 SmartHomePinAssignment(
                     elementLabelRes = R.string.smart_home_system_climate,
                     gpio = 4,
-                    hardwareRes = R.string.smart_home_pin_hw_dht22_bus,
+                    hardwareRes = R.string.smart_home_pin_hw_dht22_avg,
                 ),
                 SmartHomePinAssignment(
                     elementLabelRes = R.string.smart_home_system_energy,

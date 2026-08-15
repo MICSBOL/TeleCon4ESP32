@@ -1,7 +1,10 @@
 package com.micsbol.telecon4esp32.domain.use_case
 
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
+import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
@@ -38,6 +41,21 @@ class SaveApplicationTransportTypeUseCase @Inject constructor(
     }
 }
 
+class GetApplicationConnectionModeUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    operator fun invoke(applicationId: ApplicationId): Flow<BluetoothConnectionMode?> =
+        repository.connectionModeFlow(applicationId)
+}
+
+class SaveApplicationConnectionModeUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(applicationId: ApplicationId, mode: BluetoothConnectionMode) {
+        repository.saveConnectionMode(applicationId, mode)
+    }
+}
+
 class GetApplicationBoardUseCase @Inject constructor(
     private val repository: ISettingsRepository,
 ) {
@@ -50,5 +68,35 @@ class SaveApplicationBoardUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(applicationId: ApplicationId, board: Esp32Board) {
         repository.saveBoard(applicationId, board)
+    }
+}
+
+class GetSoftApPerformancePresetUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    operator fun invoke(applicationId: ApplicationId): Flow<SoftApPerformancePreset> =
+        repository.softApPerformancePresetFlow(applicationId)
+}
+
+class SaveSoftApPerformancePresetUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(applicationId: ApplicationId, preset: SoftApPerformancePreset) {
+        repository.saveSoftApPerformancePreset(applicationId, preset)
+    }
+}
+
+class GetSoftApHudProcessingRateUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    operator fun invoke(applicationId: ApplicationId): Flow<SoftApHudProcessingRate> =
+        repository.softApHudProcessingRateFlow(applicationId)
+}
+
+class SaveSoftApHudProcessingRateUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(applicationId: ApplicationId, rate: SoftApHudProcessingRate) {
+        repository.saveSoftApHudProcessingRate(applicationId, rate)
     }
 }

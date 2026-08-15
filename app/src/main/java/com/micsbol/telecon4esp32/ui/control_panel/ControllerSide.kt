@@ -5,14 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -20,11 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
@@ -108,77 +108,132 @@ data class ControllerSideLayoutMetrics(
     val switchPositions: List<Pair<Dp, Dp>>,
     val extraContentSize: Dp,
     val panelWidth: Dp,
+    val ledSize: Dp,
+    val ledSpacing: Dp,
 )
+
+/**
+ * Fraction of content width reserved for one controller side.
+ * Wider/shorter phones get a tighter side budget so the center plot stays readable.
+ */
+internal fun controllerSideWidthFraction(aspectRatio: Float): Float = when {
+    aspectRatio >= 2.4f -> 0.27f
+    aspectRatio >= 2.0f -> 0.29f
+    aspectRatio >= 1.6f -> 0.31f
+    else -> 0.33f
+}
 
 @Composable
 internal fun rememberControllerSideLayoutMetrics(
     side: ButtonSide,
-    aspectRatio: Float,
+    availableHeight: Dp,
+    contentWidth: Dp,
 ): ControllerSideLayoutMetrics {
-    val density = LocalDensity.current
-    return remember(density.density, aspectRatio, side) {
-        buildControllerSideLayoutMetrics(side, aspectRatio, density)
+    return remember(availableHeight, contentWidth, side) {
+        buildControllerSideLayoutMetrics(
+            side = side,
+            availableHeight = availableHeight,
+            contentWidth = contentWidth,
+        )
     }
 }
 
+/**
+ * Builds side-controller sizes from the real available window (dp), so the panel
+ * fills short landscape phones and large tablets without overflow or empty gaps.
+ *
+ * Density is intentionally unused: Compose dp already normalizes pixel density.
+ */
 internal fun buildControllerSideLayoutMetrics(
     side: ButtonSide,
-    aspectRatio: Float,
-    density: Density,
+    availableHeight: Dp,
+    contentWidth: Dp,
 ): ControllerSideLayoutMetrics {
-    val mmInDp = density.density * 160f / 25.4f
-    val targetMm = if (aspectRatio > 2.0f) 30f else 100f
-    val maxDp = if (aspectRatio > 2.0f) 200.dp else 250.dp
-    val joystickSize = (targetMm * mmInDp).dp.coerceIn(100.dp, maxDp)
-    val switchMultiplier = 0.27f
+    val safeHeight = availableHeight.coerceAtLeast(80.dp)
+    val safeWidth = contentWidth.coerceAtLeast(160.dp)
+    val aspectRatio = safeWidth / safeHeight
+    val sideBudget = safeWidth * controllerSideWidthFraction(aspectRatio)
+
+    // Column layout: telemetry (~26%) above a weighted controls region (~74%).
+    // Leave a clear band above the stick for a larger knob (fills the mid gap).
+    val controlsBudget = (safeHeight * 0.74f).coerceAtLeast(72.dp)
+    val joystickFromHeight = controlsBudget * 0.70f
+    val joystickFromWidth = sideBudget * 0.98f
+    val joystickSize = minOf(joystickFromHeight, joystickFromWidth)
+        .coerceIn(72.dp, 300.dp)
+
+    val switchMultiplier = 0.24f
     val switchSize = joystickSize * switchMultiplier
     val switchStep = ((joystickSize - switchSize) / 3.5f).coerceAtLeast(0.dp)
+    // Raise switches above the gimbal rim (more negative Y = higher), keep sizes.
     val switchPositions = if (side == ButtonSide.RIGHT) {
         listOf(
-            Pair(0.dp, -joystickSize * 0.30f),
-            Pair(switchStep, -joystickSize * 0.22f),
-            Pair(switchStep * 2f, -joystickSize * 0.10f),
+            Pair(0.dp, -joystickSize * 0.48f),
+            Pair(switchStep, -joystickSize * 0.40f),
+            Pair(switchStep * 2f, -joystickSize * 0.30f),
         )
     } else {
         listOf(
-            Pair(0.dp, -joystickSize * 0.30f),
-            Pair(-switchStep, -joystickSize * 0.22f),
-            Pair(-switchStep * 2f, -joystickSize * 0.10f),
+            Pair(0.dp, -joystickSize * 0.48f),
+            Pair(-switchStep, -joystickSize * 0.40f),
+            Pair(-switchStep * 2f, -joystickSize * 0.30f),
         )
     }
-    val angle = if (side == ButtonSide.RIGHT) 50.0 else 130.0
-    val radius = joystickSize.value * 0.45f
+    // Size the knob from the free band above the stick so it fills that space.
+    val knobGap = (controlsBudget - joystickSize).coerceAtLeast(joystickSize * 0.32f)
+    val knobSize = minOf(knobGap * 0.95f, joystickSize * 0.50f)
+        .coerceIn(40.dp, 150.dp)
+    // Unused by layout now (knob is top/center-aligned), kept for metrics stability.
+    val angle = if (side == ButtonSide.RIGHT) 72.0 else 108.0
+    val radius = joystickSize.value * 0.58f
     val rad = Math.toRadians(angle)
     return ControllerSideLayoutMetrics(
         joystickSize = joystickSize,
         switchSize = switchSize,
-        knobSize = joystickSize * 0.35f,
+        knobSize = knobSize,
         knobXOffset = (radius * cos(rad)).dp,
         knobYOffset = (radius * sin(rad)).dp,
         switchPositions = switchPositions,
-        extraContentSize = joystickSize * 0.3f,
-        panelWidth = joystickSize * 0.6f,
+        extraContentSize = joystickSize * 0.28f,
+        panelWidth = joystickSize * 0.55f,
+        ledSize = (joystickSize * 0.08f).coerceIn(8.dp, 14.dp),
+        ledSpacing = (joystickSize * 0.04f).coerceIn(3.dp, 8.dp),
     )
 }
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 internal fun ControllerSideLayout(
-    aspectRatio: Float,
     side: ButtonSide,
+    contentWidth: Dp,
     modifier: Modifier = Modifier,
-    content: @Composable BoxWithConstraintsScope.(ControllerSideLayoutMetrics) -> Unit,
+    content: @Composable BoxScope.(ControllerSideLayoutMetrics) -> Unit,
 ) {
     BoxWithConstraints(
-        modifier = modifier.fillMaxHeight().padding(8.dp),
-        contentAlignment = Alignment.BottomCenter,
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(horizontal = 2.dp, vertical = 2.dp),
     ) {
-        val metrics = rememberControllerSideLayoutMetrics(side, aspectRatio)
-        content(metrics)
+        val metrics = rememberControllerSideLayoutMetrics(
+            side = side,
+            availableHeight = maxHeight,
+            contentWidth = contentWidth,
+        )
+        // Width follows the stick + telemetry row so the center plot keeps remaining space.
+        val sideWidth = max(
+            metrics.joystickSize,
+            metrics.panelWidth + metrics.extraContentSize + metrics.ledSize + 10.dp,
+        )
+        Box(
+            modifier = Modifier
+                .width(sideWidth)
+                .fillMaxHeight(),
+        ) {
+            content(metrics)
+        }
     }
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun ControllerSide(
     modifier: Modifier = Modifier,
@@ -194,37 +249,48 @@ fun ControllerSide(
     onKnobValueChange: (Float) -> Unit,
     telemetry: SideTelemetry,
     topExtraContent: (@Composable (modifier: Modifier) -> Unit)? = null,
-    aspectRatio: Float,
+    contentWidth: Dp,
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
 ) {
     ControllerSideLayout(
-        aspectRatio = aspectRatio,
         side = side,
+        contentWidth = contentWidth,
         modifier = modifier,
     ) { metrics ->
-        ControllerSideControls(
-            side = side,
-            mode = mode,
-            stickPosition = stickPosition,
-            settingsSyncGeneration = settingsSyncGeneration,
-            onMove = onMove,
-            switchStates = switchStates,
-            onSwitchStateChange = onSwitchStateChange,
-            knobValue = knobValue,
-            onKnobValueChange = onKnobValueChange,
-            metrics = metrics,
-            onTopPress = onTopPress,
-            onBottomPress = onBottomPress,
-        )
-        ControllerSideTelemetryRow(
-            modifier = Modifier.align(Alignment.TopCenter),
-            side = side,
-            telemetry = telemetry,
-            panelWidth = metrics.panelWidth,
-            extraContentSize = metrics.extraContentSize,
-            topExtraContent = topExtraContent,
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            ControllerSideTelemetryRow(
+                modifier = Modifier.fillMaxWidth(),
+                side = side,
+                telemetry = telemetry,
+                panelWidth = metrics.panelWidth,
+                extraContentSize = metrics.extraContentSize,
+                ledSize = metrics.ledSize,
+                ledSpacing = metrics.ledSpacing,
+                topExtraContent = topExtraContent,
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                ControllerSideControls(
+                    side = side,
+                    mode = mode,
+                    stickPosition = stickPosition,
+                    settingsSyncGeneration = settingsSyncGeneration,
+                    onMove = onMove,
+                    switchStates = switchStates,
+                    onSwitchStateChange = onSwitchStateChange,
+                    knobValue = knobValue,
+                    onKnobValueChange = onKnobValueChange,
+                    metrics = metrics,
+                    onTopPress = onTopPress,
+                    onBottomPress = onBottomPress,
+                )
+            }
+        }
     }
 }
 
@@ -244,42 +310,52 @@ internal fun ControllerSideControls(
     onBottomPress: () -> Unit,
 ) {
     val joystickSize = metrics.joystickSize
-    Box(
-        modifier = Modifier.size(joystickSize),
-        contentAlignment = Alignment.BottomEnd,
-    ) {
-        ControllerSideButtons(
-            side = side,
-            joystickSize = joystickSize,
-            onTopPress = onTopPress,
-            onBottomPress = onBottomPress,
-        )
-        ControllerSideJoystick(
-            modifier = Modifier
-                .offset(
-                    x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f),
-                    y = (-joystickSize * 0.1f)
-                )
-                .fillMaxSize(),
-            mode = mode,
-            stickPosition = stickPosition,
-            settingsSyncGeneration = settingsSyncGeneration,
-            onMove = onMove,
-        )
-        ControllerSideSwitches(
-            switchStates = switchStates,
-            onSwitchStateChange = onSwitchStateChange,
-            switchPositions = metrics.switchPositions,
-            switchSize = metrics.switchSize,
-        )
+    // Knob sits just above the stick (same size); bottom padding clears the gimbal rim.
+    val knobClearanceAboveStick = 6.dp
+    Box(modifier = Modifier.fillMaxSize()) {
         ControllerSideKnob(
+            modifier = Modifier
+                .align(if (side == ButtonSide.LEFT) Alignment.BottomEnd else Alignment.BottomStart)
+                .padding(
+                    bottom = joystickSize + knobClearanceAboveStick,
+                    start = if (side == ButtonSide.RIGHT) 2.dp else 0.dp,
+                    end = if (side == ButtonSide.LEFT) 2.dp else 0.dp,
+                ),
             knobSize = metrics.knobSize,
-            knobXOffset = metrics.knobXOffset,
-            knobYOffset = metrics.knobYOffset,
-            joystickSize = joystickSize,
             knobValue = knobValue,
             onKnobValueChange = onKnobValueChange,
         )
+        Box(
+            modifier = Modifier
+                .size(joystickSize)
+                .align(Alignment.BottomCenter),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            ControllerSideButtons(
+                side = side,
+                joystickSize = joystickSize,
+                onTopPress = onTopPress,
+                onBottomPress = onBottomPress,
+            )
+            ControllerSideJoystick(
+                modifier = Modifier
+                    .offset(
+                        x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f),
+                        y = (-joystickSize * 0.1f),
+                    )
+                    .fillMaxSize(),
+                mode = mode,
+                stickPosition = stickPosition,
+                settingsSyncGeneration = settingsSyncGeneration,
+                onMove = onMove,
+            )
+            ControllerSideSwitches(
+                switchStates = switchStates,
+                onSwitchStateChange = onSwitchStateChange,
+                switchPositions = metrics.switchPositions,
+                switchSize = metrics.switchSize,
+            )
+        }
     }
 }
 
@@ -351,20 +427,13 @@ internal fun BoxScope.ControllerSideSwitches(
 }
 
 @Composable
-internal fun BoxScope.ControllerSideKnob(
+internal fun ControllerSideKnob(
     knobSize: Dp,
-    knobXOffset: Dp,
-    knobYOffset: Dp,
-    joystickSize: Dp,
     knobValue: Float,
     onKnobValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = Modifier
-            .size(knobSize)
-            .align(Alignment.Center)
-            .offset(x = -knobXOffset, y = -knobYOffset - joystickSize * 0.25f)
-    ) {
+    Box(modifier = modifier.size(knobSize)) {
         Knob3D(value = knobValue, onValueChange = onKnobValueChange)
     }
 }
@@ -376,6 +445,8 @@ internal fun ControllerSideTelemetryRow(
     telemetry: SideTelemetry,
     panelWidth: Dp,
     extraContentSize: Dp,
+    ledSize: Dp = 14.dp,
+    ledSpacing: Dp = 8.dp,
     topExtraContent: (@Composable (Modifier) -> Unit)?,
 ) {
     val ledStates = remember(telemetry.ledValues, side) {
@@ -403,8 +474,8 @@ internal fun ControllerSideTelemetryRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (side == ButtonSide.RIGHT) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ledStates.forEach { isOn -> LedIndicator(isOn = isOn, size = 14.dp) }
+            Column(verticalArrangement = Arrangement.spacedBy(ledSpacing)) {
+                ledStates.forEach { isOn -> LedIndicator(isOn = isOn, size = ledSize) }
             }
             SevenSegmentedPanel(
                 width = panelWidth,
@@ -423,8 +494,8 @@ internal fun ControllerSideTelemetryRow(
                 onColor = panelColor,
                 title = telemetry.panelTitle
             )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ledStates.forEach { isOn -> LedIndicator(isOn = isOn, size = 14.dp) }
+            Column(verticalArrangement = Arrangement.spacedBy(ledSpacing)) {
+                ledStates.forEach { isOn -> LedIndicator(isOn = isOn, size = ledSize) }
             }
         }
     }
@@ -452,7 +523,7 @@ fun ControllerSideLeftPreview() {
         topExtraContent = { modifier ->
             AnalogIndicator(modifier = modifier, value = 75, title = "Analog")
         },
-        aspectRatio = 2.2f,
+        contentWidth = 900.dp,
         onTopPress = {},
         onBottomPress = {}
     )
@@ -480,7 +551,7 @@ fun ControllerSideRightPreview() {
         topExtraContent = { modifier ->
             BatteryStatus(level = 98, modifier = modifier, title = "Battery")
         },
-        aspectRatio = 2.2f,
+        contentWidth = 900.dp,
         onTopPress = {},
         onBottomPress = {}
     )

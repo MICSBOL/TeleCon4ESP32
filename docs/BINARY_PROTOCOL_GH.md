@@ -40,6 +40,8 @@ See also: [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md)
 | 5   | `vent`        | 0–100 |
 | 6   | `target_temp` | 0–255 (°C) |
 | 7   | `target_hum`  | 0–255 (%) |
+| 8   | `cam_pan`     | 0–100 (50 = center) |
+| 9   | `cam_tilt`    | 0–100 (50 = center) |
 
 **Example:** `fan=1` → `AA 47 01 00 01 CS`
 
@@ -88,6 +90,8 @@ See also: [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md)
 | 7   | reserved   | 0 |
 
 Set `cam=1` on firmware **with** ESP32-CAM; `cam=0` on DevKit-only boards. The Android app shows the live camera button only when `cam=1`.
+
+`cam_pan` / `cam_tilt` are SET-only (bits 8–9). Optional SIMPLE echo in `GH:DATA` is supported by the camera HUD. Suggested CAM free pins: pan GPIO 13, tilt GPIO 12.
 
 ---
 

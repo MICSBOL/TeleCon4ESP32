@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.domain.camera
 
+import android.graphics.Bitmap
 import kotlinx.coroutines.flow.StateFlow
 
 interface CameraStreamRepository {
@@ -8,4 +9,37 @@ interface CameraStreamRepository {
     fun startStream(baseUrl: String)
 
     fun stopStream()
+
+    /**
+     * When true (CAM+BLE with control linked), skip long-lived MJPEG `/stream` and
+     * poll `/capture` only — matches firmware `TELECON_CAPTURE_WHEN_BLE`.
+     * Default no-op for fakes / non-SoftAP implementations.
+     */
+    fun setPreferCapturePolling(prefer: Boolean) = Unit
+
+    /**
+     * SoftAP HUD decode / max publish FPS. Pass [HudPreviewOptions.FULL_QUALITY]
+     * (Greenhouse default) or a [SoftApPerformancePreset] mapping.
+     */
+    fun setHudPreviewOptions(options: HudPreviewOptions) = Unit
+
+    /**
+     * SoftAP HUD preview: cheaper BitmapFactory decode (downsample / RGB_565).
+     * Maps to Balanced preset options when enabled; Greenhouse leaves this false.
+     */
+    fun setFastPreviewDecode(enabled: Boolean) {
+        setHudPreviewOptions(
+            if (enabled) {
+                SoftApPerformancePreset.BALANCED.toHudPreviewOptions()
+            } else {
+                HudPreviewOptions.FULL_QUALITY
+            },
+        )
+    }
+
+    /**
+     * Full-quality still from the last JPEG bytes (ignores fast-preview options).
+     * Null when no frame has been received yet.
+     */
+    fun captureStillBitmap(): Bitmap? = null
 }

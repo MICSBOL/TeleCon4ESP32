@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.smarthome.RecentEventUiModel
@@ -33,16 +32,6 @@ fun RecentEventsList(
     SmartHomeCard(modifier = modifier) {
         SmartHomeSectionHeader(
             title = stringResource(R.string.smart_home_section_recent_events),
-            action = {
-                Text(
-                    text = stringResource(R.string.smart_home_view_all),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    color = SmartHomeGlass.TextSecondary,
-                )
-            },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

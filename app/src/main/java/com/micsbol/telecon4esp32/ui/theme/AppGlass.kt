@@ -52,13 +52,14 @@ object AppGlass {
     val OnAccent = Color(0xFFFFFFFF)
 
     val TextPrimary = Color(0xFFFFFFFF)
-    val TextSecondary = Color(0xFFA0A0A0)
-    val TextMuted = Color(0xFF707070)
+    /** Supporting copy on dark glass — kept lighter than muted for small body text. */
+    val TextSecondary = Color(0xFFC8C8C8)
+    val TextMuted = Color(0xFF9A9A9A)
 
     val BorderColor = Color(0xFFCCCCCC)
 
-    val Positive = Color(0xFF53D86A)
-    val Negative = Color(0xFFFF5A5A)
+    val Positive = Color(0xFF5EE87A)
+    val Negative = Color(0xFFFF6E6E)
     val Warning = Color(0xFFF7B955)
 
     val accentGradient: Brush

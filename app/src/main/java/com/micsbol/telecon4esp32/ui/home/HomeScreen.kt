@@ -1,11 +1,11 @@
 package com.micsbol.telecon4esp32.ui.home
 
 import android.app.Activity
+import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.BuildConfig
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,10 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -60,8 +58,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.ads.AdPolicy
+import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 import com.micsbol.telecon4esp32.ui.components.AdBanner
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
+import com.micsbol.telecon4esp32.ui.components.HoloRcTurntableVideo
 import com.micsbol.telecon4esp32.ui.components.ShellPlasticBackground
 import com.micsbol.telecon4esp32.ui.components.ShellPlasticDisplayPanel
 import com.micsbol.telecon4esp32.ui.components.ShellPlasticMenuCard
@@ -82,7 +82,6 @@ import com.micsbol.telecon4esp32.domain.model.CoinEconomy
 import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.Entitlement
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
-import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 
 data class HomeItem(
     val icon: ImageVector,
@@ -169,8 +168,12 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .safeHudPadding(
+                    includeTop = true,
+                    includeBottom = true,
+                    includeHorizontal = true,
+                )
+                .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             HomePlasticHeaderRow(
                 onHelpClick = { showHelpDialog = true },
@@ -455,10 +458,8 @@ private fun HomePlasticHeroPanel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Image(
-                painter = painterResource(R.drawable.car_bouncing01),
+            HoloRcTurntableVideo(
                 contentDescription = stringResource(R.string.home_car_image_description),
-                contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),

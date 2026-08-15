@@ -90,7 +90,7 @@ fun UpgradeScreen(navController: NavController) {
                         color = Neo.TextSecondary,
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    CoinUnlockOption.entries.forEach { option ->
+                    CoinUnlockOption.entries.filter { it.isCoinPurchasable }.forEach { option ->
                         Text(
                             text = coinOptionLabel(option),
                             style = MaterialTheme.typography.bodyMedium,
@@ -164,6 +164,7 @@ fun UpgradeScreen(navController: NavController) {
 @Composable
 private fun coinOptionLabel(option: CoinUnlockOption): String = when (option) {
     CoinUnlockOption.ONE_USE -> stringResource(R.string.coins_option_one_use, option.coinCost)
+    CoinUnlockOption.HOURS_4 -> stringResource(R.string.coins_table_4h)
     CoinUnlockOption.HOURS_24 -> stringResource(R.string.coins_option_24h, option.coinCost)
     CoinUnlockOption.DAYS_3 -> stringResource(R.string.coins_option_3d, option.coinCost)
     CoinUnlockOption.WEEK -> stringResource(R.string.coins_option_week, option.coinCost)

@@ -5,6 +5,7 @@ import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import com.micsbol.telecon4esp32.BuildConfig
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +34,7 @@ import com.micsbol.telecon4esp32.domain.model.FeatureGrant
 import com.micsbol.telecon4esp32.domain.model.PremiumFeature
 import com.micsbol.telecon4esp32.domain.model.WalletUnlockResult
 import com.micsbol.telecon4esp32.domain.model.has
+import com.micsbol.telecon4esp32.domain.model.hasEntryAccess
 import com.micsbol.telecon4esp32.domain.model.isFree
 import com.micsbol.telecon4esp32.domain.model.premiumFeature
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
@@ -52,16 +54,20 @@ fun ApplicationsScreen(navController: NavController) {
     val entitlement = LocalEntitlement.current
     val walletViewModel = hiltViewModel<WalletViewModel>()
     val wallet by walletViewModel.wallet.collectAsState()
+    val explorerGiftAvailable by walletViewModel.explorerGiftAvailable.collectAsState()
     val rewardedAdManager = LocalRewardedAdManager.current
     val activity = LocalContext.current as? Activity
     val catalog = remember { defaultApplicationCatalog() }
     var comingSoonAppName by remember { mutableStateOf<String?>(null) }
     var unlockTarget by remember { mutableStateOf<ApplicationCatalogItem?>(null) }
+    var explorerGiftTarget by remember { mutableStateOf<ApplicationCatalogItem?>(null) }
     var unlockMessage by remember { mutableStateOf<String?>(null) }
     var showPricingTable by remember { mutableStateOf(false) }
     val insufficientBalanceMessage = stringResource(R.string.coins_insufficient_balance)
     val adRewardGrantedMessage = stringResource(R.string.coins_ad_reward_granted)
     val adUnavailableMessage = stringResource(R.string.coins_ad_unavailable)
+    val explorerGiftClaimedMessage = stringResource(R.string.applications_explorer_gift_claimed)
+    val explorerGiftAlreadyUnlockedMessage = stringResource(R.string.applications_explorer_gift_already_unlocked)
     val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
 
     ApplicationsScreenContent(
@@ -69,12 +75,15 @@ fun ApplicationsScreen(navController: NavController) {
         entitlement = entitlement,
         wallet = wallet,
         requiresCoinEntry = requiresCoinEntry,
+        explorerGiftAvailable = explorerGiftAvailable,
         onNavigateBack = { navController.navigateUp() },
         onShowPricingTable = { showPricingTable = true },
         onCodesClick = { item ->
             navController.navigate(Screen.ApplicationCodes.createRoute(item.id))
         },
         onUnlockClick = { unlockTarget = it },
+        onSubscribeClick = { navController.navigate(Screen.Upgrade.route) },
+        onExplorerSparkleClick = { explorerGiftTarget = it },
         onItemClick = { item, title ->
             handleApplicationClick(
                 item = item,
@@ -88,6 +97,45 @@ fun ApplicationsScreen(navController: NavController) {
             )
         },
     )
+
+    val giftTarget = explorerGiftTarget
+    if (giftTarget != null) {
+        val giftFeature = giftTarget.id.premiumFeature()
+        if (giftFeature != null) {
+            ExplorerGiftDialog(
+                appName = stringResource(giftTarget.titleRes),
+                onDismiss = { explorerGiftTarget = null },
+                onWatchAd = {
+                    watchRewardedAd(
+                        activity = activity,
+                        rewardedAdManager = rewardedAdManager,
+                        onGranted = {
+                            walletViewModel.claimExplorerGift(giftFeature) { result ->
+                                when (result) {
+                                    WalletUnlockResult.Success -> {
+                                        explorerGiftTarget = null
+                                        unlockMessage = explorerGiftClaimedMessage
+                                        navController.navigate(giftTarget.route)
+                                    }
+                                    WalletUnlockResult.AlreadyUnlocked -> {
+                                        explorerGiftTarget = null
+                                        unlockMessage = explorerGiftAlreadyUnlockedMessage
+                                    }
+                                    WalletUnlockResult.InsufficientBalance -> {
+                                        explorerGiftTarget = null
+                                        unlockMessage = insufficientBalanceMessage
+                                    }
+                                }
+                            }
+                        },
+                        onUnavailable = {
+                            unlockMessage = adUnavailableMessage
+                        },
+                    )
+                },
+            )
+        }
+    }
 
     val target = unlockTarget
     if (target != null) {
@@ -180,10 +228,13 @@ fun ApplicationsScreenContent(
     entitlement: Entitlement,
     wallet: CoinWalletState,
     requiresCoinEntry: Boolean,
+    explorerGiftAvailable: Boolean = false,
     onNavigateBack: () -> Unit,
     onShowPricingTable: () -> Unit,
     onCodesClick: (ApplicationCatalogItem) -> Unit,
     onUnlockClick: (ApplicationCatalogItem) -> Unit,
+    onSubscribeClick: () -> Unit,
+    onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit = {},
     onItemClick: (ApplicationCatalogItem, String) -> Unit,
 ) {
     NeoScaffold(
@@ -201,42 +252,66 @@ fun ApplicationsScreenContent(
             }
         },
     ) { paddingValues ->
-        LazyColumn(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(paddingValues),
         ) {
-            items(catalog, key = { it.id.name }) { item ->
-                val title = stringResource(item.titleRes)
-                val feature = item.id.premiumFeature()
-                val isUnlocked = feature != null &&
-                    hasApplicationEntryAccess(entitlement, feature, wallet, requiresCoinEntry)
-                val showCoinsButton = requiresCoinEntry &&
-                    !item.id.isFree() &&
-                    !item.comingSoon &&
-                    feature != null &&
-                    !isUnlocked
+            // Scaffold already applies horizontal pad; avoid stacking another 16.dp on narrow phones.
+            val extraH = if (maxWidth < 360.dp) 0.dp else 4.dp
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = extraH, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(catalog, key = { it.id.name }) { item ->
+                    val title = stringResource(item.titleRes)
+                    val feature = item.id.premiumFeature()
+                    val isUnlocked = item.id.hasEntryAccess(
+                        entitlement = entitlement,
+                        wallet = wallet,
+                        requiresCoinEntry = requiresCoinEntry,
+                    )
+                    val showCoinsButton = requiresCoinEntry &&
+                        !item.id.isFree() &&
+                        !item.comingSoon &&
+                        feature != null &&
+                        !isUnlocked
 
-                val trailingAction = when {
-                    item.comingSoon -> ApplicationTrailingAction.DEFAULT
-                    item.id.isFree() -> ApplicationTrailingAction.ENTER
-                    isUnlocked -> ApplicationTrailingAction.ENTER
-                    showCoinsButton -> ApplicationTrailingAction.UNLOCK
-                    else -> ApplicationTrailingAction.DEFAULT
+                    val trailingAction = when {
+                        item.comingSoon -> ApplicationTrailingAction.DEFAULT
+                        item.id.isFree() -> ApplicationTrailingAction.ENTER
+                        isUnlocked -> ApplicationTrailingAction.ENTER
+                        showCoinsButton -> ApplicationTrailingAction.UNLOCK
+                        else -> ApplicationTrailingAction.DEFAULT
+                    }
+
+                    val badge = applicationBadge(item)
+
+                    val enabledProHighlight = !item.id.isFree() &&
+                        !item.comingSoon &&
+                        isUnlocked
+                    val showExplorerSparkle = explorerGiftAvailable &&
+                        !item.id.isFree() &&
+                        !item.comingSoon &&
+                        !isUnlocked
+
+                    ApplicationListItemCard(
+                        thumbnailRes = item.id.thumbnailRes(),
+                        title = title,
+                        subtitle = stringResource(item.subtitleRes),
+                        badge = badge,
+                        trailingAction = trailingAction,
+                        onUnlockClick = { onUnlockClick(item) },
+                        onSubscribeClick = onSubscribeClick,
+                        onCodesClick = { onCodesClick(item) },
+                        onClick = { onItemClick(item, title) },
+                        showExplorerSparkle = showExplorerSparkle,
+                        onExplorerSparkleClick = { onExplorerSparkleClick(item) },
+                        enabledProHighlight = enabledProHighlight,
+                    )
                 }
-
-                ApplicationListItemCard(
-                    icon = item.icon,
-                    title = title,
-                    subtitle = stringResource(item.subtitleRes),
-                    badge = applicationBadge(item, entitlement, wallet, requiresCoinEntry),
-                    trailingAction = trailingAction,
-                    onUnlockClick = { onUnlockClick(item) },
-                    onCodesClick = { onCodesClick(item) },
-                    onClick = { onItemClick(item, title) },
-                )
             }
         }
     }
@@ -271,8 +346,8 @@ private fun handleApplicationClick(
         item.id.isFree() -> navController.navigate(item.route)
         item.comingSoon -> onComingSoon()
         else -> {
-            val feature = item.id.premiumFeature() ?: return
-            if (hasApplicationEntryAccess(entitlement, feature, wallet, requiresCoinEntry)) {
+            if (item.id.premiumFeature() == null) return
+            if (item.id.hasEntryAccess(entitlement, wallet, requiresCoinEntry)) {
                 navController.navigate(item.route)
             } else if (requiresCoinEntry) {
                 onRequestUnlock()
@@ -283,41 +358,12 @@ private fun handleApplicationClick(
     }
 }
 
-/**
- * Pro apps need an active coin grant to enter for free/debug users.
- * Premium subscribers skip the coin requirement unless [requiresCoinEntry] is true (debug).
- */
-private fun hasApplicationEntryAccess(
-    entitlement: Entitlement,
-    feature: PremiumFeature,
-    wallet: CoinWalletState,
-    requiresCoinEntry: Boolean = entitlement.usesCoinEconomy() || BuildConfig.DEBUG,
-    nowEpochMs: Long = System.currentTimeMillis(),
-): Boolean {
-    if (!requiresCoinEntry && entitlement.has(feature)) return true
-    if (!requiresCoinEntry) return false
-    val grant = wallet.grants[feature] ?: return false
-    return grant.isActive(nowEpochMs)
-}
-
 @Composable
-private fun applicationBadge(
-    item: ApplicationCatalogItem,
-    entitlement: Entitlement,
-    wallet: CoinWalletState,
-    requiresCoinEntry: Boolean,
-): String {
+private fun applicationBadge(item: ApplicationCatalogItem): String {
     return when {
         item.id.isFree() -> stringResource(R.string.applications_badge_free)
         item.comingSoon -> stringResource(R.string.applications_badge_coming_soon)
-        else -> {
-            val feature = item.id.premiumFeature()
-            if (feature != null && hasApplicationEntryAccess(entitlement, feature, wallet, requiresCoinEntry)) {
-                stringResource(R.string.applications_badge_coins_unlocked)
-            } else {
-                stringResource(R.string.applications_badge_pro)
-            }
-        }
+        else -> stringResource(R.string.applications_badge_pro)
     }
 }
 
@@ -348,6 +394,8 @@ private fun ApplicationsScreenPreview() {
             onShowPricingTable = {},
             onCodesClick = {},
             onUnlockClick = {},
+            onSubscribeClick = {},
+            onExplorerSparkleClick = {},
             onItemClick = { _, _ -> },
         )
     }

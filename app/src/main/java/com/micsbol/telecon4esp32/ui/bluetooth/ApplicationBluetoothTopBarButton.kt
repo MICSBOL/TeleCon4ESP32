@@ -4,8 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
- * Top-bar Bluetooth connect control for application screens.
+ * Top-bar connect control for application screens.
  * Reads [LocalApplicationBluetoothSession] at composition time so the action stays current.
+ * Shows a Wi‑Fi icon when the application settings use a SoftAP transport.
  */
 @Composable
 fun ApplicationBluetoothTopBarButton(
@@ -23,6 +24,7 @@ fun ApplicationBluetoothTopBarButton(
             isConnected = session.isConnected,
             isConnecting = session.isConnecting,
             accent = accent,
+            usesWifiLink = session.usesWifiLink,
         )
     }
 }

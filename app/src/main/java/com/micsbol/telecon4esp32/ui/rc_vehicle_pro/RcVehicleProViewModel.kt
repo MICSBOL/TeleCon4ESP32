@@ -8,25 +8,47 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.micsbol.telecon4esp32.data.camera.SoftApCamConfigClient
+import com.micsbol.telecon4esp32.data.camera.SoftApCamConfigResult
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
+import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamRepository
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
-import com.micsbol.telecon4esp32.ui.bluetooth.RcControlState
+import com.micsbol.telecon4esp32.domain.camera.Esp32CameraLinkSession
+import com.micsbol.telecon4esp32.domain.camera.HudPreviewOptions
+import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
+import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
+import com.micsbol.telecon4esp32.domain.camera.resolveCameraLinkProfile
+import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
+import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetSoftApHudProcessingRateUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetSoftApPerformancePresetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -36,72 +58,250 @@ class RcVehicleProViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val cameraStreamRepository: CameraStreamRepository,
     private val remoteController: RemoteController,
+    private val softApCamConfigClient: SoftApCamConfigClient,
+    private val settingsRepository: ISettingsRepository,
+    getApplicationBoard: GetApplicationBoardUseCase,
+    getApplicationTransportType: GetApplicationTransportTypeUseCase,
+    getSoftApPerformancePreset: GetSoftApPerformancePresetUseCase,
+    getSoftApHudProcessingRate: GetSoftApHudProcessingRateUseCase,
 ) : ViewModel() {
 
-    private val cameraBaseUrl = Esp32CameraDefaults.DEFAULT_BASE_URL
     private val runningOnEmulator = isLikelyEmulator()
+    private val cameraSession = Esp32CameraLinkSession(
+        repository = cameraStreamRepository,
+        skipOnEmulator = runningOnEmulator,
+    )
+    private val lastCamConfigPreset = AtomicReference<SoftApPerformancePreset?>(null)
+    private val screenVisibleFlow = MutableStateFlow(false)
+
+    private val board: StateFlow<Esp32Board> = getApplicationBoard(ApplicationId.RC_VEHICLE_PRO)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = Esp32Board.defaultFor(ApplicationId.RC_VEHICLE_PRO),
+        )
+
+    private val transport: StateFlow<BluetoothTransportType> =
+        getApplicationTransportType(ApplicationId.RC_VEHICLE_PRO)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = BluetoothTransportType.CLASSIC,
+            )
+
+    private val softApPerformancePreset: StateFlow<SoftApPerformancePreset> =
+        getSoftApPerformancePreset(ApplicationId.RC_VEHICLE_PRO)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = SoftApPerformancePreset.DEFAULT,
+            )
+
+    private val softApHudProcessingRate: StateFlow<SoftApHudProcessingRate> =
+        getSoftApHudProcessingRate(ApplicationId.RC_VEHICLE_PRO)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = SoftApHudProcessingRate.DEFAULT,
+            )
+
+    val cameraLinkProfile: StateFlow<CameraLinkProfile> = combine(board, transport) { selectedBoard, selectedTransport ->
+        resolveCameraLinkProfile(
+            ApplicationId.RC_VEHICLE_PRO,
+            selectedBoard,
+            selectedTransport,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = CameraLinkProfile.CONTROL_ONLY,
+    )
+
+    /**
+     * SoftAP frames only — collected by the camera layer so HUD/controls do not
+     * recompose on every JPEG.
+     */
+    val cameraPreviewState: StateFlow<CameraStreamState> = combine(
+        cameraStreamRepository.streamState,
+        cameraLinkProfile,
+        screenVisibleFlow,
+    ) { streamState, profile, visible ->
+        val streaming = visible && profile.shouldStartCameraStream && !runningOnEmulator
+        if (streaming) streamState else CameraStreamState.Idle
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = CameraStreamState.Idle,
+    )
 
     private val _uiState = MutableStateFlow(
         RcVehicleProUiState(isEmulatorPreview = runningOnEmulator),
     )
     val uiState: StateFlow<RcVehicleProUiState> = _uiState.asStateFlow()
 
+    val controlSettings: StateFlow<RcVehicleProControlSettings> =
+        settingsRepository.rcVehicleProControlSettingsFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = RcVehicleProControlSettings.DEFAULT,
+            )
+
+    fun updateControlSettings(transform: (RcVehicleProControlSettings) -> RcVehicleProControlSettings) {
+        viewModelScope.launch {
+            val next = transform(controlSettings.value)
+            settingsRepository.saveRcVehicleProControlSettings(next)
+        }
+    }
+
+    fun cycleThrottleTravel() {
+        updateControlSettings {
+            it.copy(throttleTravel = RcStickMapping.nextTravelPreset(it.throttleTravel))
+        }
+    }
+
+    fun cycleSteerTravel() {
+        updateControlSettings {
+            it.copy(steerTravel = RcStickMapping.nextTravelPreset(it.steerTravel))
+        }
+    }
+
     init {
         viewModelScope.launch {
+            cameraLinkProfile.collect { profile ->
+                // SoftAP video auto-arms for Kit A and Kit B whenever the profile expects a camera.
+                cameraSession.setCameraEnabled(profile.shouldStartCameraStream)
+                cameraSession.setProfile(profile)
+                _uiState.update {
+                    it.copy(
+                        cameraLinkProfile = profile,
+                        isCameraStreamArmed = profile.shouldStartCameraStream,
+                    )
+                }
+            }
+        }
+        // HUD decode options: only when SoftAP arming / preset / rate change — not per frame.
+        viewModelScope.launch {
             combine(
-                cameraStreamRepository.streamState,
+                cameraLinkProfile,
+                softApPerformancePreset,
+                softApHudProcessingRate,
+                screenVisibleFlow,
+            ) { profile, preset, rate, visible ->
+                SoftApHudOptionsSnapshot(
+                    streaming = visible && profile.shouldStartCameraStream && !runningOnEmulator,
+                    preset = preset,
+                    rate = rate,
+                )
+            }
+                .distinctUntilChanged()
+                .collect { snapshot ->
+                    cameraStreamRepository.setPreferCapturePolling(false)
+                    cameraStreamRepository.setHudPreviewOptions(
+                        if (snapshot.streaming) {
+                            snapshot.preset.toHudPreviewOptions().copy(
+                                maxHudFps = snapshot.rate.resolveMaxHudFps(snapshot.preset),
+                            )
+                        } else {
+                            HudPreviewOptions.FULL_QUALITY
+                        },
+                    )
+                }
+        }
+        // HUD chrome (online / telemetry / link) — exclude Frame bitmaps so stick UI stays quiet.
+        viewModelScope.launch {
+            combine(
+                cameraStreamRepository.streamState
+                    .map { it is CameraStreamState.Frame }
+                    .distinctUntilChanged(),
                 remoteController.isConnected,
                 remoteController.telemetryState,
-            ) { cameraState, connected, telemetry ->
-                Triple(cameraState, connected, telemetry)
-            }.collect { (cameraState, connected, telemetry) ->
+                cameraLinkProfile,
+                screenVisibleFlow,
+            ) { hasFrame, connected, telemetry, profile, visible ->
+                val streaming = visible && profile.shouldStartCameraStream && !runningOnEmulator
                 val telemetrySpeed = if (connected && telemetry.panelState.leftValue > 0) {
                     telemetry.panelState.leftValue / 10f
                 } else {
                     null
                 }
-                _uiState.update { current ->
-                    current.copy(
-                        cameraState = if (runningOnEmulator) {
-                            CameraStreamState.Idle
-                        } else {
-                            cameraState
-                        },
-                        isBluetoothConnected = connected,
-                        isCameraOnline = !runningOnEmulator && cameraState is CameraStreamState.Frame,
-                        batteryPercent = normalizeBatteryPercent(
-                            telemetry.indicatorState.batteryLevel,
-                        ),
-                        motorTempCelsius = mapAnalogToMotorTemp(
-                            telemetry.indicatorState.analogValue,
-                        ),
-                        speedKmh = telemetrySpeed ?: current.speedKmh,
-                        speedFromTelemetry = telemetrySpeed != null,
-                    )
-                }
+                SoftApHudChromeSnapshot(
+                    profile = profile,
+                    connected = connected,
+                    isCameraOnline = streaming && hasFrame,
+                    batteryPercent = normalizeBatteryPercent(telemetry.indicatorState.batteryLevel),
+                    motorTempCelsius = mapAnalogToMotorTemp(telemetry.indicatorState.analogValue),
+                    telemetrySpeed = telemetrySpeed,
+                )
             }
+                .distinctUntilChanged()
+                .collect { snapshot ->
+                    _uiState.update { current ->
+                        current.copy(
+                            cameraLinkProfile = snapshot.profile,
+                            isCameraStreamArmed = snapshot.profile.shouldStartCameraStream,
+                            isBluetoothConnected = snapshot.connected,
+                            isCameraOnline = snapshot.isCameraOnline,
+                            batteryPercent = snapshot.batteryPercent,
+                            motorTempCelsius = snapshot.motorTempCelsius,
+                            speedKmh = snapshot.telemetrySpeed ?: current.speedKmh,
+                            speedFromTelemetry = snapshot.telemetrySpeed != null,
+                        )
+                    }
+                }
+        }
+        // Phase 2: push SoftAP preset to firmware `/camconfig` when SoftAP HUD is armed.
+        viewModelScope.launch {
+            combine(cameraLinkProfile, softApPerformancePreset, screenVisibleFlow) { profile, preset, visible ->
+                Triple(profile, preset, visible)
+            }
+                .map { (profile, preset, visible) ->
+                    val armed = visible && profile.shouldStartCameraStream && !runningOnEmulator
+                    armed to preset
+                }
+                .distinctUntilChanged()
+                .collect { (armed, preset) ->
+                    if (!armed) {
+                        lastCamConfigPreset.set(null)
+                        return@collect
+                    }
+                    applySoftApCamConfig(preset)
+                }
         }
     }
 
     fun onScreenVisible() {
-        // Wi‑Fi JPEG stream is independent of Bluetooth control/telemetry.
-        if (runningOnEmulator) return
-        cameraStreamRepository.startStream(cameraBaseUrl)
+        screenVisibleFlow.value = true
+        cameraSession.setCameraEnabled(cameraLinkProfile.value.shouldStartCameraStream)
+        cameraSession.onVisible()
+        val preset = softApPerformancePreset.value
+        if (cameraLinkProfile.value.shouldStartCameraStream && !runningOnEmulator) {
+            viewModelScope.launch { applySoftApCamConfig(preset) }
+        }
     }
 
     fun onScreenHidden() {
-        if (runningOnEmulator) return
-        cameraStreamRepository.stopStream()
-        _uiState.update { it.copy(cameraState = CameraStreamState.Idle, isCameraOnline = false) }
+        screenVisibleFlow.value = false
+        lastCamConfigPreset.set(null)
+        cameraStreamRepository.setPreferCapturePolling(false)
+        cameraStreamRepository.setHudPreviewOptions(HudPreviewOptions.FULL_QUALITY)
+        cameraSession.onHidden()
+        _uiState.update {
+            it.copy(
+                isCameraOnline = false,
+                isCameraStreamArmed = cameraLinkProfile.value.shouldStartCameraStream,
+            )
+        }
     }
 
-    fun updateDriveMetrics(rcControlState: RcControlState) {
-        val stickSpeed = abs(rcControlState.leftStickPosition.second) * MAX_SPEED_KMH
+    fun updateDriveMetricsFromThrottle(throttleY: Float) {
+        val stickSpeed = abs(throttleY) * MAX_SPEED_KMH
+        val displaySpeed = (stickSpeed * 10f).roundToInt() / 10f
         _uiState.update { current ->
-            if (current.speedFromTelemetry) {
-                current
-            } else {
-                current.copy(speedKmh = stickSpeed)
+            when {
+                current.speedFromTelemetry -> current
+                current.speedKmh == displaySpeed -> current
+                else -> current.copy(speedKmh = displaySpeed)
             }
         }
     }
@@ -121,15 +321,14 @@ class RcVehicleProViewModel @Inject constructor(
     }
 
     fun onCapturePhoto() {
-        val frame = (_uiState.value.cameraState as? CameraStreamState.Frame)?.bitmap ?: run {
-            _uiState.update { it.copy(photoFeedback = PhotoFeedback.NoFrame) }
-            clearPhotoFeedbackLater()
-            return
+        // Prefer full-quality decode of the last JPEG (HUD may be downsampled RGB_565).
+        val still = cameraStreamRepository.captureStillBitmap()
+        val snapshot = still ?: run {
+            val frame = (cameraPreviewState.value as? CameraStreamState.Frame)?.bitmap
+            frame?.copy(Bitmap.Config.ARGB_8888, false)
         }
-        // Copy so gallery encode is safe if the stream recycles the live frame.
-        val snapshot = frame.copy(Bitmap.Config.ARGB_8888, false)
         if (snapshot == null) {
-            _uiState.update { it.copy(photoFeedback = PhotoFeedback.Failed) }
+            _uiState.update { it.copy(photoFeedback = PhotoFeedback.NoFrame) }
             clearPhotoFeedbackLater()
             return
         }
@@ -155,10 +354,40 @@ class RcVehicleProViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        if (!runningOnEmulator) {
-            cameraStreamRepository.stopStream()
-        }
+        screenVisibleFlow.value = false
+        lastCamConfigPreset.set(null)
+        cameraSession.stop()
         super.onCleared()
+    }
+
+    /**
+     * SoftAP Phase 2: apply firmware camera params; restart `/stream` after Smooth
+     * (framesize change) or when leaving Smooth back to VGA.
+     */
+    private suspend fun applySoftApCamConfig(preset: SoftApPerformancePreset) {
+        if (lastCamConfigPreset.get() == preset) return
+        val previous = lastCamConfigPreset.get()
+        val result = withContext(Dispatchers.IO) {
+            softApCamConfigClient.apply(preset, Esp32CameraDefaults.DEFAULT_BASE_URL)
+        }
+        when (result) {
+            SoftApCamConfigResult.Applied -> {
+                lastCamConfigPreset.set(preset)
+                val shouldRestart = preset.mayChangeFramesize ||
+                    previous?.mayChangeFramesize == true
+                if (shouldRestart && screenVisibleFlow.value) {
+                    withContext(Dispatchers.Main.immediate) {
+                        cameraSession.restartIfStreaming()
+                    }
+                }
+            }
+            SoftApCamConfigResult.Unsupported,
+            SoftApCamConfigResult.Unreachable,
+            -> {
+                // Avoid retry storms; Phase 1 Android limits still apply.
+                lastCamConfigPreset.set(preset)
+            }
+        }
     }
 
     private fun clearPhotoFeedbackLater() {
@@ -214,6 +443,21 @@ class RcVehicleProViewModel @Inject constructor(
     private fun mapAnalogToMotorTemp(analogValue: Int): Int {
         return (25 + (analogValue.coerceIn(0, 255) * 0.2f)).roundToInt()
     }
+
+    private data class SoftApHudOptionsSnapshot(
+        val streaming: Boolean,
+        val preset: SoftApPerformancePreset,
+        val rate: SoftApHudProcessingRate,
+    )
+
+    private data class SoftApHudChromeSnapshot(
+        val profile: CameraLinkProfile,
+        val connected: Boolean,
+        val isCameraOnline: Boolean,
+        val batteryPercent: Int,
+        val motorTempCelsius: Int,
+        val telemetrySpeed: Float?,
+    )
 
     private companion object {
         const val MAX_SPEED_KMH = 40f

@@ -12,12 +12,30 @@ object ProtocolHandshake {
 
     fun buildConnectLine(
         appPrefix: String,
-        protocolMode: BluetoothProtocolMode,
-        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
+        connectionMode: BluetoothConnectionMode,
     ): String = LineProtocolCodec.encode(
         app = appPrefix,
         type = CONNECT_TYPE,
-        pairs = mapOf("proto" to wireProto(protocolMode, transport)),
+        pairs = mapOf("proto" to wireProto(connectionMode)),
+    )
+
+    fun buildConnectLine(
+        applicationId: ApplicationId,
+        connectionMode: BluetoothConnectionMode,
+    ): String = buildConnectLine(applicationId.protocolPrefix(), connectionMode)
+
+    /**
+     * Convenience for Classic / BLE (and DevKit SoftAP when [transport] + [protocolMode]
+     * already encode the mode). Prefer [buildConnectLine] with [BluetoothConnectionMode]
+     * for SoftAP so CAM / DevKit SoftAP keep `simple` / `binary` (not legacy `wifi`).
+     */
+    fun buildConnectLine(
+        appPrefix: String,
+        protocolMode: BluetoothProtocolMode,
+        transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
+    ): String = buildConnectLine(
+        appPrefix,
+        BluetoothConnectionMode.from(transport, protocolMode),
     )
 
     fun buildConnectLine(
@@ -56,19 +74,21 @@ object ProtocolHandshake {
         else -> null
     }
 
-    private fun wireProto(
-        protocolMode: BluetoothProtocolMode,
-        transport: BluetoothTransportType,
-    ): String = when (transport) {
-        BluetoothTransportType.WIFI -> "wifi"
-        BluetoothTransportType.CLASSIC,
-        BluetoothTransportType.BLE,
-        -> protocolMode.toWireValue()
-    }
-
-    private fun BluetoothProtocolMode.toWireValue(): String = when (this) {
-        BluetoothProtocolMode.SIMPLE -> "simple"
-        BluetoothProtocolMode.ADVANCED -> "binary"
+    /**
+     * Wire `proto` value for CONNECT.
+     * SoftAP TCP uses the same `simple` / `binary` as Classic/BLE.
+     * Legacy [BluetoothConnectionMode.WIFI_SOFTAP] keeps `wifi` for old firmware only.
+     */
+    fun wireProto(connectionMode: BluetoothConnectionMode): String = when (connectionMode) {
+        BluetoothConnectionMode.WIFI_SOFTAP -> "wifi"
+        BluetoothConnectionMode.CLASSIC_SIMPLE,
+        BluetoothConnectionMode.WIFI_SIMPLE,
+        BluetoothConnectionMode.WIFI_CAM_STARTER,
+        -> "simple"
+        BluetoothConnectionMode.CLASSIC_BINARY,
+        BluetoothConnectionMode.BLE_BINARY,
+        BluetoothConnectionMode.WIFI_BINARY,
+        -> "binary"
     }
 }
 

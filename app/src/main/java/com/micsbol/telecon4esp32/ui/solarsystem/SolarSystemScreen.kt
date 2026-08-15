@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.rememberClampedSafeHudInsets
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
@@ -112,10 +113,16 @@ fun SolarSystemScreenContent(
 ) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val scrollState = rememberScrollState()
-    val scrollEdgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+    val scrollEdgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = false,
+        includeHorizontal = true,
     )
-    val contentBottomInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+    val contentBottomInsets = rememberClampedSafeHudInsets(
+        includeTop = false,
+        includeBottom = true,
+        includeHorizontal = false,
+    )
 
     SolarBackground(
         solarPowerW = uiState.live.solarW,

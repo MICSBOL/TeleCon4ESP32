@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,13 +53,21 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
+import com.micsbol.telecon4esp32.domain.bluetooth.linkFamily
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
+import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
+import com.micsbol.telecon4esp32.domain.model.settingsUserType
 import com.micsbol.telecon4esp32.ui.applications.ApplicationProtocolSettingsSection
+import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSelectionGuideSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsViewModel
+import com.micsbol.telecon4esp32.ui.applications.DevKitWifiSoftApSettingsSection
+import com.micsbol.telecon4esp32.ui.applications.SettingsUserTypeSection
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.SettingsUserType
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
@@ -198,20 +207,64 @@ private fun SettingsContent(
             JoystickMode.HorizontalHold()
         )
     }
+    var userType by remember(connectionMode?.settingsUserType) {
+        mutableStateOf(connectionMode?.settingsUserType ?: SettingsUserType.NORMAL)
+    }
 
     LazyColumn(
         modifier = modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .imePadding(),
+        contentPadding = PaddingValues(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         if (connectionMode != null && onConnectionModeChanged != null) {
+            item {
+                SettingsUserTypeSection(
+                    selected = userType,
+                    canUseAdvanced = canUseAdvanced,
+                    onSelected = { type ->
+                        if (type == userType) return@SettingsUserTypeSection
+                        userType = type
+                        val preferred = applicationId.preferredConnectionMode(
+                            board = Esp32Board.DEV_KIT,
+                            family = connectionMode.linkFamily,
+                            userType = type,
+                            canUseAdvanced = canUseAdvanced,
+                        )
+                        if (preferred != null && preferred != connectionMode) {
+                            onConnectionModeChanged(preferred)
+                        }
+                    },
+                )
+            }
             item {
                 ApplicationProtocolSettingsSection(
                     applicationId = applicationId,
                     selectedMode = connectionMode,
                     onModeSelected = onConnectionModeChanged,
+                    userType = userType,
                     canUseAdvanced = canUseAdvanced,
+                    belowConnectionTypeContent = when (connectionMode) {
+                        BluetoothConnectionMode.WIFI_SIMPLE,
+                        BluetoothConnectionMode.WIFI_BINARY,
+                        -> {
+                            {
+                                DevKitWifiSoftApSettingsSection(
+                                    applicationId = applicationId,
+                                    connectionMode = connectionMode,
+                                )
+                            }
+                        }
+                        else -> null
+                    },
+                )
+            }
+            item {
+                ApplicationSettingsSelectionGuideSection(
+                    applicationId = applicationId,
+                    selectedBoard = Esp32Board.DEV_KIT,
+                    selectedMode = connectionMode,
                 )
             }
         }

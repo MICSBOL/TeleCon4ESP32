@@ -48,6 +48,20 @@ RC:CONNECT,proto,binary
 
 depending on **RC Settings → connection mode** (Classic Simple vs Classic/BLE Binary).
 
+**DevKit SoftAP (Wi‑Fi Simple):** same text handshake over TCP `192.168.4.1:3333`
+after joining SoftAP `ESP32-TC-RC-WiFi-Simple` / `telecon1234` (other apps use their
+prefix, e.g. `ESP32-TC-GH-WiFi-Simple`):
+
+```
+RC:CONNECT,proto,simple
+```
+
+Wire lines (`RC:CTRL`, `RC:BTN`, `RC:DATA`, `RC:PLOT`) are identical to Classic Simple;
+only the link is SoftAP TCP. Firmware may also ACK `proto,wifi` during transition.
+
+**Kit A CAM SoftAP** (RC Vehicle Pro only) uses `RC:CONNECT,proto,wifi` on the same
+TCP port with SoftAP SSID `TeleCon-RC-CAM` — do not mix with DevKit SoftAP SSIDs.
+
 | ESP32 reply | Meaning |
 |-------------|---------|
 | `RC:ACK,app,RC` | App + protocol match — session continues |
@@ -95,6 +109,26 @@ RC:BTN,id,1
 | 2  | Center top right    |
 | 3  | Center bottom left  |
 | 4  | Center bottom right |
+| 16 | Steer center save (`0x10`) — RC Vehicle Pro trim lock |
+
+#### `RC:SET` — steering center save (RC Vehicle Pro)
+
+```
+RC:SET,steer_center,1,rx,-3
+```
+
+| Key | Description |
+|-----|-------------|
+| `steer_center` | `1` = store current steering output as mechanical zero |
+| `rx` | Live right-stick X (−100…100) including phone trim |
+
+Firmware should persist the PWM/mix that corresponds to that output in NVS so later
+`rx = 0` drives straight. See
+`docs/prompts/RC_VEHICLE_PRO_STEER_CENTER_TRIM_ESP32_PROMPT.md`.
+
+Phone-side **drive assist** (dual-rate, expo, reverse, deadzone) reshapes sticks
+*before* `RC:CTRL` / binary TX. Firmware must not re-apply those curves. See
+`docs/prompts/RC_VEHICLE_PRO_DRIVE_ASSIST_ESP32_PROMPT.md`.
 
 ---
 
@@ -150,9 +184,11 @@ from firmware.
 
 **ESP32 → phone:** `GH:DATA,temp,26.2,hum,68,vpd,1.1,soil,42,light,12400,fan,1,heater,0,pump,0,lights,0,vent,40,tank,78,auto,1,target_temp,24,target_hum,65,cam,0`
 
-**Phone → ESP32:** `GH:SET,fan,1` | `GH:SET,heater,0` | `GH:SET,pump,1` | `GH:SET,lights,1` | `GH:SET,vent,60` | `GH:SET,auto,1` | `GH:SET,target_temp,24,target_hum,65`
+**Phone → ESP32:** `GH:SET,fan,1` | `GH:SET,heater,0` | `GH:SET,pump,1` | `GH:SET,lights,1` | `GH:SET,vent,60` | `GH:SET,auto,1` | `GH:SET,target_temp,24,target_hum,65` | `GH:SET,cam_pan,50,cam_tilt,50`
 
 `cam`: `0` = no ESP32-CAM module; `1` = camera available (Wi‑Fi stream separate). Binary layout: see [BINARY_PROTOCOL_GH.md](BINARY_PROTOCOL_GH.md).
+
+`cam_pan` / `cam_tilt`: gimbal aim on the live camera screen, **0–100** with **50 = center**. Suggested ESP32-CAM free pins: pan GPIO 13, tilt GPIO 12 (keep climate I/O on the DevKit).
 
 Optional history: `hist_temp`, `hist_hum`, `hist_vpd` as pipe-separated floats. See Greenhouse settings in the app for pin map and field guide.
 

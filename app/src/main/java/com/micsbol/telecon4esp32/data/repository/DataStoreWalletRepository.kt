@@ -89,6 +89,8 @@ class DataStoreWalletRepository @Inject constructor(
             return WalletUnlockResult.AlreadyUnlocked
         }
 
+        require(option.isCoinPurchasable) { "Option $option is not coin-purchasable" }
+
         val cost = option.coinCost
         if (current.balance < cost) {
             return WalletUnlockResult.InsufficientBalance
@@ -117,7 +119,37 @@ class DataStoreWalletRepository @Inject constructor(
         return WalletUnlockResult.Success
     }
 
-    override suspend fun clearSessionGrant(feature: PremiumFeature) {
+    override suspend fun grantTimedAccess(
+        feature: PremiumFeature,
+        option: CoinUnlockOption,
+        nowEpochMs: Long,
+    ): WalletUnlockResult {
+        pruneExpiredGrants(nowEpochMs)
+        val current = _wallet.value
+        if (hasPremiumAccess(Entitlement.Free, feature, current, nowEpochMs)) {
+            return WalletUnlockResult.AlreadyUnlocked
+        }
+
+        val duration = option.durationMillis()
+            ?: return WalletUnlockResult.InsufficientBalance
+
+        val grant = FeatureGrant(
+            feature = feature,
+            option = option,
+            expiresAtEpochMs = nowEpochMs + duration,
+        )
+
+        context.walletDataStore.edit { preferences ->
+            val timed = parseTimedGrants(preferences[WalletPreferencesKeys.TIMED_GRANTS])
+                .toMutableMap()
+            timed[feature] = mergeTimedGrant(timed[feature], grant, nowEpochMs)
+            preferences[WalletPreferencesKeys.TIMED_GRANTS] = serializeTimedGrants(timed)
+        }
+
+        return WalletUnlockResult.Success
+    }
+
+    override fun clearSessionGrant(feature: PremiumFeature) {
         sessionGrants.update { it - feature }
     }
 
@@ -153,7 +185,7 @@ class DataStoreWalletRepository @Inject constructor(
                 if (parts.size != 3) return@mapNotNull null
                 val feature = runCatching { PremiumFeature.valueOf(parts[0]) }.getOrNull()
                     ?: return@mapNotNull null
-                val option = runCatching { CoinUnlockOption.valueOf(parts[1]) }.getOrNull()
+                val option = CoinUnlockOption.fromStoredName(parts[1])
                     ?: return@mapNotNull null
                 val expiresAt = parts[2].toLongOrNull() ?: return@mapNotNull null
                 feature to FeatureGrant(feature, option, expiresAt)

@@ -7,7 +7,7 @@ import javax.inject.Inject
 class ClearSessionGrantUseCase @Inject constructor(
     private val repository: IWalletRepository,
 ) {
-    suspend operator fun invoke(feature: PremiumFeature) {
+    operator fun invoke(feature: PremiumFeature) {
         repository.clearSessionGrant(feature)
     }
 }

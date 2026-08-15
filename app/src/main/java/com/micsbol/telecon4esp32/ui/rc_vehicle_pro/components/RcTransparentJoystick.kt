@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components
 
+import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -10,7 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -27,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.brandSecondary
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcStickDeadzone
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.theme.DarkBackground
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
@@ -36,9 +42,26 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
-private const val RADIUS_FRACTION = 0.78f
+private const val RADIUS_FRACTION = 0.88f
 private val LEVEL_POSITIONS = listOf(-1f, -0.5f, 0f, 0.5f, 1f)
+
+/** Slow enough for ~20 Hz RC packets to deliver a usable motor ramp on release. */
+private const val SPRING_RETURN_DURATION_MS = 380
+
+private class SpringReturnJobHolder {
+    var job: Job? = null
+
+    fun cancel() {
+        job?.cancel()
+        job = null
+    }
+}
+
+private fun lerp(start: Float, end: Float, fraction: Float): Float =
+    start + (end - start) * fraction
 
 @Composable
 fun RcTransparentJoystick(
@@ -47,6 +70,7 @@ fun RcTransparentJoystick(
     onMove: (Float, Float) -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = RcVehicleProLayout.JoystickSize,
+    deadzone: Float = RcVehicleProLayout.StickDeadzone,
 ) {
     val ringColor = brandPrimary().copy(alpha = 0.45f)
     val levelColor = brandPrimary()
@@ -57,6 +81,50 @@ fun RcTransparentJoystick(
     val innerRingColor = Color.White.copy(alpha = 0.12f)
 
     val initialNormalized = remember(mode) { mode.toInitialNormalized() }
+    val onMoveState = rememberUpdatedState(onMove)
+    val stickPositionState = rememberUpdatedState(stickPosition)
+    val deadzoneState = rememberUpdatedState(deadzone)
+    val scope = rememberCoroutineScope()
+    val springReturnJob = remember { SpringReturnJobHolder() }
+
+    DisposableEffect(mode) {
+        onDispose { springReturnJob.cancel() }
+    }
+
+    fun emitStick(x: Float, y: Float) {
+        val mapped = RcStickDeadzone.apply(x, y, deadzoneState.value)
+        onMoveState.value(mapped.first, mapped.second)
+    }
+
+    fun cancelSpringReturn() {
+        springReturnJob.cancel()
+    }
+
+    fun startSpringReturn(from: Pair<Float, Float>) {
+        springReturnJob.cancel()
+        val end = initialNormalized
+        if (
+            abs(from.first - end.first) < 0.001f &&
+            abs(from.second - end.second) < 0.001f
+        ) {
+            emitStick(end.first, end.second)
+            return
+        }
+        springReturnJob.job = scope.launch {
+            val startNanos = withFrameNanos { it }
+            val durationNanos = SPRING_RETURN_DURATION_MS * 1_000_000L
+            while (true) {
+                val frameNanos = withFrameNanos { it }
+                val rawT = ((frameNanos - startNanos).toFloat() / durationNanos).coerceIn(0f, 1f)
+                val t = EaseOutCubic.transform(rawT)
+                emitStick(
+                    lerp(from.first, end.first, t),
+                    lerp(from.second, end.second, t),
+                )
+                if (rawT >= 1f) break
+            }
+        }
+    }
 
     Box(
         modifier = modifier.size(size),
@@ -65,23 +133,26 @@ fun RcTransparentJoystick(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(mode, initialNormalized) {
+                .pointerInput(mode, initialNormalized, deadzone) {
                     fun updateFromTouch(touch: Offset) {
                         val center = Offset(this.size.width / 2f, this.size.height / 2f)
                         val radius = joystickRadius(this.size.width.toFloat(), this.size.height.toFloat())
                         val vector = constrainVector(touch - center, radius, mode)
                         val normalized = vectorToNormalized(vector, radius)
-                        onMove(normalized.first, normalized.second)
+                        emitStick(normalized.first, normalized.second)
                     }
 
                     detectDragGestures(
-                        onDragStart = { offset -> updateFromTouch(offset) },
+                        onDragStart = { offset ->
+                            cancelSpringReturn()
+                            updateFromTouch(offset)
+                        },
                         onDragEnd = {
                             when (mode) {
                                 is JoystickMode.Spring,
                                 is JoystickMode.VerticalSpring,
                                 is JoystickMode.HorizontalSpring,
-                                -> onMove(initialNormalized.first, initialNormalized.second)
+                                -> startSpringReturn(stickPositionState.value)
 
                                 else -> Unit
                             }
@@ -91,7 +162,7 @@ fun RcTransparentJoystick(
                                 is JoystickMode.Spring,
                                 is JoystickMode.VerticalSpring,
                                 is JoystickMode.HorizontalSpring,
-                                -> onMove(initialNormalized.first, initialNormalized.second)
+                                -> startSpringReturn(stickPositionState.value)
 
                                 else -> Unit
                             }
@@ -132,17 +203,17 @@ fun RcTransparentJoystick(
             val thumbOffset = normalizedToOffset(stickPosition, radius)
             drawCircle(
                 color = Color.Black.copy(alpha = 0.22f),
-                radius = radius * 0.24f,
+                radius = radius * 0.30f,
                 center = center + thumbOffset + Offset(0f, 2.dp.toPx()),
             )
             drawCircle(
                 color = thumbColor,
-                radius = radius * 0.22f,
+                radius = radius * 0.28f,
                 center = center + thumbOffset,
             )
             drawCircle(
                 color = ringColor.copy(alpha = 0.35f),
-                radius = radius * 0.12f,
+                radius = radius * 0.14f,
                 center = center + thumbOffset,
                 style = stroke,
             )

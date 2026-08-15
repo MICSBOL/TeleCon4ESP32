@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -27,7 +28,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import android.graphics.Bitmap
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.ui.components.EmitterCardShape
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
@@ -38,8 +41,20 @@ import com.micsbol.telecon4esp32.ui.theme.DarkBackground
 fun RcCameraPreview(
     cameraState: CameraStreamState,
     modifier: Modifier = Modifier,
+    cameraLinkProfile: CameraLinkProfile = CameraLinkProfile.WIFI_SOFTAP,
+    showConnectStreamButton: Boolean = false,
+    onConnectStreamClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val showWifiAction = cameraLinkProfile != CameraLinkProfile.CONTROL_ONLY
+    val idleMessage = when (cameraLinkProfile) {
+        CameraLinkProfile.CONTROL_ONLY ->
+            stringResource(R.string.rc_vehicle_camera_devkit_idle)
+        CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE ->
+            stringResource(R.string.rc_vehicle_camera_ble_idle)
+        CameraLinkProfile.WIFI_SOFTAP ->
+            stringResource(R.string.rc_vehicle_camera_idle)
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -48,16 +63,7 @@ fun RcCameraPreview(
     ) {
         when (cameraState) {
             is CameraStreamState.Frame -> {
-                // Key on bitmap identity so asImageBitmap() is not rebuilt every unrelated recomposition.
-                val imageBitmap = remember(cameraState.bitmap) {
-                    cameraState.bitmap.asImageBitmap()
-                }
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = stringResource(R.string.rc_vehicle_camera_content_description),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
+                RcCameraFrameImage(bitmap = cameraState.bitmap)
             }
             CameraStreamState.Connecting -> {
                 RcCameraFallbackBackground()
@@ -80,7 +86,8 @@ fun RcCameraPreview(
                 RcCameraFallbackBackground()
                 RcCameraFallbackBanner(
                     message = stringResource(R.string.rc_vehicle_camera_unavailable),
-                    showWifiAction = true,
+                    showWifiAction = showWifiAction,
+                    showConnectStreamButton = showConnectStreamButton,
                     onOpenWifiSettings = {
                         context.startActivity(
                             Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(
@@ -88,13 +95,15 @@ fun RcCameraPreview(
                             ),
                         )
                     },
+                    onConnectStreamClick = onConnectStreamClick,
                 )
             }
             CameraStreamState.Idle -> {
                 RcCameraFallbackBackground()
                 RcCameraFallbackBanner(
-                    message = stringResource(R.string.rc_vehicle_camera_idle),
-                    showWifiAction = true,
+                    message = idleMessage,
+                    showWifiAction = showWifiAction,
+                    showConnectStreamButton = showConnectStreamButton,
                     onOpenWifiSettings = {
                         context.startActivity(
                             Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(
@@ -102,10 +111,28 @@ fun RcCameraPreview(
                             ),
                         )
                     },
+                    onConnectStreamClick = onConnectStreamClick,
                 )
             }
         }
     }
+}
+
+/**
+ * Converts [Bitmap] → [ImageBitmap] only when the Android bitmap identity changes.
+ */
+@Composable
+private fun RcCameraFrameImage(
+    bitmap: Bitmap,
+    modifier: Modifier = Modifier,
+) {
+    val imageBitmap: ImageBitmap = remember(bitmap) { bitmap.asImageBitmap() }
+    Image(
+        bitmap = imageBitmap,
+        contentDescription = stringResource(R.string.rc_vehicle_camera_content_description),
+        modifier = modifier.fillMaxSize(),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 @Composable
@@ -125,7 +152,9 @@ private fun RcCameraFallbackBanner(
     message: String,
     modifier: Modifier = Modifier,
     showWifiAction: Boolean = false,
+    showConnectStreamButton: Boolean = false,
     onOpenWifiSettings: (() -> Unit)? = null,
+    onConnectStreamClick: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier
@@ -149,6 +178,15 @@ private fun RcCameraFallbackBanner(
                 TextButton(onClick = onOpenWifiSettings) {
                     Text(
                         text = stringResource(R.string.rc_vehicle_camera_open_wifi),
+                        color = brandPrimary(),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            if (showConnectStreamButton && onConnectStreamClick != null) {
+                TextButton(onClick = onConnectStreamClick) {
+                    Text(
+                        text = stringResource(R.string.rc_vehicle_camera_connect_stream),
                         color = brandPrimary(),
                         fontWeight = FontWeight.SemiBold,
                     )

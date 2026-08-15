@@ -4,14 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -31,14 +30,23 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
+import com.micsbol.telecon4esp32.domain.bluetooth.linkFamily
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.SettingsUserType
 import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
+import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
+import com.micsbol.telecon4esp32.domain.model.settingsUserType
+import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSelectionGuideSection
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
+import com.micsbol.telecon4esp32.ui.components.rememberClampedSafeHudInsets
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseCard
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseDeviceSettingsSection
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseProtocolSettingsSection
 import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseSubScreenTopBar
+import com.micsbol.telecon4esp32.ui.greenhouse.components.GreenhouseUserTypeSettingsSection
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 @Composable
@@ -77,16 +85,101 @@ fun GreenhouseSettingsScreen(
 }
 
 @Composable
+private fun GreenhouseSettingsBody(
+    selectedMode: BluetoothConnectionMode,
+    canUseAdvanced: Boolean,
+    onModeSelected: (BluetoothConnectionMode) -> Unit,
+    selectedBoard: Esp32Board,
+    onBoardSelected: (Esp32Board) -> Unit,
+    includePinsSection: Boolean,
+) {
+    var userType by remember(selectedMode.settingsUserType) {
+        mutableStateOf(selectedMode.settingsUserType)
+    }
+
+    GreenhouseCard(elevated = false) {
+        GreenhouseUserTypeSettingsSection(
+            selected = userType,
+            canUseAdvanced = canUseAdvanced,
+            onSelected = { type ->
+                if (type == userType) return@GreenhouseUserTypeSettingsSection
+                userType = type
+                if (type == SettingsUserType.NORMAL && selectedBoard.isKitBDual) {
+                    onBoardSelected(Esp32Board.CAM)
+                    return@GreenhouseUserTypeSettingsSection
+                }
+                val preferred = ApplicationId.GREENHOUSE.preferredConnectionMode(
+                    board = selectedBoard,
+                    family = selectedMode.linkFamily,
+                    userType = type,
+                    canUseAdvanced = canUseAdvanced,
+                )
+                if (preferred != null && preferred != selectedMode) {
+                    onModeSelected(preferred)
+                }
+            },
+        )
+    }
+    GreenhouseCard(elevated = false) {
+        GreenhouseDeviceSettingsSection(
+            selectedBoard = selectedBoard,
+            onBoardSelected = onBoardSelected,
+            userType = userType,
+            canUseAdvanced = canUseAdvanced,
+        )
+    }
+    GreenhouseCard(elevated = false) {
+        GreenhouseProtocolSettingsSection(
+            selectedMode = selectedMode,
+            userType = userType,
+            canUseAdvanced = canUseAdvanced,
+            onModeSelected = onModeSelected,
+            selectedBoard = selectedBoard,
+        )
+    }
+    if (includePinsSection) {
+        GreenhouseCard(elevated = false) {
+            Text(
+                text = stringResource(R.string.greenhouse_settings_pins_section_title),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = GreenhouseGlass.TextOnGlassPrimary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.greenhouse_settings_pins_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = GreenhouseGlass.TextOnGlassSecondary,
+            )
+        }
+    }
+    GreenhouseCard(elevated = false) {
+        ApplicationSettingsSelectionGuideSection(
+            applicationId = ApplicationId.GREENHOUSE,
+            selectedBoard = selectedBoard,
+            selectedMode = selectedMode,
+            titleColor = GreenhouseGlass.TextOnGlassPrimary,
+            bodyColor = GreenhouseGlass.TextOnGlassSecondary,
+            linkColor = GreenhouseGlass.AccentGreen,
+            useNeoCard = false,
+        )
+    }
+}
+
+@Composable
 private fun GreenhouseSettingsEmulatorContent(
     onBackClick: () -> Unit,
-    selectedMode: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode,
+    selectedMode: BluetoothConnectionMode,
     canUseAdvanced: Boolean,
-    onModeSelected: (com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode) -> Unit,
-    selectedBoard: com.micsbol.telecon4esp32.domain.model.Esp32Board,
-    onBoardSelected: (com.micsbol.telecon4esp32.domain.model.Esp32Board) -> Unit,
+    onModeSelected: (BluetoothConnectionMode) -> Unit,
+    selectedBoard: Esp32Board,
+    onBoardSelected: (Esp32Board) -> Unit,
 ) {
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = true,
+        includeHorizontal = true,
     )
     val scrollState = rememberScrollState()
     val title = stringResource(applicationSettingsTitleRes(ApplicationId.GREENHOUSE))
@@ -131,19 +224,14 @@ private fun GreenhouseSettingsEmulatorContent(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                GreenhouseCard(elevated = false) {
-                    GreenhouseDeviceSettingsSection(
-                        selectedBoard = selectedBoard,
-                        onBoardSelected = onBoardSelected,
-                    )
-                }
-                GreenhouseCard(elevated = false) {
-                    GreenhouseProtocolSettingsSection(
-                        selectedMode = selectedMode,
-                        canUseAdvanced = canUseAdvanced,
-                        onModeSelected = onModeSelected,
-                    )
-                }
+                GreenhouseSettingsBody(
+                    selectedMode = selectedMode,
+                    canUseAdvanced = canUseAdvanced,
+                    onModeSelected = onModeSelected,
+                    selectedBoard = selectedBoard,
+                    onBoardSelected = onBoardSelected,
+                    includePinsSection = false,
+                )
                 Text(
                     text = stringResource(R.string.greenhouse_emulator_settings_notice),
                     style = MaterialTheme.typography.bodySmall,
@@ -157,16 +245,22 @@ private fun GreenhouseSettingsEmulatorContent(
 @Composable
 private fun GreenhouseSettingsFullContent(
     onBackClick: () -> Unit,
-    selectedMode: com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode,
+    selectedMode: BluetoothConnectionMode,
     canUseAdvanced: Boolean,
-    onModeSelected: (com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode) -> Unit,
-    selectedBoard: com.micsbol.telecon4esp32.domain.model.Esp32Board,
-    onBoardSelected: (com.micsbol.telecon4esp32.domain.model.Esp32Board) -> Unit,
+    onModeSelected: (BluetoothConnectionMode) -> Unit,
+    selectedBoard: Esp32Board,
+    onBoardSelected: (Esp32Board) -> Unit,
 ) {
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = false,
+        includeHorizontal = true,
     )
-    val bottomInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+    val bottomInsets = rememberClampedSafeHudInsets(
+        includeTop = false,
+        includeBottom = true,
+        includeHorizontal = false,
+    )
 
     GreenhouseBackground(showPhoto = false) {
         Column(
@@ -185,37 +279,17 @@ private fun GreenhouseSettingsFullContent(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                GreenhouseCard(elevated = false) {
-                    GreenhouseDeviceSettingsSection(
-                        selectedBoard = selectedBoard,
-                        onBoardSelected = onBoardSelected,
-                    )
-                }
-                GreenhouseCard(elevated = false) {
-                    GreenhouseProtocolSettingsSection(
-                        selectedMode = selectedMode,
-                        canUseAdvanced = canUseAdvanced,
-                        onModeSelected = onModeSelected,
-                    )
-                }
-                GreenhouseCard(elevated = false) {
-                    Text(
-                        text = stringResource(R.string.greenhouse_settings_pins_section_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = GreenhouseGlass.TextOnGlassPrimary,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = stringResource(R.string.greenhouse_settings_pins_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GreenhouseGlass.TextOnGlassSecondary,
-                    )
-                }
+                GreenhouseSettingsBody(
+                    selectedMode = selectedMode,
+                    canUseAdvanced = canUseAdvanced,
+                    onModeSelected = onModeSelected,
+                    selectedBoard = selectedBoard,
+                    onBoardSelected = onBoardSelected,
+                    includePinsSection = true,
+                )
             }
         }
     }

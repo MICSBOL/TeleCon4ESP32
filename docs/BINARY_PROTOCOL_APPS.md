@@ -1,8 +1,10 @@
 # TeleCon binary protocols (all applications)
 
-Compact binary frames for Classic SPP and BLE (Nordic UART). Used when the Android app
-selects **Classic + Binary** or **BLE + Binary**. (**Classic + Simple** uses the text-line
-protocol in [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) instead; BLE is binary-only.)
+Compact binary frames for Classic SPP, BLE (Nordic UART), and **DevKit SoftAP TCP**.
+Used when the Android app selects **Classic + Binary**, **BLE + Binary**, or
+**Wi‑Fi SoftAP + Binary**. (**Classic + Simple** / **Wi‑Fi SoftAP + Simple** use the
+text-line protocol in [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) instead;
+BLE is binary-only. Kit A CAM SoftAP uses SIMPLE text with `proto=wifi`, not these frames.)
 
 **Shared framing** (see `AppBinaryFrame.kt`):
 
@@ -18,9 +20,11 @@ Plot packets (`CC 33`) should send **count = 4** sample bytes (0–255) for the 
 center graph. Do **not** send legacy `CC 44` label-config packets; plot/panel/indicator
 labels come from Android RC settings.
 
-**Handshake (Classic SPP and BLE):** before control/telemetry, the phone sends a text line
-`RC:CONNECT,proto,binary` (or `proto,simple` for Classic Simple firmware). Reply with
+**Handshake (Classic SPP, BLE, and DevKit SoftAP):** before control/telemetry, the phone sends a text line
+`RC:CONNECT,proto,binary` (or `proto,simple` for Classic/DevKit Simple firmware). Reply with
 `RC:ACK,app,RC` or `RC:NAK,reason,proto_mismatch|app_mismatch,expected,…,actual,…`.
+DevKit SoftAP Binary uses SoftAP `ESP32-TC-RC-WiFi-Binary` / `telecon1234` and TCP
+`192.168.4.1:3333` with the **same** `AA 55` / `BB 66` / `CC 11/22/33` frames as Classic/BLE Binary.
 See [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) and
 [prompts/CONTROL_PANEL_HANDSHAKE_ESP32_PROMPT.md](prompts/CONTROL_PANEL_HANDSHAKE_ESP32_PROMPT.md).
 
@@ -65,10 +69,17 @@ SIMPLE-only (`hist_prod` / `hist_cons`).
 
 ## Smart Home (`SH`)
 
-**SET mask:** bit0 `refresh`; bit1 `room_id u8` + `device_id u8` + `state u8`
+**SET mask:** bit0 `refresh`; bit1 `room_id u8` + `device_id u8` + `state u8`; bit2 `scene u8`
+(`0` = all_lights_off, `1` = away)
 
-**DATA payload (12 B):** climate_temp, climate_status, energy×10, security_status, water_l,
-status, living_on, kitchen_on, bedroom_on, garage_on
+**device_id:** `1` light, `2` ambience, `3` outlet, `4` appliance, `5` water, `6` lock  
+**room_id:** `0` living, `1` kitchen, `2` bedroom, `3` garage
+
+**DATA payload (14 B):** climate_temp i8, climate_status u8, energy×10 u16 LE, security_status u8,
+water_l u16 LE, status u8, living_on, kitchen_on, bedroom_on, garage_on, device_flags u16 LE
+
+**device_flags bits:** 0 living.light, 1 living.ambience, 2 living.outlet, 3 kitchen.light,
+4 kitchen.appliance, 5 kitchen.water, 6 bedroom.light, 7 garage.light, 8 garage.lock
 
 ---
 

@@ -19,14 +19,14 @@ fun ApplicationId.titleRes(): Int = when (this) {
 
 @DrawableRes
 fun ApplicationId.thumbnailRes(): Int = when (this) {
-    ApplicationId.CONTROL_PANEL -> R.drawable.app_thumb_control_panel
-    ApplicationId.RC_VEHICLE_PRO -> R.drawable.car_bouncing01
-    ApplicationId.GREENHOUSE -> R.drawable.app_thumb_greenhouse
-    ApplicationId.SOLAR_POWER -> R.drawable.app_thumb_solar
-    ApplicationId.SMART_HOME -> R.drawable.app_thumb_smart_home
-    ApplicationId.WATER_TANK -> R.drawable.app_thumb_water_tank
-    ApplicationId.SMART_DOOR_LOCK -> R.drawable.app_thumb_door_lock
-    ApplicationId.SMART_LIGHTING -> R.drawable.app_thumb_smart_lighting
+    ApplicationId.CONTROL_PANEL -> R.drawable.app_holo_control_panel
+    ApplicationId.RC_VEHICLE_PRO -> R.drawable.app_holo_rc_vehicle
+    ApplicationId.GREENHOUSE -> R.drawable.app_holo_greenhouse
+    ApplicationId.SOLAR_POWER -> R.drawable.app_holo_solar
+    ApplicationId.SMART_HOME -> R.drawable.app_holo_smart_home
+    ApplicationId.WATER_TANK -> R.drawable.app_holo_water_tank
+    ApplicationId.SMART_DOOR_LOCK -> R.drawable.app_holo_door_lock
+    ApplicationId.SMART_LIGHTING -> R.drawable.app_holo_smart_lighting
 }
 
 @StringRes

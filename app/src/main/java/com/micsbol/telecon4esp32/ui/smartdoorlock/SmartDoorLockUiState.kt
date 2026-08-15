@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.smartdoorlock
 
+import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 
 enum class DoorLockState {
@@ -13,7 +14,9 @@ enum class RelayPinState {
 }
 
 data class SmartDoorLockUiState(
+    val cameraLinkProfile: CameraLinkProfile = CameraLinkProfile.CONTROL_ONLY,
     val cameraState: CameraStreamState = CameraStreamState.Idle,
+    val isCameraOnline: Boolean = false,
     val isEsp32Online: Boolean = false,
     val isCallActive: Boolean = false,
     val callDurationSeconds: Int = 0,

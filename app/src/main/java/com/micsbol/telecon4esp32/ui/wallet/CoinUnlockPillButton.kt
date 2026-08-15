@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,14 +39,13 @@ fun CoinUnlockPillButton(
     enabled: Boolean = true,
     fillMaxWidth: Boolean = false,
     compact: Boolean = true,
-    coinIconAtEnd: Boolean = false,
     fixedWidth: Dp? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val height = if (compact) 40.dp else 48.dp
     val iconSize = if (compact) 16.dp else 18.dp
-    val horizontalPadding = if (compact) 10.dp else 14.dp
+    val horizontalPadding = if (compact) 12.dp else 14.dp
     val glassAlpha = when {
         !enabled -> AppGlass.SurfaceAlpha * 0.5f
         pressed -> AppGlass.SurfaceAlphaStrong
@@ -69,12 +67,8 @@ fun CoinUnlockPillButton(
             )
             .padding(horizontal = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        if (!coinIconAtEnd) {
-            CoinStackIcon(iconSize)
-            Spacer(modifier = Modifier.width(6.dp))
-        }
         Text(
             text = stringResource(R.string.coins_unlock_action),
             color = if (enabled) Neo.TextPrimary else Neo.TextMuted,
@@ -82,20 +76,24 @@ fun CoinUnlockPillButton(
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
         )
-        if (coinCost > 0) {
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = coinCost.toString(),
-                color = if (enabled) Neo.Accent else Neo.TextMuted,
-                fontSize = if (compact) 13.sp else 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-            )
-        }
-        if (coinIconAtEnd) {
-            Spacer(modifier = Modifier.width(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (coinCost > 0) {
+                Text(
+                    text = coinCost.toString(),
+                    color = if (enabled) Neo.Accent else Neo.TextMuted,
+                    fontSize = if (compact) 13.sp else 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
             CoinStackIcon(iconSize)
         }
     }

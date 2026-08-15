@@ -29,11 +29,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.applications.titleRes
+import com.micsbol.telecon4esp32.ui.components.DisconnectedBannerInsets
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
+import com.micsbol.telecon4esp32.ui.components.LocalDisconnectedBannerInsets
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 /**
@@ -57,6 +62,9 @@ fun ApplicationBluetoothSessionHost(
     val transport by remember(applicationId) {
         bluetoothViewModel.observeTransportType(applicationId)
     }.collectAsState(initial = BluetoothTransportType.CLASSIC)
+    val board by remember(applicationId) {
+        bluetoothViewModel.observeBoard(applicationId)
+    }.collectAsState(initial = Esp32Board.defaultFor(applicationId))
     var pendingConnect by remember { mutableStateOf(false) }
 
     LaunchedEffect(applicationId) {
@@ -135,13 +143,34 @@ fun ApplicationBluetoothSessionHost(
         )
     }
 
-    fun ensureReadyThenConnect() {
-        if (transport == BluetoothTransportType.WIFI) {
+    val softApConnect = rememberSoftApConnectAction(
+        onConnect = {
+            val connectionMode = when {
+                applicationId.usesCamera() && board == Esp32Board.CAM ->
+                    if (protocolMode == BluetoothProtocolMode.ADVANCED) {
+                        BluetoothConnectionMode.WIFI_BINARY
+                    } else {
+                        BluetoothConnectionMode.WIFI_CAM_STARTER
+                    }
+                protocolMode == BluetoothProtocolMode.ADVANCED ->
+                    BluetoothConnectionMode.WIFI_BINARY
+                else ->
+                    BluetoothConnectionMode.WIFI_SIMPLE
+            }
             openApplicationWifiSoftAp(
                 bluetoothViewModel = bluetoothViewModel,
                 applicationId = applicationId,
-                protocolMode = protocolMode,
+                protocolMode = connectionMode.protocolMode,
+                connectionMode = connectionMode,
             )
+        },
+    )
+
+    fun ensureReadyThenConnect() {
+        if (transport == BluetoothTransportType.WIFI) {
+            // SoftAP: API 29+ requests local-only Wi‑Fi in-app; older APIs open system Wi‑Fi.
+            bluetoothViewModel.dismissError()
+            softApConnect()
             return
         }
         ensureBluetoothReadyThenConnect()
@@ -174,7 +203,7 @@ fun ApplicationBluetoothSessionHost(
 
     if (hasConflict && conflictSession != null) {
         AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = { navController?.navigateUp() },
             title = { Text(stringResource(R.string.bluetooth_session_conflict_title)) },
             text = {
                 Text(
@@ -201,6 +230,7 @@ fun ApplicationBluetoothSessionHost(
     val sessionUi = ApplicationBluetoothSessionUi(
         isConnected = isConnectedForApp,
         isConnecting = state.isConnecting,
+        transport = transport,
         onConnect = {
             if (navController != null && !hasConflict) {
                 ensureReadyThenConnect()
@@ -209,18 +239,20 @@ fun ApplicationBluetoothSessionHost(
     )
 
     val currentSessionUi by rememberUpdatedState(sessionUi)
+    val disconnectedBannerInsets = remember { DisconnectedBannerInsets() }
 
     CompositionLocalProvider(
         LocalApplicationBluetoothSession provides currentSessionUi,
+        LocalDisconnectedBannerInsets provides disconnectedBannerInsets,
     ) {
         Box(modifier = modifier.fillMaxSize()) {
             content()
 
             if (navController != null &&
-                transport != BluetoothTransportType.WIFI &&
                 !isConnectedForApp &&
                 !state.isConnecting &&
-                !hasConflict
+                !hasConflict &&
+                !disconnectedBannerInsets.suppressHostOverlay
             ) {
                 LiveControlBluetoothDisconnectedBannerOverlay(
                     visible = true,
@@ -235,11 +267,13 @@ private fun openApplicationWifiSoftAp(
     bluetoothViewModel: BluetoothViewModel,
     applicationId: ApplicationId,
     protocolMode: BluetoothProtocolMode,
+    connectionMode: BluetoothConnectionMode,
 ) {
     bluetoothViewModel.requestApplicationConnection(
-        applicationId,
-        protocolMode,
-        BluetoothTransportType.WIFI,
+        applicationId = applicationId,
+        protocolMode = protocolMode,
+        transport = BluetoothTransportType.WIFI,
+        connectionMode = connectionMode,
     )
     // Stay on the app screen — SoftAP connect does not open the BT picker.
     bluetoothViewModel.connectToWifiSoftAp()

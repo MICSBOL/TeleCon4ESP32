@@ -3,9 +3,17 @@
 Copy into a **new Cursor chat** (Agent mode) on
 `/home/miguel/AndroidStudioProjects/SeriousApp/TeleCon4ESP32/`.
 
-Firmware companion (already updated in ESP32 repo):
+Firmware companions (ESP32 repo):
 
-`/home/miguel/Documents/ESP32_Projects/TeleCon_RcVehiclePro/ESP32_cam/WiFi/TeleCon_RcVehiclePro_CAM_WiFi/`
+| Kit | Sketch |
+|-----|--------|
+| **A** SoftAP video + TCP (`WIFI_SOFTAP`) | `ESP32_cam/WiFi/TeleCon_RcVehiclePro_CAM_WiFi/` |
+| **B** SoftAP video-only CAM + DevKit BLE (`WIFI_CAMERA_DEVKIT_BLE`) | `ESP32_cam/WiFi/TeleCon_RcVehiclePro_CAM_SoftAP_Video/` + `ESP32_noCam/BLE/TeleCon_RcVehiclePro_BLE_binary/` (`TeleCon-BLE-RC-V`) |
+
+Single-board SoftAP+BLE on one ESP32-CAM is **unsupported** (lab only). See
+[`RC_VEHICLE_PRO_SUPPORTED_KITS_ANDROID_PROMPT.md`](./RC_VEHICLE_PRO_SUPPORTED_KITS_ANDROID_PROMPT.md).
+
+Both SoftAP sketches expose `GET /stream` (preferred) and `GET /capture`. Kit B has **no** TCP `:3333` on the CAM.
 
 ---
 

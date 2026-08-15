@@ -12,16 +12,18 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Entitlement
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.canUseConnectionMode
+import com.micsbol.telecon4esp32.domain.model.coerceConnectionModeForBoard
 import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
+import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationConnectionModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ObserveEntitlementUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationBoardUseCase
-import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationProtocolModeUseCase
-import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationConnectionModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,9 +43,9 @@ import javax.inject.Inject
 class GreenhouseViewModel @Inject constructor(
     private val remoteController: RemoteController,
     getApplicationProtocolMode: GetApplicationProtocolModeUseCase,
-    private val saveApplicationProtocolMode: SaveApplicationProtocolModeUseCase,
     getApplicationTransportType: GetApplicationTransportTypeUseCase,
-    private val saveApplicationTransportType: SaveApplicationTransportTypeUseCase,
+    getApplicationConnectionMode: GetApplicationConnectionModeUseCase,
+    private val saveApplicationConnectionMode: SaveApplicationConnectionModeUseCase,
     getApplicationBoard: GetApplicationBoardUseCase,
     private val saveApplicationBoard: SaveApplicationBoardUseCase,
     observeEntitlement: ObserveEntitlementUseCase,
@@ -57,6 +59,14 @@ class GreenhouseViewModel @Inject constructor(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.GREENHOUSE),
+            )
+
+    private val storedConnectionMode: StateFlow<BluetoothConnectionMode?> =
+        getApplicationConnectionMode(ApplicationId.GREENHOUSE)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = null,
             )
 
     private val entitlement: StateFlow<Entitlement> = observeEntitlement()
@@ -77,26 +87,12 @@ class GreenhouseViewModel @Inject constructor(
         initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.GREENHOUSE),
     )
 
-    fun onConnectionModeChanged(mode: BluetoothConnectionMode) {
-        if (!entitlement.value.canUseConnectionMode(ApplicationId.GREENHOUSE, mode)) return
-        viewModelScope.launch {
-            saveApplicationTransportType(ApplicationId.GREENHOUSE, mode.transport)
-            saveApplicationProtocolMode(ApplicationId.GREENHOUSE, mode.protocolMode)
-        }
-    }
-
     val board: StateFlow<Esp32Board> = getApplicationBoard(ApplicationId.GREENHOUSE)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = Esp32Board.defaultFor(ApplicationId.GREENHOUSE),
         )
-
-    fun onBoardChanged(board: Esp32Board) {
-        viewModelScope.launch {
-            saveApplicationBoard(ApplicationId.GREENHOUSE, board)
-        }
-    }
 
     val transportType: StateFlow<BluetoothTransportType> =
         getApplicationTransportType(ApplicationId.GREENHOUSE)
@@ -106,12 +102,50 @@ class GreenhouseViewModel @Inject constructor(
                 initialValue = BluetoothTransportType.CLASSIC,
             )
 
+    fun onConnectionModeChanged(mode: BluetoothConnectionMode) {
+        if (!entitlement.value.canUseConnectionMode(ApplicationId.GREENHOUSE, mode)) return
+        if (!ApplicationId.GREENHOUSE.isConnectionModeAvailable(board.value, mode)) return
+        viewModelScope.launch {
+            saveApplicationConnectionMode(ApplicationId.GREENHOUSE, mode)
+        }
+    }
+
+    fun onBoardChanged(board: Esp32Board) {
+        viewModelScope.launch {
+            saveApplicationBoard(ApplicationId.GREENHOUSE, board)
+            val current = storedConnectionMode.value
+                ?: entitlement.value.effectiveConnectionMode(
+                    ApplicationId.GREENHOUSE,
+                    transportType.value,
+                    storedProtocolMode.value,
+                    board,
+                )
+            val coerced = entitlement.value.coerceConnectionModeForBoard(
+                ApplicationId.GREENHOUSE,
+                board,
+                current,
+            )
+            if (coerced != current || storedConnectionMode.value == null) {
+                saveApplicationConnectionMode(ApplicationId.GREENHOUSE, coerced)
+            }
+        }
+    }
+
     val connectionMode: StateFlow<BluetoothConnectionMode> = combine(
         transportType,
         storedProtocolMode,
+        storedConnectionMode,
         entitlement,
-    ) { transport, stored, access ->
-        access.effectiveConnectionMode(ApplicationId.GREENHOUSE, transport, stored)
+        board,
+    ) { transport, storedProtocol, storedMode, access, selectedBoard ->
+        val candidate = storedMode
+            ?: access.effectiveConnectionMode(
+                ApplicationId.GREENHOUSE,
+                transport,
+                storedProtocol,
+                selectedBoard,
+            )
+        access.coerceConnectionModeForBoard(ApplicationId.GREENHOUSE, selectedBoard, candidate)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),

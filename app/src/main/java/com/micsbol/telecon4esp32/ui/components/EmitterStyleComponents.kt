@@ -188,10 +188,10 @@ fun TeleCon4Esp32TopBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                ),
+            .safeHudPadding(
+                includeTop = true,
+                includeBottom = false,
+                includeHorizontal = true,
             )
     ) {
         Row(

@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.ui.smarthome
 
 import android.content.res.Configuration
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -9,16 +10,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -27,6 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
@@ -61,7 +61,9 @@ fun SmartHomeScreen(
     SmartHomeScreenContent(
         uiState = uiState,
         onMenuClick = { navController.navigateUp() },
-        onRoomLightToggle = viewModel::toggleRoomLight,
+        onRoomDeviceToggle = viewModel::toggleRoomDevice,
+        onSceneAllLightsOff = viewModel::applySceneAllLightsOff,
+        onSceneAway = viewModel::applySceneAway,
         topBarActions = {
             Row(
                 modifier = Modifier.padding(start = 4.dp, end = 2.dp),
@@ -102,7 +104,9 @@ fun SmartHomeScreen(
 fun SmartHomeScreenContent(
     uiState: SmartHomeUiState,
     onMenuClick: () -> Unit,
-    onRoomLightToggle: (String) -> Unit = {},
+    onRoomDeviceToggle: (roomId: String, deviceId: String) -> Unit = { _, _ -> },
+    onSceneAllLightsOff: () -> Unit = {},
+    onSceneAway: () -> Unit = {},
     modifier: Modifier = Modifier,
     topBarActions: @Composable () -> Unit = {},
 ) {
@@ -113,6 +117,9 @@ fun SmartHomeScreenContent(
         Column(modifier = Modifier.fillMaxSize()) {
             SmartHomeTopBar(
                 allSystemsNormal = uiState.allSystemsNormal,
+                isOnline = uiState.isOnline,
+                deviceId = uiState.deviceId,
+                updatedAgo = uiState.updatedAgo,
                 onMenuClick = onMenuClick,
                 actions = topBarActions,
             )
@@ -125,10 +132,10 @@ fun SmartHomeScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(
-                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                            ),
+                        .safeHudPadding(
+                            includeTop = false,
+                            includeBottom = true,
+                            includeHorizontal = true,
                         )
                         .verticalScroll(scrollState)
                         .padding(bottom = 24.dp),
@@ -149,9 +156,31 @@ fun SmartHomeScreenContent(
                         ) { room ->
                             RoomCard(
                                 room = room,
-                                onLightToggle = { onRoomLightToggle(room.id) },
+                                onDeviceToggle = { deviceId ->
+                                    onRoomDeviceToggle(room.id, deviceId)
+                                },
                             )
                         }
+                    }
+
+                    SmartHomeSectionHeader(
+                        title = stringResource(R.string.smart_home_section_scenes),
+                        modifier = sectionPadding,
+                    )
+                    Row(
+                        modifier = sectionPadding
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SmartHomeSceneChip(
+                            label = stringResource(R.string.smart_home_scene_all_lights_off),
+                            onClick = onSceneAllLightsOff,
+                        )
+                        SmartHomeSceneChip(
+                            label = stringResource(R.string.smart_home_scene_away),
+                            onClick = onSceneAway,
+                        )
                     }
 
                     SmartHomeSectionHeader(
@@ -214,6 +243,27 @@ fun SmartHomeScreenContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SmartHomeSceneChip(
+    label: String,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .background(
+                color = SmartHomeGlass.CardSurface.copy(alpha = SmartHomeGlass.ChipSurfaceAlpha),
+                shape = SmartHomeGlass.PillShape,
+            ),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = SmartHomeGlass.AccentWarm,
+        )
     }
 }
 

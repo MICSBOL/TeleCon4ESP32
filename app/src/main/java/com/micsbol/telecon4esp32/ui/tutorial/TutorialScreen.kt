@@ -334,6 +334,8 @@ private fun TutorialFullscreenHost(
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
                 decorFitsSystemWindows = false,
+                dismissOnClickOutside = true,
+                dismissOnBackPress = true,
             ),
         ) {
             surface(fullscreenModifier)
@@ -434,7 +436,7 @@ sealed interface TutorialMedia {
     /**
      * Home screen reference image: [R.drawable.home_light] / [R.drawable.home_dark].
      * Badges 1–6 (right-aligned on rows 2–5 and Quick Start; Help top-right):
-     * 1 Quick Start, 2 Control modules, 3 Bluetooth, 4 Codes and Documents, 5 Tutorial, 6 Help.
+     * 1 Quick Start, 2 Modules, 3 Bluetooth, 4 Codes and Documents, 5 Tutorial, 6 Help.
      * See [R.string.tutorial_home_step_description].
      */
     data object HomeScreenshot : TutorialMedia

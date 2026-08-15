@@ -5,11 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
@@ -18,21 +15,41 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import android.content.res.Configuration
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
+
+/**
+ * Lets application screens (e.g. Greenhouse sticky controls) push the
+ * disconnected banner above bottom chrome without overlapping content.
+ */
+class DisconnectedBannerInsets {
+    var bottomClearance by mutableStateOf(16.dp)
+    /** When true, the host overlay is hidden so the screen can place the banner in-flow. */
+    var suppressHostOverlay by mutableStateOf(false)
+}
+
+val LocalDisconnectedBannerInsets = staticCompositionLocalOf { DisconnectedBannerInsets() }
 
 /** How the live-control link status chip should present connection state. */
 enum class LiveControlLinkKind {
@@ -120,6 +137,8 @@ fun LiveControlBluetoothStatusChip(
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
             color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -140,6 +159,8 @@ fun LiveControlBluetoothDisconnectedBanner(
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
         color = Color.White,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 
@@ -148,15 +169,27 @@ fun BoxScope.LiveControlBluetoothDisconnectedBannerOverlay(
     visible: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    bottomClearance: Dp = LocalDisconnectedBannerInsets.current.bottomClearance,
 ) {
     if (visible) {
+        val isLandscape =
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val clearance = if (isLandscape) {
+            maxOf(bottomClearance, 96.dp)
+        } else {
+            bottomClearance
+        }
         LiveControlBluetoothDisconnectedBanner(
             onClick = onClick,
             modifier = modifier
-                // Bottom placement avoids covering top-bar Bluetooth / settings actions.
+                // Keep clear of bottom control rows / sticky panels.
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(bottom = 16.dp),
+                .safeHudPadding(
+                    includeTop = false,
+                    includeBottom = true,
+                    includeHorizontal = true,
+                )
+                .padding(bottom = clearance),
         )
     }
 }

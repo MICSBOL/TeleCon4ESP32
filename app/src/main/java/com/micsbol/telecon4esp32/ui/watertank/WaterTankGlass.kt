@@ -140,19 +140,13 @@ fun WaterTankGlassIconButton(
     size: Dp = 44.dp,
     content: @Composable () -> Unit,
 ) {
-    IconButton(
+    com.micsbol.telecon4esp32.ui.components.GlassChromeIconButton(
         onClick = onClick,
+        background = WaterTankGlass.CardSurface.copy(alpha = WaterTankGlass.TopBarButtonAlpha),
+        borderColor = WaterTankGlass.BorderColor.copy(alpha = WaterTankGlass.BorderAlpha),
+        modifier = modifier,
         enabled = enabled,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(WaterTankGlass.CardSurface.copy(alpha = WaterTankGlass.TopBarButtonAlpha))
-            .border(
-                1.dp,
-                WaterTankGlass.BorderColor.copy(alpha = WaterTankGlass.BorderAlpha),
-                CircleShape,
-            ),
-    ) {
-        content()
-    }
+        size = size,
+        content = content,
+    )
 }

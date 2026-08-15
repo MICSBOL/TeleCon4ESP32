@@ -4,29 +4,43 @@
     <string name="app_header_subtitle">Telemetría y control para tus proyectos ESP32</string>
     <!-- HomeScreen Strings -->
     <string name="home_title">TeleCon4ESP32</string>
+    <string name="home_pro_button">PRO</string>
+    <string name="home_pro_button_content_description">Abrir suscripción Pro</string>
     <string name="home_help">Ayuda</string>
     <string name="home_help_dialog_title">Ayuda rápida</string>
-    <string name="home_help_dialog_subtitle">Problemas frecuentes y cómo solucionarlos. Toca un problema para ver la solución.</string>
-    <string name="home_help_problem_bt_not_found">ESP32-BT no aparece al escanear</string>
-    <string name="home_help_solution_bt_not_found">Enciende el ESP32 y presiona RESET. En Arduino IDE, abre el Monitor Serie a 115200 baudios y confirma que muestre ESP32 Bluetooth Receiver Ready. En la pantalla Bluetooth de la app, toca actualizar para escanear, acércate al ESP32 y detén el escaneo cuando ESP32-BT aparezca en Dispositivos escaneados.</string>
-    <string name="home_help_problem_connect_fails">Inicio Rápido o la conexión fallan</string>
-    <string name="home_help_solution_connect_fails">Abre Bluetooth desde Inicio, inicia un escaneo y toca ESP32-BT. Si ya estaba emparejado, prueba Dispositivos vinculados. Si sigue fallando, olvida ESP32-BT en la configuración Bluetooth del sistema, escanea de nuevo y empareja desde Dispositivos escaneados.</string>
+    <string name="home_help_dialog_subtitle">Preguntas frecuentes sobre Inicio y Catálogo. Toca un tema para ver la respuesta.</string>
+    <string name="home_help_problem_bt_not_found">El ESP32 no aparece al escanear</string>
+    <string name="home_help_solution_bt_not_found">Enciende el ESP32 y pulsa RESET. En Arduino IDE, abre el Monitor Serie a 115200 baudios y confirma el banner de listo del firmware. Desde un módulo, abre Bluetooth, toca actualizar para escanear, acércate y detén el escaneo cuando tu placa aparezca en Dispositivos escaneados.</string>
+    <string name="home_help_problem_connect_fails">La conexión falla desde un módulo</string>
+    <string name="home_help_solution_connect_fails">Abre el módulo desde Catálogo y usa su botón Bluetooth para escanear y conectar. Si ya estaba emparejado, prueba Dispositivos vinculados. Si sigue fallando, olvida el dispositivo en los ajustes Bluetooth de Android, escanea de nuevo y empareja desde Dispositivos escaneados. Haz coincidir Classic/BLE y Simple/Binary con tu sketch.</string>
     <string name="home_help_problem_not_connected">Inicio sigue mostrando No conectado</string>
-    <string name="home_help_solution_not_connected">Solo un teléfono debe controlar el ESP32 a la vez. Cierra otras apps que puedan usar el enlace Bluetooth. Abre Bluetooth desde Inicio, conéctate a ESP32-BT y espera hasta que la tarjeta Bluetooth muestre Conectado antes de abrir Control RC.</string>
-    <string name="home_help_problem_rc_no_response">Los sticks, interruptores o botones RC no tienen efecto</string>
-    <string name="home_help_solution_rc_no_response">Conéctate primero por Bluetooth (Inicio debe mostrar Conectado). Abre Control RC en horizontal. Confirma que el sketch del ESP32 esté cargado y que el Monitor Serie muestre un banner de listo. Haz coincidir el tipo de conexión (Classic Simple, Classic Binary o BLE Binary) con el sketch. En modo banco/simulación, mueve sticks/knobs para ver el eco de telemetría; usa inyección Serial si está habilitada. Consulta las pruebas de componentes RC del Tutorial.</string>
-    <string name="home_help_problem_telemetry_stale">Los indicadores, LEDs, displays de siete segmentos o la gráfica no se actualizan</string>
-    <string name="home_help_solution_telemetry_stale">La telemetría la envía el firmware del ESP32. Permanece en la pantalla Control RC con Bluetooth conectado. Reflashea el sketch si hace falta y verifica debug_config.h y la configuración de telemetría. Usa los pasos de prueba de telemetría del Tutorial para confirmar que el firmware envía datos.</string>
+    <string name="home_help_solution_not_connected">Inicio muestra el estado de la última sesión. Abre Catálogo, entra a un módulo y conéctate por Bluetooth allí. Solo un teléfono debe controlar el ESP32 a la vez: cierra otras apps que usen el enlace. Al conectar, Inicio pasa a Conectado y el holograma abre ese módulo reciente.</string>
+    <string name="home_help_problem_module_no_response">Los controles o la telemetría del módulo no responden</string>
+    <string name="home_help_solution_module_no_response">Conéctate primero por Bluetooth dentro del módulo. Confirma que el firmware y el protocolo coincidan en los ajustes del módulo (Classic Simple, Classic Binary, BLE Binary o SoftAP si aplica). Quédate en la pantalla en vivo al probar. Reflashea el sketch correspondiente desde Códigos y Documentos si el Monitor Serie nunca muestra el banner de listo.</string>
     <string name="home_help_problem_first_setup">Configuración inicial — ¿por dónde empiezo?</string>
-    <string name="home_help_solution_first_setup">Sigue el Tutorial de la app en orden: obtén el ZIP del ESP32 en Códigos y Documentos, carga ESP32_BT_Controller.ino en Arduino IDE, conéctate por Bluetooth, configura Ajustes RC y luego abre Control RC. El botón Ayuda está siempre disponible en Inicio para resolver problemas rápidamente.</string>
+    <string name="home_help_solution_first_setup">Toca Catálogo en Inicio. Abre Panel de control (gratis) u otro módulo y luego Códigos para el ZIP y la documentación del ESP32. Carga el sketch en Arduino IDE, conéctate por Bluetooth desde la barra del módulo y usa los ajustes del módulo para igualar el protocolo. Más tarde, toca el holograma para reabrir el último módulo.</string>
+    <string name="home_help_problem_open_catalog">¿Cómo abro módulos desde Inicio?</string>
+    <string name="home_help_solution_open_catalog">Usa el botón Catálogo para ver todos los módulos. Toca una tarjeta para abrir un módulo desbloqueado, o expande la miniatura holográfica para ver detalles. Toca el holograma central en Inicio para reabrir el último módulo usado. Acerca de esta app está bajo el botón Catálogo (o a su lado en horizontal).</string>
+    <string name="home_help_problem_pro_unlock">¿Cómo funcionan Pro y el brillo?</string>
+    <string name="home_help_solution_pro_unlock">Los módulos PRO necesitan suscripción, monedas o un desbloqueo activo. Toca la insignia dorada PRO para ver la suscripción, o expande una tarjeta bloqueada para desbloquear con monedas. El brillo es un regalo explorador ocasional: mira un anuncio para una prueba Pro breve. Cuando un módulo Pro está activo mantiene la insignia PRO y un borde verde parpadeante; el brillo se oculta hasta que el regalo vuelva a estar disponible.</string>
     <string name="home_item_rc_control">Pantalla de Control RC</string>
-    <string name="home_item_applications">Módulos de control</string>
+    <string name="home_item_applications">Catálogo</string>
     <string name="home_item_settings">Ajustes del panel</string>
-    <string name="applications_title">Módulos de control</string>
-    <string name="applications_subtitle">Elige un módulo de control para tu dispositivo</string>
+    <string name="applications_title">Catálogo</string>
+    <string name="applications_subtitle">Elige un módulo para tu dispositivo</string>
     <string name="applications_badge_free">GRATIS</string>
     <string name="applications_badge_pro">PRO</string>
     <string name="applications_codes_content_description">Documentación y código ESP32 gratis</string>
+    <string name="applications_expand_details_content_description">Mostrar detalles del módulo</string>
+    <string name="applications_collapse_details_content_description">Ocultar detalles del módulo</string>
+    <string name="applications_pro_subscribe_content_description">Suscribirse para desbloquear módulos Pro</string>
+    <string name="applications_explorer_sparkle_content_description">Regalo explorador</string>
+    <string name="applications_explorer_gift_title">Regalo explorador</string>
+    <string name="applications_explorer_gift_message">¡Encontraste una recompensa oculta! Mira un anuncio breve para desbloquear %1$s durante 4 horas. El brillo vuelve cada 3 días.</string>
+    <string name="applications_explorer_gift_watch_ad">Ver anuncio</string>
+    <string name="applications_explorer_gift_not_now">Ahora no</string>
+    <string name="applications_explorer_gift_claimed">Regalo explorador reclamado: disfruta 4 horas de acceso.</string>
+    <string name="applications_explorer_gift_already_unlocked">Este módulo ya está desbloqueado.</string>
     <string name="application_codes_empty_title">Aún no hay documentos</string>
     <string name="application_codes_empty_message">Los paquetes de código y la documentación de este módulo aparecerán aquí pronto.</string>
     <string name="applications_badge_coins_unlocked">DESBLOQ.</string>
@@ -34,21 +48,21 @@
     <string name="applications_coming_soon_title">Próximamente</string>
     <string name="applications_coming_soon_message">%1$s aún no está disponible. Se incluirá en una actualización futura.</string>
     <string name="app_control_panel_title">Panel de control</string>
-    <string name="app_control_panel_subtitle">Sticks, interruptores y telemetría versátiles para cualquier proyecto</string>
+    <string name="app_control_panel_subtitle">Módulo gratuito de inicio con sticks dobles, interruptores, perillas y gráficas en vivo. Empareja cualquier proyecto ESP32 por Bluetooth Classic o BLE y ajusta la telemetría en tiempo real, sin suscripción.</string>
     <string name="app_rc_vehicle_title">Vehículo RC</string>
-    <string name="app_rc_vehicle_subtitle">Control RC avanzado con soporte de cámara</string>
+    <string name="app_rc_vehicle_subtitle">Cabina RC Pro con joysticks duales, HUD y vídeo SoftAP de ESP32-CAM. Conduce Kit A (una CAM) o Kit B (vídeo CAM + control BLE en DevKit) con presets SoftAP para streams más fluidos.</string>
     <string name="app_greenhouse_title">Invernadero</string>
-    <string name="app_greenhouse_subtitle">Zonas climáticas, sensores y monitoreo de cultivo</string>
+    <string name="app_greenhouse_subtitle">Supervisa zonas climáticas con sensores de temperatura, humedad, humedad del suelo y luz. Activa ventiladores, riego, calefacción y luces de cultivo desde un panel de cristal pensado para firmware ESP32 de invernadero.</string>
     <string name="app_solar_title">Energía solar</string>
-    <string name="app_solar_subtitle">Producción, batería y datos del inversor</string>
+    <string name="app_solar_subtitle">Sigue la producción, el estado de la batería, el inversor y el modo de red desde tu controlador solar ESP32. Gráficas y tarjetas de estado ayudan a detectar caídas y cuidar el almacenamiento.</string>
     <string name="app_smart_home_title">Hogar inteligente</string>
-    <string name="app_smart_home_subtitle">Habitaciones, escenas y automatización</string>
+    <string name="app_smart_home_subtitle">Organiza habitaciones, escenas y dispositivos para luces, cerraduras, enchufes y sensores. Automatiza rutinas diarias mientras te mantienes conectado a tus hubs ESP32 por Bluetooth.</string>
     <string name="app_water_tank_title">Depósito de agua</string>
-    <string name="app_water_tank_subtitle">Monitoreo de nivel con sensores ESP32</string>
+    <string name="app_water_tank_subtitle">Observa el nivel del depósito, tendencias de llenado/vaciado y estado de la bomba con sensores ESP32 de distancia o flotador. Indicadores y gráficas facilitan el control de tanques rurales o en azotea.</string>
     <string name="app_smart_door_lock_title">Cerradura inteligente</string>
-    <string name="app_smart_door_lock_subtitle">Videollamada de puerta principal y control ESP32</string>
+    <string name="app_smart_door_lock_subtitle">Atiende la puerta principal con vista de cámara en vivo, controles de micrófono/altavoz y bloqueo/desbloqueo remoto. Pensado para estaciones ESP32 que combinan vídeo y pestillo.</string>
     <string name="app_smart_lighting_title">Iluminación inteligente</string>
-    <string name="app_smart_lighting_subtitle">Habitaciones, reguladores y control ESP32</string>
+    <string name="app_smart_lighting_subtitle">Atenúa habitaciones, crea escenas y empareja nodos por Bluetooth o QR. Controla drivers LED ESP32 con presets sensibles a ocupación y accesos rápidos por zona.</string>
     <string name="app_control_panel_settings_title">Ajustes del panel de control</string>
     <string name="app_rc_vehicle_settings_title">Ajustes de vehículo RC</string>
     <string name="app_greenhouse_settings_title">Ajustes de invernadero</string>
@@ -58,10 +72,17 @@
     <string name="app_smart_door_lock_settings_title">Ajustes de cerradura inteligente</string>
     <string name="app_smart_lighting_settings_title">Ajustes de iluminación inteligente</string>
     <string name="applications_settings_content_description">Abrir %1$s</string>
-    <string name="control_panel_back_to_modules_content_description">Volver a módulos de control</string>
+    <string name="control_panel_back_to_modules_content_description">Volver al catálogo</string>
     <string name="app_settings_placeholder_title">Ajustes próximamente</string>
     <string name="app_settings_placeholder_body">Los ajustes específicos de la aplicación estarán disponibles en una actualización futura.</string>
     <string name="app_settings_communication_subtitle">Comunicación Bluetooth</string>
+    <string name="app_settings_option_info_content_description">Mostrar u ocultar detalles de la opción</string>
+    <string name="app_settings_user_type_section_title">Tipo de usuario</string>
+    <string name="app_settings_user_type_section_description">Elige Normal para enlaces Simple de inicio (incluido el nuevo firmware SoftAP starter del ESP32-CAM), o Avanzado para Kit A / Kit B y opciones binarias.</string>
+    <string name="app_settings_user_type_normal">Normal</string>
+    <string name="app_settings_user_type_normal_description">Protocolos Simple de inicio. En ESP32-CAM, solo el nuevo firmware SoftAP starter simplificado (una placa).</string>
+    <string name="app_settings_user_type_advanced">Avanzado</string>
+    <string name="app_settings_user_type_advanced_description">Kit A SoftAP, Kit B (vídeo SoftAP + BLE en DevKit) y otras opciones binarias / BLE.</string>
     <string name="app_settings_protocol_section_title">Protocolo de comunicación</string>
     <string name="app_settings_protocol_section_description">Elige el formato de mensaje que espera el firmware ESP32 para esta aplicación. Vuelve a conectar después de cambiar.</string>
     <string name="app_settings_protocol_prefix_label">Prefijo de mensaje ESP32: %1$s</string>
@@ -75,31 +96,104 @@
     <string name="app_settings_connection_section_title">Conexión Bluetooth</string>
     <string name="app_settings_connection_section_title_general">Conexión</string>
     <string name="app_settings_connection_section_description">Elige cómo se conecta la app a tu ESP32 y qué formato de mensajes usar. Reconecta después de cambiar. El firmware debe coincidir.</string>
-    <string name="app_settings_connection_section_description_rc_wifi">Elige SoftAP Wi‑Fi (vídeo + control en un solo ESP32-CAM) o Bluetooth para DevKit / firmware CAM de doble radio. Únete al SoftAP antes de Conectar. Reconecta después de cambiar.</string>
+    <string name="app_settings_connection_section_description_devkit">Elige primero Bluetooth o Wi‑Fi SoftAP y luego el formato. En Wi‑Fi, únete al SoftAP del ESP32 en los ajustes Wi‑Fi del teléfono y vuelve a la app. El firmware debe coincidir.</string>
+    <string name="app_settings_connection_section_description_rc_wifi">Solo dos kits: Kit A — un ESP32-CAM en Wi‑Fi SoftAP (vídeo + TCP). Kit B — vídeo SoftAP en CAM solo-vídeo + BLE Binary en un DevKit (TeleCon-BLE-RC-V). SoftAP + BLE en un solo ESP32-CAM no está soportado. Únete al SoftAP antes de Conectar. Reconecta después de cambiar.</string>
+    <string name="app_settings_connection_section_description_cam">Normal: SoftAP starter del CAM (firmware nuevo simplificado, proto=simple). Avanzado: Kit A SoftAP (proto=wifi) o Kit B (vídeo SoftAP + BLE en DevKit). SoftAP + BLE en un solo ESP32-CAM no está soportado. Reconecta después de cambiar.</string>
     <string name="app_settings_connection_wifi_softap">Wi‑Fi SoftAP</string>
-    <string name="app_settings_connection_wifi_softap_description">Únete al SoftAP TeleCon-RC-CAM / telecon1234 (sin internet mientras estés conectado). El control usa TCP 192.168.4.1:3333 con RC:CONNECT,proto,wifi. El vídeo prefiere GET /stream (MJPEG) y cae a GET /capture. Sin Bluetooth. Classic Simple en un solo ESP32-CAM no está soportado (conflicto de radio).</string>
+    <string name="app_settings_connection_wifi_cam_starter">CAM SoftAP — Starter (código nuevo simplificado)</string>
+    <string name="app_settings_connection_wifi_cam_starter_description">Nuevo firmware SoftAP del ESP32-CAM para usuarios Normal. Únete al SoftAP TeleCon-RC-CAM-Starter / telecon1234 (sin internet mientras estés conectado). El control usa TCP 192.168.4.1:3333 con RC:CONNECT,proto,simple. El vídeo prefiere GET /stream (MJPEG) y cae a GET /capture.</string>
+    <string name="app_settings_connection_wifi_softap_kit_a">Kit A — SoftAP (un ESP32-CAM)</string>
+    <string name="app_settings_connection_wifi_softap_description">Únete al SoftAP TeleCon-RC-CAM / telecon1234 (sin internet mientras estés conectado). El control usa TCP 192.168.4.1:3333 con RC:CONNECT,proto,wifi. El vídeo prefiere GET /stream (MJPEG) y cae a GET /capture. Sin Bluetooth.</string>
+    <string name="app_settings_connection_wifi_softap_kit_a_description">SoftAP de texto avanzado heredado (proto=wifi). Prefiere SoftAP + Binary en CAM. Únete a TeleCon-RC-CAM / telecon1234. El vídeo prefiere GET /stream (MJPEG).</string>
+    <string name="app_settings_connection_link_bluetooth">Bluetooth</string>
+    <string name="app_settings_connection_link_bluetooth_description">SPP Classic o BLE Nordic UART. Abre el selector de dispositivos de la app.</string>
+    <string name="app_settings_connection_link_wifi">Wi‑Fi SoftAP</string>
+    <string name="app_settings_connection_link_wifi_description">SoftAP del ESP32 por Wi‑Fi. Únete primero al SoftAP en los ajustes Wi‑Fi del teléfono; luego Conectar abre TCP 192.168.4.1:3333 (sin selector Bluetooth).</string>
+    <string name="app_settings_connection_bluetooth_protocol_title">Modo Bluetooth</string>
+    <string name="app_settings_connection_bluetooth_protocol_description">Elige Classic Simple, Classic Binary o BLE Binary según el firmware del DevKit.</string>
+    <string name="app_settings_connection_wifi_protocol_title">Protocolo Wi‑Fi</string>
+    <string name="app_settings_connection_wifi_protocol_description">Elige Simple o Binary para tramas por SoftAP TCP cuando te unas a la red del ESP32.</string>
+    <string name="app_settings_connection_wifi_simple">Wi‑Fi SoftAP + Simple</string>
+    <string name="app_settings_connection_wifi_simple_description">TCP SoftAP con líneas legibles (proto=simple). Únete a ESP32-TC-RC-WiFi-Simple / telecon1234 (o al SoftAP de tu app según el sketch); luego Conectar abre TCP 192.168.4.1:3333.</string>
+    <string name="app_settings_connection_wifi_binary">Wi‑Fi SoftAP + Binary</string>
+    <string name="app_settings_connection_wifi_binary_description">TCP SoftAP con paquetes binarios compactos (proto=binary). Únete a ESP32-TC-RC-WiFi-Binary / telecon1234 (o al SoftAP de tu app según el sketch); luego Conectar abre TCP 192.168.4.1:3333.</string>
+    <string name="app_settings_connection_wifi_binary_cam">Kit A — CAM SoftAP + Binary</string>
+    <string name="app_settings_connection_wifi_binary_cam_description">Kit A avanzado — un ESP32-CAM. Únete al SoftAP TeleCon-RC-CAM / telecon1234 (sin internet mientras estés conectado). El control usa TCP 192.168.4.1:3333 con RC:CONNECT,proto,binary y AA 55 / BB 66. El vídeo prefiere GET /stream (MJPEG); /camconfig ajusta la carga SoftAP.</string>
+    <string name="app_settings_open_wifi_settings_failed">No se pudieron abrir los ajustes Wi‑Fi</string>
+    <string name="app_settings_selection_guide_section_title">Firmware y docs correspondientes</string>
+    <string name="app_settings_selection_guide_title_format">%1$s · %2$s</string>
+    <string name="app_settings_selection_guide_code_link">Código correspondiente</string>
+    <string name="app_settings_selection_guide_code_devkit">Código — ESP32 DevKit</string>
+    <string name="app_settings_selection_guide_code_cam">Código — Kit A (ESP32-CAM SoftAP)</string>
+    <string name="app_settings_selection_guide_code_cam_starter">Código — ESP32-CAM SoftAP starter</string>
+    <string name="app_settings_selection_guide_code_devkit_ble">Código — ESP32 DevKit (control BLE)</string>
+    <string name="app_settings_selection_guide_code_devkit_ble_only">Código — ESP32 DevKit (BLE)</string>
+    <string name="app_settings_selection_guide_code_cam_video">Código — ESP32-CAM (vídeo SoftAP)</string>
+    <string name="app_settings_selection_guide_code_devkit_wifi">Código — ESP32 DevKit (Wi‑Fi SoftAP)</string>
+    <string name="app_settings_selection_guide_docs_link">Documentación</string>
+    <string name="app_settings_selection_guide_links_placeholder_note">Los enlaces abrirán el sketch y la guía cuando se publiquen.</string>
+    <string name="app_settings_selection_guide_links_coming_soon">El código y la documentación de esta opción estarán disponibles pronto.</string>
     <string name="app_settings_connection_classic_simple">Classic + Simple (líneas de texto)</string>
     <string name="app_settings_connection_classic_simple_description">Bluetooth Classic SPP con líneas legibles como GH:DATA,temp,26.2. La opción más fácil para sketches de Arduino.</string>
     <string name="app_settings_connection_classic_binary">Classic + Binario</string>
     <string name="app_settings_connection_classic_binary_description">Bluetooth Classic SPP con paquetes binarios compactos. Más rápido y eficiente; requiere firmware ESP32 compatible.</string>
     <string name="app_settings_connection_ble_binary">BLE + Binario</string>
+    <string name="app_settings_connection_ble_binary_kit_b">Kit B — vídeo CAM + BLE DevKit</string>
     <string name="app_settings_connection_ble_binary_description">Bluetooth Low Energy (Nordic UART) con los mismos paquetes binarios que Classic Binary. Mejor para la batería y placas solo BLE (ESP32-C3/C6).</string>
+    <string name="app_settings_connection_ble_binary_kit_b_description">Kit B — dos placas. Vídeo SoftAP HTTP desde un ESP32-CAM solo-vídeo; control BLE Nordic UART en un DevKit llamado TeleCon-BLE-RC-V (no …-CAM). Handshake RC:CONNECT,proto,binary. Sin TCP SoftAP :3333. SoftAP + BLE en un solo CAM no está soportado.</string>
     <string name="app_settings_device_section_title">Dispositivo ESP32</string>
-    <string name="app_settings_device_section_description">Elige la placa a la que se conecta esta aplicación. Reconecta después de cambiar.</string>
+    <string name="app_settings_device_section_description">Elige la placa a la que se conecta esta aplicación. Los usuarios Avanzados pueden elegir Kit B (CAM + DevKit). Reconecta después de cambiar.</string>
     <string name="app_settings_device_dev_kit">ESP32 DevKit (WROOM-32)</string>
-    <string name="app_settings_device_dev_kit_description">Placa de propósito general para sensores y actuadores. Sin cámara.</string>
+    <string name="app_settings_device_dev_kit_description">Placa de propósito general para sensores y actuadores. Sin cámara SoftAP (solo control). Para Kit B, elige ESP32-CAM + DevKit abajo.</string>
     <string name="app_settings_device_cam">ESP32-CAM (AI-Thinker)</string>
-    <string name="app_settings_device_cam_description">Placa con cámara. En modo Wi‑Fi SoftAP, vídeo y control RC comparten SoftAP (TeleCon-RC-CAM / telecon1234). En modos Bluetooth, el vídeo va por SoftAP HTTP y el control por Classic/BLE.</string>
+    <string name="app_settings_device_cam_description">Un ESP32-CAM. SoftAP starter en Normal, o Kit A SoftAP Binary en Avanzado (vídeo + TCP en una placa). SoftAP + BLE en un solo ESP32-CAM no está soportado.</string>
+    <string name="app_settings_device_cam_and_dev_kit">ESP32-CAM + DevKit (Kit B)</string>
+    <string name="app_settings_device_cam_and_dev_kit_description">Kit B avanzado — dos placas. Vídeo SoftAP HTTP en ESP32-CAM (solo vídeo) + control BLE Binary en un DevKit (TeleCon-BLE-RC-V). El código correspondiente es Kit B. SoftAP + BLE en un solo CAM no está soportado.</string>
+    <string name="app_settings_device_cam_performance_warning_title">La cámara puede no ir fluida</string>
+    <string name="app_settings_device_cam_performance_warning_body">Este teléfono puede no tener potencia suficiente para un stream SoftAP fluido. El vídeo puede entrecortarse y el control sentir retraso. Puedes continuar: usa el preset SoftAP Suave y una tasa de procesamiento de imagen más baja si está disponible.</string>
+    <string name="app_settings_device_cam_performance_warning_banner">Este teléfono puede tener dificultades con la cámara SoftAP. Prefiere el rendimiento Suave y una tasa de HUD más baja para un control más estable.</string>
+    <string name="app_settings_device_cam_performance_warning_continue">Usar cámara de todos modos</string>
+    <string name="app_settings_device_cam_performance_warning_cancel">Mantener DevKit</string>
     <string name="rc_vehicle_pro_placeholder_title">Vehículo RC Pro</string>
     <string name="rc_vehicle_pro_placeholder_body">Los diseños RC avanzados y la vista de cámara en vivo aparecerán aquí. Esta aplicación Pro está en desarrollo.</string>
     <string name="rc_vehicle_camera_content_description">Transmisión en vivo de la cámara ESP32</string>
     <string name="rc_vehicle_camera_fallback_content_description">Vista previa de cámara del vehículo RC</string>
-    <string name="rc_vehicle_camera_idle">Conéctate al Wi‑Fi TeleCon-RC-CAM (contraseña telecon1234) y abre esta pantalla.\nStream: http://192.168.4.1/stream</string>
+    <string name="rc_vehicle_camera_idle">Kit A: Conéctate al Wi‑Fi TeleCon-RC-CAM (contraseña telecon1234) y abre esta pantalla.\nVídeo: http://192.168.4.1/stream · Conectar abre el control TCP SoftAP cuando el vídeo esté en línea.</string>
+    <string name="rc_vehicle_camera_ble_idle">Kit B: 1) Únete al SoftAP TeleCon-RC-CAM (contraseña telecon1234) para el vídeo.\n2) Pulsa Conectar y empareja BLE con el DevKit TeleCon-BLE-RC-V para los sticks.\nEl vídeo sigue por SoftAP HTTP (/stream). Sin TCP SoftAP.</string>
+    <string name="rc_vehicle_camera_devkit_idle">Modo DevKit — sin cámara SoftAP. Conéctate por Bluetooth para control y telemetría.</string>
     <string name="rc_vehicle_camera_connecting">Conectando a la ESP32-CAM…</string>
     <string name="rc_vehicle_camera_unavailable">Sin cámara. Conéctate al Wi‑Fi TeleCon-RC-CAM (contraseña telecon1234).\nLuego abre http://192.168.4.1/stream</string>
     <string name="rc_vehicle_camera_open_wifi">Ajustes Wi‑Fi</string>
-    <string name="rc_vehicle_camera_wifi_section_title">Wi‑Fi ESP32-CAM</string>
-    <string name="rc_vehicle_camera_wifi_section_body">Soft-AP SSID: TeleCon-RC-CAM · contraseña: telecon1234 · vídeo: http://192.168.4.1/stream (MJPEG; /capture de reserva) · control TCP: 192.168.4.1:3333 (modo Wi‑Fi SoftAP). El teléfono deja el Wi‑Fi de casa mientras está en SoftAP. Classic Simple CAM no está soportado en un solo ESP32-CAM (conflicto de radio BT + SoftAP).</string>
+    <string name="rc_vehicle_camera_connect_stream">Conectar transmisión</string>
+    <string name="rc_vehicle_camera_wifi_section_title">Kits de hardware (SoftAP)</string>
+    <string name="rc_vehicle_camera_wifi_section_body">Soft-AP SSID: %1$s · contraseña: %2$s · vídeo: http://192.168.4.1/stream (MJPEG; /capture de reserva). Control Kit A: TCP 192.168.4.1:3333. Control Kit B: BLE DevKit TeleCon-BLE-RC-V (CAM solo-vídeo; sin TCP SoftAP). El teléfono deja el Wi‑Fi de casa mientras está en SoftAP. SoftAP + BLE en un solo ESP32-CAM no está soportado.</string>
+    <string name="app_settings_devkit_wifi_section_title">Credenciales SoftAP</string>
+    <string name="app_settings_devkit_wifi_section_body">Soft-AP SSID: %1$s · contraseña: %2$s · control: TCP 192.168.4.1:3333. Pulsa Conectar — TeleCon pide este SoftAP (sin internet mientras estés enlazado; es normal). En Android antiguo, únete al SoftAP en los ajustes Wi‑Fi del sistema primero.</string>
+    <string name="rc_vehicle_softap_perf_section_title">Rendimiento de vídeo SoftAP</string>
+    <string name="rc_vehicle_softap_perf_section_body">Equilibra nitidez del vídeo SoftAP y fluidez del HUD en móviles de gama media. Aplica al SoftAP del Kit A y a la cámara SoftAP del Kit B. Menor bitrate SoftAP requiere firmware CAM con /camconfig; si no, siguen los límites de decodificación en Android.</string>
+    <string name="rc_vehicle_softap_perf_smooth">Suave</string>
+    <string name="rc_vehicle_softap_perf_smooth_description">Menor carga del HUD SoftAP para móviles de gama media; puede verse más suave. Ideal para dispositivos como el Poco X3.</string>
+    <string name="rc_vehicle_softap_perf_balanced">Equilibrado</string>
+    <string name="rc_vehicle_softap_perf_balanced_description">Predeterminado para la mayoría de móviles: calidad de vista previa SoftAP moderada.</string>
+    <string name="rc_vehicle_softap_perf_high_quality">Alta calidad</string>
+    <string name="rc_vehicle_softap_perf_high_quality_description">Vista previa SoftAP del HUD más nítida en móviles de gama alta; mayor carga de decodificación.</string>
+    <string name="rc_vehicle_softap_hud_rate_section_title">Frecuencia de procesamiento de imagen</string>
+    <string name="rc_vehicle_softap_hud_rate_section_body">Limita cada cuánto se decodifican fotogramas SoftAP para el HUD. Valores bajos mantienen fluidos los móviles débiles; el vídeo puede verse más entrecortado.</string>
+    <string name="rc_vehicle_softap_hud_rate_auto">Auto (según preset)</string>
+    <string name="rc_vehicle_softap_hud_rate_auto_description">Usa la frecuencia del preset SoftAP (Suave 10, Equilibrado 15, Alta sin tope).</string>
+    <string name="rc_vehicle_softap_hud_rate_5">5 FPS — dispositivos más débiles</string>
+    <string name="rc_vehicle_softap_hud_rate_5_description">Menor carga del HUD para móviles muy débiles o SoftAP bajo calor.</string>
+    <string name="rc_vehicle_softap_hud_rate_8">8 FPS</string>
+    <string name="rc_vehicle_softap_hud_rate_8_description">Menor carga del HUD para gama media débil.</string>
+    <string name="rc_vehicle_softap_hud_rate_10">10 FPS</string>
+    <string name="rc_vehicle_softap_hud_rate_10_description">Frecuencia típica Suave / gama media SoftAP.</string>
+    <string name="rc_vehicle_softap_hud_rate_12">12 FPS</string>
+    <string name="rc_vehicle_softap_hud_rate_12_description">Limitación suave si Auto resulta demasiado pesado.</string>
+    <string name="rc_vehicle_softap_hud_rate_15">15 FPS</string>
+    <string name="rc_vehicle_softap_hud_rate_15_description">Frecuencia del HUD similar a Equilibrado.</string>
+    <string name="rc_vehicle_softap_hud_rate_unlimited">Ilimitado</string>
+    <string name="rc_vehicle_softap_hud_rate_unlimited_description">Sin tope duro de FPS del HUD — solo para móviles potentes.</string>
+    <string name="rc_vehicle_softap_miui_tip">SoftAP no tiene internet — es normal (Android puede mostrar “sin internet”). TeleCon pide un enlace SoftAP local para que el teléfono no lo suelte tan fácil. Mantén TeleCon en primer plano; en Xiaomi/POCO apaga los datos móviles al probar si SoftAP sigue desconectándose, y pon TeleCon en Sin restricciones de batería si el enlace cae al atenuar la pantalla.</string>
     <string name="rc_vehicle_metric_speed">Velocidad</string>
     <string name="rc_vehicle_metric_rssi">Cám. Wi‑Fi</string>
     <string name="rc_vehicle_metric_motor_temp">Temp. motor</string>
@@ -128,16 +222,37 @@
     <string name="rc_vehicle_action_buzzer">Buzzer</string>
     <string name="rc_vehicle_action_camera_rotate">Pan cámara</string>
     <string name="rc_vehicle_action_camera_front">Frente</string>
+    <string name="rc_vehicle_camera_pan_value">Pan cámara %1$d</string>
     <string name="rc_vehicle_camera_pan_left">I</string>
     <string name="rc_vehicle_camera_pan_right">D</string>
     <string name="rc_vehicle_action_stop">PARAR</string>
+    <string name="rc_vehicle_stick_mode_hold">Fijo</string>
+    <string name="rc_vehicle_stick_mode_spring">Muelle</string>
+    <string name="rc_vehicle_stick_mode_toggle">Modo stick %1$s. Toca para cambiar entre muelle o fijo.</string>
+    <string name="rc_vehicle_steer_trim_enable">Recorte de centro de dirección</string>
+    <string name="rc_vehicle_steer_trim_left">Empujar dirección a la izquierda</string>
+    <string name="rc_vehicle_steer_trim_right">Empujar dirección a la derecha</string>
+    <string name="rc_vehicle_steer_trim_confirm">Bloquear centro de dirección</string>
+    <string name="rc_vehicle_steer_trim_value">Recorte %1$+d</string>
+    <string name="rc_vehicle_travel_throttle_chip">ACL %1$d%%</string>
+    <string name="rc_vehicle_travel_steer_chip">DIR %1$d%%</string>
+    <string name="rc_vehicle_drive_assist_title">Asistencia de manejo</string>
+    <string name="rc_vehicle_drive_assist_body">Solo en el teléfono. Dual rate, expo, inversión y zona muerta remodelan los sticks antes del envío por Bluetooth o SoftAP. El ESP32 sigue recibiendo canales −1…1 normales.</string>
+    <string name="rc_vehicle_drive_assist_reverse_throttle">Invertir acelerador</string>
+    <string name="rc_vehicle_drive_assist_reverse_steer">Invertir dirección</string>
+    <string name="rc_vehicle_drive_assist_throttle_travel">Recorrido acelerador %1$d%%</string>
+    <string name="rc_vehicle_drive_assist_steer_travel">Recorrido dirección %1$d%%</string>
+    <string name="rc_vehicle_drive_assist_steer_expo">Expo dirección %1$d%%</string>
+    <string name="rc_vehicle_drive_assist_throttle_expo">Expo acelerador %1$d%%</string>
+    <string name="rc_vehicle_drive_assist_deadzone">Zona muerta %1$d%%</string>
+    <string name="rc_vehicle_drive_assist_done">Listo</string>
     <string name="pro_app_placeholder_title">En desarrollo</string>
     <string name="pro_app_placeholder_body">Esta aplicación Pro llegará en una actualización futura.</string>
     <string name="upgrade_title">Actualizar a Pro</string>
-    <string name="upgrade_subtitle">Desbloquea módulos de control especializados y quita los anuncios</string>
+    <string name="upgrade_subtitle">Desbloquea módulos especializados y quita los anuncios</string>
     <string name="upgrade_benefits_title">Pro incluye</string>
     <string name="upgrade_benefit_ad_free">Experiencia sin anuncios</string>
-    <string name="upgrade_benefit_no_coins">Todas las apps Pro desbloqueadas — sin monedas</string>
+    <string name="upgrade_benefit_no_coins">Todos los módulos Pro desbloqueados — sin monedas</string>
     <string name="upgrade_benefit_rc_vehicle">Vehículo RC con cámara</string>
     <string name="upgrade_benefit_applications">Invernadero, solar y hogar inteligente</string>
     <string name="upgrade_billing_unavailable">Las compras dentro de la app se activarán cuando se conecte Play Billing.</string>
@@ -146,16 +261,17 @@
     <string name="coins_content_description">Monedas</string>
     <string name="coins_balance_format">%1$d</string>
     <string name="coins_wallet_title">Monedero</string>
-    <string name="coins_wallet_description">Gana 3 monedas por anuncio recompensado. Gasta monedas para desbloquear una aplicación Pro a la vez.</string>
+    <string name="coins_wallet_description">Gana 3 monedas por anuncio recompensado. Gasta monedas para desbloquear un módulo Pro a la vez.</string>
     <string name="coins_unlock_title">Desbloquear %1$s</string>
-    <string name="coins_unlock_subtitle">Elige cuánto tiempo quieres acceso a esta aplicación Pro.</string>
+    <string name="coins_unlock_subtitle">Elige cuánto tiempo quieres acceso a este módulo Pro.</string>
     <string name="coins_option_one_use">Un uso — %1$d monedas</string>
     <string name="coins_option_24h">24 horas — %1$d monedas</string>
     <string name="coins_option_3d">3 días — %1$d monedas</string>
     <string name="coins_option_week">1 semana — %1$d monedas</string>
-    <string name="coins_unlock_action">Desbloquear</string>
-    <string name="coins_watch_ad_button">+3 monedas</string>
-    <string name="coins_upgrade_button">Ir a Pro</string>
+    <string name="coins_unlock_action">Usar</string>
+    <string name="coins_watch_ad_amount">x%1$d</string>
+    <string name="coins_upgrade_button">Hazte Pro</string>
+    <string name="coins_upgrade_benefit">Todos los módulos · sin monedas · sin anuncios</string>
     <string name="coins_insufficient_balance">No tienes suficientes monedas para este desbloqueo.</string>
     <string name="coins_ad_reward_granted">+3 monedas añadidas a tu monedero.</string>
     <string name="coins_ad_unavailable">El anuncio recompensado no está disponible ahora. Inténtalo más tarde.</string>
@@ -167,6 +283,7 @@
     <string name="coins_table_header_uses">Usos</string>
     <string name="coins_table_header_per_day">Por día</string>
     <string name="coins_table_one_use">Un uso</string>
+    <string name="coins_table_4h">4 horas</string>
     <string name="coins_table_24h">24 horas</string>
     <string name="coins_table_3d">3 días</string>
     <string name="coins_table_week">1 semana</string>
@@ -176,8 +293,8 @@
     <string name="coins_table_per_day_3d">~16</string>
     <string name="coins_table_per_day_week">11</string>
     <string name="coins_unlock_pick_option">Desbloquear esta app:</string>
-    <string name="coins_home_earn_hint">Mira anuncios para ganar monedas en apps Pro.</string>
-    <string name="coins_watch_ad_short">+3 monedas</string>
+    <string name="coins_home_earn_hint">Mira anuncios para ganar monedas en módulos Pro.</string>
+    <string name="coins_watch_ad_short">x%1$d</string>
     <string name="coins_view_pricing">Ver precios</string>
     <string name="home_item_bluetooth">Bluetooth</string>
     <string name="home_bluetooth_status_connecting">Conectando...</string>
@@ -191,11 +308,12 @@
     <string name="live_control_bluetooth_disconnected_content_description">No conectado. Toca para abrir Bluetooth.</string>
     <string name="live_control_wifi_connected_content_description">Control Wi‑Fi SoftAP conectado</string>
     <string name="live_control_wifi_camera_only_content_description">Cámara Wi‑Fi en línea. Toca para conectar el control SoftAP.</string>
-    <string name="live_control_wifi_disconnected_content_description">SoftAP no conectado. Toca para conectar.</string>
+    <string name="live_control_wifi_disconnected_content_description">SoftAP no conectado. Toca para abrir el control TCP SoftAP (únete antes al SoftAP del ESP32 en los ajustes Wi‑Fi del teléfono).</string>
+    <string name="live_control_wifi_connecting_content_description">Conectando Wi‑Fi SoftAP</string>
     <string name="home_item_tutorial">Tutorial</string>
     <string name="home_start_button">Inicio Rápido</string>
     <string name="home_version_info">v%1$s - Acerca de esta App</string>
-    <string name="home_car_image_description">Ilustración de automóvil rebotando</string>
+    <string name="home_car_image_description">Buggy RC holográfico girando en una plataforma</string>
     <string name="home_codes_documents">Codigos y Documentos</string>
     <string name="home_scan_a_device">Escanear nuevo dispositivo</string>
     <string name="home_last_devices">Conectarse al último dispositivo:</string>
@@ -206,7 +324,7 @@
     <string name="home_blueprint_footer_title">Hecho para makers</string>
     <string name="home_blueprint_footer_tagline">Ingeniería • Construir • Innovar</string>
     <string name="home_hud_version">v%1$s</string>
-    <string name="home_hud_menu_applications_desc">Selecciona el módulo de control del dispositivo</string>
+    <string name="home_hud_menu_applications_desc">Explora el catálogo de módulos</string>
     <string name="home_hud_menu_bluetooth_desc">Conéctate a tu dispositivo ESP32</string>
     <string name="home_hud_menu_codes_desc">Ver y descargar paquetes de código</string>
     <string name="home_hud_menu_tutorial_desc">Guías paso a paso y documentación</string>
@@ -224,7 +342,22 @@
     <string name="bluetooth_ble_link_failed_title">Falló el enlace BLE</string>
     <string name="bluetooth_ble_link_failed_body">La app está en BLE Binary, pero no se pudo abrir el enlace BLE (Nordic UART).\n\nSuele ocurrir cuando el ESP32 tiene firmware solo Classic, o BLE no está listo.\n\nAbre Ajustes y elige Classic Simple o Classic Binary para un sketch Classic, o carga el firmware BLE del Control Panel y mantén BLE Binary.</string>
     <string name="bluetooth_wifi_softap_link_failed_title">Wi‑Fi SoftAP inalcanzable</string>
-    <string name="bluetooth_wifi_softap_link_failed_body">No se pudo abrir el control TCP en 192.168.4.1:3333.\n\nÚnete al Wi‑Fi SSID TeleCon-RC-CAM (contraseña telecon1234), espera a que el teléfono se asocie y pulsa Conectar de nuevo.\n\nEn SoftAP el teléfono no tiene internet. Carga el firmware TeleCon_RcVehiclePro_CAM_WiFi si falta el AP o el puerto.</string>
+    <string name="bluetooth_wifi_softap_link_failed_body">No se pudo abrir el control TCP en 192.168.4.1:3333.
+
+Acepta el panel Wi-Fi SoftAP cuando TeleCon lo pida (SSID en Ajustes: Normal TeleCon-RC-CAM-Starter; Avanzado TeleCon-RC-CAM; contraseña telecon1234), o únete a ese SoftAP en los ajustes Wi-Fi del sistema y pulsa Conectar de nuevo.
+
+Sin internet en SoftAP es normal — Android puede avisar; no es un fallo de la app. Mantén TeleCon en primer plano. En Xiaomi/POCO, apaga los datos móviles al usar SoftAP si el teléfono sigue desconectándose, y desactiva la restricción de batería de TeleCon si el enlace cae al atenuar la pantalla.
+
+Desactiva la VPN si SoftAP no enruta. Carga el firmware SoftAP CAM correspondiente (Simple starter o Binary) si falta el AP o el puerto.</string>
+    <string name="bluetooth_wifi_devkit_softap_link_failed_body">No se pudo abrir el control TCP en 192.168.4.1:3333.
+
+Acepta el panel Wi-Fi SoftAP cuando TeleCon lo pida (Panel de control Simple: ESP32-TC-RC-WiFi-Simple / telecon1234; Binary: ESP32-TC-RC-WiFi-Binary), o únete a ese SoftAP en los ajustes Wi-Fi del sistema y pulsa Conectar de nuevo.
+
+Sin internet en SoftAP es normal — Android puede avisar; no es un fallo de la app. Mantén TeleCon en primer plano. En Xiaomi/POCO, apaga los datos móviles al usar SoftAP si el teléfono sigue desconectándose, y desactiva la restricción de batería de TeleCon si el enlace cae al atenuar la pantalla.
+
+Desactiva la VPN si SoftAP no enruta.</string>
+    <string name="bluetooth_stale_firmware_bond_title">Firmware anterior aún vinculado</string>
+    <string name="bluetooth_stale_firmware_bond_body">Este dispositivo estaba vinculado con otro firmware. Olvídalo en Ajustes de Bluetooth de Android y vuelve a escanear.</string>
     <string name="bluetooth_paired_devices">Dispositivos vinculados</string>
     <string name="bluetooth_scanned_devices">Dispositivos escaneados</string>
     <string name="bluetooth_start_scan">Iniciar escaneo</string>
@@ -232,7 +365,7 @@
     <string name="bluetooth_no_paired_devices">Aún no hay dispositivos vinculados.</string>
     <string name="bluetooth_no_scanned_devices">No se encontraron dispositivos. Toca actualizar para escanear.</string>
     <string name="bluetooth_unknown_device">Dispositivo desconocido</string>
-    <string name="bluetooth_missing_session_context">Abre primero una aplicación y luego toca el botón Bluetooth en esa pantalla para usar el protocolo correcto.</string>
+    <string name="bluetooth_missing_session_context">Abre primero un módulo y luego toca el botón Bluetooth en esa pantalla para usar el protocolo correcto.</string>
     <string name="bluetooth_session_protocol_simple">Simple (líneas de texto)</string>
     <string name="bluetooth_session_protocol_advanced">Avanzado (binario)</string>
     <string name="bluetooth_session_protocol_wifi">Wi‑Fi SoftAP</string>
@@ -245,22 +378,35 @@
     <string name="bluetooth_handshake_unknown_title">Conexión rechazada</string>
     <string name="bluetooth_handshake_app_mismatch">Esta pantalla espera firmware de %1$s, pero el ESP32 reportó %2$s.\n\nConecta la placa que corresponde a esta aplicación, o abre la aplicación que coincida con el firmware del dispositivo.</string>
     <string name="bluetooth_handshake_proto_mismatch">Esta pantalla está configurada en %1$s, pero el firmware del ESP32 usa %2$s.\n\nAbre Ajustes en esta aplicación y elige el modo de conexión coincidente (Wi‑Fi SoftAP, Classic Simple, Classic Binary o BLE Binary), o carga en el ESP32 un código que coincida con tu ajuste actual.</string>
-    <string name="bluetooth_handshake_timeout">El ESP32 no confirmó el handshake de conexión.\n\nEn SoftAP: confirma que estás en TeleCon-RC-CAM y que TCP :3333 está abierto. En Bluetooth: confirma el enlace y abre Ajustes para elegir el mismo modo que tu firmware. Actualiza el sketch del ESP32 si no responde a RC:CONNECT / GH:CONNECT.</string>
+    <string name="bluetooth_handshake_timeout">El ESP32 no confirmó el handshake de conexión.\n\nEn SoftAP: confirma que te uniste al SoftAP correcto (Kit A CAM: TeleCon-RC-CAM; DevKit: ESP32-TC-…-WiFi-Simple / …-Binary) y que TCP :3333 está abierto. En Bluetooth: confirma el enlace y abre Ajustes para elegir el mismo modo que tu firmware. Actualiza el sketch del ESP32 si no responde a RC:CONNECT / GH:CONNECT.</string>
     <string name="bluetooth_handshake_unknown">El ESP32 rechazó la conexión (%1$s).\n\nConfirma que el firmware coincida con esta aplicación y con el protocolo seleccionado en Ajustes, e inténtalo de nuevo.</string>
     <string name="bluetooth_handshake_value_unknown">desconocido</string>
     <string name="bluetooth_firmware_app_rc">RC (Panel de control / Vehículo RC)</string>
     <string name="home_session_title">Sesión Bluetooth activa</string>
+    <string name="home_session_link_bluetooth_content_description">Conectado por Bluetooth</string>
+    <string name="home_session_link_wifi_content_description">Conectado por Wi‑Fi</string>
     <string name="home_session_none">Sin sesión activa</string>
-    <string name="home_session_none_hint">Abre una aplicación y conecta tu ESP32 desde esa pantalla.</string>
-    <string name="home_session_none_subtitle">Abre Aplicaciones para elegir un módulo y conectar</string>
-    <string name="home_session_app_label">Aplicación</string>
+    <string name="home_session_none_hint">Abre un módulo y conecta tu ESP32 desde esa pantalla.</string>
+    <string name="home_session_none_subtitle">Abre Catálogo para elegir un módulo y conectar</string>
+    <string name="home_session_app_label">Módulo</string>
     <string name="home_session_device_label">Dispositivo</string>
     <string name="home_session_protocol_label">Protocolo</string>
-    <string name="home_session_open_applications">Abrir aplicaciones</string>
+    <string name="home_session_open_applications">Catálogo</string>
     <string name="home_session_continue">Continuar sesión</string>
     <string name="home_session_continue_subtitle">Reanudar %1$s</string>
     <string name="codes_and_documents_title">Códigos y Documentos</string>
     <string name="codes_hub_subtitle">Todas las guías y el código ESP32 son gratis — no hace falta desbloquear.</string>
+    <string name="codes_settings_first_banner">Estos documentos se recomiendan solo para lectura. Para grabar el ESP32, obtén el código correspondiente en Ajustes de esta app (placa y modo de conexión).</string>
+    <string name="codes_settings_first_banner_hub">Los documentos aquí se recomiendan solo para lectura. Para grabar el ESP32, abre Ajustes de cada app y obtén el código que coincida con tu placa y conexión.</string>
+    <string name="codes_open_settings">Abrir ajustes</string>
+    <string name="codes_filter_device_title">Dispositivo ESP32</string>
+    <string name="codes_filter_device_description">Elige DevKit, CAM, o un kit de dos placas mediante el modo de conexión de abajo.</string>
+    <string name="codes_filter_mode_title">Conexión / kit</string>
+    <string name="codes_filter_mode_description">Solo se listan los paquetes de esta combinación.</string>
+    <string name="codes_filter_kit_b_note">El Kit B necesita dos sketches: vídeo SoftAP en el ESP32-CAM y control BLE Binary en el ESP32 DevKit.</string>
+    <string name="codes_matching_empty_title">Aún no hay paquete para esta combinación</string>
+    <string name="codes_matching_empty_message">El código para %1$s · %2$s aparecerá aquí cuando se publique. La documentación puede listarse abajo si está disponible.</string>
+    <string name="codes_coming_soon_for_device">Próximamente — %1$s</string>
     <string name="codes_hub_no_documents">Aún no hay documentos · Guía y código ESP32 gratis</string>
     <plurals name="codes_hub_item_subtitle">
         <item quantity="one">%d documento · Guía y código ESP32 gratis</item>
@@ -297,7 +443,7 @@
     <string name="app_tutorial_title">Tutorial de la aplicación</string>
     <string name="tutorial_step">Paso %1$d:</string>
     <string name="tutorial_home_step_title">Botones de la pantalla principal</string>
-    <string name="tutorial_home_step_description">Relaciona las etiquetas numeradas en azul de la imagen de la pantalla principal (1–6) con los elementos siguientes.\n\n1. Inicio Rápido (abajo): vuelve a conectarse al último dispositivo Bluetooth guardado, o te envía a escanear un nuevo dispositivo.\n\n2. Módulos de control: abre el catálogo de módulos (Panel de control, Hogar inteligente y más). Toca un módulo para abrirlo.\n\n3. Bluetooth: abre la lista de dispositivos para escanear, conectar y revisar el estado de conexión actual.\n\n4. Códigos y Documentos: abre guías PDF y permite compartir o guardar el archivo de código ESP32_BT_Controller-main.zip.\n\n5. Tutorial: abre esta guía paso a paso de la aplicación.\n\n6. Ayuda (arriba a la derecha): acceso rápido para consejos de solución de problemas.</string>
+    <string name="tutorial_home_step_description">Relaciona las etiquetas numeradas en azul de la imagen de la pantalla principal (1–6) con los elementos siguientes.\n\n1. Inicio Rápido (abajo): vuelve a conectarse al último dispositivo Bluetooth guardado, o te envía a escanear un nuevo dispositivo.\n\n2. Catálogo: abre el catálogo de módulos (Panel de control, Hogar inteligente y más). Toca un módulo para abrirlo.\n\n3. Bluetooth: abre la lista de dispositivos para escanear, conectar y revisar el estado de conexión actual.\n\n4. Códigos y Documentos: abre guías PDF y permite compartir o guardar el archivo de código ESP32_BT_Controller-main.zip.\n\n5. Tutorial: abre esta guía paso a paso de la aplicación.\n\n6. Ayuda (arriba a la derecha): acceso rápido para consejos de solución de problemas.</string>
     <string name="tutorial_arduino_ide_step_title">Cargar código con Arduino IDE</string>
     <string name="tutorial_arduino_ide_step_description">Este video muestra cómo preparar el ESP32 en Arduino IDE:\n\n- Abre ESP32_BT_Controller.ino en Arduino IDE (descarga el ZIP desde la app en el paso 2 si aún no tienes el sketch).\n\n- Selecciona la placa ESP32 correcta en Herramientas > Placa.\n\n- Selecciona el puerto serie conectado al ESP32 en Herramientas > Puerto.\n\n- Carga el sketch al ESP32.\n\n- Abre Herramientas > Monitor Serie y configura la velocidad en 115200.\n\n- Presiona el botón RESET del ESP32.\n\n- Confirma que el monitor muestre: ESP32 Bluetooth Receiver Ready.\n\n- Cuando veas ese mensaje, el ESP32 está esperando la conexión Bluetooth desde la app (paso 4).</string>
     <string name="tutorial_codes_step_title">Obtener el ZIP del proyecto ESP32</string>
@@ -305,7 +451,7 @@
     <string name="tutorial_bluetooth_step_title">Conectar al ESP32 con Bluetooth</string>
     <string name="tutorial_bluetooth_step_description">Este GIF muestra cómo conectar la app al dispositivo ESP32-BT:\n\n- Desde la pantalla principal, toca el botón Bluetooth.\n\n- En la pantalla Bluetooth, toca el icono de actualizar en la barra superior para iniciar el escaneo.\n\n- Cuando aparezca ESP32-BT, toca el icono X para detener el escaneo.\n\n- Revisa la lista Dispositivos escaneados y busca ESP32-BT.\n\n- Si es la primera conexión, toca ESP32-BT desde Dispositivos escaneados para emparejar y conectar.\n\n- Si el ESP32 ya fue emparejado antes, toca ESP32-BT desde Dispositivos vinculados para conectar más rápido.\n\n- Cuando la conexión sea exitosa, la app vuelve a la pantalla principal.\n\n- Confirma que el botón Bluetooth ahora muestra el estado Conectado.</string>
     <string name="tutorial_settings_step_title">Configurar el control RC</string>
-    <string name="tutorial_settings_step_description">Este video muestra cómo revisar y aplicar los ajustes del control:\n\n- Desde la pantalla principal (Bluetooth conectado), toca Módulos de control.\n\n- Abre Panel de control y luego toca el icono de ajustes en la barra superior para abrir Ajustes del panel de control.\n\n- En Ajustes del mando de RC, revisa Configuración del joystick y elige el comportamiento para el joystick izquierdo y derecho.\n\n- Revisa Posiciones iniciales de los interruptores y define el estado inicial de los interruptores S1 a S6.\n\n- Revisa Valores iniciales de las perillas y define el valor inicial de la perilla izquierda y derecha.\n\n- Regresa a la pantalla principal después de guardar la configuración.\n\n- Toca Módulos de control de nuevo y luego Panel de control para abrir el mando.\n\n- Confirma que el comportamiento de joysticks, estados de interruptores y valores de perillas se aplicaron correctamente en la pantalla RC.</string>
+    <string name="tutorial_settings_step_description">Este video muestra cómo revisar y aplicar los ajustes del control:\n\n- Desde la pantalla principal (Bluetooth conectado), toca Catálogo.\n\n- Abre Panel de control y luego toca el icono de ajustes en la barra superior para abrir Ajustes del panel de control.\n\n- En Ajustes del mando de RC, revisa Configuración del joystick y elige el comportamiento para el joystick izquierdo y derecho.\n\n- Revisa Posiciones iniciales de los interruptores y define el estado inicial de los interruptores S1 a S6.\n\n- Revisa Valores iniciales de las perillas y define el valor inicial de la perilla izquierda y derecha.\n\n- Regresa a la pantalla principal después de guardar la configuración.\n\n- Toca Catálogo de nuevo y luego Panel de control para abrir el mando.\n\n- Confirma que el comportamiento de joysticks, estados de interruptores y valores de perillas se aplicaron correctamente en la pantalla RC.</string>
     <string name="tutorial_video_enter_fullscreen">Pantalla completa</string>
     <string name="tutorial_video_exit_fullscreen">Salir de pantalla completa</string>
     <string name="tutorial_rc_overview_title">Panorama del diseño de la pantalla RC</string>
@@ -380,7 +526,7 @@
 
     <!-- GreenhouseScreen -->
     <string name="greenhouse_screen_title">INVERNADERO</string>
-    <string name="greenhouse_menu_content_description">Volver a módulos de control</string>
+    <string name="greenhouse_menu_content_description">Volver al catálogo</string>
     <string name="greenhouse_status_online">En línea</string>
     <string name="greenhouse_status_offline">Desconectado</string>
     <string name="greenhouse_mode_auto">Auto</string>
@@ -441,12 +587,16 @@
     <string name="greenhouse_camera_unavailable_body">Conéctese al Wi‑Fi del ESP32-CAM y abra la transmisión en %1$s</string>
     <string name="greenhouse_camera_emulator_body">La cámara ESP32-CAM en vivo solo está disponible en un dispositivo físico. El emulador te mantiene en la pantalla del invernadero para evitar cierres inesperados.</string>
     <string name="greenhouse_camera_emulator_toast">La vista en vivo de ESP32-CAM requiere un dispositivo físico en la misma red Wi‑Fi.</string>
+    <string name="greenhouse_camera_gimbal_label">Apuntar cámara</string>
+    <string name="greenhouse_camera_gimbal_value">Cámara pan %1$d, tilt %2$d</string>
+    <string name="greenhouse_camera_gimbal_readout">Pan %1$d · Tilt %2$d</string>
+    <string name="greenhouse_camera_gimbal_center">Centrar cámara</string>
     <string name="greenhouse_emulator_help_notice">La ayuda no está disponible en el emulador. Usa un dispositivo físico para leer la guía completa del protocolo.</string>
     <string name="greenhouse_emulator_settings_notice">Los ajustes no están disponibles en el emulador. Usa un dispositivo físico para cambiar las opciones del protocolo del invernadero.</string>
     <string name="greenhouse_settings_guide_section_title">Componentes de la pantalla</string>
     <string name="greenhouse_settings_guide_section_description">Cada tarjeta de la pantalla Invernadero corresponde a telemetría Bluetooth (GH:DATA) o comandos (GH:SET). Configure su firmware ESP32 con estas claves.</string>
     <string name="greenhouse_settings_pins_section_title">Pines sugeridos ESP32 DevKit</string>
-    <string name="greenhouse_settings_pins_body">I2C SDA=21, SCL=22 → BME280 (clima) + BH1750 (lux)\nGPIO 4 → DS18B20 temperatura exterior\nGPIO 34 → humedad del suelo (analógico)\nGPIO 27/33 → ultrasónico del depósito (trig/echo)\nGPIO 13 → relé ventilador | 14 → calefactor | 16 → bomba\nGPIO 17 → luces de cultivo | 19 → servo ventilación PWM\nGPIO 32 → pulso sensor de caudal (opcional)\n\nESP32-CAM (placa aparte): vídeo en Wi‑Fi en http://192.168.4.1</string>
+    <string name="greenhouse_settings_pins_body">I2C SDA=21, SCL=22 → BME280 (clima) + BH1750 (lux)\nGPIO 4 → DS18B20 temperatura exterior\nGPIO 34 → humedad del suelo (analógico)\nGPIO 27/33 → ultrasónico del depósito (trig/echo)\nGPIO 13 → relé ventilador | 14 → calefactor | 16 → bomba\nGPIO 17 → luces de cultivo | 19 → servo ventilación PWM\nGPIO 32 → pulso sensor de caudal (opcional)\n\nESP32-CAM (placa aparte): vídeo en Wi‑Fi en http://192.168.4.1\nGimbal CAM (pines libres): GPIO 13 → servo pan | GPIO 12 → servo tilt\n(GH:SET cam_pan / cam_tilt, 0–100, 50 = centro)</string>
     <string name="greenhouse_guide_read_label">Lectura (ESP32 → app)</string>
     <string name="greenhouse_guide_write_label">Escritura (app → ESP32)</string>
     <string name="greenhouse_guide_topbar_title">Barra superior — estado de conexión</string>
@@ -478,6 +628,10 @@
     <string name="greenhouse_guide_controls_description">Ventilador, calefactor, bomba y luces. Los deslizadores ajustan ventilación y objetivos de clima.</string>
     <string name="greenhouse_guide_controls_read">GH:DATA,fan,1,heater,0,pump,0,lights,0,vent,40,target_temp,24,target_hum,65</string>
     <string name="greenhouse_guide_controls_write">GH:SET,fan,1\nGH:SET,heater,0\nGH:SET,pump,1\nGH:SET,lights,1\nGH:SET,vent,60\nGH:SET,target_temp,24,target_hum,65</string>
+    <string name="greenhouse_guide_camera_title">Cámara en vivo — apuntar</string>
+    <string name="greenhouse_guide_camera_description">En la pantalla de cámara, arrastra el pad para mover el gimbal pan/tilt del ESP32-CAM. Centrar pone ambos ejes en 50.</string>
+    <string name="greenhouse_guide_camera_read">Eco opcional: GH:DATA,cam_pan,50,cam_tilt,50</string>
+    <string name="greenhouse_guide_camera_write">GH:SET,cam_pan,50,cam_tilt,50\n0–100 cada uno; 50 = centro. Pines CAM: pan GPIO 13, tilt GPIO 12.</string>
     <string name="greenhouse_guide_auto_title">Modo auto / manual</string>
     <string name="greenhouse_guide_auto_description">Con Auto activo, el ESP32 aplica reglas de clima con target_temp y target_hum. En manual, los botones de la app controlan los actuadores.</string>
     <string name="greenhouse_guide_auto_read">GH:DATA,auto,1,target_temp,24,target_hum,65</string>
@@ -485,7 +639,7 @@
 
     <!-- WaterTankScreen -->
     <string name="water_tank_screen_title">Monitor de nivel de depósito</string>
-    <string name="water_tank_menu_content_description">Volver a módulos de control</string>
+    <string name="water_tank_menu_content_description">Volver al catálogo</string>
     <string name="water_tank_refresh_content_description">Actualizar datos del depósito</string>
     <string name="water_tank_esp32_connected">ESP32 conectado</string>
     <string name="water_tank_esp32_disconnected">ESP32 desconectado</string>
@@ -573,20 +727,26 @@
 
     <!-- SmartHomeScreen -->
     <string name="smart_home_screen_title">Hogar inteligente</string>
-    <string name="smart_home_menu_content_description">Volver a módulos de control</string>
+    <string name="smart_home_menu_content_description">Volver al catálogo</string>
     <string name="smart_home_all_systems_normal">Todos los sistemas normales</string>
-    <string name="smart_home_notifications_content_description">Notificaciones</string>
+    <string name="smart_home_systems_attention">Requiere atención</string>
+    <string name="smart_home_status_online">En línea</string>
+    <string name="smart_home_status_offline">Sin conexión</string>
+    <string name="smart_home_updated_ago">Actualizado hace %1$s</string>
     <string name="smart_home_section_rooms">Habitaciones</string>
+    <string name="smart_home_section_scenes">Escenas</string>
     <string name="smart_home_section_systems">Sistemas</string>
     <string name="smart_home_section_energy_usage">Consumo de energía</string>
     <string name="smart_home_section_recent_events">Eventos recientes</string>
-    <string name="smart_home_view_all">Ver todo</string>
+    <string name="smart_home_scene_all_lights_off">Apagar luces</string>
+    <string name="smart_home_scene_away">Ausente</string>
     <string name="smart_home_period_today">Hoy</string>
     <string name="smart_home_room_living_room">Salón</string>
     <string name="smart_home_room_kitchen">Cocina</string>
     <string name="smart_home_room_bedroom">Dormitorio</string>
     <string name="smart_home_room_garage">Garaje</string>
     <string name="smart_home_room_light_toggle_content_description">Alternar luz de %1$s, actualmente %2$s</string>
+    <string name="smart_home_room_device_toggle_content_description">Alternar %2$s de %1$s, actualmente %3$s</string>
     <string name="smart_home_room_devices_active">%1$d dispositivos activos ahora</string>
     <string name="smart_home_room_devices_active_one">1 dispositivo activo ahora</string>
     <string name="smart_home_room_devices_off">Todos los dispositivos apagados</string>
@@ -601,11 +761,14 @@
     <string name="smart_home_temperature_short">%1$.0f°C</string>
     <string name="smart_home_system_climate">Clima</string>
     <string name="smart_home_system_climate_status">Confortable</string>
+    <string name="smart_home_system_climate_heating">Calefacción</string>
+    <string name="smart_home_system_climate_cooling">Refrigeración</string>
     <string name="smart_home_system_energy">Energía</string>
     <string name="smart_home_system_energy_now">Ahora</string>
     <string name="smart_home_system_energy_value">%1$.1f kW</string>
     <string name="smart_home_system_security">Seguridad</string>
     <string name="smart_home_system_security_status">Todo seguro</string>
+    <string name="smart_home_system_security_open">Contacto abierto</string>
     <string name="smart_home_system_water">Agua</string>
     <string name="smart_home_system_water_today">Hoy</string>
     <string name="smart_home_system_water_value">%1$d L</string>
@@ -624,30 +787,30 @@
     <string name="smart_home_help_subtitle">Componentes de pantalla, protocolo SH y cableado ESP32</string>
     <string name="smart_home_help_back">Volver al hogar inteligente</string>
     <string name="smart_home_help_intro_title">Hub DIY ESP32 para hogar inteligente</string>
-    <string name="smart_home_help_intro_body">Este panel lee líneas SH:DATA por Bluetooth SPP. Agrega estados de dispositivos por habitación, sensores de clima, medición de energía, contactos de seguridad y uso de agua desde relés, sensores DHT/BME, INA219, reed de puertas/ventanas y caudalímetros. Guarda eventos en NVS o SPIFFS.</string>
+    <string name="smart_home_help_intro_body">Este panel lee líneas SH:DATA por Bluetooth SPP (sin cámara). Agrega estados de dispositivos por habitación, sensores de clima, medición de energía, contactos de seguridad y uso de agua desde relés, sensores DHT, INA219, reed de puertas/ventanas y caudalímetros. Guarda eventos en NVS o SPIFFS.</string>
     <string name="smart_home_guide_read_label">Lectura (ESP32 → app)</string>
     <string name="smart_home_guide_write_label">Escritura (app → ESP32)</string>
-    <string name="smart_home_guide_topbar_title">Barra superior — estado del sistema</string>
-    <string name="smart_home_guide_topbar_description">Muestra el título Hogar inteligente, acceso a notificaciones y la insignia «Todos los sistemas normales» cuando no hay alertas ni fallos.</string>
+    <string name="smart_home_guide_topbar_title">Barra superior — conexión y estado</string>
+    <string name="smart_home_guide_topbar_description">Muestra En línea/Sin conexión (Bluetooth + último SH:DATA), id del dispositivo, antigüedad de la actualización y la insignia «Todos los sistemas normales» cuando status=0.</string>
     <string name="smart_home_guide_topbar_read">SH:DATA,status,0,device,ESP32-SH01\nstatus: 0 = todo normal, 1 = aviso (puerta/ventana abierta o fallo).</string>
     <string name="smart_home_guide_rooms_title">Habitaciones — tarjetas desplazables</string>
-    <string name="smart_home_guide_rooms_description">Tarjetas horizontales con foto, dispositivos activos, proporción encendidos/total e iconos de tipo. Desliza para ver todas las habitaciones.</string>
-    <string name="smart_home_guide_rooms_read">SH:DATA,living_on,2,living_total,5,living_temp,21,living_alert,window,kitchen_on,1,kitchen_total,4,kitchen_temp,23,bedroom_on,0,bedroom_total,3,bedroom_temp,19,garage_on,1,garage_total,3,garage_temp,18,garage_alert,door\nalert: omitir = ninguna, window, door.</string>
+    <string name="smart_home_guide_rooms_description">Tarjetas horizontales con foto, dispositivos activos e iconos controlables (relés/cerradura). Sensores (termostato, movimiento) solo se muestran.</string>
+    <string name="smart_home_guide_rooms_read">SH:DATA,living_light,1,living_ambience,1,living_outlet,0,living_on,2,living_total,3,living_temp,21,living_alert,window,kitchen_light,1,kitchen_appliance,0,kitchen_water,0,kitchen_on,1,kitchen_total,3,kitchen_temp,23,bedroom_light,0,bedroom_on,0,bedroom_total,1,bedroom_temp,19,garage_light,1,garage_lock,0,garage_on,1,garage_total,2,garage_temp,18,garage_alert,door\nalert: omitir o none, window, door.</string>
     <string name="smart_home_guide_systems_title">Sistemas — clima, energía, seguridad, agua</string>
     <string name="smart_home_guide_systems_description">Mosaicos de confort HVAC, potencia doméstica, estado de cerraduras y consumo diario de agua.</string>
     <string name="smart_home_guide_systems_read">SH:DATA,climate_temp,22,climate_status,0,energy_kw,1.8,security_status,0,water_l,42\nclimate_status: 0=confortable, 1=calefacción, 2=refrigeración. security_status: 0=seguro, 1=contacto abierto.</string>
     <string name="smart_home_guide_energy_title">Gráfico de consumo de energía</string>
     <string name="smart_home_guide_energy_description">Gráfico de área de potencia doméstica (kW) a lo largo del día. El punto resaltado es la lectura actual.</string>
-    <string name="smart_home_guide_energy_read">SH:DATA,power_kw,1.8,hist_power,0.4|0.3|0.6|1.2|2.4|2.1|1.8|1.5|1.0|0.5\nhist_power = 24 muestras horarias kW (separadas por |). Envía power_kw cada 1–2 s; historial cada 30–60 s.</string>
+    <string name="smart_home_guide_energy_read">SH:DATA,power_kw,1.8,hist_power,0.4|0.3|0.6|1.2|2.4|2.1|1.8|1.5|1.0|0.5\nhist_power = muestras horarias kW (separadas por |). Envía power_kw cada 1–2 s; historial cada 30–60 s.</string>
     <string name="smart_home_guide_events_title">Eventos recientes</string>
     <string name="smart_home_guide_events_description">Registro cronológico de automatización: cerraduras, luces, movimiento, ventanas y agua. Los más recientes arriba.</string>
-    <string name="smart_home_guide_events_read">SH:DATA,event0,door_locked,09:30,event1,light_on,09:15,event2,motion,08:47\nHasta 5 eventos (event0…event4). Códigos: door_locked, light_on, motion, windows, water.</string>
-    <string name="smart_home_guide_device_control_title">Control de dispositivos y habitaciones</string>
-    <string name="smart_home_guide_device_control_description">Activa relés o enchufes por habitación y dispositivo. Pide actualización completa tras cambiar cableado o nombres en NVS.</string>
+    <string name="smart_home_guide_events_read">SH:DATA,event0,door_locked|09:30,event1,light_on|09:15,event2,motion|08:47\nO event0,door_locked,event0_t,09:30. Códigos: door_locked, light_on, motion, windows, water.</string>
+    <string name="smart_home_guide_device_control_title">Dispositivos, escenas y refresco</string>
+    <string name="smart_home_guide_device_control_description">Activa relés por habitación y dispositivo. Escenas apagan luces o activan Ausente (luces/enchufes off, cerradura garaje on). Pide refresco tras cambiar cableado.</string>
     <string name="smart_home_guide_device_control_read">SH:DATA confirma el estado tras cada SH:SET.</string>
-    <string name="smart_home_guide_device_control_write">SH:SET,room,living,device,lamp1,1\nSH:SET,room,living,device,lamp1,0\nSH:SET,refresh,1</string>
+    <string name="smart_home_guide_device_control_write">SH:SET,room,living,device,light,1\nSH:SET,room,living,device,ambience,0\nSH:SET,room,kitchen,device,water,1\nSH:SET,room,garage,device,lock,1\nSH:SET,scene,all_lights_off\nSH:SET,scene,away\nSH:SET,refresh,1</string>
     <string name="smart_home_guide_pins_title">Mapa de pines ESP32</string>
-    <string name="smart_home_guide_pins_description">Asignación de GPIO para cada elemento del panel Hogar inteligente. Las salidas de relé son activas en alto; reed y PIR usan INPUT_PULLUP.</string>
+    <string name="smart_home_guide_pins_description">Asignación de GPIO del hub DIY DevKit (sin cámara). Relés activos en alto; reed y PIR con INPUT_PULLUP. El mosaico de clima promedia DHT22 en GPIO 4/5/12.</string>
     <string name="smart_home_pin_section_topbar">Barra superior</string>
     <string name="smart_home_pin_line">%1$s → GPIO %2$d (%3$s)</string>
     <string name="smart_home_pin_footer">Envía SH:DATA cada 1–2 s para vatios y temperaturas en vivo; contadores por habitación y eventos cada 30–60 s.</string>
@@ -673,6 +836,7 @@
     <string name="smart_home_pin_hw_relay">salida de relé</string>
     <string name="smart_home_pin_hw_dht22">datos DHT22</string>
     <string name="smart_home_pin_hw_dht22_bus">DHT22 en GPIO 4/5/12</string>
+    <string name="smart_home_pin_hw_dht22_avg">promedio DHT22 en GPIO 4/5/12</string>
     <string name="smart_home_pin_hw_reed">reed, INPUT_PULLUP</string>
     <string name="smart_home_pin_hw_pir">PIR movimiento, INPUT_PULLUP</string>
     <string name="smart_home_pin_hw_lock_relay">salida relé cerradura</string>
@@ -684,7 +848,7 @@
     <string name="smart_home_pin_hw_flow_pulse">pulso caudalímetro, interrupción</string>
 
     <!-- SmartDoorLockScreen -->
-    <string name="smart_door_lock_back_content_description">Volver a módulos de control</string>
+    <string name="smart_door_lock_back_content_description">Volver al catálogo</string>
     <string name="smart_door_lock_screen_title">Puerta principal</string>
     <string name="smart_door_lock_call_title">Llamada puerta principal</string>
     <string name="smart_door_lock_connected">Conectado</string>
@@ -793,7 +957,7 @@
     <string name="smart_lighting_turn_all_on">Encender todo</string>
     <string name="smart_lighting_turn_all_off">Apagar todo</string>
     <string name="smart_lighting_all_devices_subtitle">Todas las luces conectadas</string>
-    <string name="smart_lighting_back_content_description">Volver a módulos de control</string>
+    <string name="smart_lighting_back_content_description">Volver al catálogo</string>
     <string name="smart_lighting_section_connected">CONECTADOS</string>
     <string name="smart_lighting_section_bedroom">DORMITORIO</string>
     <string name="smart_lighting_section_common_areas">ZONAS COMUNES</string>
@@ -879,7 +1043,7 @@
 
     <!-- SolarSystemScreen -->
     <string name="solar_system_screen_title">Sistema solar</string>
-    <string name="solar_system_menu_content_description">Volver a módulos de control</string>
+    <string name="solar_system_menu_content_description">Volver al catálogo</string>
     <string name="solar_system_refresh_content_description">Actualizar telemetría</string>
     <string name="solar_system_notifications_content_description">Notificaciones</string>
     <string name="solar_system_card_title">Panel solar</string>
@@ -980,8 +1144,8 @@
     <string name="cyber_bluetooth">Bluetooth</string>
     <string name="cyber_bluetooth_subtitle">Conecta tu dispositivo ESP32</string>
     <string name="cyber_connect">Conectar</string>
-    <string name="cyber_grid_modules_title">Módulos de Control</string>
-    <string name="cyber_grid_modules_desc">Selecciona y configura módulos de control</string>
+    <string name="cyber_grid_modules_title">Catálogo</string>
+    <string name="cyber_grid_modules_desc">Explora y abre módulos</string>
     <string name="cyber_grid_codes_title">Códigos y Documentos</string>
     <string name="cyber_grid_codes_desc">Ver, descargar y administrar paquetes de código</string>
     <string name="cyber_grid_projects_title">Proyectos</string>
@@ -991,7 +1155,7 @@
     <string name="cyber_grid_about_desc">Información de la app, versión y créditos</string>
     <string name="cyber_recent_project">Proyecto Reciente</string>
     <string name="cyber_recent_none">Aún no hay proyecto reciente</string>
-    <string name="cyber_recent_none_hint">Abre una aplicación para fijarla aquí</string>
+    <string name="cyber_recent_none_hint">Abre un módulo para fijarlo aquí</string>
     <string name="cyber_recent_open_to_connect">Toca Abrir para conectar</string>
     <string name="cyber_tag_robotics">Robótica</string>
     <string name="cyber_tag_esp32">ESP32</string>

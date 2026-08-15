@@ -1,10 +1,14 @@
 package com.micsbol.telecon4esp32.domain.repository
 
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
+import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import kotlinx.coroutines.flow.Flow
 
@@ -19,12 +23,24 @@ interface ISettingsRepository {
     val lastApplicationFlow: Flow<ApplicationId?>
     fun protocolModeFlow(applicationId: ApplicationId): Flow<BluetoothProtocolMode>
     fun transportTypeFlow(applicationId: ApplicationId): Flow<BluetoothTransportType>
+    fun connectionModeFlow(applicationId: ApplicationId): Flow<BluetoothConnectionMode?>
     fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board>
+    fun softApPerformancePresetFlow(applicationId: ApplicationId): Flow<SoftApPerformancePreset>
+    fun softApHudProcessingRateFlow(applicationId: ApplicationId): Flow<SoftApHudProcessingRate>
     suspend fun saveLastDevice(address: String, name: String?)
     suspend fun saveLastApplication(applicationId: ApplicationId)
     suspend fun saveProtocolMode(applicationId: ApplicationId, mode: BluetoothProtocolMode)
     suspend fun saveTransportType(applicationId: ApplicationId, transport: BluetoothTransportType)
+    suspend fun saveConnectionMode(applicationId: ApplicationId, mode: BluetoothConnectionMode)
     suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board)
+    suspend fun saveSoftApPerformancePreset(
+        applicationId: ApplicationId,
+        preset: SoftApPerformancePreset,
+    )
+    suspend fun saveSoftApHudProcessingRate(
+        applicationId: ApplicationId,
+        rate: SoftApHudProcessingRate,
+    )
     suspend fun saveLeftStickMode(mode: JoystickMode)
     suspend fun saveRightStickMode(mode: JoystickMode)
     suspend fun saveSwitchState(index: Int, isOn: Boolean)
@@ -35,4 +51,7 @@ interface ISettingsRepository {
     suspend fun saveAnalogIndicatorUnit(value: String)
     suspend fun saveBatteryLabel(value: String)
     suspend fun savePlotLabel(index: Int, value: String)
+
+    fun rcVehicleProControlSettingsFlow(): Flow<RcVehicleProControlSettings>
+    suspend fun saveRcVehicleProControlSettings(settings: RcVehicleProControlSettings)
 }

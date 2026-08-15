@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.components.rememberClampedSafeHudInsets
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.smartlighting.components.SmartLightingCard
 
@@ -63,8 +64,10 @@ private fun SmartLightingHelpContent(
 ) {
     val guideEntries = remember { smartLightingGuideEntries() }
     var expandedTitleRes by remember { mutableIntStateOf(0) }
-    val edgeInsets = WindowInsets.safeDrawing.only(
-        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+    val edgeInsets = rememberClampedSafeHudInsets(
+        includeTop = true,
+        includeBottom = true,
+        includeHorizontal = true,
     )
 
     SmartLightingBackground {

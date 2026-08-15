@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.Window
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.ui.smarthome.SmartHomeGlass
+import com.micsbol.telecon4esp32.domain.bluetooth.sh.SmartHomeProtocol
 import com.micsbol.telecon4esp32.ui.theme.PlotYellow
 
 enum class RoomStatusBadge {
@@ -31,7 +31,10 @@ enum class RoomStatusBadge {
 data class RoomDeviceUiModel(
     val id: String,
     val icon: ImageVector,
+    /** Main ceiling/strip light that drives the room photo on/off art. */
     val isLight: Boolean = false,
+    /** Relay / lock the user can toggle over Bluetooth. */
+    val isControllable: Boolean = false,
     val isOn: Boolean = false,
 )
 
@@ -54,22 +57,51 @@ data class RoomUiModel(
     val displayImageRes: Int
         get() = if (lightsOn) imageOnRes else imageOffRes
 
-    fun withToggledLight(): RoomUiModel {
-        val newLightsOn = !lightsOn
-        val lightDelta = if (newLightsOn) 1 else -1
-        val newOnCount = (onCount + lightDelta).coerceIn(0, totalDeviceCount)
+    fun withToggledDevice(deviceId: String): RoomUiModel {
+        val device = devices.firstOrNull { it.id == deviceId && it.isControllable } ?: return this
+        val nextOn = !device.isOn
+        val newDevices = devices.map { candidate ->
+            if (candidate.id == deviceId && candidate.isControllable) {
+                candidate.copy(isOn = nextOn)
+            } else {
+                candidate
+            }
+        }
+        return copyFromDevices(newDevices)
+    }
+
+    fun withDeviceStates(states: Map<String, Boolean>): RoomUiModel {
+        if (states.isEmpty()) return this
+        val newDevices = devices.map { device ->
+            val next = states[device.id]
+            if (next != null && device.isControllable) device.copy(isOn = next) else device
+        }
+        return copyFromDevices(newDevices)
+    }
+
+    fun withAllControllable(on: Boolean, predicate: (RoomDeviceUiModel) -> Boolean = { true }): RoomUiModel {
+        val newDevices = devices.map { device ->
+            if (device.isControllable && predicate(device)) device.copy(isOn = on) else device
+        }
+        return copyFromDevices(newDevices)
+    }
+
+    private fun copyFromDevices(newDevices: List<RoomDeviceUiModel>): RoomUiModel {
+        val controllable = newDevices.filter { it.isControllable }
+        val newOnCount = controllable.count { it.isOn }
+        val newTotal = controllable.size
+        val newLightsOn = newDevices.any { it.isLight && it.isOn }
         val newBadge = when {
             statusBadge == RoomStatusBadge.OPEN -> RoomStatusBadge.OPEN
             newOnCount > 0 -> RoomStatusBadge.ON_COUNT
             else -> RoomStatusBadge.OFF
         }
         return copy(
+            devices = newDevices,
             lightsOn = newLightsOn,
             onCount = newOnCount,
+            totalDeviceCount = newTotal,
             statusBadge = newBadge,
-            devices = devices.map { device ->
-                if (device.isLight) device.copy(isOn = newLightsOn) else device
-            },
         )
     }
 }
@@ -99,6 +131,12 @@ data class EnergyChartData(
             timeLabels = listOf("00:00", "06:00", "12:00", "18:00", "24:00"),
             currentPowerKw = 1.8f,
         )
+
+        fun empty(): EnergyChartData = EnergyChartData(
+            powerSeries = listOf(0f, 0f),
+            timeLabels = listOf("00:00", "24:00"),
+            currentPowerKw = 0f,
+        )
     }
 }
 
@@ -111,6 +149,10 @@ data class RecentEventUiModel(
 )
 
 data class SmartHomeUiState(
+    val isOnline: Boolean = false,
+    val deviceId: String = "ESP32-SH01",
+    val updatedAgo: String = "—",
+    val lastTelemetryAtMs: Long = 0L,
     val allSystemsNormal: Boolean = true,
     val rooms: List<RoomUiModel> = defaultRooms(),
     val systems: List<SystemTileUiModel> = defaultSystems(),
@@ -120,7 +162,7 @@ data class SmartHomeUiState(
 
 private fun defaultRooms(): List<RoomUiModel> = listOf(
     RoomUiModel(
-        id = "living_room",
+        id = SmartHomeProtocol.ROOM_LIVING,
         nameRes = R.string.smart_home_room_living_room,
         icon = Icons.Default.Weekend,
         imageOnRes = R.drawable.smart_light_living_room_on,
@@ -129,18 +171,33 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         accentColor = SmartHomeGlass.AccentGreenBright,
         statusBadge = RoomStatusBadge.ON_COUNT,
         onCount = 2,
-        totalDeviceCount = 5,
+        totalDeviceCount = 3,
         devices = listOf(
             RoomDeviceUiModel(id = "thermostat", icon = Icons.Default.Thermostat, isOn = true),
-            RoomDeviceUiModel(id = "light", icon = Icons.Default.Lightbulb, isLight = true, isOn = true),
-            RoomDeviceUiModel(id = "ambience", icon = Icons.Default.LightMode, isOn = true),
-            RoomDeviceUiModel(id = "outlet", icon = Icons.Default.Outlet),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_LIGHT,
+                icon = Icons.Default.Lightbulb,
+                isLight = true,
+                isControllable = true,
+                isOn = true,
+            ),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_AMBIENCE,
+                icon = Icons.Default.LightMode,
+                isControllable = true,
+                isOn = true,
+            ),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_OUTLET,
+                icon = Icons.Default.Outlet,
+                isControllable = true,
+            ),
         ),
         temperatureC = 21f,
         alertTextRes = R.string.smart_home_room_window_open,
     ),
     RoomUiModel(
-        id = "kitchen",
+        id = SmartHomeProtocol.ROOM_KITCHEN,
         nameRes = R.string.smart_home_room_kitchen,
         icon = Icons.Default.Kitchen,
         imageOnRes = R.drawable.smart_light_kitchen_strip_on,
@@ -149,17 +206,31 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         accentColor = SmartHomeGlass.AccentWarm,
         statusBadge = RoomStatusBadge.ON_COUNT,
         onCount = 1,
-        totalDeviceCount = 4,
+        totalDeviceCount = 3,
         devices = listOf(
-            RoomDeviceUiModel(id = "appliance", icon = Icons.Default.Kitchen),
-            RoomDeviceUiModel(id = "light", icon = Icons.Default.Lightbulb, isLight = true, isOn = true),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_APPLIANCE,
+                icon = Icons.Default.Kitchen,
+                isControllable = true,
+            ),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_LIGHT,
+                icon = Icons.Default.Lightbulb,
+                isLight = true,
+                isControllable = true,
+                isOn = true,
+            ),
             RoomDeviceUiModel(id = "thermostat", icon = Icons.Default.Thermostat),
-            RoomDeviceUiModel(id = "water", icon = Icons.Default.WaterDrop),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_WATER,
+                icon = Icons.Default.WaterDrop,
+                isControllable = true,
+            ),
         ),
         temperatureC = 23f,
     ),
     RoomUiModel(
-        id = "bedroom",
+        id = SmartHomeProtocol.ROOM_BEDROOM,
         nameRes = R.string.smart_home_room_bedroom,
         icon = Icons.Default.Bed,
         imageOnRes = R.drawable.smart_light_bedroom_ceiling_on,
@@ -167,16 +238,21 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         lightsOn = false,
         accentColor = SmartHomeGlass.AccentGreenMuted,
         statusBadge = RoomStatusBadge.OFF,
-        totalDeviceCount = 3,
+        totalDeviceCount = 1,
         devices = listOf(
             RoomDeviceUiModel(id = "bed", icon = Icons.Default.Bed),
-            RoomDeviceUiModel(id = "light", icon = Icons.Default.Lightbulb, isLight = true),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_LIGHT,
+                icon = Icons.Default.Lightbulb,
+                isLight = true,
+                isControllable = true,
+            ),
             RoomDeviceUiModel(id = "thermostat", icon = Icons.Default.Thermostat),
         ),
         temperatureC = 19f,
     ),
     RoomUiModel(
-        id = "garage",
+        id = SmartHomeProtocol.ROOM_GARAGE,
         nameRes = R.string.smart_home_room_garage,
         icon = Icons.Default.DirectionsCar,
         imageOnRes = R.drawable.smart_light_led_garage_on,
@@ -185,11 +261,21 @@ private fun defaultRooms(): List<RoomUiModel> = listOf(
         accentColor = SmartHomeGlass.AccentOrange,
         statusBadge = RoomStatusBadge.OPEN,
         onCount = 1,
-        totalDeviceCount = 3,
+        totalDeviceCount = 2,
         devices = listOf(
             RoomDeviceUiModel(id = "car", icon = Icons.Default.DirectionsCar),
-            RoomDeviceUiModel(id = "light", icon = Icons.Default.Lightbulb, isLight = true, isOn = true),
-            RoomDeviceUiModel(id = "lock", icon = Icons.Default.Lock),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_LIGHT,
+                icon = Icons.Default.Lightbulb,
+                isLight = true,
+                isControllable = true,
+                isOn = true,
+            ),
+            RoomDeviceUiModel(
+                id = SmartHomeProtocol.DEVICE_LOCK,
+                icon = Icons.Default.Lock,
+                isControllable = true,
+            ),
             RoomDeviceUiModel(id = "motion", icon = Icons.Default.MotionPhotosAuto),
         ),
         temperatureC = 18f,

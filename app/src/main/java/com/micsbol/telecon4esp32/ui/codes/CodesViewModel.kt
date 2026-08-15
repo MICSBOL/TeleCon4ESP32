@@ -1,22 +1,105 @@
 package com.micsbol.telecon4esp32.ui.codes
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.availableConnectionModes
+import com.micsbol.telecon4esp32.domain.model.coerceConnectionModeForBoard
+import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
+import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.ObserveEntitlementUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveCodeAssetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class CodesFilterState(
+    val board: Esp32Board = Esp32Board.DEV_KIT,
+    val mode: BluetoothConnectionMode = BluetoothConnectionMode.CLASSIC_SIMPLE,
+    val hydratedFromSettings: Boolean = false,
+)
+
 @HiltViewModel
 class CodesViewModel @Inject constructor(
-    private val saveCodeAsset: SaveCodeAssetUseCase
+    savedStateHandle: SavedStateHandle,
+    private val saveCodeAsset: SaveCodeAssetUseCase,
+    private val getApplicationBoard: GetApplicationBoardUseCase,
+    private val getApplicationTransportType: GetApplicationTransportTypeUseCase,
+    private val getApplicationProtocolMode: GetApplicationProtocolModeUseCase,
+    observeEntitlement: ObserveEntitlementUseCase,
 ) : ViewModel() {
+
+    val applicationId: ApplicationId = savedStateHandle.get<String>("applicationId")
+        ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+        ?: ApplicationId.CONTROL_PANEL
 
     private val _uiState = MutableStateFlow(CodesUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _filter = MutableStateFlow(CodesFilterState())
+    val filter: StateFlow<CodesFilterState> = _filter.asStateFlow()
+
+    private val entitlement: StateFlow<Entitlement> = observeEntitlement()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = Entitlement.Free,
+        )
+
+    init {
+        viewModelScope.launch {
+            val board = getApplicationBoard(applicationId).first()
+            val transport = getApplicationTransportType(applicationId).first()
+            val protocol = getApplicationProtocolMode(applicationId).first()
+            val access = entitlement.value
+            val effective = access.effectiveConnectionMode(
+                applicationId,
+                transport,
+                protocol,
+                board,
+            )
+            val coerced = access.coerceConnectionModeForBoard(applicationId, board, effective)
+            _filter.value = CodesFilterState(
+                board = board,
+                mode = coerced,
+                hydratedFromSettings = true,
+            )
+        }
+    }
+
+    fun onBoardSelected(board: Esp32Board) {
+        val access = entitlement.value
+        val coerced = access.coerceConnectionModeForBoard(
+            applicationId,
+            board,
+            _filter.value.mode,
+        )
+        _filter.update {
+            it.copy(board = board, mode = coerced)
+        }
+    }
+
+    fun onModeSelected(mode: BluetoothConnectionMode) {
+        if (!applicationId.isConnectionModeAvailable(_filter.value.board, mode)) return
+        _filter.update { it.copy(mode = mode) }
+    }
+
+    fun availableModesForSelectedBoard(): List<BluetoothConnectionMode> =
+        applicationId.availableConnectionModes(_filter.value.board)
 
     /**
      * Copies the ZIP from assets into public Downloads (or app storage on older Android versions).
@@ -37,7 +120,7 @@ class CodesViewModel @Inject constructor(
                     it.copy(
                         isSavingZip = false,
                         savedZipLocation = savedAsset.location,
-                        saveError = null
+                        saveError = null,
                     )
                 }
             }.onFailure { throwable ->
@@ -46,7 +129,7 @@ class CodesViewModel @Inject constructor(
                         isSavingZip = false,
                         saveError = throwable.localizedMessage
                             ?: throwable.message
-                            ?: throwable::class.java.simpleName
+                            ?: throwable::class.java.simpleName,
                     )
                 }
             }
