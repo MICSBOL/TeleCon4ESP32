@@ -16,6 +16,7 @@ fun ApplicationId.hasEntryAccess(
     nowEpochMs: Long = System.currentTimeMillis(),
     includeSessionGrants: Boolean = true,
 ): Boolean {
+    if (!isShipped()) return false
     if (isFree()) return true
     val feature = premiumFeature() ?: return false
     if (!requiresCoinEntry && entitlement.has(feature)) return true

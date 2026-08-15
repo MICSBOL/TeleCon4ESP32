@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.isShipped
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -507,6 +508,7 @@ open class BluetoothViewModel @Inject constructor(
      * Connection is handled in-app (banner / SoftAP), not via the Bluetooth picker.
      */
     fun openRecentProject(applicationId: ApplicationId, onNavigate: (String) -> Unit) {
+        if (!applicationId.isShipped()) return
         if (isSessionActiveFor(applicationId)) {
             onNavigate(applicationId.mainRoute())
             return
@@ -541,7 +543,11 @@ open class BluetoothViewModel @Inject constructor(
 
     fun continueLastSession(onNavigate: (String) -> Unit) {
         val session = _state.value.activeSession
-        if (session != null && _state.value.isConnected) {
+        if (
+            session != null &&
+            _state.value.isConnected &&
+            session.applicationId.isShipped()
+        ) {
             onNavigate(session.applicationId.mainRoute())
             return
         }

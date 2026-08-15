@@ -16,6 +16,19 @@ enum class ApplicationId {
 
 fun ApplicationId.isFree(): Boolean = this == ApplicationId.CONTROL_PANEL
 
+/**
+ * Applications included in the current Play Store build.
+ *
+ * Non-shipped modules remain in git history / tag `archive/full-apps-with-media`
+ * for later re-incorporation. Flip this gate (and restore UI + media) to ship more apps.
+ */
+fun ApplicationId.isShipped(): Boolean = when (this) {
+    ApplicationId.CONTROL_PANEL,
+    ApplicationId.RC_VEHICLE_PRO,
+    -> true
+    else -> false
+}
+
 fun ApplicationId.premiumFeature(): PremiumFeature? = when (this) {
     ApplicationId.CONTROL_PANEL -> null
     ApplicationId.RC_VEHICLE_PRO -> PremiumFeature.RC_VEHICLE_PRO

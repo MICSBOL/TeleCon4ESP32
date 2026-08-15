@@ -8,10 +8,10 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.SolarPower
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.isShipped
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 data class ApplicationCatalogItem(
@@ -23,7 +23,8 @@ data class ApplicationCatalogItem(
     val comingSoon: Boolean = false,
 )
 
-fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
+/** Full catalog definition; restore deferred apps by flipping [ApplicationId.isShipped]. */
+fun allApplicationCatalogItems(): List<ApplicationCatalogItem> = listOf(
     ApplicationCatalogItem(
         id = ApplicationId.CONTROL_PANEL,
         titleRes = com.micsbol.telecon4esp32.R.string.app_control_panel_title,
@@ -81,3 +82,7 @@ fun defaultApplicationCatalog(): List<ApplicationCatalogItem> = listOf(
         route = Screen.SmartLightingPro.route,
     ),
 )
+
+/** Catalog shown in Modules / Codes hub (shipped apps only). */
+fun defaultApplicationCatalog(): List<ApplicationCatalogItem> =
+    allApplicationCatalogItems().filter { it.id.isShipped() }

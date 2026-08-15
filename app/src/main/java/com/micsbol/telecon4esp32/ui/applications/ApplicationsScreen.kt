@@ -377,14 +377,9 @@ private fun ApplicationsScreenPreview() {
             wallet = CoinWalletState(
                 balance = 84,
                 grants = mapOf(
-                    PremiumFeature.GREENHOUSE to FeatureGrant(
-                        feature = PremiumFeature.GREENHOUSE,
+                    PremiumFeature.RC_VEHICLE_PRO to FeatureGrant(
+                        feature = PremiumFeature.RC_VEHICLE_PRO,
                         option = CoinUnlockOption.WEEK,
-                        expiresAtEpochMs = Long.MAX_VALUE,
-                    ),
-                    PremiumFeature.SMART_HOME to FeatureGrant(
-                        feature = PremiumFeature.SMART_HOME,
-                        option = CoinUnlockOption.DAYS_3,
                         expiresAtEpochMs = Long.MAX_VALUE,
                     ),
                 ),

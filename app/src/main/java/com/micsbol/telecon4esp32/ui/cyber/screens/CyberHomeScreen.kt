@@ -620,13 +620,13 @@ private fun CyberHomeScreenLandscapePreview() {
 private fun CyberHomeScreenConnectedPreview() {
     CyberHomeScreen(
         activeSession = ActiveBluetoothSession(
-            applicationId = ApplicationId.GREENHOUSE,
+            applicationId = ApplicationId.RC_VEHICLE_PRO,
             protocolMode = com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode.SIMPLE,
-            deviceName = "ESP32-TeleCon-GH",
+            deviceName = "ESP32-TeleCon-RC",
             deviceAddress = "AA:BB:CC:DD:EE:FF",
         ),
-        lastApplicationId = ApplicationId.GREENHOUSE,
-        lastDeviceName = "ESP32-TeleCon-GH",
+        lastApplicationId = ApplicationId.RC_VEHICLE_PRO,
+        lastDeviceName = "ESP32-TeleCon-RC",
     )
 }
 

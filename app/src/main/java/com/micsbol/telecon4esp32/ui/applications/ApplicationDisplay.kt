@@ -21,12 +21,14 @@ fun ApplicationId.titleRes(): Int = when (this) {
 fun ApplicationId.thumbnailRes(): Int = when (this) {
     ApplicationId.CONTROL_PANEL -> R.drawable.app_holo_control_panel
     ApplicationId.RC_VEHICLE_PRO -> R.drawable.app_holo_rc_vehicle
-    ApplicationId.GREENHOUSE -> R.drawable.app_holo_greenhouse
-    ApplicationId.SOLAR_POWER -> R.drawable.app_holo_solar
-    ApplicationId.SMART_HOME -> R.drawable.app_holo_smart_home
-    ApplicationId.WATER_TANK -> R.drawable.app_holo_water_tank
-    ApplicationId.SMART_DOOR_LOCK -> R.drawable.app_holo_door_lock
-    ApplicationId.SMART_LIGHTING -> R.drawable.app_holo_smart_lighting
+    // Deferred apps: media stripped for launch; placeholders until re-shipped.
+    ApplicationId.GREENHOUSE,
+    ApplicationId.SOLAR_POWER,
+    ApplicationId.SMART_HOME,
+    ApplicationId.WATER_TANK,
+    ApplicationId.SMART_DOOR_LOCK,
+    ApplicationId.SMART_LIGHTING,
+    -> R.drawable.app_holo_control_panel
 }
 
 @StringRes
