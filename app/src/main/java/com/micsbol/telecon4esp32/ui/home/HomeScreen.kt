@@ -29,12 +29,10 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -59,6 +57,7 @@ import androidx.navigation.NavHostController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.ui.ads.AdPolicy
 import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
+import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothConnectionErrorDialog
 import com.micsbol.telecon4esp32.ui.components.AdBanner
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
 import com.micsbol.telecon4esp32.ui.components.HoloRcTurntableVideo
@@ -81,6 +80,7 @@ import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
 import com.micsbol.telecon4esp32.domain.model.CoinEconomy
 import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.Entitlement
+import com.micsbol.telecon4esp32.domain.model.isApplicationCatalogVisible
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 
 data class HomeItem(
@@ -117,32 +117,42 @@ fun HomeScreen(
         activity?.finish()
     }
 
-    val homeItems = listOf(
-        HomeItem(
-            Icons.Default.Bluetooth,
-            stringResource(R.string.home_item_bluetooth),
-            stringResource(R.string.home_hud_menu_bluetooth_desc),
-            Screen.Bluetooth.route,
-        ),
-        HomeItem(
-            Icons.Default.Apps,
-            stringResource(R.string.home_item_applications),
-            stringResource(R.string.home_hud_menu_applications_desc),
-            Screen.Applications.route,
-        ),
-        HomeItem(
-            Icons.Default.Code,
-            stringResource(R.string.home_codes_documents),
-            stringResource(R.string.home_hud_menu_codes_desc),
-            Screen.Codes.route,
-        ),
-        HomeItem(
-            Icons.Default.VideoLibrary,
-            stringResource(R.string.home_item_tutorial),
-            stringResource(R.string.home_hud_menu_tutorial_desc),
-            Screen.Tutorial.route,
-        ),
-    )
+    val homeItems = buildList {
+        add(
+            HomeItem(
+                Icons.Default.Bluetooth,
+                stringResource(R.string.home_item_bluetooth),
+                stringResource(R.string.home_hud_menu_bluetooth_desc),
+                Screen.Bluetooth.route,
+            ),
+        )
+        if (isApplicationCatalogVisible()) {
+            add(
+                HomeItem(
+                    Icons.Default.Apps,
+                    stringResource(R.string.home_item_applications),
+                    stringResource(R.string.home_hud_menu_applications_desc),
+                    Screen.Applications.route,
+                ),
+            )
+        }
+        add(
+            HomeItem(
+                Icons.Default.Code,
+                stringResource(R.string.home_codes_documents),
+                stringResource(R.string.home_hud_menu_codes_desc),
+                Screen.Codes.route,
+            ),
+        )
+        add(
+            HomeItem(
+                Icons.Default.VideoLibrary,
+                stringResource(R.string.home_item_tutorial),
+                stringResource(R.string.home_hud_menu_tutorial_desc),
+                Screen.Tutorial.route,
+            ),
+        )
+    }
 
     val bluetoothStatusText = when {
         isConnecting -> stringResource(R.string.home_bluetooth_status_connecting)
@@ -310,18 +320,11 @@ fun HomeScreen(
             )
         }
 
-        if (errorMessage != null) {
-            AlertDialog(
-                onDismissRequest = onDismissError,
-                title = { Text(stringResource(R.string.bluetooth_connection_error)) },
-                text = { Text(errorMessage) },
-                confirmButton = {
-                    TextButton(onClick = onDismissError) {
-                        Text(stringResource(R.string.codes_dialog_ok))
-                    }
-                }
-            )
-        }
+        BluetoothConnectionErrorDialog(
+            handshakeFailure = null,
+            errorMessage = errorMessage,
+            onDismiss = onDismissError,
+        )
 
         if (isConnecting) {
             Box(

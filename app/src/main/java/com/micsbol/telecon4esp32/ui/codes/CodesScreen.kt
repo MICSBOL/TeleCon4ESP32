@@ -48,13 +48,14 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.availableConnectionModes
+import com.micsbol.telecon4esp32.domain.model.showSoftApCameraOverlaySetting
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.applications.SettingsMenuOption
 import com.micsbol.telecon4esp32.ui.applications.SettingsOptionDropdown
+import com.micsbol.telecon4esp32.ui.applications.SoftApCameraOverlaySettingsSection
 import com.micsbol.telecon4esp32.ui.applications.connectionModeMenuOption
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
 import com.micsbol.telecon4esp32.ui.applications.titleRes
@@ -428,22 +429,37 @@ private fun CodesFilteredContent(
 ) {
     val filter by viewModel.filter.collectAsState()
     val currentLanguage = currentCodeAssetLanguage()
-    val camKitLabels = applicationId.usesCamera() && filter.board.usesSoftApCamera
+    val camKitLabels = applicationId.usesCamera() && filter.board == Esp32Board.CAM
     val showDevicePicker = applicationId.usesCamera()
     val availableModes = remember(applicationId, filter.board) {
         applicationId.availableConnectionModes(filter.board)
     }
-    val matchedAssets = remember(applicationId, currentLanguage, filter.board, filter.mode) {
-        codeAssetsMatching(applicationId, currentLanguage, filter.board, filter.mode)
+    val matchedAssets = remember(
+        applicationId,
+        currentLanguage,
+        filter.board,
+        filter.mode,
+        filter.useSoftApCamera,
+    ) {
+        codeAssetsMatching(
+            applicationId,
+            currentLanguage,
+            filter.board,
+            filter.mode,
+            filter.useSoftApCamera,
+        )
     }
-    val publishedCodeAssets = matchedAssets.filter {
-        it.type == CodeAssetType.Zip && it.isPublished
-    }
+    val matchedZipAssets = matchedAssets.filter { it.type == CodeAssetType.Zip }
     val documentationAssets = matchedAssets.filter {
         it.type == CodeAssetType.Pdf && it.isPublished
     }
-    val isKitB = filter.board.isKitBDual ||
-        (camKitLabels && filter.mode == BluetoothConnectionMode.BLE_BINARY)
+    val isRoleAOverlay = filter.board.isKitBDual ||
+        (
+            filter.board.normalizedControlBoard() == Esp32Board.DEV_KIT &&
+                filter.useSoftApCamera &&
+                filter.mode.isBluetoothLink
+            )
+    val isRoleBCam = applicationId.usesCamera() && filter.board == Esp32Board.CAM
     val boardLabel = stringResource(
         when (filter.board) {
             Esp32Board.DEV_KIT -> R.string.app_settings_device_dev_kit
@@ -506,13 +522,6 @@ private fun CodesFilteredContent(
         }
         if (showDevicePicker) {
             item {
-                Text(
-                    text = stringResource(R.string.codes_filter_device_title),
-                    color = Neo.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
                 SettingsOptionDropdown(
                     options = listOf(
                         SettingsMenuOption(
@@ -525,26 +534,23 @@ private fun CodesFilteredContent(
                             label = stringResource(R.string.app_settings_device_cam),
                             description = stringResource(R.string.app_settings_device_cam_description),
                         ),
-                        SettingsMenuOption(
-                            value = Esp32Board.CAM_AND_DEV_KIT,
-                            label = stringResource(R.string.app_settings_device_cam_and_dev_kit),
-                            description = stringResource(R.string.app_settings_device_cam_and_dev_kit_description),
-                        ),
                     ),
-                    selected = filter.board,
+                    selected = filter.board.normalizedControlBoard(),
                     onSelected = viewModel::onBoardSelected,
+                    label = stringResource(R.string.codes_filter_device_title),
                     sectionInfo = stringResource(R.string.codes_filter_device_description),
                 )
             }
         }
+        if (showSoftApCameraOverlaySetting(applicationId, filter.board)) {
+            item {
+                SoftApCameraOverlaySettingsSection(
+                    enabled = filter.useSoftApCamera,
+                    onEnabledChange = viewModel::onUseSoftApCameraSelected,
+                )
+            }
+        }
         item {
-            Text(
-                text = stringResource(R.string.codes_filter_mode_title),
-                color = Neo.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
             SettingsOptionDropdown(
                 options = availableModes.map { mode ->
                     connectionModeMenuOption(
@@ -555,83 +561,83 @@ private fun CodesFilteredContent(
                 },
                 selected = filter.mode,
                 onSelected = viewModel::onModeSelected,
+                label = stringResource(R.string.codes_filter_mode_title),
                 sectionInfo = buildString {
                     append(stringResource(R.string.codes_filter_mode_description))
-                    if (isKitB) {
+                    if (isRoleAOverlay) {
                         append("\n\n")
-                        append(stringResource(R.string.codes_filter_kit_b_note))
+                        append(stringResource(R.string.codes_filter_role_a_note))
+                    } else if (isRoleBCam) {
+                        append("\n\n")
+                        append(stringResource(R.string.codes_filter_role_b_note))
                     }
                 },
             )
         }
 
-        if (publishedCodeAssets.isNotEmpty()) {
-            items(publishedCodeAssets, key = { it.assetFileName ?: it.titleRes }) { asset ->
-                val zipMessage = when {
-                    uiState.isSavingZip -> stringResource(
-                        R.string.codes_zip_saving_message,
-                        asset.outputFileName,
-                    )
-                    uiState.savedZipLocation != null -> stringResource(
-                        R.string.codes_zip_saved_message,
-                        asset.outputFileName,
-                        uiState.savedZipLocation,
-                    )
-                    else -> {
-                        val device = asset.targetDeviceLabelRes?.let { stringResource(it) }
-                        if (device != null) {
-                            stringResource(R.string.app_settings_selection_guide_title_format, device, asset.outputFileName)
-                        } else {
-                            stringResource(R.string.codes_zip_card_hint, asset.outputFileName)
+        if (matchedZipAssets.isNotEmpty()) {
+            items(matchedZipAssets, key = { it.id ?: it.assetFileName ?: it.titleRes }) { asset ->
+                if (asset.isPublished) {
+                    val zipMessage = when {
+                        uiState.isSavingZip -> stringResource(
+                            R.string.codes_zip_saving_message,
+                            asset.outputFileName,
+                        )
+                        uiState.savedZipLocation != null -> stringResource(
+                            R.string.codes_zip_saved_message,
+                            asset.outputFileName,
+                            uiState.savedZipLocation,
+                        )
+                        else -> {
+                            val device = asset.targetDeviceLabelRes?.let { stringResource(it) }
+                            if (device != null) {
+                                stringResource(
+                                    R.string.app_settings_selection_guide_title_format,
+                                    device,
+                                    asset.outputFileName,
+                                )
+                            } else {
+                                stringResource(R.string.codes_zip_card_hint, asset.outputFileName)
+                            }
                         }
                     }
+                    CodeAssetGridItem(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp),
+                        assetInfo = asset,
+                        supportingText = zipMessage,
+                        isLoading = uiState.isSavingZip,
+                        onClick = { onAssetClick(asset) },
+                    )
+                } else {
+                    ComingSoonCodeCard(
+                        label = stringResource(
+                            R.string.codes_coming_soon_for_device,
+                            stringResource(asset.titleRes),
+                        ),
+                    )
                 }
-                CodeAssetGridItem(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp),
-                    assetInfo = asset,
-                    supportingText = zipMessage,
-                    isLoading = uiState.isSavingZip,
-                    onClick = { onAssetClick(asset) },
-                )
             }
         } else {
             item {
-                if (isKitB) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ComingSoonCodeCard(
-                            label = stringResource(
-                                R.string.codes_coming_soon_for_device,
-                                stringResource(R.string.app_settings_device_dev_kit) + " (BLE)",
-                            ),
-                        )
-                        ComingSoonCodeCard(
-                            label = stringResource(
-                                R.string.codes_coming_soon_for_device,
-                                stringResource(R.string.app_settings_device_cam) + " (SoftAP video)",
-                            ),
-                        )
-                    }
-                } else {
-                    NeoCard(modifier = Modifier.fillMaxWidth(), contentPadding = 14.dp) {
-                        Text(
-                            text = stringResource(R.string.codes_matching_empty_title),
-                            color = Neo.TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.codes_matching_empty_message,
-                                boardLabel,
-                                modeLabel,
-                            ),
-                            color = Neo.TextSecondary,
-                            fontSize = 13.sp,
-                        )
-                    }
+                NeoCard(modifier = Modifier.fillMaxWidth(), contentPadding = 14.dp) {
+                    Text(
+                        text = stringResource(R.string.codes_matching_empty_title),
+                        color = Neo.TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.codes_matching_empty_message,
+                            boardLabel,
+                            modeLabel,
+                        ),
+                        color = Neo.TextSecondary,
+                        fontSize = 13.sp,
+                    )
                 }
             }
         }

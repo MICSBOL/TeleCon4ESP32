@@ -17,6 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -62,8 +65,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.annotation.DrawableRes
+import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.ui.components.HoloTurntableFlipbook
 import com.micsbol.telecon4esp32.ui.components.glassSurface
+import com.micsbol.telecon4esp32.ui.components.holoTurntableAssetDir
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.wallet.CoinUnlockPillButton
 
@@ -395,7 +402,11 @@ private fun BadgeChip(
                         .clickable(onClick = onClick)
                         .semantics {
                             role = Role.Button
-                            contentDescription = subscribeDescription
+                            contentDescription = if (isPro) {
+                                subscribeDescription
+                            } else {
+                                badge
+                            }
                         }
                 } else {
                     Modifier
@@ -413,3 +424,203 @@ private fun BadgeChip(
         )
     }
 }
+
+/**
+ * Tall Home tile: hologram fills remaining height; actions stay compact so two modules
+ * can share the screen without a sparse list.
+ */
+@Composable
+fun HomeModuleHeroCard(
+    applicationId: ApplicationId,
+    @DrawableRes thumbnailRes: Int,
+    title: String,
+    subtitle: String,
+    badge: String,
+    onClick: () -> Unit,
+    onCodesClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingAction: ApplicationTrailingAction = ApplicationTrailingAction.DEFAULT,
+    onUnlockClick: () -> Unit = {},
+    showExplorerSparkle: Boolean = false,
+    onExplorerSparkleClick: () -> Unit = {},
+    enabledProHighlight: Boolean = false,
+    animateHologram: Boolean = true,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.985f else 1f, label = "homeHeroScale")
+    val isLocked = trailingAction == ApplicationTrailingAction.UNLOCK
+    val showBadge = badge.isNotBlank()
+    var detailsExpanded by remember { mutableStateOf(false) }
+    val cardShape = RoundedCornerShape(22.dp)
+    val enabledBorderPulse = rememberInfiniteTransition(label = "homeHeroBorder")
+    val enabledBorderAlpha by enabledBorderPulse.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "homeHeroBorderAlpha",
+    )
+    val turntableDir = applicationId.holoTurntableAssetDir()?.takeIf { animateHologram }
+    val isLandscape =
+        LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
+    // Landscape side-by-side tiles are wide/short — Fit keeps the full hologram visible.
+    val hologramContentScale = if (isLandscape) ContentScale.Fit else ContentScale.Crop
+    val hologramInset = if (isLandscape) 10.dp else 0.dp
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .glassSurface(cornerRadius = 22.dp)
+            .then(
+                if (enabledProHighlight) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = Neo.Positive.copy(alpha = enabledBorderAlpha),
+                        shape = cardShape,
+                    )
+                } else {
+                    Modifier
+                },
+            )
+            .padding(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f, fill = true)
+                .fillMaxWidth()
+                .heightIn(min = 96.dp)
+                .scale(scale)
+                .clip(RoundedCornerShape(16.dp))
+                .border(
+                    1.dp,
+                    Neo.AccentHighlight.copy(alpha = 0.28f),
+                    RoundedCornerShape(16.dp),
+                )
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClick = onClick,
+                )
+                .semantics {
+                    role = Role.Button
+                    contentDescription = title
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            val hologramModifier = Modifier
+                .fillMaxSize()
+                .padding(hologramInset)
+            if (turntableDir != null) {
+                HoloTurntableFlipbook(
+                    assetDir = turntableDir,
+                    contentDescription = title,
+                    modifier = hologramModifier,
+                    contentScale = hologramContentScale,
+                )
+            } else {
+                Image(
+                    painter = painterResource(thumbnailRes),
+                    contentDescription = null,
+                    contentScale = hologramContentScale,
+                    modifier = hologramModifier,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val expandRotation by animateFloatAsState(
+            targetValue = if (detailsExpanded) 180f else 0f,
+            label = "homeHeroExpandArrow",
+        )
+        val expandDescription = stringResource(
+            if (detailsExpanded) {
+                R.string.applications_collapse_details_content_description
+            } else {
+                R.string.applications_expand_details_content_description
+            },
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(min = 0.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { detailsExpanded = !detailsExpanded }
+                    .padding(end = 4.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = expandDescription
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = title,
+                    color = Neo.TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                )
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Neo.TextSecondary,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .rotate(expandRotation),
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            if (showExplorerSparkle) {
+                ExplorerSparkleButton(onClick = onExplorerSparkleClick)
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            if (showBadge) {
+                BadgeChip(
+                    badge = badge,
+                    onClick = onClick,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            DocumentationIconButton(onClick = onCodesClick)
+        }
+
+        AnimatedVisibility(
+            visible = detailsExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = subtitle,
+                    color = Neo.TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (isLocked) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    CoinUnlockPillButton(
+                        coinCost = 0,
+                        onClick = onUnlockClick,
+                        compact = true,
+                        fillMaxWidth = true,
+                    )
+                }
+            }
+        }
+    }
+}
+

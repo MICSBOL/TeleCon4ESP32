@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
@@ -42,8 +45,14 @@ fun SevenSegmentedPanel(
     modifier: Modifier = Modifier,
     width: Dp = 400.dp,
     title: String = "",
+    onDoubleTap: (() -> Unit)? = null,
 ) {
     val offColor = onColor.copy(alpha = 0.1f)
+    val configDescription = if (onDoubleTap != null) {
+        stringResource(R.string.control_panel_widget_config_content_description, title)
+    } else {
+        null
+    }
 
     val clampedValue = value.coerceIn(0f, 9999.9f)
     val formatted = String.format(java.util.Locale.US, "%06.1f", clampedValue)
@@ -51,7 +60,16 @@ fun SevenSegmentedPanel(
     val autoDecimalPoints = listOf(false, false, false, true, false)
 
     BoxWithConstraints(
-        modifier = modifier.size(height = width * 0.66f, width = width),
+        modifier = modifier
+            .size(height = width * 0.66f, width = width)
+            .onDoubleTapAction(onDoubleTap)
+            .then(
+                if (configDescription != null) {
+                    Modifier.semantics { contentDescription = configDescription }
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(

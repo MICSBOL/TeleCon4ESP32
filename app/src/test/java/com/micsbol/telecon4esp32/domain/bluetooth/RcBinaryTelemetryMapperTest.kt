@@ -48,7 +48,7 @@ class RcBinaryTelemetryMapperTest {
         )
 
         assertEquals(3, afterThird.plotState.series.size)
-        assertEquals("Plot 2", afterThird.plotState.series[1].name)
+        assertEquals("CH2", afterThird.plotState.series[1].name)
         assertEquals("Temp", afterThird.plotState.series[2].name)
     }
 }

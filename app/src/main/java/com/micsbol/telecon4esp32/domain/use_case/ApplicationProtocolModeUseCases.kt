@@ -71,6 +71,36 @@ class SaveApplicationBoardUseCase @Inject constructor(
     }
 }
 
+class GetUseSoftApCameraUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    operator fun invoke(applicationId: ApplicationId): Flow<Boolean> =
+        repository.useSoftApCameraFlow(applicationId)
+}
+
+class SaveUseSoftApCameraUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(applicationId: ApplicationId, enabled: Boolean) {
+        repository.saveUseSoftApCamera(applicationId, enabled)
+    }
+}
+
+class GetAdvancedSettingsRevealedUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    operator fun invoke(applicationId: ApplicationId): Flow<Boolean> =
+        repository.advancedSettingsRevealedFlow(applicationId)
+}
+
+class SaveAdvancedSettingsRevealedUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(applicationId: ApplicationId, revealed: Boolean) {
+        repository.saveAdvancedSettingsRevealed(applicationId, revealed)
+    }
+}
+
 class GetSoftApPerformancePresetUseCase @Inject constructor(
     private val repository: ISettingsRepository,
 ) {

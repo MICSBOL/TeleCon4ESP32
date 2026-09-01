@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,11 +29,8 @@ import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.Entitlement
 import com.micsbol.telecon4esp32.domain.model.FeatureGrant
 import com.micsbol.telecon4esp32.domain.model.PremiumFeature
-import com.micsbol.telecon4esp32.domain.model.WalletUnlockResult
-import com.micsbol.telecon4esp32.domain.model.has
 import com.micsbol.telecon4esp32.domain.model.hasEntryAccess
 import com.micsbol.telecon4esp32.domain.model.isFree
-import com.micsbol.telecon4esp32.domain.model.premiumFeature
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
@@ -44,9 +38,6 @@ import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 import com.micsbol.telecon4esp32.ui.wallet.CoinBalanceChip
-import com.micsbol.telecon4esp32.ui.wallet.CoinMessageDialog
-import com.micsbol.telecon4esp32.ui.wallet.CoinPricingTableDialog
-import com.micsbol.telecon4esp32.ui.wallet.CoinUnlockDialog
 import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 
 @Composable
@@ -63,11 +54,6 @@ fun ApplicationsScreen(navController: NavController) {
     var explorerGiftTarget by remember { mutableStateOf<ApplicationCatalogItem?>(null) }
     var unlockMessage by remember { mutableStateOf<String?>(null) }
     var showPricingTable by remember { mutableStateOf(false) }
-    val insufficientBalanceMessage = stringResource(R.string.coins_insufficient_balance)
-    val adRewardGrantedMessage = stringResource(R.string.coins_ad_reward_granted)
-    val adUnavailableMessage = stringResource(R.string.coins_ad_unavailable)
-    val explorerGiftClaimedMessage = stringResource(R.string.applications_explorer_gift_claimed)
-    val explorerGiftAlreadyUnlockedMessage = stringResource(R.string.applications_explorer_gift_already_unlocked)
     val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
 
     ApplicationsScreenContent(
@@ -98,128 +84,29 @@ fun ApplicationsScreen(navController: NavController) {
         },
     )
 
-    val giftTarget = explorerGiftTarget
-    if (giftTarget != null) {
-        val giftFeature = giftTarget.id.premiumFeature()
-        if (giftFeature != null) {
-            ExplorerGiftDialog(
-                appName = stringResource(giftTarget.titleRes),
-                onDismiss = { explorerGiftTarget = null },
-                onWatchAd = {
-                    watchRewardedAd(
-                        activity = activity,
-                        rewardedAdManager = rewardedAdManager,
-                        onGranted = {
-                            walletViewModel.claimExplorerGift(giftFeature) { result ->
-                                when (result) {
-                                    WalletUnlockResult.Success -> {
-                                        explorerGiftTarget = null
-                                        unlockMessage = explorerGiftClaimedMessage
-                                        navController.navigate(giftTarget.route)
-                                    }
-                                    WalletUnlockResult.AlreadyUnlocked -> {
-                                        explorerGiftTarget = null
-                                        unlockMessage = explorerGiftAlreadyUnlockedMessage
-                                    }
-                                    WalletUnlockResult.InsufficientBalance -> {
-                                        explorerGiftTarget = null
-                                        unlockMessage = insufficientBalanceMessage
-                                    }
-                                }
-                            }
-                        },
-                        onUnavailable = {
-                            unlockMessage = adUnavailableMessage
-                        },
-                    )
-                },
-            )
-        }
-    }
-
-    val target = unlockTarget
-    if (target != null) {
-        val feature = target.id.premiumFeature()
-        if (feature != null) {
-            CoinUnlockDialog(
-                appName = stringResource(target.titleRes),
-                feature = feature,
-                wallet = wallet,
-                onDismiss = { unlockTarget = null },
-                onUnlock = { option ->
-                    walletViewModel.unlockFeature(feature, option) { result ->
-                        when (result) {
-                            WalletUnlockResult.Success,
-                            WalletUnlockResult.AlreadyUnlocked -> {
-                                unlockTarget = null
-                                navController.navigate(target.route)
-                            }
-                            WalletUnlockResult.InsufficientBalance -> {
-                                unlockMessage = insufficientBalanceMessage
-                            }
-                        }
-                    }
-                },
-                onWatchAd = {
-                    watchRewardedAd(
-                        activity = activity,
-                        rewardedAdManager = rewardedAdManager,
-                        onGranted = { unlockMessage = adRewardGrantedMessage },
-                        onUnavailable = { unlockMessage = adUnavailableMessage },
-                    )
-                },
-                onUpgrade = {
-                    unlockTarget = null
-                    navController.navigate(Screen.Upgrade.route)
-                },
-            )
-        }
-    }
-
-    if (showPricingTable && requiresCoinEntry) {
-        CoinPricingTableDialog(
-            walletBalance = wallet.balance,
-            onDismiss = { showPricingTable = false },
-            onWatchAd = {
-                watchRewardedAd(
-                    activity = activity,
-                    rewardedAdManager = rewardedAdManager,
-                    onGranted = {
-                        unlockMessage = adRewardGrantedMessage
-                        showPricingTable = false
-                    },
-                    onUnavailable = { unlockMessage = adUnavailableMessage },
-                )
-            },
-        )
-    }
-
-    if (comingSoonAppName != null) {
-        AlertDialog(
-            onDismissRequest = { comingSoonAppName = null },
-            title = { Text(stringResource(R.string.applications_coming_soon_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        R.string.applications_coming_soon_message,
-                        comingSoonAppName.orEmpty(),
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { comingSoonAppName = null }) {
-                    Text(stringResource(R.string.codes_dialog_ok))
-                }
-            },
-        )
-    }
-
-    if (unlockMessage != null) {
-        CoinMessageDialog(
-            message = unlockMessage.orEmpty(),
-            onDismiss = { unlockMessage = null },
-        )
-    }
+    ApplicationEntryDialogs(
+        navController = navController,
+        wallet = wallet,
+        requiresCoinEntry = requiresCoinEntry,
+        activity = activity,
+        rewardedAdManager = rewardedAdManager,
+        unlockTarget = unlockTarget,
+        onUnlockTargetChange = { unlockTarget = it },
+        explorerGiftTarget = explorerGiftTarget,
+        onExplorerGiftTargetChange = { explorerGiftTarget = it },
+        comingSoonAppName = comingSoonAppName,
+        onComingSoonAppNameChange = { comingSoonAppName = it },
+        unlockMessage = unlockMessage,
+        onUnlockMessageChange = { unlockMessage = it },
+        showPricingTable = showPricingTable,
+        onShowPricingTableChange = { showPricingTable = it },
+        onUnlockFeature = { feature, option, onResult ->
+            walletViewModel.unlockFeature(feature, option, onResult)
+        },
+        onClaimExplorerGift = { feature, onResult ->
+            walletViewModel.claimExplorerGift(feature, onResult)
+        },
+    )
 }
 
 @Composable
@@ -267,103 +154,37 @@ fun ApplicationsScreenContent(
             ) {
                 items(catalog, key = { it.id.name }) { item ->
                     val title = stringResource(item.titleRes)
-                    val feature = item.id.premiumFeature()
                     val isUnlocked = item.id.hasEntryAccess(
                         entitlement = entitlement,
                         wallet = wallet,
                         requiresCoinEntry = requiresCoinEntry,
                     )
-                    val showCoinsButton = requiresCoinEntry &&
-                        !item.id.isFree() &&
-                        !item.comingSoon &&
-                        feature != null &&
-                        !isUnlocked
-
-                    val trailingAction = when {
-                        item.comingSoon -> ApplicationTrailingAction.DEFAULT
-                        item.id.isFree() -> ApplicationTrailingAction.ENTER
-                        isUnlocked -> ApplicationTrailingAction.ENTER
-                        showCoinsButton -> ApplicationTrailingAction.UNLOCK
-                        else -> ApplicationTrailingAction.DEFAULT
-                    }
-
-                    val badge = applicationBadge(item)
-
-                    val enabledProHighlight = !item.id.isFree() &&
-                        !item.comingSoon &&
-                        isUnlocked
-                    val showExplorerSparkle = explorerGiftAvailable &&
-                        !item.id.isFree() &&
-                        !item.comingSoon &&
-                        !isUnlocked
-
                     ApplicationListItemCard(
                         thumbnailRes = item.id.thumbnailRes(),
                         title = title,
                         subtitle = stringResource(item.subtitleRes),
-                        badge = badge,
-                        trailingAction = trailingAction,
+                        badge = applicationBadge(item),
+                        trailingAction = applicationTrailingAction(
+                            item = item,
+                            isUnlocked = isUnlocked,
+                            requiresCoinEntry = requiresCoinEntry,
+                        ),
                         onUnlockClick = { onUnlockClick(item) },
                         onSubscribeClick = onSubscribeClick,
                         onCodesClick = { onCodesClick(item) },
                         onClick = { onItemClick(item, title) },
-                        showExplorerSparkle = showExplorerSparkle,
+                        showExplorerSparkle = explorerGiftAvailable &&
+                            !item.id.isFree() &&
+                            !item.comingSoon &&
+                            !isUnlocked,
                         onExplorerSparkleClick = { onExplorerSparkleClick(item) },
-                        enabledProHighlight = enabledProHighlight,
+                        enabledProHighlight = !item.id.isFree() &&
+                            !item.comingSoon &&
+                            isUnlocked,
                     )
                 }
             }
         }
-    }
-}
-
-private fun watchRewardedAd(
-    activity: Activity?,
-    rewardedAdManager: com.micsbol.telecon4esp32.ui.ads.RewardedAdManager?,
-    onGranted: () -> Unit,
-    onUnavailable: () -> Unit,
-) {
-    if (activity != null && rewardedAdManager != null) {
-        rewardedAdManager.tryShow(activity) { granted ->
-            if (granted) onGranted() else onUnavailable()
-        }
-    } else {
-        onUnavailable()
-    }
-}
-
-private fun handleApplicationClick(
-    item: ApplicationCatalogItem,
-    entitlement: Entitlement,
-    wallet: CoinWalletState,
-    requiresCoinEntry: Boolean,
-    navController: NavController,
-    onComingSoon: () -> Unit,
-    onRequestUnlock: () -> Unit,
-    onRequestUpgrade: () -> Unit,
-) {
-    when {
-        item.id.isFree() -> navController.navigate(item.route)
-        item.comingSoon -> onComingSoon()
-        else -> {
-            if (item.id.premiumFeature() == null) return
-            if (item.id.hasEntryAccess(entitlement, wallet, requiresCoinEntry)) {
-                navController.navigate(item.route)
-            } else if (requiresCoinEntry) {
-                onRequestUnlock()
-            } else {
-                onRequestUpgrade()
-            }
-        }
-    }
-}
-
-@Composable
-private fun applicationBadge(item: ApplicationCatalogItem): String {
-    return when {
-        item.id.isFree() -> stringResource(R.string.applications_badge_free)
-        item.comingSoon -> stringResource(R.string.applications_badge_coming_soon)
-        else -> stringResource(R.string.applications_badge_pro)
     }
 }
 

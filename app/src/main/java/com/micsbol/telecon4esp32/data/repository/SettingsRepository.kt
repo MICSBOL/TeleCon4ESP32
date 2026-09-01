@@ -14,9 +14,12 @@ import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.toStringRepresentation
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
@@ -34,19 +37,43 @@ private object PreferencesKeys {
     val RIGHT_KNOB_VALUE = floatPreferencesKey("right_knob_value")
     val LEFT_PANEL_UNIT = stringPreferencesKey("left_panel_unit")
     val RIGHT_PANEL_UNIT = stringPreferencesKey("right_panel_unit")
+    val LEFT_PANEL_ON = booleanPreferencesKey("left_panel_on")
+    val RIGHT_PANEL_ON = booleanPreferencesKey("right_panel_on")
+    val LEFT_PANEL_COLOR_GREEN = booleanPreferencesKey("left_panel_color_green")
+    val RIGHT_PANEL_COLOR_GREEN = booleanPreferencesKey("right_panel_color_green")
     val ANALOG_INDICATOR_UNIT = stringPreferencesKey("analog_indicator_unit")
     val BATTERY_LABEL = stringPreferencesKey("battery_label")
     val PLOT_LABEL_0 = stringPreferencesKey("plot_label_0")
     val PLOT_LABEL_1 = stringPreferencesKey("plot_label_1")
     val PLOT_LABEL_2 = stringPreferencesKey("plot_label_2")
     val PLOT_LABEL_3 = stringPreferencesKey("plot_label_3")
+    val PLOT_OFFSET_0 = floatPreferencesKey("plot_offset_0")
+    val PLOT_OFFSET_1 = floatPreferencesKey("plot_offset_1")
+    val PLOT_OFFSET_2 = floatPreferencesKey("plot_offset_2")
+    val PLOT_OFFSET_3 = floatPreferencesKey("plot_offset_3")
+    val PLOT_SPAN_0 = floatPreferencesKey("plot_span_0")
+    val PLOT_SPAN_1 = floatPreferencesKey("plot_span_1")
+    val PLOT_SPAN_2 = floatPreferencesKey("plot_span_2")
+    val PLOT_SPAN_3 = floatPreferencesKey("plot_span_3")
+    val PLOT_UNIT_0 = stringPreferencesKey("plot_unit_0")
+    val PLOT_UNIT_1 = stringPreferencesKey("plot_unit_1")
+    val PLOT_UNIT_2 = stringPreferencesKey("plot_unit_2")
+    val PLOT_UNIT_3 = stringPreferencesKey("plot_unit_3")
+    val CHANNEL_ROUTING = stringPreferencesKey("channel_routing")
     val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
     val LAST_DEVICE_NAME = stringPreferencesKey("last_device_name")
     val LAST_APPLICATION_ID = stringPreferencesKey("last_application_id")
+    val CONTROL_PANEL_CENTER_MODE = stringPreferencesKey("control_panel_center_mode")
 
     val RC_VP_THROTTLE_HOLD = booleanPreferencesKey("rc_vehicle_pro_throttle_hold")
     val RC_VP_STEERING_HOLD = booleanPreferencesKey("rc_vehicle_pro_steering_hold")
+    val RC_VP_LEFT_STICK_MODE = stringPreferencesKey("rc_vehicle_pro_left_stick_mode")
+    val RC_VP_RIGHT_STICK_MODE = stringPreferencesKey("rc_vehicle_pro_right_stick_mode")
     val RC_VP_STEER_TRIM = floatPreferencesKey("rc_vehicle_pro_steer_trim")
+    val RC_VP_LEFT_TRIM_X = floatPreferencesKey("rc_vehicle_pro_left_trim_x")
+    val RC_VP_LEFT_TRIM_Y = floatPreferencesKey("rc_vehicle_pro_left_trim_y")
+    val RC_VP_RIGHT_TRIM_X = floatPreferencesKey("rc_vehicle_pro_right_trim_x")
+    val RC_VP_RIGHT_TRIM_Y = floatPreferencesKey("rc_vehicle_pro_right_trim_y")
     val RC_VP_THROTTLE_TRAVEL = floatPreferencesKey("rc_vehicle_pro_throttle_travel")
     val RC_VP_STEER_TRAVEL = floatPreferencesKey("rc_vehicle_pro_steer_travel")
     val RC_VP_REVERSE_THROTTLE = booleanPreferencesKey("rc_vehicle_pro_reverse_throttle")
@@ -68,11 +95,20 @@ private fun connectionModeKey(applicationId: ApplicationId) =
 private fun boardKey(applicationId: ApplicationId) =
     stringPreferencesKey("esp32_board_${applicationId.name}")
 
+private fun useSoftApCameraKey(applicationId: ApplicationId) =
+    booleanPreferencesKey("use_softap_camera_${applicationId.name}")
+
+private fun advancedSettingsRevealedKey(applicationId: ApplicationId) =
+    booleanPreferencesKey("advanced_settings_revealed_${applicationId.name}")
+
 private fun softApPerformancePresetKey(applicationId: ApplicationId) =
     stringPreferencesKey("softap_perf_preset_${applicationId.name}")
 
 private fun softApHudProcessingRateKey(applicationId: ApplicationId) =
     stringPreferencesKey("softap_hud_processing_rate_${applicationId.name}")
+
+private fun softApStreamQualitySeededKey(applicationId: ApplicationId) =
+    booleanPreferencesKey("softap_stream_quality_seeded_${applicationId.name}")
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "rc_settings")
 
@@ -106,6 +142,35 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 preferences[PreferencesKeys.PLOT_LABEL_2] ?: "",
                 preferences[PreferencesKeys.PLOT_LABEL_3] ?: "",
             ),
+            plotCalibrations = listOf(
+                PlotCalibration(
+                    offset = preferences[PreferencesKeys.PLOT_OFFSET_0] ?: PlotCalibration.DEFAULT_OFFSET,
+                    span = preferences[PreferencesKeys.PLOT_SPAN_0] ?: PlotCalibration.DEFAULT_SPAN,
+                    unit = preferences[PreferencesKeys.PLOT_UNIT_0] ?: "",
+                ),
+                PlotCalibration(
+                    offset = preferences[PreferencesKeys.PLOT_OFFSET_1] ?: PlotCalibration.DEFAULT_OFFSET,
+                    span = preferences[PreferencesKeys.PLOT_SPAN_1] ?: PlotCalibration.DEFAULT_SPAN,
+                    unit = preferences[PreferencesKeys.PLOT_UNIT_1] ?: "",
+                ),
+                PlotCalibration(
+                    offset = preferences[PreferencesKeys.PLOT_OFFSET_2] ?: PlotCalibration.DEFAULT_OFFSET,
+                    span = preferences[PreferencesKeys.PLOT_SPAN_2] ?: PlotCalibration.DEFAULT_SPAN,
+                    unit = preferences[PreferencesKeys.PLOT_UNIT_2] ?: "",
+                ),
+                PlotCalibration(
+                    offset = preferences[PreferencesKeys.PLOT_OFFSET_3] ?: PlotCalibration.DEFAULT_OFFSET,
+                    span = preferences[PreferencesKeys.PLOT_SPAN_3] ?: PlotCalibration.DEFAULT_SPAN,
+                    unit = preferences[PreferencesKeys.PLOT_UNIT_3] ?: "",
+                ),
+            ),
+            channelRouting = ChannelRouting.decode(
+                preferences[PreferencesKeys.CHANNEL_ROUTING],
+            ),
+            leftPanelOn = preferences[PreferencesKeys.LEFT_PANEL_ON] ?: true,
+            rightPanelOn = preferences[PreferencesKeys.RIGHT_PANEL_ON] ?: true,
+            leftPanelColorGreen = preferences[PreferencesKeys.LEFT_PANEL_COLOR_GREEN] ?: true,
+            rightPanelColorGreen = preferences[PreferencesKeys.RIGHT_PANEL_COLOR_GREEN] ?: true,
         )
     }
 
@@ -165,12 +230,61 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     override fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board> =
         context.dataStore.data.map { preferences ->
             val stored = preferences[boardKey(applicationId)]
-            stored?.let { Esp32Board.fromStored(it) } ?: Esp32Board.defaultFor(applicationId)
+            val board = stored?.let { Esp32Board.fromStored(it) }
+                ?: Esp32Board.defaultFor(applicationId)
+            board.normalizedControlBoard()
         }
 
     override suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board) {
         context.dataStore.edit { preferences ->
-            preferences[boardKey(applicationId)] = board.name
+            val previous = preferences[boardKey(applicationId)]
+                ?.let { Esp32Board.fromStored(it) }
+            if (previous == Esp32Board.CAM_AND_DEV_KIT &&
+                preferences[useSoftApCameraKey(applicationId)] == null
+            ) {
+                preferences[useSoftApCameraKey(applicationId)] = true
+            }
+            preferences[boardKey(applicationId)] = board.normalizedControlBoard().name
+        }
+    }
+
+    override fun useSoftApCameraFlow(applicationId: ApplicationId): Flow<Boolean> =
+        context.dataStore.data.map { preferences ->
+            preferences[useSoftApCameraKey(applicationId)]
+                ?: (preferences[boardKey(applicationId)]?.let { Esp32Board.fromStored(it) }
+                    == Esp32Board.CAM_AND_DEV_KIT)
+        }
+
+    override suspend fun saveUseSoftApCamera(applicationId: ApplicationId, enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[useSoftApCameraKey(applicationId)] = enabled
+        }
+    }
+
+    override fun advancedSettingsRevealedFlow(applicationId: ApplicationId): Flow<Boolean> =
+        context.dataStore.data.map { preferences ->
+            preferences[advancedSettingsRevealedKey(applicationId)] ?: true
+        }
+
+    override suspend fun saveAdvancedSettingsRevealed(
+        applicationId: ApplicationId,
+        revealed: Boolean,
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[advancedSettingsRevealedKey(applicationId)] = revealed
+        }
+    }
+
+    override fun controlPanelCenterModeFlow(): Flow<ControlPanelCenterMode> =
+        context.dataStore.data.map { preferences ->
+            ControlPanelCenterMode.fromStored(
+                preferences[PreferencesKeys.CONTROL_PANEL_CENTER_MODE],
+            )
+        }
+
+    override suspend fun saveControlPanelCenterMode(mode: ControlPanelCenterMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CONTROL_PANEL_CENTER_MODE] = mode.name
         }
     }
 
@@ -180,6 +294,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.data.map { preferences ->
             SoftApPerformancePreset.fromStored(
                 preferences[softApPerformancePresetKey(applicationId)],
+                SoftApPerformancePreset.defaultFor(applicationId),
             )
         }
 
@@ -207,6 +322,21 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     ) {
         context.dataStore.edit { preferences ->
             preferences[softApHudProcessingRateKey(applicationId)] = rate.name
+        }
+    }
+
+    override suspend fun ensureSoftApStreamQualityDefaultsForAtRiskDevice(
+        applicationId: ApplicationId,
+    ) {
+        context.dataStore.edit { preferences ->
+            if (preferences[softApStreamQualitySeededKey(applicationId)] == true) {
+                return@edit
+            }
+            preferences[softApPerformancePresetKey(applicationId)] =
+                SoftApPerformancePreset.SMOOTH.name
+            preferences[softApHudProcessingRateKey(applicationId)] =
+                SoftApHudProcessingRate.FPS_8.name
+            preferences[softApStreamQualitySeededKey(applicationId)] = true
         }
     }
 
@@ -282,6 +412,30 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
+    override suspend fun saveLeftPanelOn(isOn: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LEFT_PANEL_ON] = isOn
+        }
+    }
+
+    override suspend fun saveRightPanelOn(isOn: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RIGHT_PANEL_ON] = isOn
+        }
+    }
+
+    override suspend fun saveLeftPanelColorGreen(isGreen: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LEFT_PANEL_COLOR_GREEN] = isGreen
+        }
+    }
+
+    override suspend fun saveRightPanelColorGreen(isGreen: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RIGHT_PANEL_COLOR_GREEN] = isGreen
+        }
+    }
+
     override suspend fun savePlotLabel(index: Int, value: String) {
         val key = when (index) {
             0 -> PreferencesKeys.PLOT_LABEL_0
@@ -295,15 +449,69 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
+    override suspend fun saveChannelRouting(routing: ChannelRouting) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CHANNEL_ROUTING] = routing.padded().encode()
+        }
+    }
+
+    override suspend fun savePlotCalibration(index: Int, calibration: PlotCalibration) {
+        val offsetKey = when (index) {
+            0 -> PreferencesKeys.PLOT_OFFSET_0
+            1 -> PreferencesKeys.PLOT_OFFSET_1
+            2 -> PreferencesKeys.PLOT_OFFSET_2
+            3 -> PreferencesKeys.PLOT_OFFSET_3
+            else -> return
+        }
+        val spanKey = when (index) {
+            0 -> PreferencesKeys.PLOT_SPAN_0
+            1 -> PreferencesKeys.PLOT_SPAN_1
+            2 -> PreferencesKeys.PLOT_SPAN_2
+            3 -> PreferencesKeys.PLOT_SPAN_3
+            else -> return
+        }
+        val unitKey = when (index) {
+            0 -> PreferencesKeys.PLOT_UNIT_0
+            1 -> PreferencesKeys.PLOT_UNIT_1
+            2 -> PreferencesKeys.PLOT_UNIT_2
+            3 -> PreferencesKeys.PLOT_UNIT_3
+            else -> return
+        }
+        val span = if (calibration.span == 0f || !calibration.span.isFinite()) {
+            PlotCalibration.DEFAULT_SPAN
+        } else {
+            calibration.span
+        }
+        val offset = if (calibration.offset.isFinite()) {
+            calibration.offset
+        } else {
+            PlotCalibration.DEFAULT_OFFSET
+        }
+        context.dataStore.edit { preferences ->
+            preferences[offsetKey] = offset
+            preferences[spanKey] = span
+            preferences[unitKey] = calibration.unit
+        }
+    }
+
     override fun rcVehicleProControlSettingsFlow(): Flow<RcVehicleProControlSettings> =
         context.dataStore.data.map { preferences ->
             val defaults = RcVehicleProControlSettings.DEFAULT
             RcVehicleProControlSettings(
-                throttleHold = preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD]
-                    ?: defaults.throttleHold,
-                steeringHold = preferences[PreferencesKeys.RC_VP_STEERING_HOLD]
-                    ?: defaults.steeringHold,
-                steerTrim = preferences[PreferencesKeys.RC_VP_STEER_TRIM] ?: defaults.steerTrim,
+                leftStickMode = RcVehicleProControlSettings.leftStickModeFromPersisted(
+                    stored = preferences[PreferencesKeys.RC_VP_LEFT_STICK_MODE],
+                    throttleHold = preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD],
+                ),
+                rightStickMode = RcVehicleProControlSettings.rightStickModeFromPersisted(
+                    stored = preferences[PreferencesKeys.RC_VP_RIGHT_STICK_MODE],
+                    steeringHold = preferences[PreferencesKeys.RC_VP_STEERING_HOLD],
+                ),
+                leftTrimX = preferences[PreferencesKeys.RC_VP_LEFT_TRIM_X] ?: 0f,
+                leftTrimY = preferences[PreferencesKeys.RC_VP_LEFT_TRIM_Y] ?: 0f,
+                rightTrimX = preferences[PreferencesKeys.RC_VP_RIGHT_TRIM_X]
+                    ?: preferences[PreferencesKeys.RC_VP_STEER_TRIM]
+                    ?: defaults.rightTrimX,
+                rightTrimY = preferences[PreferencesKeys.RC_VP_RIGHT_TRIM_Y] ?: 0f,
                 throttleTravel = preferences[PreferencesKeys.RC_VP_THROTTLE_TRAVEL]
                     ?: defaults.throttleTravel,
                 steerTravel = preferences[PreferencesKeys.RC_VP_STEER_TRAVEL]
@@ -321,9 +529,19 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     override suspend fun saveRcVehicleProControlSettings(settings: RcVehicleProControlSettings) {
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD] = settings.throttleHold
-            preferences[PreferencesKeys.RC_VP_STEERING_HOLD] = settings.steeringHold
-            preferences[PreferencesKeys.RC_VP_STEER_TRIM] = settings.steerTrim
+            preferences[PreferencesKeys.RC_VP_LEFT_STICK_MODE] =
+                settings.leftStickMode.toStringRepresentation()
+            preferences[PreferencesKeys.RC_VP_RIGHT_STICK_MODE] =
+                settings.rightStickMode.toStringRepresentation()
+            // Keep hold flags in sync so older builds still restore spring vs hold.
+            preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD] = !settings.leftStickMode.isSpring
+            preferences[PreferencesKeys.RC_VP_STEERING_HOLD] = !settings.rightStickMode.isSpring
+            preferences[PreferencesKeys.RC_VP_LEFT_TRIM_X] = settings.leftTrimX
+            preferences[PreferencesKeys.RC_VP_LEFT_TRIM_Y] = settings.leftTrimY
+            preferences[PreferencesKeys.RC_VP_RIGHT_TRIM_X] = settings.rightTrimX
+            preferences[PreferencesKeys.RC_VP_RIGHT_TRIM_Y] = settings.rightTrimY
+            // Keep the old steer-trim key in sync for rollback / car firmware center.
+            preferences[PreferencesKeys.RC_VP_STEER_TRIM] = settings.rightTrimX
             preferences[PreferencesKeys.RC_VP_THROTTLE_TRAVEL] = settings.throttleTravel
             preferences[PreferencesKeys.RC_VP_STEER_TRAVEL] = settings.steerTravel
             preferences[PreferencesKeys.RC_VP_REVERSE_THROTTLE] = settings.reverseThrottle

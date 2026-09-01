@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,6 +39,7 @@ fun RcGlassCard(
     accentEdge: RcGlassAccentEdge = RcGlassAccentEdge.START,
     contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
     fillMaxHeight: Boolean = false,
+    fillWidth: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceAlpha)
@@ -50,7 +52,13 @@ fun RcGlassCard(
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .then(
+                    if (fillWidth) {
+                        Modifier.fillMaxWidth()
+                    } else {
+                        Modifier.wrapContentWidth()
+                    },
+                )
                 .then(
                     if (fillMaxHeight) {
                         Modifier.fillMaxHeight()
@@ -64,7 +72,13 @@ fun RcGlassCard(
             }
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .then(
+                        if (fillWidth) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.wrapContentWidth()
+                        },
+                    )
                     .then(if (fillMaxHeight) Modifier.fillMaxHeight() else Modifier)
                     .background(surfaceColor)
                     .padding(contentPadding),

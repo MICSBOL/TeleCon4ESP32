@@ -1,5 +1,9 @@
 # Cursor prompt: TeleCon_ControlPanel — four plot channels (Classic Simple / Binary / BLE)
 
+**Superseded for analog count:** Android now accepts **8** numbered analog channels (CH1–CH8).
+Use [CONTROL_PANEL_EIGHT_ANALOG_CHANNELS_ESP32_PROMPT.md](CONTROL_PANEL_EIGHT_ANALOG_CHANNELS_ESP32_PROMPT.md)
+for new firmware work. This prompt remains valid as a 4-sample baseline.
+
 Copy everything below into a **new Cursor chat** (Agent mode) on the ESP32 firmware tree
 under `/home/miguel/Documents/ESP32_Projects/TeleCon_ControlPanel/`.
 

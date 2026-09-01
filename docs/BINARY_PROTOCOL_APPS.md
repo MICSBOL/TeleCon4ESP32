@@ -16,9 +16,12 @@ BLE is binary-only. Kit A CAM SoftAP uses SIMPLE text with `proto=wifi`, not the
 Checksum = low byte of sum of all bytes after the 2-byte header.
 
 RC Control Panel keeps its legacy layouts (`AA 55`, `CC 11/22/33`) — see existing RC firmware.
-Plot packets (`CC 33`) should send **count = 4** sample bytes (0–255) for the dual-pane
-center graph. Do **not** send legacy `CC 44` label-config packets; plot/panel/indicator
-labels come from Android RC settings.
+Plot packets (`CC 33`) should send **count = 4 or 8** sample bytes (0–255). The phone
+treats them as numbered analog channels **CH1…CH8**; the Control Panel still has four
+plot widgets (defaults CH1–CH4). Four-byte frames remain valid. Do **not** send legacy
+`CC 44` label-config packets; plot/panel/indicator
+labels come from Android RC settings. The phone can remap `CC 33` samples and `CC 11`/`CC 22`
+fields onto plots, radar, gauges, panels, or LEDs; firmware does not send a channel-map packet.
 
 **Handshake (Classic SPP, BLE, and DevKit SoftAP):** before control/telemetry, the phone sends a text line
 `RC:CONNECT,proto,binary` (or `proto,simple` for Classic/DevKit Simple firmware). Reply with

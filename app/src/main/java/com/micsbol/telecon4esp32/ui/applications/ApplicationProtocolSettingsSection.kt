@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,20 +52,23 @@ import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.camera.isCameraStreamAtRisk
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.SettingsUserType
 import com.micsbol.telecon4esp32.domain.model.availableConnectionModes
+import com.micsbol.telecon4esp32.domain.model.coerceForSettings
 import com.micsbol.telecon4esp32.domain.model.connectionModesForFamily
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
-import com.micsbol.telecon4esp32.domain.model.settingsUserType
 import com.micsbol.telecon4esp32.domain.model.usesCamera
+import com.micsbol.telecon4esp32.domain.model.usesSoftApCamera
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
 import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.components.NeoToggle
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
@@ -79,10 +83,7 @@ data class SettingsMenuOption<T>(
 fun ApplicationDeviceSettingsSection(
     selectedBoard: Esp32Board,
     onBoardSelected: (Esp32Board) -> Unit,
-    userType: SettingsUserType = SettingsUserType.NORMAL,
-    canUseAdvanced: Boolean = true,
 ) {
-    val showKitB = userType == SettingsUserType.ADVANCED && canUseAdvanced
     val options = buildList {
         add(
             SettingsMenuOption(
@@ -98,27 +99,17 @@ fun ApplicationDeviceSettingsSection(
                 description = stringResource(R.string.app_settings_device_cam_description),
             ),
         )
-        if (showKitB) {
-            add(
-                SettingsMenuOption(
-                    value = Esp32Board.CAM_AND_DEV_KIT,
-                    label = stringResource(R.string.app_settings_device_cam_and_dev_kit),
-                    description = stringResource(R.string.app_settings_device_cam_and_dev_kit_description),
-                ),
-            )
-        }
     }
     val boardSelection = rememberCamAwareBoardSelection(
         selectedBoard = selectedBoard,
         onBoardSelected = onBoardSelected,
     )
     Column(modifier = Modifier.fillMaxWidth()) {
-        NeoSectionTitle(text = stringResource(R.string.app_settings_device_section_title))
-        Spacer(modifier = Modifier.height(12.dp))
         SettingsOptionDropdown(
             options = options,
             selected = selectedBoard,
             onSelected = boardSelection.onSelect,
+            label = stringResource(R.string.app_settings_device_section_title),
             sectionInfo = stringResource(R.string.app_settings_device_section_description),
         )
         if (boardSelection.showAtRiskBanner) {
@@ -126,6 +117,106 @@ fun ApplicationDeviceSettingsSection(
             CamBoardPerformanceWarningBanner()
         }
         boardSelection.WarningDialog()
+    }
+}
+
+@Composable
+fun CameraHardwareRoleSettingsSection(
+    selected: CameraHardwareRole,
+    onRoleSelected: (CameraHardwareRole) -> Unit,
+    allowTwoDevices: Boolean = false,
+    allowCameraRoles: Boolean = true,
+    userType: SettingsUserType = SettingsUserType.NORMAL,
+) {
+    val context = LocalContext.current
+    val atRisk = remember(context) { context.isCameraStreamAtRisk() }
+    var pendingRole by remember { mutableStateOf<CameraHardwareRole?>(null) }
+    val visibleSelected = selected.coerceForSettings(
+        userType = userType,
+        centerCameraEnabled = allowCameraRoles,
+    )
+    val useAdvancedCamLabels = userType == SettingsUserType.ADVANCED
+    val options = buildList {
+        if (allowCameraRoles) {
+            add(
+                SettingsMenuOption(
+                    value = CameraHardwareRole.ONE_CAM,
+                    label = stringResource(
+                        if (useAdvancedCamLabels) {
+                            R.string.app_settings_cam_role_one_device_advanced
+                        } else {
+                            R.string.app_settings_cam_role_one_device
+                        },
+                    ),
+                    description = stringResource(
+                        if (useAdvancedCamLabels) {
+                            R.string.app_settings_cam_role_one_device_advanced_description
+                        } else {
+                            R.string.app_settings_cam_role_one_device_description
+                        },
+                    ),
+                ),
+            )
+            if (allowTwoDevices) {
+                add(
+                    SettingsMenuOption(
+                        value = CameraHardwareRole.TWO_DEVICES,
+                        label = stringResource(
+                            if (useAdvancedCamLabels) {
+                                R.string.app_settings_cam_role_two_devices
+                            } else {
+                                R.string.app_settings_cam_role_two_devices_simple
+                            },
+                        ),
+                        description = stringResource(
+                            if (useAdvancedCamLabels) {
+                                R.string.app_settings_cam_role_two_devices_description
+                            } else {
+                                R.string.app_settings_cam_role_two_devices_simple_description
+                            },
+                        ),
+                    ),
+                )
+            }
+        }
+        add(
+            SettingsMenuOption(
+                value = CameraHardwareRole.NO_CAM,
+                label = stringResource(R.string.app_settings_cam_role_no_cam),
+                description = stringResource(R.string.app_settings_cam_role_no_cam_description),
+            ),
+        )
+    }
+    val onSelect: (CameraHardwareRole) -> Unit = { role ->
+        if (role.usesSoftApCamera && atRisk && !visibleSelected.usesSoftApCamera) {
+            pendingRole = role
+        } else {
+            onRoleSelected(role)
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SettingsOptionDropdown(
+            options = options,
+            selected = visibleSelected,
+            onSelected = onSelect,
+            label = stringResource(R.string.app_settings_cam_role_section_title),
+            sectionInfo = stringResource(R.string.app_settings_cam_role_section_description),
+        )
+        if (visibleSelected.usesSoftApCamera && atRisk) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CamBoardPerformanceWarningBanner()
+        }
+    }
+    if (pendingRole != null) {
+        CamBoardPerformanceWarningDialog(
+            onConfirm = {
+                val role = pendingRole
+                pendingRole = null
+                if (role != null) onRoleSelected(role)
+            },
+            onDismiss = { pendingRole = null },
+        )
     }
 }
 
@@ -246,6 +337,56 @@ fun CamBoardPerformanceWarningBanner(
 }
 
 @Composable
+fun SoftApCameraOverlaySettingsSection(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+    val atRisk = remember(context) { context.isCameraStreamAtRisk() }
+    var pendingEnableConfirm by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NeoSectionTitle(text = stringResource(R.string.app_settings_softap_camera_overlay_title))
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.app_settings_softap_camera_overlay_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = Neo.TextSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            NeoToggle(
+                checked = enabled,
+                onCheckedChange = { checked ->
+                    if (checked && atRisk && !enabled) {
+                        pendingEnableConfirm = true
+                    } else {
+                        onEnabledChange(checked)
+                    }
+                },
+            )
+        }
+        if (enabled && atRisk) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CamBoardPerformanceWarningBanner()
+        }
+    }
+    if (pendingEnableConfirm) {
+        CamBoardPerformanceWarningDialog(
+            onConfirm = {
+                pendingEnableConfirm = false
+                onEnabledChange(true)
+            },
+            onDismiss = { pendingEnableConfirm = false },
+        )
+    }
+}
+
+@Composable
 fun ApplicationProtocolSettingsSection(
     applicationId: ApplicationId,
     selectedMode: BluetoothConnectionMode,
@@ -253,32 +394,23 @@ fun ApplicationProtocolSettingsSection(
     userType: SettingsUserType,
     canUseAdvanced: Boolean = true,
     selectedBoard: Esp32Board = Esp32Board.DEV_KIT,
+    allowWifiControl: Boolean = true,
     belowConnectionTypeContent: (@Composable () -> Unit)? = null,
 ) {
     val availableModes = applicationId.availableConnectionModes(selectedBoard, userType)
     val camModesOnly = applicationId.usesCamera() && selectedBoard == Esp32Board.CAM
-    val kitBModesOnly = applicationId.usesCamera() && selectedBoard.isKitBDual
-    val useDevKitLinkPicker = !camModesOnly && !kitBModesOnly
-    val includesWifi = applicationId.availableConnectionModes(selectedBoard).any { it.isWifiLink }
+    val useDevKitLinkPicker = !camModesOnly
     val connectionSectionInfo = stringResource(
         when {
-            kitBModesOnly -> R.string.app_settings_connection_section_description_cam
             camModesOnly -> R.string.app_settings_connection_section_description_cam
             useDevKitLinkPicker -> R.string.app_settings_connection_section_description_devkit
             else -> R.string.app_settings_connection_section_description
         },
     )
 
+    val connectionTitle = stringResource(R.string.app_settings_connection_section_title_general)
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        NeoSectionTitle(
-            text = stringResource(
-                if (includesWifi) {
-                    R.string.app_settings_connection_section_title_general
-                } else {
-                    R.string.app_settings_connection_section_title
-                },
-            ),
-        )
         Text(
             text = stringResource(
                 R.string.app_settings_protocol_prefix_label,
@@ -297,7 +429,9 @@ fun ApplicationProtocolSettingsSection(
                 userType = userType,
                 onModeSelected = onModeSelected,
                 canUseAdvanced = canUseAdvanced,
+                connectionLabel = connectionTitle,
                 connectionSectionInfo = connectionSectionInfo,
+                allowWifiControl = allowWifiControl,
                 belowConnectionTypeContent = belowConnectionTypeContent,
             )
         } else {
@@ -305,13 +439,14 @@ fun ApplicationProtocolSettingsSection(
                 connectionModeMenuOption(
                     mode = mode,
                     canUseAdvanced = canUseAdvanced,
-                    camKitLabels = camModesOnly || kitBModesOnly,
+                    camKitLabels = camModesOnly,
                 )
             }
             SettingsOptionDropdown(
                 options = options,
                 selected = selectedMode,
                 onSelected = onModeSelected,
+                label = connectionTitle,
                 sectionInfo = connectionSectionInfo,
             )
             if (belowConnectionTypeContent != null) {
@@ -328,6 +463,7 @@ fun SettingsUserTypeSection(
     canUseAdvanced: Boolean,
     onSelected: (SettingsUserType) -> Unit,
     modifier: Modifier = Modifier,
+    onRequestAdvancedUnlock: (() -> Unit)? = null,
     fieldColors: TextFieldColors = settingsDropdownFieldColors(),
     menuBackground: Color = AppGlass.DialogSurface,
     descriptionColor: Color = Neo.TextSecondary,
@@ -336,23 +472,25 @@ fun SettingsUserTypeSection(
     labelColor: Color = Neo.TextPrimary,
     mutedLabelColor: Color = Neo.TextMuted,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        NeoSectionTitle(text = stringResource(R.string.app_settings_user_type_section_title))
-        Spacer(modifier = Modifier.height(12.dp))
-        SettingsUserTypeSelector(
-            selected = selected,
-            canUseAdvanced = canUseAdvanced,
-            onSelected = onSelected,
-            sectionInfo = stringResource(R.string.app_settings_user_type_section_description),
-            fieldColors = fieldColors,
-            menuBackground = menuBackground,
-            descriptionColor = descriptionColor,
-            accent = accent,
-            dividerColor = dividerColor,
-            labelColor = labelColor,
-            mutedLabelColor = mutedLabelColor,
-        )
-    }
+    // Locked unlock affordance lives in the settings top bar (lock next to title).
+    if (!canUseAdvanced) return
+
+    SettingsUserTypeSelector(
+        selected = selected,
+        canUseAdvanced = true,
+        onSelected = onSelected,
+        modifier = modifier,
+        onRequestAdvancedUnlock = onRequestAdvancedUnlock,
+        label = stringResource(R.string.app_settings_user_type_section_title),
+        sectionInfo = stringResource(R.string.app_settings_user_type_section_description),
+        fieldColors = fieldColors,
+        menuBackground = menuBackground,
+        descriptionColor = descriptionColor,
+        accent = accent,
+        dividerColor = dividerColor,
+        labelColor = labelColor,
+        mutedLabelColor = mutedLabelColor,
+    )
 }
 
 @Composable
@@ -361,6 +499,8 @@ fun SettingsUserTypeSelector(
     canUseAdvanced: Boolean,
     onSelected: (SettingsUserType) -> Unit,
     modifier: Modifier = Modifier,
+    onRequestAdvancedUnlock: (() -> Unit)? = null,
+    label: String? = null,
     sectionInfo: String? = null,
     fieldColors: TextFieldColors = settingsDropdownFieldColors(),
     menuBackground: Color = AppGlass.DialogSurface,
@@ -390,8 +530,15 @@ fun SettingsUserTypeSelector(
     SettingsOptionDropdown(
         options = options,
         selected = selected,
-        onSelected = onSelected,
+        onSelected = { type ->
+            if (type == SettingsUserType.ADVANCED && !canUseAdvanced) {
+                onRequestAdvancedUnlock?.invoke()
+            } else {
+                onSelected(type)
+            }
+        },
         modifier = modifier,
+        label = label,
         sectionInfo = sectionInfo,
         fieldColors = fieldColors,
         menuBackground = menuBackground,
@@ -411,22 +558,34 @@ private fun DevKitConnectionSettings(
     userType: SettingsUserType,
     onModeSelected: (BluetoothConnectionMode) -> Unit,
     canUseAdvanced: Boolean,
+    connectionLabel: String,
     connectionSectionInfo: String,
+    allowWifiControl: Boolean = true,
     belowConnectionTypeContent: (@Composable () -> Unit)? = null,
 ) {
-    val selectedFamily = selectedMode.linkFamily
-    val familyOptions = listOf(
-        SettingsMenuOption(
-            value = ConnectionLinkFamily.BLUETOOTH,
-            label = stringResource(R.string.app_settings_connection_link_bluetooth),
-            description = stringResource(R.string.app_settings_connection_link_bluetooth_description),
-        ),
-        SettingsMenuOption(
-            value = ConnectionLinkFamily.WIFI,
-            label = stringResource(R.string.app_settings_connection_link_wifi),
-            description = stringResource(R.string.app_settings_connection_link_wifi_description),
-        ),
-    )
+    val selectedFamily = if (allowWifiControl) {
+        selectedMode.linkFamily
+    } else {
+        ConnectionLinkFamily.BLUETOOTH
+    }
+    val familyOptions = buildList {
+        add(
+            SettingsMenuOption(
+                value = ConnectionLinkFamily.BLUETOOTH,
+                label = stringResource(R.string.app_settings_connection_link_bluetooth),
+                description = stringResource(R.string.app_settings_connection_link_bluetooth_description),
+            ),
+        )
+        if (allowWifiControl) {
+            add(
+                SettingsMenuOption(
+                    value = ConnectionLinkFamily.WIFI,
+                    label = stringResource(R.string.app_settings_connection_link_wifi),
+                    description = stringResource(R.string.app_settings_connection_link_wifi_description),
+                ),
+            )
+        }
+    }
     val detailModes = applicationId.connectionModesForFamily(selectedBoard, selectedFamily, userType)
     val detailOptions = detailModes.map { mode ->
         connectionModeMenuOption(
@@ -456,25 +615,23 @@ private fun DevKitConnectionSettings(
             )
             if (preferred != null) onModeSelected(preferred)
         },
+        label = connectionLabel,
         sectionInfo = connectionSectionInfo,
     )
     // Normal (and any single-protocol link) has nothing to choose; skip the section.
     if (detailOptions.size > 1) {
         Spacer(modifier = Modifier.height(16.dp))
-        NeoSectionTitle(
-            text = stringResource(
+        SettingsOptionDropdown(
+            options = detailOptions,
+            selected = selectedMode,
+            onSelected = onModeSelected,
+            label = stringResource(
                 if (selectedFamily == ConnectionLinkFamily.WIFI) {
                     R.string.app_settings_connection_wifi_protocol_title
                 } else {
                     R.string.app_settings_connection_bluetooth_protocol_title
                 },
             ),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        SettingsOptionDropdown(
-            options = detailOptions,
-            selected = selectedMode,
-            onSelected = onModeSelected,
             sectionInfo = protocolSectionInfo,
         )
     }
@@ -507,21 +664,19 @@ fun SoftApPerformanceSettingsSection(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        NeoSectionTitle(text = stringResource(R.string.rc_vehicle_softap_perf_section_title))
-        Spacer(modifier = Modifier.height(12.dp))
         SettingsOptionDropdown(
             options = presetOptions,
             selected = selectedPreset,
             onSelected = onPresetSelected,
+            label = stringResource(R.string.rc_vehicle_softap_perf_section_title),
             sectionInfo = stringResource(R.string.rc_vehicle_softap_perf_section_body),
         )
         Spacer(modifier = Modifier.height(20.dp))
-        NeoSectionTitle(text = stringResource(R.string.rc_vehicle_softap_hud_rate_section_title))
-        Spacer(modifier = Modifier.height(12.dp))
         SettingsOptionDropdown(
             options = hudOptions,
             selected = selectedHudRate,
             onSelected = onHudRateSelected,
+            label = stringResource(R.string.rc_vehicle_softap_hud_rate_section_title),
             sectionInfo = buildString {
                 append(stringResource(R.string.rc_vehicle_softap_hud_rate_section_body))
                 append("\n\n")
@@ -608,20 +763,11 @@ fun connectionModeMenuOption(
     )
     BluetoothConnectionMode.BLE_BINARY -> SettingsMenuOption(
         value = mode,
-        label = stringResource(
-            if (camKitLabels) {
-                R.string.app_settings_connection_ble_binary_kit_b
-            } else {
-                R.string.app_settings_connection_ble_binary
-            },
-        ),
-        description = when {
-            !canUseAdvanced ->
-                stringResource(R.string.app_settings_protocol_advanced_premium_required)
-            camKitLabels ->
-                stringResource(R.string.app_settings_connection_ble_binary_kit_b_description)
-            else ->
-                stringResource(R.string.app_settings_connection_ble_binary_description)
+        label = stringResource(R.string.app_settings_connection_ble_binary),
+        description = if (canUseAdvanced) {
+            stringResource(R.string.app_settings_connection_ble_binary_description)
+        } else {
+            stringResource(R.string.app_settings_protocol_advanced_premium_required)
         },
         enabled = canUseAdvanced,
     )
@@ -634,6 +780,7 @@ fun <T> SettingsOptionDropdown(
     selected: T,
     onSelected: (T) -> Unit,
     modifier: Modifier = Modifier,
+    label: String? = null,
     sectionInfo: String? = null,
     fieldColors: TextFieldColors = settingsDropdownFieldColors(),
     menuBackground: Color = AppGlass.DialogSurface,
@@ -649,24 +796,38 @@ fun <T> SettingsOptionDropdown(
     val hasInfo = !sectionInfo.isNullOrBlank() || !selectedOption?.description.isNullOrBlank()
     val isSingleOption = options.size <= 1
 
+    key(selected, selectedOption?.label) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (isSingleOption) {
-                OutlinedTextField(
-                    value = selectedOption?.label.orEmpty(),
-                    onValueChange = {},
-                    readOnly = true,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = labelColor),
-                    colors = fieldColors,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                val selectedLabel = selectedOption?.label.orEmpty()
+                val summary = if (!label.isNullOrBlank() && selectedLabel.isNotBlank()) {
+                    stringResource(R.string.app_settings_fixed_option_format, label, selectedLabel)
+                } else {
+                    selectedLabel.ifBlank { label.orEmpty() }
+                }
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelColor,
+                    modifier = Modifier.weight(1f),
                 )
             } else {
+                val fieldLabel: (@Composable () -> Unit)? = if (label.isNullOrBlank()) {
+                    null
+                } else {
+                    {
+                        Text(
+                            text = label,
+                            color = if (expanded) accent else Neo.TextPrimary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
@@ -677,6 +838,7 @@ fun <T> SettingsOptionDropdown(
                         onValueChange = {},
                         readOnly = true,
                         singleLine = true,
+                        label = fieldLabel,
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = labelColor),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = fieldColors,
@@ -799,6 +961,7 @@ fun <T> SettingsOptionDropdown(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -806,7 +969,6 @@ fun settingsDropdownFieldColors(
     accent: Color = Neo.Accent,
     text: Color = Neo.TextPrimary,
     secondary: Color = Neo.TextSecondary,
-    container: Color = AppGlass.CardSurface,
 ): TextFieldColors = OutlinedTextFieldDefaults.colors(
     focusedTextColor = text,
     unfocusedTextColor = text,
@@ -815,8 +977,12 @@ fun settingsDropdownFieldColors(
     unfocusedBorderColor = secondary.copy(alpha = 0.55f),
     focusedTrailingIconColor = accent,
     unfocusedTrailingIconColor = secondary,
-    focusedContainerColor = container.copy(alpha = 0.06f),
-    unfocusedContainerColor = container.copy(alpha = 0.04f),
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
+    focusedLabelColor = accent,
+    unfocusedLabelColor = Neo.TextPrimary,
+    disabledLabelColor = Neo.TextMuted,
     cursorColor = accent,
 )
 

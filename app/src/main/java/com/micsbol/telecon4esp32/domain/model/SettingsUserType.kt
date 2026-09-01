@@ -6,8 +6,9 @@ import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
 /**
  * Settings experience level for connection options.
  *
- * [NORMAL] shows starter Simple links (DevKit Simple + CAM SoftAP starter).
- * [ADVANCED] shows binary / BLE / Kit A SoftAP options.
+ * [NORMAL] (UI: Default) shows starter Simple links (DevKit Simple, CAM SoftAP starter,
+ * or Role A two-device: video-only CAM + DevKit Bluetooth Simple).
+ * [ADVANCED] shows binary / BLE / Kit A SoftAP options (Pro or coins).
  */
 enum class SettingsUserType {
     NORMAL,
@@ -71,3 +72,12 @@ fun ApplicationId.preferredConnectionMode(
 
     return firstUsable(availableConnectionModes(board, userType))
 }
+
+/** Starter Default link for a fresh install of [this] application. */
+fun ApplicationId.originalDefaultConnectionMode(): BluetoothConnectionMode =
+    preferredConnectionMode(
+        board = Esp32Board.defaultFor(this),
+        family = ConnectionLinkFamily.BLUETOOTH,
+        userType = SettingsUserType.NORMAL,
+        canUseAdvanced = false,
+    ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE

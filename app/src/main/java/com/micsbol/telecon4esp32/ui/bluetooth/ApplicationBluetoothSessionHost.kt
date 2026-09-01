@@ -9,11 +9,11 @@ import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -23,9 +23,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
@@ -39,6 +41,11 @@ import com.micsbol.telecon4esp32.ui.applications.titleRes
 import com.micsbol.telecon4esp32.ui.components.DisconnectedBannerInsets
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
 import com.micsbol.telecon4esp32.ui.components.LocalDisconnectedBannerInsets
+import com.micsbol.telecon4esp32.ui.components.NeoDialog
+import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
+import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
+import com.micsbol.telecon4esp32.ui.components.NeoPillButton
+import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
 /**
@@ -202,26 +209,37 @@ fun ApplicationBluetoothSessionHost(
     )
 
     if (hasConflict && conflictSession != null) {
-        AlertDialog(
+        NeoDialog(
             onDismissRequest = { navController?.navigateUp() },
-            title = { Text(stringResource(R.string.bluetooth_session_conflict_title)) },
-            text = {
-                Text(
-                    stringResource(
+            wrapContentHeight = true,
+            title = {
+                NeoDialogTitle(text = stringResource(R.string.bluetooth_session_conflict_title))
+            },
+            subtitle = {
+                NeoDialogBody(
+                    text = stringResource(
                         R.string.bluetooth_session_conflict_body,
                         stringResource(conflictSession.applicationId.titleRes()),
                         stringResource(applicationId.titleRes()),
                     ),
                 )
             },
-            confirmButton = {
-                TextButton(onClick = { bluetoothViewModel.disconnectFromDevice() }) {
-                    Text(stringResource(R.string.bluetooth_session_disconnect_other))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { navController?.navigateUp() }) {
-                    Text(stringResource(R.string.codes_pdf_cancel))
+            actions = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NeoSecondaryButton(
+                        text = stringResource(R.string.codes_pdf_cancel),
+                        onClick = { navController?.navigateUp() },
+                        compact = true,
+                    )
+                    NeoPillButton(
+                        text = stringResource(R.string.bluetooth_session_disconnect_other),
+                        onClick = { bluetoothViewModel.disconnectFromDevice() },
+                        compact = true,
+                    )
                 }
             },
         )

@@ -2,7 +2,6 @@ package com.micsbol.telecon4esp32.domain.bluetooth
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SimpleProtocolTelemetryMapperTest {
@@ -26,7 +25,7 @@ class SimpleProtocolTelemetryMapperTest {
 
         assertEquals(1200, updated.panelState.leftValue)
         assertEquals(3400, updated.panelState.rightValue)
-        assertTrue(updated.panelState.leftOn)
+        assertFalse("Panel on/off is configured in the app, not firmware", updated.panelState.leftOn)
         assertFalse(updated.panelState.rightOn)
         assertEquals(42, updated.indicatorState.analogValue)
         assertEquals(88, updated.indicatorState.batteryLevel)
@@ -64,5 +63,25 @@ class SimpleProtocolTelemetryMapperTest {
 
         assertEquals(listOf(1f, 0f), afterSecond.plotState.series[0].dataPoints)
         assertEquals(2L, afterSecond.plotState.revision)
+    }
+
+    @Test
+    fun `applyRcPlot keeps eight numbered analog samples`() {
+        val updated = SimpleProtocolTelemetryMapper.applyRcPlot(
+            values = mapOf(
+                "v0" to "10",
+                "v3" to "20",
+                "v7" to "255",
+                "v8" to "99",
+            ),
+            current = TelemetryState(),
+            plotNames = emptyMap(),
+        )
+        assertEquals(8, updated.plotState.series.size)
+        assertEquals("CH1", updated.plotState.series[0].name)
+        assertEquals("CH8", updated.plotState.series[7].name)
+        assertEquals(listOf(10 / 255f), updated.plotState.series[0].dataPoints)
+        assertEquals(listOf(20 / 255f), updated.plotState.series[3].dataPoints)
+        assertEquals(listOf(255 / 255f), updated.plotState.series[7].dataPoints)
     }
 }

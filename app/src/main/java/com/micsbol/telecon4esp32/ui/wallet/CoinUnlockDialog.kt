@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.wallet
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,8 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -58,18 +62,24 @@ fun CoinUnlockDialog(
     onWatchAd: () -> Unit,
     onUpgrade: () -> Unit,
 ) {
+    val configuration = LocalConfiguration.current
+    val compact = resolveCoinDialogLimits(
+        screenWidthDp = configuration.screenWidthDp,
+        screenHeightDp = configuration.screenHeightDp,
+        isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+    ).compact
     CoinDialogShell(
         onDismissRequest = onDismiss,
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Image(
                     painter = painterResource(R.drawable.ic_coin_stack),
                     contentDescription = null,
-                    modifier = Modifier.size(26.dp),
+                    modifier = Modifier.size(if (compact) 22.dp else 26.dp),
                 )
                 Text(
                     text = stringResource(R.string.coins_unlock_title, appName),
@@ -77,33 +87,39 @@ fun CoinUnlockDialog(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = Neo.TextPrimary,
-                    maxLines = 3,
+                    maxLines = if (compact) 2 else 3,
                     overflow = TextOverflow.Ellipsis,
                     softWrap = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).widthIn(min = 0.dp),
                 )
             }
         },
         content = {
-            Text(
-                text = stringResource(R.string.coins_unlock_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Neo.TextSecondary,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = stringResource(R.string.coins_unlock_pick_option),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = Neo.TextPrimary,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (!compact) {
+                Text(
+                    text = stringResource(R.string.coins_unlock_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Neo.TextSecondary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = stringResource(R.string.coins_unlock_pick_option),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Neo.TextPrimary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                // Room for two-digit costs + coin icon; ES "Desbloquear" ellipsizes if needed.
-                val unlockButtonWidth = if (maxWidth < 340.dp) 136.dp else 148.dp
+                // Hug-content on short landscape so the Use pill doesn't dominate Huawei widths.
+                val unlockButtonWidth = when {
+                    compact -> null
+                    maxWidth < 340.dp -> 136.dp
+                    else -> 148.dp
+                }
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
                 ) {
                     CoinUnlockOption.entries.filter { it.isCoinPurchasable }.forEach { option ->
                         CoinUnlockOptionRow(
@@ -115,28 +131,44 @@ fun CoinUnlockDialog(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                CoinBalanceChip(
-                    balance = wallet.balance,
-                    enlarged = false,
-                )
+            if (!compact) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CoinBalanceChip(
+                        balance = wallet.balance,
+                        enlarged = false,
+                    )
+                }
             }
         },
         actions = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp),
             ) {
                 CoinWatchAdPillButton(
                     onClick = onWatchAd,
                     fillMaxWidth = true,
+                    compact = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(min = 0.dp)
+                        .fillMaxHeight(),
                 )
-                CoinGoProButton(onClick = onUpgrade)
+                CoinGoProButton(
+                    onClick = onUpgrade,
+                    compact = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(min = 0.dp)
+                        .fillMaxHeight(),
+                )
             }
         },
     )
@@ -146,10 +178,11 @@ fun CoinUnlockDialog(
 private fun CoinGoProButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val label = stringResource(R.string.coins_upgrade_button)
     val benefit = stringResource(R.string.coins_upgrade_benefit)
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(if (compact) 18.dp else 22.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -168,13 +201,17 @@ private fun CoinGoProButton(
                 role = Role.Button
                 contentDescription = "$label. $benefit"
             }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(
+                horizontal = if (compact) 8.dp else 16.dp,
+                vertical = if (compact) 6.dp else 12.dp,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = label,
             color = ProGold,
-            fontSize = 16.sp,
+            fontSize = if (compact) 15.sp else 16.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -183,7 +220,7 @@ private fun CoinGoProButton(
         Text(
             text = benefit,
             color = ProGold.copy(alpha = 0.88f),
-            fontSize = 12.sp,
+            fontSize = if (compact) 11.sp else 12.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -265,7 +302,7 @@ fun CoinPricingTableDialog(
 private fun CoinUnlockOptionRow(
     option: CoinUnlockOption,
     balance: Int,
-    unlockButtonWidth: Dp,
+    unlockButtonWidth: Dp?,
     onUnlock: () -> Unit,
 ) {
     val label = when (option) {
@@ -288,6 +325,7 @@ private fun CoinUnlockOptionRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .weight(1f)
+                .widthIn(min = 0.dp)
                 .padding(end = 8.dp),
         )
         CoinUnlockPillButton(

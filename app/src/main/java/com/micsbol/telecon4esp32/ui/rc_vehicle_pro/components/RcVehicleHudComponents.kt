@@ -1,7 +1,14 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,16 +22,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BatteryFull
-import androidx.compose.material.icons.filled.Engineering
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Videocam
@@ -35,12 +38,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,7 +62,9 @@ import com.micsbol.telecon4esp32.ui.components.brandSecondary
 import com.micsbol.telecon4esp32.ui.components.mutedTextColor
 import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProGlass
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProUiState
+import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 
 @Composable
@@ -64,6 +75,95 @@ fun RcVehicleHudTopBar(
     metricsContent: @Composable () -> Unit = {},
     statusContent: @Composable () -> Unit = {},
     actions: @Composable () -> Unit = {},
+    expanded: Boolean = true,
+    onExpandedChange: (Boolean) -> Unit = {},
+    hideRowStartContent: @Composable () -> Unit = {},
+    hideRowEndContent: @Composable () -> Unit = {},
+) {
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(
+                expandFrom = Alignment.Top,
+                animationSpec = tween(RcVehicleProLayout.HUD_CHROME_ANIM_MS),
+            ) + fadeIn(animationSpec = tween(RcVehicleProLayout.HUD_CHROME_FADE_MS)),
+            exit = shrinkVertically(
+                shrinkTowards = Alignment.Top,
+                animationSpec = tween(RcVehicleProLayout.HUD_CHROME_ANIM_MS),
+            ) + fadeOut(animationSpec = tween(RcVehicleProLayout.HUD_CHROME_FADE_MS)),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                RcVehicleHudTopBarContent(
+                    title = title,
+                    onNavigateBack = onNavigateBack,
+                    metricsContent = metricsContent,
+                    statusContent = statusContent,
+                    actions = actions,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .safeHudPadding(
+                            includeTop = false,
+                            includeBottom = false,
+                            includeHorizontal = true,
+                        )
+                        .padding(horizontal = 4.dp),
+                ) {
+                    Box(modifier = Modifier.align(Alignment.CenterStart)) {
+                        hideRowStartContent()
+                    }
+                    RcVehicleHudHideHandle(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .hudVerticalSwipe(
+                                expanded = true,
+                                onExpandedChange = onExpandedChange,
+                            ),
+                    )
+                    Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                        hideRowEndContent()
+                    }
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = !expanded,
+            enter = expandVertically(
+                expandFrom = Alignment.Top,
+                animationSpec = tween(RcVehicleProLayout.HUD_CHROME_ANIM_MS),
+            ) + fadeIn(animationSpec = tween(RcVehicleProLayout.HUD_CHROME_FADE_MS)),
+            exit = shrinkVertically(
+                shrinkTowards = Alignment.Top,
+                animationSpec = tween(RcVehicleProLayout.HUD_CHROME_ANIM_MS),
+            ) + fadeOut(animationSpec = tween(RcVehicleProLayout.HUD_CHROME_FADE_MS)),
+        ) {
+            RcVehicleHudPeekHandle(
+                onClick = { onExpandedChange(true) },
+                modifier = Modifier.hudVerticalSwipe(
+                    expanded = false,
+                    onExpandedChange = onExpandedChange,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RcVehicleHudTopBarContent(
+    title: String,
+    onNavigateBack: () -> Unit,
+    metricsContent: @Composable () -> Unit,
+    statusContent: @Composable () -> Unit,
+    actions: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Measure back + actions first (no weight). Middle HUD content takes the
     // remaining width so settings never overflows under a landscape side nav bar.
@@ -121,6 +221,62 @@ fun RcVehicleHudTopBar(
                         ),
                     ),
                 ),
+        )
+    }
+}
+
+@Composable
+private fun RcVehicleHudPeekHandle(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(R.string.rc_vehicle_hud_show_top_bar)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .safeHudPadding(includeTop = true, includeBottom = false, includeHorizontal = true)
+            .padding(top = 2.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.TOP_BAR_ALPHA + 0.16f),
+                )
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardDoubleArrowDown,
+                contentDescription = label,
+                tint = brandPrimary(),
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RcVehicleHudHideHandle(
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(R.string.rc_vehicle_hud_hide_top_bar)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.TOP_BAR_ALPHA + 0.08f),
+            )
+            .padding(horizontal = 18.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.KeyboardDoubleArrowUp,
+            contentDescription = label,
+            tint = brandPrimary(),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -289,12 +445,21 @@ fun RcHudTopBarStatusRow(
     modifier: Modifier = Modifier,
     isWifiSoftApMode: Boolean = false,
 ) {
-    val camOnline = uiState.isCameraOnline
-    val camColor = if (camOnline) brandSecondary() else StatusDisconnected
+    val camOnline = if (uiState.expectsCameraStream) {
+        uiState.isCameraOnline
+    } else {
+        uiState.isBluetoothConnected
+    }
+    val camColor = if (camOnline) StatusConnected else StatusDisconnected
     val camDescription = if (camOnline) {
         stringResource(R.string.rc_vehicle_cam_online)
     } else {
         stringResource(R.string.rc_vehicle_cam_offline)
+    }
+    val onCamClick = if (!camOnline && onBluetoothDisconnectedClick != null) {
+        onBluetoothDisconnectedClick
+    } else {
+        null
     }
 
     Row(
@@ -334,14 +499,15 @@ fun RcHudTopBarStatusRow(
             }
         }
         RcHudTopBarStatusBadge(
-            backgroundColor = camColor.copy(alpha = 0.15f),
+            backgroundColor = camColor.copy(alpha = 0.18f),
             contentDescription = camDescription,
+            onClick = onCamClick,
         ) {
             Icon(
-                imageVector = if (camOnline) Icons.Default.Videocam else Icons.Default.Engineering,
+                imageVector = Icons.Default.Videocam,
                 contentDescription = null,
                 tint = camColor,
-                modifier = Modifier.size(15.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }
@@ -352,13 +518,24 @@ private fun RcHudTopBarStatusBadge(
     backgroundColor: Color,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Box(
         modifier = modifier
-            .semantics { this.contentDescription = contentDescription }
+            .semantics {
+                this.contentDescription = contentDescription
+                if (onClick != null) role = Role.Button
+            }
             .clip(RoundedCornerShape(14.dp))
             .background(backgroundColor)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = 7.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {

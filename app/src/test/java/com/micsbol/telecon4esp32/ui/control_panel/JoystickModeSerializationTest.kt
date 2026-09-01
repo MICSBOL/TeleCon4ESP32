@@ -1,4 +1,5 @@
 package com.micsbol.telecon4esp32.ui.control_panel
+import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.fromString
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.toStringRepresentation
@@ -106,5 +107,65 @@ class JoystickModeSerializationTest {
     @Test
     fun `RIGHT position is (12, 6)`() {
         assertEquals(Pair(12, 6), JoystickMode.RIGHT)
+    }
+
+    @Test
+    fun `vertical rest positions are up center down`() {
+        val mode = JoystickMode.VerticalHold()
+        assertEquals(
+            listOf(JoystickMode.CENTER, JoystickMode.UP, JoystickMode.DOWN),
+            mode.allowedRestPositions(),
+        )
+    }
+
+    @Test
+    fun `horizontal rest positions are center left right`() {
+        val mode = JoystickMode.HorizontalSpring()
+        assertEquals(
+            listOf(JoystickMode.CENTER, JoystickMode.LEFT, JoystickMode.RIGHT),
+            mode.allowedRestPositions(),
+        )
+    }
+
+    @Test
+    fun `combined rest positions include all five extremes`() {
+        val mode = JoystickMode.Hold()
+        assertEquals(
+            listOf(
+                JoystickMode.CENTER,
+                JoystickMode.UP,
+                JoystickMode.DOWN,
+                JoystickMode.LEFT,
+                JoystickMode.RIGHT,
+            ),
+            mode.allowedRestPositions(),
+        )
+    }
+
+    @Test
+    fun `toggling axes switches between vertical horizontal and combined`() {
+        val combined = JoystickMode.Spring()
+        val horizontalOnly = combined.togglingAxis(JoystickAxis.VERTICAL)
+        assertTrue(horizontalOnly is JoystickMode.HorizontalSpring)
+        val combinedAgain = horizontalOnly.togglingAxis(JoystickAxis.VERTICAL)
+        assertTrue(combinedAgain is JoystickMode.Spring)
+        val verticalOnly = combinedAgain.togglingAxis(JoystickAxis.HORIZONTAL)
+        assertTrue(verticalOnly is JoystickMode.VerticalSpring)
+    }
+
+    @Test
+    fun `invalid rest for axis falls back to center`() {
+        val vertical = JoystickMode.Hold(JoystickMode.LEFT).withAxis(JoystickAxis.VERTICAL)
+        assertTrue(vertical is JoystickMode.VerticalHold)
+        assertEquals(JoystickMode.CENTER, vertical.initialPosition)
+    }
+
+    @Test
+    fun `grid rest converts to normalized stick`() {
+        assertEquals(Pair(0f, 0f), JoystickMode.Spring().initialPositionNormalized())
+        assertEquals(Pair(0f, 1f), JoystickMode.Hold(JoystickMode.UP).initialPositionNormalized())
+        assertEquals(Pair(0f, -1f), JoystickMode.Hold(JoystickMode.DOWN).initialPositionNormalized())
+        assertEquals(Pair(-1f, 0f), JoystickMode.Hold(JoystickMode.LEFT).initialPositionNormalized())
+        assertEquals(Pair(1f, 0f), JoystickMode.Hold(JoystickMode.RIGHT).initialPositionNormalized())
     }
 }

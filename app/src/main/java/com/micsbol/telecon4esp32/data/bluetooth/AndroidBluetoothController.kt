@@ -310,21 +310,14 @@ class AndroidBluetoothController @Inject constructor(
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val leftValue = buffer.getShort(2).toInt()
         val rightValue = buffer.getShort(4).toInt()
-        val panelStates = buffer.get(6)
-        val leftOn = (panelStates.toInt() and (1 shl 0)) != 0
-        val rightOn = (panelStates.toInt() and (1 shl 1)) != 0
-        val leftColorIsGreen = (panelStates.toInt() and (1 shl 2)) != 0
-        val rightColorIsGreen = (panelStates.toInt() and (1 shl 3)) != 0
+        // Byte 6 still occupies the on/color flags slot for wire compatibility;
+        // appearance is configured in Panel settings, not from firmware.
 
         _telemetryState.update { currentState ->
             currentState.copy(
                 panelState = currentState.panelState.copy(
                     leftValue = leftValue,
                     rightValue = rightValue,
-                    leftOn = leftOn,
-                    rightOn = rightOn,
-                    leftColorArgb = if (leftColorIsGreen) 0xFF00FF00.toInt() else 0xFFFF0000.toInt(),
-                    rightColorArgb = if (rightColorIsGreen) 0xFF00FF00.toInt() else 0xFFFF0000.toInt()
                 )
             )
         }
@@ -396,7 +389,8 @@ class AndroidBluetoothController @Inject constructor(
                 return
             }
 
-            val newPlotValues = (0 until numPlots).map {
+            val take = minOf(numPlots, SimpleProtocolTelemetryMapper.MAX_PLOT_SERIES)
+            val newPlotValues = (0 until take).map {
                 (bytes[currentIndex++].toInt() and 0xFF) / 255f
             }
 

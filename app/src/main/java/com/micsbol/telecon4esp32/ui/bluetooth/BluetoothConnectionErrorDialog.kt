@@ -33,6 +33,7 @@ fun BluetoothConnectionErrorDialog(
 
     NeoDialog(
         onDismissRequest = onDismiss,
+        wrapContentHeight = true,
         title = {
             NeoDialogTitle(text = content.title)
         },

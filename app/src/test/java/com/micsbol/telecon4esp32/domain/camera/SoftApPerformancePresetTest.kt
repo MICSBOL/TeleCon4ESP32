@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.domain.camera
 
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -13,7 +14,7 @@ class SoftApPerformancePresetTest {
         val preset = SoftApPerformancePreset.SMOOTH
         assertEquals(4, preset.hudInSampleSize)
         assertTrue(preset.useRgb565)
-        assertEquals(10, preset.maxHudFps)
+        assertEquals(8, preset.maxHudFps)
         assertEquals(150L, preset.softApCtrlPeriodMs)
         assertTrue(preset.softApCtrlPeriodMs <= SoftApPerformancePreset.MAX_CTRL_PERIOD_MS)
     }
@@ -52,13 +53,29 @@ class SoftApPerformancePresetTest {
     }
 
     @Test
+    fun `defaultFor rc vehicle is smooth`() {
+        assertEquals(
+            SoftApPerformancePreset.SMOOTH,
+            SoftApPerformancePreset.defaultFor(ApplicationId.RC_VEHICLE_PRO),
+        )
+        assertEquals(
+            SoftApPerformancePreset.BALANCED,
+            SoftApPerformancePreset.defaultFor(ApplicationId.CONTROL_PANEL),
+        )
+        assertEquals(
+            SoftApPerformancePreset.SMOOTH,
+            SoftApPerformancePreset.fromStored(null, SoftApPerformancePreset.SMOOTH),
+        )
+    }
+
+    @Test
     fun `camconfig query maps presets for firmware Phase 2`() {
         assertEquals(
-            "framesize=qvga&quality=22&fps=10",
+            "framesize=qqvga&quality=28&fps=8&ampdu_rx=0",
             SoftApPerformancePreset.SMOOTH.camConfigQuery,
         )
         assertEquals(
-            "framesize=vga&quality=15&fps=0",
+            "framesize=vga&quality=15&fps=12",
             SoftApPerformancePreset.BALANCED.camConfigQuery,
         )
         assertEquals(

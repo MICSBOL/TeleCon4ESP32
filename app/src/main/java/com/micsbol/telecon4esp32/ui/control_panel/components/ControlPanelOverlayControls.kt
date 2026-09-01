@@ -1,20 +1,33 @@
 package com.micsbol.telecon4esp32.ui.control_panel.components
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Cable
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -30,12 +43,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import com.micsbol.telecon4esp32.ui.control_panel.icon
+import com.micsbol.telecon4esp32.ui.control_panel.titleRes
+import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 
 private val ControlPanelOverlayIconSize = 34.dp
 private val ControlPanelOverlayIconSpacing = 6.dp
+private val ProGold = Color(0xFFFFD54F)
+private val ProGoldDeep = Color(0xFFFFB300)
 
 @Composable
 fun ControlPanelPlasticIconButton(
@@ -116,17 +135,129 @@ fun ControlPanelBluetoothStatusButton(
 }
 
 @Composable
+fun ControlPanelCenterModeButton(
+    mode: ControlPanelCenterMode,
+    selected: Boolean,
+    unlocked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = ControlPanelOverlayIconSize,
+) {
+    val shape = RoundedCornerShape(size * 0.26f)
+    val cornerPx = size * 0.26f
+    val modeName = stringResource(mode.titleRes)
+    val accessibilityDescription = when {
+        unlocked && selected -> stringResource(
+            R.string.control_panel_center_mode_button_content_description,
+            modeName,
+        )
+        unlocked -> stringResource(
+            R.string.control_panel_center_mode_select_content_description,
+            modeName,
+        )
+        mode == ControlPanelCenterMode.CAMERA ->
+            stringResource(R.string.control_panel_center_camera_locked_content_description)
+        mode == ControlPanelCenterMode.RADAR ->
+            stringResource(R.string.control_panel_center_radar_locked_content_description)
+        else -> stringResource(R.string.control_panel_center_extras_locked_content_description)
+    }
+
+    val selectedBorderAlpha = if (unlocked && selected) {
+        val pulse = rememberInfiniteTransition(label = "centerModeBorder")
+        val alpha by pulse.animateFloat(
+            initialValue = 0.35f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1200),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "centerModeBorderAlpha",
+        )
+        alpha
+    } else {
+        1f
+    }
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .alpha(if (unlocked) 1f else 0.55f)
+            .then(
+                when {
+                    unlocked && selected -> Modifier.border(
+                        width = 1.dp,
+                        color = Neo.Positive.copy(alpha = selectedBorderAlpha),
+                        shape = shape,
+                    )
+                    !unlocked -> Modifier.border(
+                        width = 1.5.dp,
+                        color = ProGold.copy(alpha = 0.7f),
+                        shape = shape,
+                    )
+                    else -> Modifier
+                },
+            )
+            .clip(shape)
+            .drawBehind {
+                drawPlasticRaisedRoundRect(
+                    topLeft = Offset.Zero,
+                    size = Size(size.toPx(), size.toPx()),
+                    cornerRadius = CornerRadius(cornerPx.toPx()),
+                )
+                if (!unlocked) {
+                    drawRoundRect(
+                        color = ProGoldDeep.copy(alpha = 0.18f),
+                        topLeft = Offset.Zero,
+                        size = Size(size.toPx(), size.toPx()),
+                        cornerRadius = CornerRadius(cornerPx.toPx()),
+                    )
+                }
+            }
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                this.contentDescription = accessibilityDescription
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = mode.icon,
+            contentDescription = null,
+            tint = if (unlocked) brandPrimary() else ProGold,
+            modifier = Modifier.size(size * 0.5f),
+        )
+        if (!unlocked) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = ProGold,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(3.dp)
+                    .size(size * 0.28f),
+            )
+        }
+    }
+}
+
+@Composable
 fun ControlPanelOverlayControls(
     isBluetoothConnected: Boolean,
     isBluetoothConnecting: Boolean,
     onBackToModulesClick: () -> Unit,
-    onSettingsClick: () -> Unit,
+    onConnectionSettingsClick: () -> Unit,
     onBluetoothDisconnectedClick: () -> Unit,
+    centerMode: ControlPanelCenterMode,
+    isModeUnlocked: (ControlPanelCenterMode) -> Boolean,
+    onCenterModeClick: (ControlPanelCenterMode) -> Unit,
     modifier: Modifier = Modifier,
     usesWifiLink: Boolean = false,
+    isSessionRecording: Boolean = false,
+    isSessionRecordingUnlocked: Boolean = true,
+    onToggleSessionRecording: () -> Unit = {},
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(ControlPanelOverlayIconSpacing),
     ) {
@@ -137,12 +268,12 @@ fun ControlPanelOverlayControls(
             size = ControlPanelOverlayIconSize,
         )
         ControlPanelPlasticIconButton(
-            onClick = onSettingsClick,
+            onClick = onConnectionSettingsClick,
             contentDescription = stringResource(
                 R.string.applications_settings_content_description,
-                stringResource(R.string.app_control_panel_settings_title),
+                stringResource(R.string.control_panel_connection_settings_title),
             ),
-            icon = Icons.Default.Settings,
+            icon = Icons.Filled.Cable,
             size = ControlPanelOverlayIconSize,
         )
         ControlPanelBluetoothStatusButton(
@@ -152,5 +283,75 @@ fun ControlPanelOverlayControls(
             size = ControlPanelOverlayIconSize,
             usesWifiLink = usesWifiLink,
         )
+        ControlPanelRecordSessionButton(
+            isRecording = isSessionRecording,
+            unlocked = isSessionRecordingUnlocked,
+            onClick = onToggleSessionRecording,
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        ControlPanelCenterMode.entries.forEach { mode ->
+            ControlPanelCenterModeButton(
+                mode = mode,
+                selected = centerMode == mode,
+                unlocked = isModeUnlocked(mode),
+                onClick = { onCenterModeClick(mode) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ControlPanelRecordSessionButton(
+    isRecording: Boolean,
+    unlocked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = ControlPanelOverlayIconSize,
+) {
+    val showLock = !unlocked && !isRecording
+    val shape = RoundedCornerShape(size * 0.26f)
+    val contentDescription = when {
+        isRecording -> stringResource(R.string.control_panel_stop_recording_content_description)
+        showLock -> stringResource(R.string.control_panel_record_session_locked_content_description)
+        else -> stringResource(R.string.control_panel_record_session_content_description)
+    }
+    Box(
+        modifier = modifier
+            .size(size)
+            .alpha(if (showLock) 0.55f else 1f)
+            .then(
+                if (showLock) {
+                    Modifier.border(
+                        width = 1.5.dp,
+                        color = ProGold.copy(alpha = 0.7f),
+                        shape = shape,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        ControlPanelPlasticIconButton(
+            onClick = onClick,
+            contentDescription = contentDescription,
+            icon = Icons.Filled.FiberManualRecord,
+            size = size,
+            iconTint = when {
+                isRecording -> Neo.Negative
+                showLock -> ProGold
+                else -> Color(0xFFD8D8D8)
+            },
+        )
+        if (showLock) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = ProGold,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(3.dp)
+                    .size(size * 0.28f),
+            )
+        }
     }
 }

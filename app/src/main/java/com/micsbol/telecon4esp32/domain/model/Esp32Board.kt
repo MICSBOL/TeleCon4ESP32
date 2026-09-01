@@ -3,27 +3,34 @@ package com.micsbol.telecon4esp32.domain.model
 /**
  * Physical ESP32 board setup the user targets for an application.
  *
- * - [DEV_KIT] — ESP32 DevKit (WROOM-32); Bluetooth and SoftAP Wi‑Fi control only
- *   ([com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile.CONTROL_ONLY]).
- * - [CAM] — one ESP32-CAM. Normal SoftAP starter or Advanced Kit A SoftAP Binary
+ * - [DEV_KIT] — Role A control board. Bluetooth or DevKit SoftAP Wi‑Fi.
+ *   Optional SoftAP HTTP video is a separate overlay setting, not this enum.
+ * - [CAM] — Role B: one ESP32-CAM. SoftAP starter (video + TCP) or Advanced SoftAP Binary
  *   ([com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile.WIFI_SOFTAP]).
- * - [CAM_AND_DEV_KIT] — Advanced Kit B: SoftAP video on ESP32-CAM + BLE Binary on DevKit
- *   ([com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE]).
+ * - [CAM_AND_DEV_KIT] — legacy stored value for Role A dual-board setups. Normalized to
+ *   [DEV_KIT] plus SoftAP camera overlay (Classic, Classic Binary, or BLE control).
  */
 enum class Esp32Board {
     DEV_KIT,
     CAM,
-    /** Kit B dual-board: CAM SoftAP video + DevKit BLE control. */
+    /** Legacy dual-board storage: CAM SoftAP video + DevKit Bluetooth control. */
     CAM_AND_DEV_KIT,
     ;
 
-    /** SoftAP HTTP camera is expected (single CAM or Kit B video half). */
+    /** SoftAP HTTP camera is expected on this board value (single CAM or legacy dual). */
     val usesSoftApCamera: Boolean
         get() = this == CAM || this == CAM_AND_DEV_KIT
 
-    /** Advanced Kit B dual-board setup. */
+    /** Legacy dual-board stored value (CAM video + DevKit Bluetooth). */
     val isKitBDual: Boolean
         get() = this == CAM_AND_DEV_KIT
+
+    /**
+     * Board used for control-link pickers. Legacy [CAM_AND_DEV_KIT] is DevKit control
+     * plus an orthogonal SoftAP camera overlay.
+     */
+    fun normalizedControlBoard(): Esp32Board =
+        if (this == CAM_AND_DEV_KIT) DEV_KIT else this
 
     companion object {
         fun fromStored(value: String?): Esp32Board =
@@ -33,11 +40,21 @@ enum class Esp32Board {
     }
 }
 
-/** Applications that include a live camera view and can target the ESP32-CAM board. */
+/**
+ * Applications that include a live camera view and can target the ESP32-CAM board
+ * or an optional SoftAP camera overlay on DevKit Bluetooth control.
+ */
 fun ApplicationId.usesCamera(): Boolean = when (this) {
+    ApplicationId.CONTROL_PANEL,
     ApplicationId.RC_VEHICLE_PRO,
     ApplicationId.GREENHOUSE,
     ApplicationId.SMART_DOOR_LOCK,
     -> true
     else -> false
 }
+
+/** SoftAP camera overlay toggle is shown for DevKit control (not single-CAM SoftAP kits). */
+fun showSoftApCameraOverlaySetting(
+    applicationId: ApplicationId,
+    board: Esp32Board,
+): Boolean = applicationId.usesCamera() && board.normalizedControlBoard() != Esp32Board.CAM

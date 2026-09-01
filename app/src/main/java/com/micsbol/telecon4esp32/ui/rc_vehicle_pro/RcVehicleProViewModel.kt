@@ -8,28 +8,33 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.micsbol.telecon4esp32.data.camera.SoftApCamConfigClient
-import com.micsbol.telecon4esp32.data.camera.SoftApCamConfigResult
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamRepository
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
-import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
 import com.micsbol.telecon4esp32.domain.camera.Esp32CameraLinkSession
 import com.micsbol.telecon4esp32.domain.camera.HudPreviewOptions
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
+import com.micsbol.telecon4esp32.domain.camera.isCameraStreamAtRisk
 import com.micsbol.telecon4esp32.domain.camera.resolveCameraLinkProfile
+import com.micsbol.telecon4esp32.domain.camera.resolveSoftApHudPreviewOptions
+import com.micsbol.telecon4esp32.domain.camera.shouldPreferCapturePollingForLowLatency
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
+import com.micsbol.telecon4esp32.domain.use_case.ApplySoftApCamConfigUseCase
+import com.micsbol.telecon4esp32.domain.use_case.EnsureSoftApStreamQualityDefaultsUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
-import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetApplicationConnectionModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetSoftApHudProcessingRateUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetSoftApPerformancePresetUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetUseSoftApCameraUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApHudProcessingRateUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApPerformancePresetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +53,6 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -58,12 +62,16 @@ class RcVehicleProViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val cameraStreamRepository: CameraStreamRepository,
     private val remoteController: RemoteController,
-    private val softApCamConfigClient: SoftApCamConfigClient,
     private val settingsRepository: ISettingsRepository,
     getApplicationBoard: GetApplicationBoardUseCase,
-    getApplicationTransportType: GetApplicationTransportTypeUseCase,
+    getApplicationConnectionMode: GetApplicationConnectionModeUseCase,
+    getUseSoftApCamera: GetUseSoftApCameraUseCase,
     getSoftApPerformancePreset: GetSoftApPerformancePresetUseCase,
     getSoftApHudProcessingRate: GetSoftApHudProcessingRateUseCase,
+    private val saveSoftApPerformancePreset: SaveSoftApPerformancePresetUseCase,
+    private val saveSoftApHudProcessingRate: SaveSoftApHudProcessingRateUseCase,
+    private val ensureSoftApStreamQualityDefaults: EnsureSoftApStreamQualityDefaultsUseCase,
+    private val applySoftApCamConfig: ApplySoftApCamConfigUseCase,
 ) : ViewModel() {
 
     private val runningOnEmulator = isLikelyEmulator()
@@ -71,8 +79,8 @@ class RcVehicleProViewModel @Inject constructor(
         repository = cameraStreamRepository,
         skipOnEmulator = runningOnEmulator,
     )
-    private val lastCamConfigPreset = AtomicReference<SoftApPerformancePreset?>(null)
     private val screenVisibleFlow = MutableStateFlow(false)
+    private val applicationId = ApplicationId.RC_VEHICLE_PRO
 
     private val board: StateFlow<Esp32Board> = getApplicationBoard(ApplicationId.RC_VEHICLE_PRO)
         .stateIn(
@@ -81,23 +89,32 @@ class RcVehicleProViewModel @Inject constructor(
             initialValue = Esp32Board.defaultFor(ApplicationId.RC_VEHICLE_PRO),
         )
 
-    private val transport: StateFlow<BluetoothTransportType> =
-        getApplicationTransportType(ApplicationId.RC_VEHICLE_PRO)
+    private val connectionMode: StateFlow<BluetoothConnectionMode> =
+        getApplicationConnectionMode(ApplicationId.RC_VEHICLE_PRO)
+            .map { stored -> stored ?: BluetoothConnectionMode.CLASSIC_SIMPLE }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = BluetoothTransportType.CLASSIC,
+                initialValue = BluetoothConnectionMode.CLASSIC_SIMPLE,
             )
 
-    private val softApPerformancePreset: StateFlow<SoftApPerformancePreset> =
+    private val useSoftApCamera: StateFlow<Boolean> =
+        getUseSoftApCamera(ApplicationId.RC_VEHICLE_PRO)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = false,
+            )
+
+    val softApPerformancePreset: StateFlow<SoftApPerformancePreset> =
         getSoftApPerformancePreset(ApplicationId.RC_VEHICLE_PRO)
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = SoftApPerformancePreset.DEFAULT,
+                initialValue = SoftApPerformancePreset.defaultFor(ApplicationId.RC_VEHICLE_PRO),
             )
 
-    private val softApHudProcessingRate: StateFlow<SoftApHudProcessingRate> =
+    val softApHudProcessingRate: StateFlow<SoftApHudProcessingRate> =
         getSoftApHudProcessingRate(ApplicationId.RC_VEHICLE_PRO)
             .stateIn(
                 scope = viewModelScope,
@@ -105,11 +122,16 @@ class RcVehicleProViewModel @Inject constructor(
                 initialValue = SoftApHudProcessingRate.DEFAULT,
             )
 
-    val cameraLinkProfile: StateFlow<CameraLinkProfile> = combine(board, transport) { selectedBoard, selectedTransport ->
+    val cameraLinkProfile: StateFlow<CameraLinkProfile> = combine(
+        board,
+        connectionMode,
+        useSoftApCamera,
+    ) { selectedBoard, selectedMode, overlay ->
         resolveCameraLinkProfile(
             ApplicationId.RC_VEHICLE_PRO,
             selectedBoard,
-            selectedTransport,
+            selectedMode,
+            overlay,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -169,7 +191,7 @@ class RcVehicleProViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             cameraLinkProfile.collect { profile ->
-                // SoftAP video auto-arms for Kit A and Kit B whenever the profile expects a camera.
+                // SoftAP video auto-arms for Kit A and DevKit Bluetooth + overlay whenever the profile expects a camera.
                 cameraSession.setCameraEnabled(profile.shouldStartCameraStream)
                 cameraSession.setProfile(profile)
                 _uiState.update {
@@ -196,15 +218,19 @@ class RcVehicleProViewModel @Inject constructor(
             }
                 .distinctUntilChanged()
                 .collect { snapshot ->
-                    cameraStreamRepository.setPreferCapturePolling(false)
+                    cameraStreamRepository.setPreferCapturePolling(
+                        shouldPreferCapturePollingForLowLatency(
+                            preset = snapshot.preset,
+                            atRisk = appContext.isCameraStreamAtRisk(),
+                            streaming = snapshot.streaming,
+                        ),
+                    )
                     cameraStreamRepository.setHudPreviewOptions(
-                        if (snapshot.streaming) {
-                            snapshot.preset.toHudPreviewOptions().copy(
-                                maxHudFps = snapshot.rate.resolveMaxHudFps(snapshot.preset),
-                            )
-                        } else {
-                            HudPreviewOptions.FULL_QUALITY
-                        },
+                        resolveSoftApHudPreviewOptions(
+                            preset = snapshot.preset,
+                            hudRate = snapshot.rate,
+                            streaming = snapshot.streaming,
+                        ),
                     )
                 }
         }
@@ -262,10 +288,16 @@ class RcVehicleProViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { (armed, preset) ->
                     if (!armed) {
-                        lastCamConfigPreset.set(null)
+                        applySoftApCamConfig.clearSession(applicationId)
                         return@collect
                     }
-                    applySoftApCamConfig(preset)
+                    applySoftApCamConfig(
+                        applicationId = applicationId,
+                        preset = preset,
+                        onStreamRestartRequired = {
+                            cameraSession.restartIfStreaming()
+                        },
+                    )
                 }
         }
     }
@@ -274,15 +306,21 @@ class RcVehicleProViewModel @Inject constructor(
         screenVisibleFlow.value = true
         cameraSession.setCameraEnabled(cameraLinkProfile.value.shouldStartCameraStream)
         cameraSession.onVisible()
-        val preset = softApPerformancePreset.value
-        if (cameraLinkProfile.value.shouldStartCameraStream && !runningOnEmulator) {
-            viewModelScope.launch { applySoftApCamConfig(preset) }
+        viewModelScope.launch {
+            ensureSoftApStreamQualityDefaults(applicationId)
+            if (cameraLinkProfile.value.shouldStartCameraStream && !runningOnEmulator) {
+                applySoftApCamConfig(
+                    applicationId = applicationId,
+                    preset = softApPerformancePreset.value,
+                    onStreamRestartRequired = { cameraSession.restartIfStreaming() },
+                )
+            }
         }
     }
 
     fun onScreenHidden() {
         screenVisibleFlow.value = false
-        lastCamConfigPreset.set(null)
+        applySoftApCamConfig.clearSession(applicationId)
         cameraStreamRepository.setPreferCapturePolling(false)
         cameraStreamRepository.setHudPreviewOptions(HudPreviewOptions.FULL_QUALITY)
         cameraSession.onHidden()
@@ -320,6 +358,18 @@ class RcVehicleProViewModel @Inject constructor(
         _uiState.update { it.copy(lightsOn = !it.lightsOn) }
     }
 
+    fun onSoftApPerformancePresetChanged(preset: SoftApPerformancePreset) {
+        viewModelScope.launch {
+            saveSoftApPerformancePreset(ApplicationId.RC_VEHICLE_PRO, preset)
+        }
+    }
+
+    fun onSoftApHudProcessingRateChanged(rate: SoftApHudProcessingRate) {
+        viewModelScope.launch {
+            saveSoftApHudProcessingRate(ApplicationId.RC_VEHICLE_PRO, rate)
+        }
+    }
+
     fun onCapturePhoto() {
         // Prefer full-quality decode of the last JPEG (HUD may be downsampled RGB_565).
         val still = cameraStreamRepository.captureStillBitmap()
@@ -355,39 +405,9 @@ class RcVehicleProViewModel @Inject constructor(
 
     override fun onCleared() {
         screenVisibleFlow.value = false
-        lastCamConfigPreset.set(null)
+        applySoftApCamConfig.clearSession(applicationId)
         cameraSession.stop()
         super.onCleared()
-    }
-
-    /**
-     * SoftAP Phase 2: apply firmware camera params; restart `/stream` after Smooth
-     * (framesize change) or when leaving Smooth back to VGA.
-     */
-    private suspend fun applySoftApCamConfig(preset: SoftApPerformancePreset) {
-        if (lastCamConfigPreset.get() == preset) return
-        val previous = lastCamConfigPreset.get()
-        val result = withContext(Dispatchers.IO) {
-            softApCamConfigClient.apply(preset, Esp32CameraDefaults.DEFAULT_BASE_URL)
-        }
-        when (result) {
-            SoftApCamConfigResult.Applied -> {
-                lastCamConfigPreset.set(preset)
-                val shouldRestart = preset.mayChangeFramesize ||
-                    previous?.mayChangeFramesize == true
-                if (shouldRestart && screenVisibleFlow.value) {
-                    withContext(Dispatchers.Main.immediate) {
-                        cameraSession.restartIfStreaming()
-                    }
-                }
-            }
-            SoftApCamConfigResult.Unsupported,
-            SoftApCamConfigResult.Unreachable,
-            -> {
-                // Avoid retry storms; Phase 1 Android limits still apply.
-                lastCamConfigPreset.set(preset)
-            }
-        }
     }
 
     private fun clearPhotoFeedbackLater() {

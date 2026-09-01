@@ -6,14 +6,35 @@ import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
+import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
+import com.micsbol.telecon4esp32.domain.use_case.SaveAnalogIndicatorUnitUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveBatteryLabelUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveChannelRoutingUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLeftKnobValueUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLeftPanelColorGreenUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLeftPanelOnUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLeftPanelUnitUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLeftStickModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SavePlotCalibrationUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SavePlotLabelUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveRightKnobValueUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveRightPanelColorGreenUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveRightPanelOnUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveRightPanelUnitUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveRightStickModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveSettingsUseCases
+import com.micsbol.telecon4esp32.domain.use_case.SaveSwitchStateUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
@@ -72,6 +93,22 @@ class FakeSettingsRepository : ISettingsRepository {
         _settings.update { it.copy(batteryLabel = value) }
     }
 
+    override suspend fun saveLeftPanelOn(isOn: Boolean) {
+        _settings.update { it.copy(leftPanelOn = isOn) }
+    }
+
+    override suspend fun saveRightPanelOn(isOn: Boolean) {
+        _settings.update { it.copy(rightPanelOn = isOn) }
+    }
+
+    override suspend fun saveLeftPanelColorGreen(isGreen: Boolean) {
+        _settings.update { it.copy(leftPanelColorGreen = isGreen) }
+    }
+
+    override suspend fun saveRightPanelColorGreen(isGreen: Boolean) {
+        _settings.update { it.copy(rightPanelColorGreen = isGreen) }
+    }
+
     override suspend fun savePlotLabel(index: Int, value: String) {
         if (index !in 0 until UserSettings.PLOT_LABEL_COUNT) return
         _settings.update { settings ->
@@ -79,6 +116,19 @@ class FakeSettingsRepository : ISettingsRepository {
             updated[index] = value
             settings.copy(plotLabels = updated)
         }
+    }
+
+    override suspend fun savePlotCalibration(index: Int, calibration: PlotCalibration) {
+        if (index !in 0 until UserSettings.PLOT_LABEL_COUNT) return
+        _settings.update { settings ->
+            val updated = PlotCalibration.padded(settings.plotCalibrations).toMutableList()
+            updated[index] = calibration
+            settings.copy(plotCalibrations = updated)
+        }
+    }
+
+    override suspend fun saveChannelRouting(routing: ChannelRouting) {
+        _settings.update { it.copy(channelRouting = routing.padded()) }
     }
 
     override fun protocolModeFlow(applicationId: ApplicationId): Flow<BluetoothProtocolMode> =
@@ -122,11 +172,57 @@ class FakeSettingsRepository : ISettingsRepository {
 
     override fun boardFlow(applicationId: ApplicationId): Flow<Esp32Board> =
         _boards.map { boards ->
-            boards[applicationId] ?: Esp32Board.defaultFor(applicationId)
+            (boards[applicationId] ?: Esp32Board.defaultFor(applicationId))
+                .normalizedControlBoard()
         }
 
     override suspend fun saveBoard(applicationId: ApplicationId, board: Esp32Board) {
-        _boards.update { it + (applicationId to board) }
+        _boards.update { boards ->
+            val previous = boards[applicationId]
+            if (previous == Esp32Board.CAM_AND_DEV_KIT &&
+                applicationId !in _useSoftApCamera.value
+            ) {
+                _useSoftApCamera.update { it + (applicationId to true) }
+            }
+            boards + (applicationId to board.normalizedControlBoard())
+        }
+    }
+
+    private val _useSoftApCamera = MutableStateFlow<Map<ApplicationId, Boolean>>(emptyMap())
+
+    override fun useSoftApCameraFlow(applicationId: ApplicationId): Flow<Boolean> =
+        combine(_useSoftApCamera, _boards) { overlay, boards ->
+            overlay[applicationId]
+                ?: (boards[applicationId] == Esp32Board.CAM_AND_DEV_KIT)
+        }
+
+    override suspend fun saveUseSoftApCamera(applicationId: ApplicationId, enabled: Boolean) {
+        _useSoftApCamera.update { it + (applicationId to enabled) }
+    }
+
+    private val _advancedSettingsRevealed =
+        MutableStateFlow<Map<ApplicationId, Boolean>>(emptyMap())
+
+    override fun advancedSettingsRevealedFlow(applicationId: ApplicationId): Flow<Boolean> =
+        _advancedSettingsRevealed.map { revealed ->
+            revealed[applicationId] ?: true
+        }
+
+    override suspend fun saveAdvancedSettingsRevealed(
+        applicationId: ApplicationId,
+        revealed: Boolean,
+    ) {
+        _advancedSettingsRevealed.update { it + (applicationId to revealed) }
+    }
+
+    private val _controlPanelCenterMode =
+        MutableStateFlow(ControlPanelCenterMode.PLOTS)
+
+    override fun controlPanelCenterModeFlow(): Flow<ControlPanelCenterMode> =
+        _controlPanelCenterMode.asStateFlow()
+
+    override suspend fun saveControlPanelCenterMode(mode: ControlPanelCenterMode) {
+        _controlPanelCenterMode.update { mode }
     }
 
     private val _softApPresets =
@@ -136,7 +232,7 @@ class FakeSettingsRepository : ISettingsRepository {
         applicationId: ApplicationId,
     ): Flow<SoftApPerformancePreset> =
         _softApPresets.map { presets ->
-            presets[applicationId] ?: SoftApPerformancePreset.DEFAULT
+            presets[applicationId] ?: SoftApPerformancePreset.defaultFor(applicationId)
         }
 
     override suspend fun saveSoftApPerformancePreset(
@@ -163,6 +259,18 @@ class FakeSettingsRepository : ISettingsRepository {
         _softApHudRates.update { it + (applicationId to rate) }
     }
 
+    private val _softApStreamQualitySeeded =
+        MutableStateFlow<Set<ApplicationId>>(emptySet())
+
+    override suspend fun ensureSoftApStreamQualityDefaultsForAtRiskDevice(
+        applicationId: ApplicationId,
+    ) {
+        if (applicationId in _softApStreamQualitySeeded.value) return
+        _softApPresets.update { it + (applicationId to SoftApPerformancePreset.SMOOTH) }
+        _softApHudRates.update { it + (applicationId to SoftApHudProcessingRate.FPS_8) }
+        _softApStreamQualitySeeded.update { it + applicationId }
+    }
+
     private val _rcVehicleProControl =
         MutableStateFlow(RcVehicleProControlSettings.DEFAULT)
 
@@ -177,4 +285,23 @@ class FakeSettingsRepository : ISettingsRepository {
     fun setSettings(settings: UserSettings) = _settings.update { settings }
     fun setLastDevice(address: String, name: String?) = _lastDevice.update { address to name }
     fun setLastApplication(applicationId: ApplicationId?) = _lastApplication.update { applicationId }
+
+    fun toSaveSettingsUseCases() = SaveSettingsUseCases(
+        saveLeftStickMode = SaveLeftStickModeUseCase(this),
+        saveRightStickMode = SaveRightStickModeUseCase(this),
+        saveSwitchState = SaveSwitchStateUseCase(this),
+        saveLeftKnobValue = SaveLeftKnobValueUseCase(this),
+        saveRightKnobValue = SaveRightKnobValueUseCase(this),
+        saveLeftPanelUnit = SaveLeftPanelUnitUseCase(this),
+        saveRightPanelUnit = SaveRightPanelUnitUseCase(this),
+        saveAnalogIndicatorUnit = SaveAnalogIndicatorUnitUseCase(this),
+        saveBatteryLabel = SaveBatteryLabelUseCase(this),
+        savePlotLabel = SavePlotLabelUseCase(this),
+        savePlotCalibration = SavePlotCalibrationUseCase(this),
+        saveChannelRouting = SaveChannelRoutingUseCase(this),
+        saveLeftPanelOn = SaveLeftPanelOnUseCase(this),
+        saveRightPanelOn = SaveRightPanelOnUseCase(this),
+        saveLeftPanelColorGreen = SaveLeftPanelColorGreenUseCase(this),
+        saveRightPanelColorGreen = SaveRightPanelColorGreenUseCase(this),
+    )
 }

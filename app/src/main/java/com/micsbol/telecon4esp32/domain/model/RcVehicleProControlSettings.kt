@@ -1,12 +1,16 @@
 package com.micsbol.telecon4esp32.domain.model
 
 /**
- * Persisted drive-assist preferences for RC Vehicle Pro (phone-side mapping only).
+ * Persisted drive-assist and stick-mode preferences for RC Vehicle Pro
+ * (phone-side mapping only; independent of Control Panel [UserSettings]).
  */
 data class RcVehicleProControlSettings(
-    val throttleHold: Boolean = true,
-    val steeringHold: Boolean = false,
-    val steerTrim: Float = 0f,
+    val leftStickMode: JoystickMode = DEFAULT_LEFT_STICK_MODE,
+    val rightStickMode: JoystickMode = DEFAULT_RIGHT_STICK_MODE,
+    val leftTrimX: Float = 0f,
+    val leftTrimY: Float = 0f,
+    val rightTrimX: Float = 0f,
+    val rightTrimY: Float = 0f,
     /** 0…1 dual-rate scale for throttle after expo. */
     val throttleTravel: Float = 1f,
     /** 0…1 dual-rate scale for steering after expo. */
@@ -19,7 +23,37 @@ data class RcVehicleProControlSettings(
     val deadzone: Float = 0.08f,
 ) {
     companion object {
+        val DEFAULT_LEFT_STICK_MODE = JoystickMode.VerticalHold(JoystickMode.DOWN)
+        val DEFAULT_RIGHT_STICK_MODE = JoystickMode.HorizontalSpring(JoystickMode.CENTER)
         val DEFAULT = RcVehicleProControlSettings()
         val TRAVEL_PRESETS = listOf(0.50f, 0.75f, 1.00f)
+
+        /**
+         * Prefer the saved [JoystickMode] string. Older builds only stored hold flags;
+         * map those to the previous car defaults.
+         */
+        fun leftStickModeFromPersisted(
+            stored: String?,
+            throttleHold: Boolean?,
+        ): JoystickMode {
+            if (!stored.isNullOrBlank()) return JoystickMode.fromString(stored)
+            return if (throttleHold ?: true) {
+                JoystickMode.VerticalHold(JoystickMode.DOWN)
+            } else {
+                JoystickMode.VerticalSpring(JoystickMode.CENTER)
+            }
+        }
+
+        fun rightStickModeFromPersisted(
+            stored: String?,
+            steeringHold: Boolean?,
+        ): JoystickMode {
+            if (!stored.isNullOrBlank()) return JoystickMode.fromString(stored)
+            return if (steeringHold == true) {
+                JoystickMode.HorizontalHold(JoystickMode.CENTER)
+            } else {
+                JoystickMode.HorizontalSpring(JoystickMode.CENTER)
+            }
+        }
     }
 }

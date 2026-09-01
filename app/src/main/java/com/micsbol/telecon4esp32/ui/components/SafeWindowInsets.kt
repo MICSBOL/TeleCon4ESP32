@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -33,6 +34,12 @@ import kotlin.math.roundToInt
 val WindowInsets.Companion.safeHud: WindowInsets
     @Composable
     get() = systemBars.union(displayCutout)
+
+/**
+ * When true, HUD chrome ignores status/navigation bar insets (bars are hidden)
+ * and only clears display cutouts. Sticks and knobs can use the vacated space.
+ */
+val LocalHudSystemBarsHidden = compositionLocalOf { false }
 
 /** When 3-button nav reports 0 bottom inset, pad at least this much. */
 private val BottomNavFallback = 48.dp
@@ -87,10 +94,15 @@ fun rememberClampedSafeHudInsets(
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val systemBarsHidden = LocalHudSystemBarsHidden.current
     val usesThreeButtonNav = remember(context.contentResolver) {
         Settings.Secure.getInt(context.contentResolver, "navigation_mode", 0) != 2
+    } && !systemBarsHidden
+    val base = if (systemBarsHidden) {
+        WindowInsets.displayCutout
+    } else {
+        WindowInsets.safeHud
     }
-    val base = WindowInsets.safeHud
 
     return remember(
         base,
@@ -99,6 +111,7 @@ fun rememberClampedSafeHudInsets(
         includeHorizontal,
         isLandscape,
         usesThreeButtonNav,
+        systemBarsHidden,
         configuration.screenWidthDp,
         density.density,
         layoutDirection,

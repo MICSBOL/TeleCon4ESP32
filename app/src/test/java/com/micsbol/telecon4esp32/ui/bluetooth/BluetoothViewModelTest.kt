@@ -11,6 +11,9 @@ import com.micsbol.telecon4esp32.domain.bluetooth.ProtocolHandshake
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
+import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
@@ -27,6 +30,7 @@ import com.micsbol.telecon4esp32.domain.use_case.SaveLastDeviceUseCase
 import com.micsbol.telecon4esp32.ui.navigation.mainRoute
 import com.micsbol.telecon4esp32.util.FakeRemoteController
 import com.micsbol.telecon4esp32.util.FakeRemoteDevice
+import com.micsbol.telecon4esp32.util.FakeSessionCsvRepository
 import com.micsbol.telecon4esp32.util.FakeSettingsRepository
 import com.micsbol.telecon4esp32.util.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,12 +59,14 @@ class BluetoothViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
     private lateinit var fakeController: FakeRemoteController
     private lateinit var fakeSettings: FakeSettingsRepository
+    private lateinit var fakeSessionCsv: FakeSessionCsvRepository
     private lateinit var viewModel: BluetoothViewModel
     private val testDevice = FakeRemoteDevice(name = "TestESP", address = "AA:BB:CC:DD:EE:FF")
     @Before
     fun setUp() {
         fakeController = FakeRemoteController()
         fakeSettings = FakeSettingsRepository()
+        fakeSessionCsv = FakeSessionCsvRepository()
         viewModel = BluetoothViewModel(
             remoteController = fakeController,
             getUserSettings  = GetUserSettingsUseCase(fakeSettings),
@@ -73,6 +79,8 @@ class BluetoothViewModelTest {
             getApplicationConnectionMode = GetApplicationConnectionModeUseCase(fakeSettings),
             getApplicationBoard = GetApplicationBoardUseCase(fakeSettings),
             getSoftApPerformancePreset = GetSoftApPerformancePresetUseCase(fakeSettings),
+            sessionCsvRepository = fakeSessionCsv,
+            saveSettings = fakeSettings.toSaveSettingsUseCases(),
         )
     }
     // ── Initial state ─────────────────────────────────────────────────────────
@@ -456,12 +464,12 @@ class BluetoothViewModelTest {
     }
 
     @Test
-    fun `init applies persisted settings on cold start`() = runTest {
+    fun `init does not apply persisted stick knob or switch initials`() = runTest {
         fakeSettings.setSettings(
             UserSettings(
                 leftStickMode = JoystickMode.Hold(JoystickMode.LEFT),
                 leftKnobInitialValue = 0.75f,
-                switchInitialStates = (0..5).associateWith { false }
+                switchInitialStates = (0..5).associateWith { true }
             )
         )
         val coldStartViewModel = BluetoothViewModel(
@@ -476,6 +484,8 @@ class BluetoothViewModelTest {
             getApplicationConnectionMode = GetApplicationConnectionModeUseCase(fakeSettings),
             getApplicationBoard = GetApplicationBoardUseCase(fakeSettings),
             getSoftApPerformancePreset = GetSoftApPerformancePresetUseCase(fakeSettings),
+            sessionCsvRepository = FakeSessionCsvRepository(),
+            saveSettings = fakeSettings.toSaveSettingsUseCases(),
         )
         val collectJob = launch { coldStartViewModel.userSettings.collect { } }
 
@@ -484,14 +494,16 @@ class BluetoothViewModelTest {
             .first { it.settings.leftKnobInitialValue == 0.75f }
 
         val rc = coldStartViewModel.rcControlState.value
-        assertEquals(-1f, rc.leftStickPosition.first, 0.001f)
-        assertEquals(0.75f, rc.leftKnobValue)
+        assertEquals(0f, rc.leftStickPosition.first, 0.001f)
+        assertEquals(0f, rc.leftStickPosition.second, 0.001f)
+        assertEquals(0f, rc.leftKnobValue)
+        assertFalse(rc.leftSwitches[0])
 
         collectJob.cancel()
     }
 
     @Test
-    fun `onControlPanelEntered applies settings only when they changed`() = runTest {
+    fun `onControlPanelEntered keeps live controls instead of persisted initials`() = runTest {
         val collectJob = launch { viewModel.userSettings.collect { } }
 
         viewModel.onLeftStickChanged(0.9f, 0.9f)
@@ -512,10 +524,10 @@ class BluetoothViewModelTest {
         viewModel.onControlPanelEntered()
 
         val afterApply = viewModel.rcControlState.value
-        assertEquals(-1f, afterApply.leftStickPosition.first, 0.001f)
-        assertEquals(0f, afterApply.leftStickPosition.second, 0.001f)
-        assertEquals(0.75f, afterApply.leftKnobValue)
-        assertFalse(afterApply.leftSwitches[0])
+        assertEquals(0.9f, afterApply.leftStickPosition.first, 0.001f)
+        assertEquals(0.9f, afterApply.leftStickPosition.second, 0.001f)
+        assertEquals(0.1f, afterApply.leftKnobValue)
+        assertTrue(afterApply.leftSwitches[0])
 
         viewModel.onLeftStickChanged(0.2f, 0.3f)
         viewModel.onControlPanelEntered()
@@ -547,6 +559,8 @@ class BluetoothViewModelTest {
             getApplicationConnectionMode = GetApplicationConnectionModeUseCase(fakeSettings),
             getApplicationBoard = GetApplicationBoardUseCase(fakeSettings),
             getSoftApPerformancePreset = GetSoftApPerformancePresetUseCase(fakeSettings),
+            sessionCsvRepository = FakeSessionCsvRepository(),
+            saveSettings = fakeSettings.toSaveSettingsUseCases(),
         )
         val collectJob = launch { simpleViewModel.userSettings.collect { } }
         runCurrent()
@@ -569,19 +583,19 @@ class BluetoothViewModelTest {
 
     // ── Continue session / recent project ─────────────────────────────────────
     @Test
-    fun `continueLastSession navigates to applications when no active session`() = runTest {
+    fun `continueLastSession navigates to modules hub when no active session`() = runTest {
         var navigated: String? = null
         viewModel.continueLastSession { navigated = it }
-        assertEquals(Screen.Applications.route, navigated)
+        assertEquals(Screen.Home.route, navigated)
     }
 
     @Test
     fun `openRecentProject navigates to application screen`() = runTest {
         var navigated: String? = null
-        viewModel.openRecentProject(ApplicationId.GREENHOUSE) { navigated = it }
+        viewModel.openRecentProject(ApplicationId.CONTROL_PANEL) { navigated = it }
         runCurrent()
-        assertEquals(ApplicationId.GREENHOUSE.mainRoute(), navigated)
-        assertEquals(ApplicationId.GREENHOUSE, fakeSettings.lastApplicationFlow.first())
+        assertEquals(ApplicationId.CONTROL_PANEL.mainRoute(), navigated)
+        assertEquals(ApplicationId.CONTROL_PANEL, fakeSettings.lastApplicationFlow.first())
     }
 
     @Test
@@ -838,5 +852,194 @@ class BluetoothViewModelTest {
             )
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `saveTelemetryWidgetConfig updates analog label and channel`() = runTest {
+        val indicatorJob = launch { viewModel.rcLeftIndicator.collect { } }
+        val routingJob = launch { viewModel.rcChannelRouting.collect { } }
+        viewModel.onControlPanelEntered()
+        runCurrent()
+
+        viewModel.saveTelemetryWidgetConfig(
+            TelemetrySink.ANALOG_GAUGE,
+            TelemetryChannel.CH_5,
+            "  speed  ",
+        )
+        runCurrent()
+
+        assertEquals("speed", viewModel.rcLeftIndicator.value.title)
+        assertEquals(
+            TelemetryChannel.CH_5,
+            viewModel.rcChannelRouting.value.sourceFor(TelemetrySink.ANALOG_GAUGE),
+        )
+        val settings = fakeSettings.settingsFlow.first()
+        assertEquals("speed", settings.analogIndicatorUnit)
+        assertEquals(
+            TelemetryChannel.CH_5,
+            settings.channelRouting.sourceFor(TelemetrySink.ANALOG_GAUGE),
+        )
+        indicatorJob.cancel()
+        routingJob.cancel()
+    }
+
+    @Test
+    fun `saveTelemetryWidgetConfig updates numeric panel and battery labels`() = runTest {
+        val leftJob = launch { viewModel.rcLeftSideTelemetry.collect { } }
+        val rightJob = launch { viewModel.rcRightSideTelemetry.collect { } }
+        val batteryJob = launch { viewModel.rcRightIndicator.collect { } }
+        viewModel.onControlPanelEntered()
+        runCurrent()
+
+        viewModel.saveTelemetryWidgetConfig(
+            TelemetrySink.PANEL_LEFT,
+            TelemetryChannel.PANEL_RIGHT,
+            "meters",
+        )
+        viewModel.saveTelemetryWidgetConfig(
+            TelemetrySink.BATTERY_GAUGE,
+            TelemetryChannel.CH_8,
+            "battery",
+        )
+        runCurrent()
+
+        assertEquals("meters", viewModel.rcLeftSideTelemetry.value.panelTitle)
+        assertEquals(
+            TelemetryChannel.PANEL_RIGHT,
+            viewModel.rcChannelRouting.value.sourceFor(TelemetrySink.PANEL_LEFT),
+        )
+        assertEquals("battery", viewModel.rcRightIndicator.value.title)
+        assertEquals(
+            TelemetryChannel.CH_8,
+            viewModel.rcChannelRouting.value.sourceFor(TelemetrySink.BATTERY_GAUGE),
+        )
+        leftJob.cancel()
+        rightJob.cancel()
+        batteryJob.cancel()
+    }
+
+    @Test
+    fun `savePlotLabel calibration and channel update HUD plot settings`() = runTest {
+        val labelsJob = launch { viewModel.rcPlotDisplayLabels.collect { } }
+        val calibrationJob = launch { viewModel.rcPlotCalibrations.collect { } }
+        val routingJob = launch { viewModel.rcChannelRouting.collect { } }
+        viewModel.onControlPanelEntered()
+        runCurrent()
+
+        viewModel.savePlotLabel(0, "  current  ")
+        viewModel.savePlotCalibration(
+            0,
+            PlotCalibration(offset = 1f, span = 10f, unit = "A"),
+        )
+        viewModel.saveChannelBinding(TelemetrySink.PLOT_0, TelemetryChannel.CH_8)
+        runCurrent()
+
+        assertEquals("current", viewModel.rcPlotDisplayLabels.value[0])
+        assertEquals(
+            PlotCalibration(offset = 1f, span = 10f, unit = "A"),
+            viewModel.rcPlotCalibrations.value[0],
+        )
+        assertEquals(
+            TelemetryChannel.CH_8,
+            viewModel.rcChannelRouting.value.sourceFor(TelemetrySink.PLOT_0),
+        )
+        val settings = fakeSettings.settingsFlow.first()
+        assertEquals("current", settings.plotLabels[0])
+        assertEquals(
+            PlotCalibration(offset = 1f, span = 10f, unit = "A"),
+            settings.plotCalibrations[0],
+        )
+        assertEquals(
+            TelemetryChannel.CH_8,
+            settings.channelRouting.sourceFor(TelemetrySink.PLOT_0),
+        )
+        labelsJob.cancel()
+        calibrationJob.cancel()
+        routingJob.cancel()
+    }
+
+    @Test
+    fun `saveStickMode persists left and right joystick modes`() = runTest {
+        viewModel.saveStickMode(
+            isRightStick = false,
+            mode = JoystickMode.VerticalHold(JoystickMode.DOWN),
+        )
+        viewModel.saveStickMode(
+            isRightStick = true,
+            mode = JoystickMode.HorizontalSpring(JoystickMode.LEFT),
+        )
+        runCurrent()
+
+        val settings = fakeSettings.settingsFlow.first()
+        assertEquals(
+            JoystickMode.VerticalHold(JoystickMode.DOWN),
+            settings.leftStickMode,
+        )
+        assertEquals(
+            JoystickMode.HorizontalSpring(JoystickMode.LEFT),
+            settings.rightStickMode,
+        )
+        val rc = viewModel.rcControlState.value
+        assertEquals(0f, rc.leftStickPosition.first, 0.001f)
+        assertEquals(-1f, rc.leftStickPosition.second, 0.001f)
+        assertEquals(-1f, rc.rightStickPosition.first, 0.001f)
+        assertEquals(0f, rc.rightStickPosition.second, 0.001f)
+    }
+
+    @Test
+    fun `resetLiveRcControlsToZero applies stick rest and zeros switches knobs`() = runTest {
+        val collectJob = launch { viewModel.userSettings.collect { } }
+        viewModel.userSettings.filterIsInstance<SettingsUiState.Success>().first()
+
+        viewModel.saveStickMode(
+            isRightStick = false,
+            mode = JoystickMode.Hold(JoystickMode.LEFT),
+        )
+        viewModel.saveStickMode(
+            isRightStick = true,
+            mode = JoystickMode.VerticalHold(JoystickMode.UP),
+        )
+        runCurrent()
+
+        viewModel.onLeftStickChanged(0.8f, -0.4f)
+        viewModel.onRightStickChanged(-1f, 1f)
+        viewModel.onLeftSwitchChanged(0, true)
+        viewModel.onRightSwitchChanged(2, true)
+        viewModel.onLeftKnobChanged(0.9f)
+        viewModel.onRightKnobChanged(0.3f)
+
+        viewModel.resetLiveRcControlsToZero()
+
+        val rc = viewModel.rcControlState.value
+        assertEquals(-1f, rc.leftStickPosition.first, 0.001f)
+        assertEquals(0f, rc.leftStickPosition.second, 0.001f)
+        assertEquals(0f, rc.rightStickPosition.first, 0.001f)
+        assertEquals(1f, rc.rightStickPosition.second, 0.001f)
+        assertFalse(rc.leftSwitches[0])
+        assertFalse(rc.rightSwitches[2])
+        assertEquals(0f, rc.leftKnobValue)
+        assertEquals(0f, rc.rightKnobValue)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun `toggleSessionRecording then save copies csv to downloads`() = runTest {
+        viewModel.toggleSessionRecording()
+        assertTrue(viewModel.sessionRecording.value.isRecording)
+
+        viewModel.toggleSessionRecording()
+        val stopped = viewModel.sessionRecording.value
+        assertFalse(stopped.isRecording)
+        assertNotNull(stopped.finishedFile)
+        assertTrue(stopped.finishedFileName.endsWith(".csv"))
+        assertTrue(stopped.finishedFile!!.readText().contains("timestamp_ms"))
+
+        var saved = false
+        viewModel.saveFinishedSessionCsvToDownloads { saved = it }
+        assertTrue(saved)
+        assertNull(viewModel.sessionRecording.value.finishedFile)
+        assertTrue(viewModel.sessionRecording.value.savedLocation.isNotBlank())
+        assertEquals(1, fakeSessionCsv.savedDownloads.size)
+        assertTrue(fakeSessionCsv.savedDownloads.first().readText().contains("timestamp_ms"))
     }
 }

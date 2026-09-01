@@ -11,8 +11,8 @@ interface CameraStreamRepository {
     fun stopStream()
 
     /**
-     * When true (CAM+BLE with control linked), skip long-lived MJPEG `/stream` and
-     * poll `/capture` only — matches firmware `TELECON_CAPTURE_WHEN_BLE`.
+     * When true, skip long-lived MJPEG `/stream` and poll `/capture` only
+     * (Smooth / at-risk SoftAP low-latency path).
      * Default no-op for fakes / non-SoftAP implementations.
      */
     fun setPreferCapturePolling(prefer: Boolean) = Unit

@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,7 +27,13 @@ fun BatteryStatus(
     modifier: Modifier = Modifier,
     level: Int,
     title: String = "BATTERY",
+    onDoubleTap: (() -> Unit)? = null,
 ){
+    val configDescription = if (onDoubleTap != null) {
+        stringResource(R.string.control_panel_widget_config_content_description, title)
+    } else {
+        null
+    }
     val frames = remember {
         (1..6).map {
             val resourceName = "battery_%02d".format(it)
@@ -44,6 +53,15 @@ fun BatteryStatus(
     // --- START OF DEFINITIVE FIX ---
     // Wrap the Image in a Box and apply the same aspect ratio as AnalogIndicator.
     Column(
+        modifier = Modifier
+            .onDoubleTapAction(onDoubleTap)
+            .then(
+                if (configDescription != null) {
+                    Modifier.semantics { contentDescription = configDescription }
+                } else {
+                    Modifier
+                },
+            ),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

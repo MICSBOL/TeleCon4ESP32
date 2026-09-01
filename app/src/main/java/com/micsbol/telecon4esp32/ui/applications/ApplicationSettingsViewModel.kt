@@ -3,35 +3,58 @@ package com.micsbol.telecon4esp32.ui.applications
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
+import com.micsbol.telecon4esp32.domain.bluetooth.linkFamily
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
+import com.micsbol.telecon4esp32.domain.model.CoinWalletState
+import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Entitlement
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.SettingsUserType
+import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.domain.model.canUseConnectionMode
 import com.micsbol.telecon4esp32.domain.model.coerceConnectionModeForBoard
 import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
 import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
+import com.micsbol.telecon4esp32.domain.model.originalDefaultConnectionMode
+import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
+import com.micsbol.telecon4esp32.domain.model.settingsUserType
+import com.micsbol.telecon4esp32.domain.model.toSelection
+import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
+import com.micsbol.telecon4esp32.domain.use_case.GetAdvancedSettingsRevealedUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationConnectionModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationTransportTypeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetControlPanelCenterModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetSoftApHudProcessingRateUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetSoftApPerformancePresetUseCase
+import com.micsbol.telecon4esp32.domain.use_case.GetUseSoftApCameraUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ObserveEntitlementUseCase
+import com.micsbol.telecon4esp32.domain.use_case.ObserveWalletUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveAdvancedSettingsRevealedUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationBoardUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveApplicationConnectionModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApHudProcessingRateUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApPerformancePresetUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveUseSoftApCameraUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,11 +67,17 @@ class ApplicationSettingsViewModel @Inject constructor(
     private val saveApplicationConnectionMode: SaveApplicationConnectionModeUseCase,
     getApplicationBoard: GetApplicationBoardUseCase,
     private val saveApplicationBoard: SaveApplicationBoardUseCase,
+    getUseSoftApCamera: GetUseSoftApCameraUseCase,
+    private val saveUseSoftApCamera: SaveUseSoftApCameraUseCase,
+    getAdvancedSettingsRevealed: GetAdvancedSettingsRevealedUseCase,
+    private val saveAdvancedSettingsRevealed: SaveAdvancedSettingsRevealedUseCase,
+    getControlPanelCenterMode: GetControlPanelCenterModeUseCase,
     getSoftApPerformancePreset: GetSoftApPerformancePresetUseCase,
     private val saveSoftApPerformancePreset: SaveSoftApPerformancePresetUseCase,
     getSoftApHudProcessingRate: GetSoftApHudProcessingRateUseCase,
     private val saveSoftApHudProcessingRate: SaveSoftApHudProcessingRateUseCase,
     observeEntitlement: ObserveEntitlementUseCase,
+    observeWallet: ObserveWalletUseCase,
 ) : ViewModel() {
 
     val applicationId: ApplicationId = savedStateHandle.get<String>("applicationId")
@@ -78,11 +107,27 @@ class ApplicationSettingsViewModel @Inject constructor(
             initialValue = Entitlement.Free,
         )
 
+    private val wallet: StateFlow<CoinWalletState> = observeWallet()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = CoinWalletState.Empty,
+        )
+
+    private fun requiresCoinEntry(access: Entitlement): Boolean =
+        access.usesCoinEconomy() || BuildConfig.DEBUG
+
     val protocolMode: StateFlow<BluetoothProtocolMode> = combine(
         storedProtocolMode,
         entitlement,
-    ) { stored, access ->
-        access.effectiveProtocolMode(applicationId, stored)
+        wallet,
+    ) { stored, access, coinWallet ->
+        access.effectiveProtocolMode(
+            applicationId = applicationId,
+            stored = stored,
+            wallet = coinWallet,
+            requiresCoinEntry = requiresCoinEntry(access),
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -104,6 +149,70 @@ class ApplicationSettingsViewModel @Inject constructor(
             initialValue = Esp32Board.defaultFor(applicationId),
         )
 
+    val useSoftApCamera: StateFlow<Boolean> = getUseSoftApCamera(applicationId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
+
+    /**
+     * Settings user-type dropdown. Null means infer from the stored connection mode.
+     * Restore always writes [SettingsUserType.NORMAL] so the UI returns to starter Default
+     * even when the stored link is still a Simple mode (which also infers Default).
+     */
+    private val _settingsUserTypeOverride = MutableStateFlow<SettingsUserType?>(null)
+    val settingsUserTypeOverride: StateFlow<SettingsUserType?> =
+        _settingsUserTypeOverride.asStateFlow()
+
+    fun onSettingsUserTypeSelected(type: SettingsUserType) {
+        _settingsUserTypeOverride.value = type
+    }
+
+    /**
+     * When false, settings look like Advanced is still locked (no user-type menu,
+     * lock in the title). Restore persists this so the original Default screen
+     * stays after leaving and reopening settings. The Advanced grant is unchanged;
+     * [revealAdvancedSettings] shows the menu again.
+     */
+    private val _advancedSettingsRevealedOverride = MutableStateFlow<Boolean?>(null)
+    val advancedSettingsRevealed: StateFlow<Boolean> = combine(
+        getAdvancedSettingsRevealed(applicationId),
+        _advancedSettingsRevealedOverride,
+    ) { stored, override ->
+        override ?: stored
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = true,
+    )
+
+    fun revealAdvancedSettings() {
+        _advancedSettingsRevealedOverride.value = true
+        viewModelScope.launch {
+            saveAdvancedSettingsRevealed(applicationId, true)
+        }
+    }
+
+    /**
+     * Bumped after [resetToDefaultConfiguration] finishes writing storage so the
+     * settings form can rebuild against Default / No CAM / Classic Simple.
+     */
+    private val _configurationResetEpoch = MutableStateFlow(0)
+    val configurationResetEpoch: StateFlow<Int> = _configurationResetEpoch.asStateFlow()
+
+    private val centerModeLoaded = MutableStateFlow(false)
+
+    val centerMode: StateFlow<ControlPanelCenterMode> = getControlPanelCenterMode()
+        .onEach { centerModeLoaded.value = true }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = ControlPanelCenterMode.PLOTS,
+        )
+
+    val isCenterModeLoaded: StateFlow<Boolean> = centerModeLoaded.asStateFlow()
+
     val softApPerformancePreset: StateFlow<SoftApPerformancePreset> =
         getSoftApPerformancePreset(applicationId)
             .stateIn(
@@ -121,20 +230,34 @@ class ApplicationSettingsViewModel @Inject constructor(
             )
 
     val connectionMode: StateFlow<BluetoothConnectionMode> = combine(
-        transportType,
-        storedProtocolMode,
-        storedConnectionMode,
-        entitlement,
-        board,
-    ) { transport, storedProtocol, storedMode, access, selectedBoard ->
-        val candidate = storedMode
-            ?: access.effectiveConnectionMode(
-                applicationId,
-                transport,
-                storedProtocol,
-                selectedBoard,
+        combine(
+            transportType,
+            storedProtocolMode,
+            storedConnectionMode,
+            entitlement,
+            board,
+        ) { transport, storedProtocol, storedMode, access, selectedBoard ->
+            ConnectionModeInputs(transport, storedProtocol, storedMode, access, selectedBoard)
+        },
+        wallet,
+    ) { inputs, coinWallet ->
+        val coinEntry = requiresCoinEntry(inputs.access)
+        val candidate = inputs.storedMode
+            ?: inputs.access.effectiveConnectionMode(
+                applicationId = applicationId,
+                transport = inputs.transport,
+                storedProtocol = inputs.storedProtocol,
+                board = inputs.selectedBoard,
+                wallet = coinWallet,
+                requiresCoinEntry = coinEntry,
             )
-        access.coerceConnectionModeForBoard(applicationId, selectedBoard, candidate)
+        inputs.access.coerceConnectionModeForBoard(
+            applicationId = applicationId,
+            board = inputs.selectedBoard,
+            mode = candidate,
+            wallet = coinWallet,
+            requiresCoinEntry = coinEntry,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -145,7 +268,10 @@ class ApplicationSettingsViewModel @Inject constructor(
     )
 
     fun onConnectionModeChanged(mode: BluetoothConnectionMode) {
-        if (!entitlement.value.canUseConnectionMode(applicationId, mode)) return
+        val access = entitlement.value
+        val coinWallet = wallet.value
+        val coinEntry = requiresCoinEntry(access)
+        if (!access.canUseConnectionMode(applicationId, mode, coinWallet, coinEntry)) return
         if (!applicationId.isConnectionModeAvailable(board.value, mode)) return
         viewModelScope.launch {
             saveApplicationConnectionMode(applicationId, mode)
@@ -155,20 +281,92 @@ class ApplicationSettingsViewModel @Inject constructor(
     fun onBoardChanged(board: Esp32Board) {
         viewModelScope.launch {
             saveApplicationBoard(applicationId, board)
+            val access = entitlement.value
+            val coinWallet = wallet.value
+            val coinEntry = requiresCoinEntry(access)
             val current = storedConnectionMode.value
-                ?: entitlement.value.effectiveConnectionMode(
-                    applicationId,
-                    transportType.value,
-                    storedProtocolMode.value,
-                    board,
+                ?: access.effectiveConnectionMode(
+                    applicationId = applicationId,
+                    transport = transportType.value,
+                    storedProtocol = storedProtocolMode.value,
+                    board = board,
+                    wallet = coinWallet,
+                    requiresCoinEntry = coinEntry,
                 )
-            val coerced = entitlement.value.coerceConnectionModeForBoard(
-                applicationId,
-                board,
-                current,
+            val coerced = access.coerceConnectionModeForBoard(
+                applicationId = applicationId,
+                board = board,
+                mode = current,
+                wallet = coinWallet,
+                requiresCoinEntry = coinEntry,
             )
             if (coerced != current || storedConnectionMode.value == null) {
                 saveApplicationConnectionMode(applicationId, coerced)
+            }
+        }
+    }
+
+    fun onUseSoftApCameraChanged(enabled: Boolean) {
+        viewModelScope.launch {
+            saveUseSoftApCamera(applicationId, enabled)
+        }
+    }
+
+    fun onCameraHardwareRoleSelected(role: CameraHardwareRole) {
+        val selection = role.toSelection()
+        viewModelScope.launch {
+            saveApplicationBoard(applicationId, selection.board)
+            saveUseSoftApCamera(applicationId, selection.useSoftApCamera)
+            val access = entitlement.value
+            val coinWallet = wallet.value
+            val coinEntry = requiresCoinEntry(access)
+            val current = storedConnectionMode.value
+                ?: access.effectiveConnectionMode(
+                    applicationId = applicationId,
+                    transport = transportType.value,
+                    storedProtocol = storedProtocolMode.value,
+                    board = selection.board,
+                    wallet = coinWallet,
+                    requiresCoinEntry = coinEntry,
+                )
+            val family = when {
+                selection.bluetoothControlOnly -> ConnectionLinkFamily.BLUETOOTH
+                role == CameraHardwareRole.ONE_CAM -> ConnectionLinkFamily.WIFI
+                else -> current.linkFamily
+            }
+            val preferred = applicationId.preferredConnectionMode(
+                board = selection.board,
+                family = family,
+                userType = current.settingsUserType,
+                canUseAdvanced = access.canUseAdvancedProtocol(
+                    applicationId,
+                    coinWallet,
+                    coinEntry,
+                ),
+            )
+            val coerced = access.coerceConnectionModeForBoard(
+                applicationId = applicationId,
+                board = selection.board,
+                mode = preferred ?: current,
+                wallet = coinWallet,
+                requiresCoinEntry = coinEntry,
+            )
+            val next = if (selection.bluetoothControlOnly && coerced.isWifiLink) {
+                applicationId.preferredConnectionMode(
+                    board = selection.board,
+                    family = ConnectionLinkFamily.BLUETOOTH,
+                    userType = current.settingsUserType,
+                    canUseAdvanced = access.canUseAdvancedProtocol(
+                        applicationId,
+                        coinWallet,
+                        coinEntry,
+                    ),
+                ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE
+            } else {
+                coerced
+            }
+            if (next != current || storedConnectionMode.value == null) {
+                saveApplicationConnectionMode(applicationId, next)
             }
         }
     }
@@ -184,4 +382,27 @@ class ApplicationSettingsViewModel @Inject constructor(
             saveSoftApHudProcessingRate(applicationId, rate)
         }
     }
+
+    fun resetToDefaultConfiguration() {
+        _settingsUserTypeOverride.value = SettingsUserType.NORMAL
+        _advancedSettingsRevealedOverride.value = false
+        viewModelScope.launch {
+            saveAdvancedSettingsRevealed(applicationId, false)
+            val board = Esp32Board.defaultFor(applicationId)
+            saveApplicationBoard(applicationId, board)
+            saveUseSoftApCamera(applicationId, false)
+            saveApplicationConnectionMode(applicationId, applicationId.originalDefaultConnectionMode())
+            saveSoftApPerformancePreset(applicationId, SoftApPerformancePreset.DEFAULT)
+            saveSoftApHudProcessingRate(applicationId, SoftApHudProcessingRate.DEFAULT)
+            _configurationResetEpoch.update { it + 1 }
+        }
+    }
 }
+
+private data class ConnectionModeInputs(
+    val transport: BluetoothTransportType,
+    val storedProtocol: BluetoothProtocolMode,
+    val storedMode: BluetoothConnectionMode?,
+    val access: Entitlement,
+    val selectedBoard: Esp32Board,
+)

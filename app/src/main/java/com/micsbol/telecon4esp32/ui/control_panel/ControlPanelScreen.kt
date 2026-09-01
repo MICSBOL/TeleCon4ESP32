@@ -1,14 +1,19 @@
 package com.micsbol.telecon4esp32.ui.control_panel
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.pm.ActivityInfo
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,7 +26,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
+import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
+import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
+import com.micsbol.telecon4esp32.ui.components.NeoDialog
+import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
+import com.micsbol.telecon4esp32.ui.components.NeoDialogTextAction
+import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
+import com.micsbol.telecon4esp32.ui.components.NeoPillButton
+import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelOverlayControls
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,7 +46,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,21 +56,36 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
+import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
+import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryChannelRouter
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.domain.bluetooth.IndicatorState
 import com.micsbol.telecon4esp32.domain.bluetooth.PanelState
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
+import com.micsbol.telecon4esp32.domain.model.PremiumFeature
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
+import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.canUseControlPanelCenterExtras
+import com.micsbol.telecon4esp32.domain.model.canUseControlPanelRadar
+import com.micsbol.telecon4esp32.domain.model.canUseControlPanelSessionCsv
+import com.micsbol.telecon4esp32.domain.model.isUnlocked
+import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothConnectionErrorDialog
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.bluetooth.SessionRecordingUiState
 import com.micsbol.telecon4esp32.ui.bluetooth.rememberSoftApConnectAction
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.ui.bluetooth.RcControlState
@@ -64,11 +95,13 @@ import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.ui.ads.InterstitialTrigger
 import com.micsbol.telecon4esp32.ui.ads.rememberNavigateWithInterstitial
+import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.navigation.Screen
+import com.micsbol.telecon4esp32.ui.navigation.modulesHubRoute
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothUiState
-import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsUiState
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
+import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -79,9 +112,10 @@ fun ControlPanelScreen(
     telemetryState: StateFlow<TelemetryState>? = null,
     userSettings: StateFlow<SettingsUiState>? = null,
     rcControlState: StateFlow<RcControlState>? = null,
-    navController: NavHostController? = null
+    navController: NavHostController? = null,
+    cameraStreamViewModel: ControlPanelCameraStreamViewModel? = null,
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+    LockHudLandscape()
     val actualViewModel = bluetoothViewModel
     val actualTelemetryState = telemetryState ?: bluetoothViewModel?.telemetryState ?: MutableStateFlow(TelemetryState())
     val actualUserSettings = userSettings ?: bluetoothViewModel?.userSettings ?: MutableStateFlow(SettingsUiState.Loading)
@@ -167,6 +201,53 @@ fun ControlPanelScreen(
         is SettingsUiState.Success -> {
             val plotLabels by (bluetoothViewModel?.rcPlotDisplayLabels
                 ?: MutableStateFlow(state.settings.plotLabels)).collectAsState()
+            val plotCalibrations by (bluetoothViewModel?.rcPlotCalibrations
+                ?: MutableStateFlow(PlotCalibration.padded(state.settings.plotCalibrations)))
+                .collectAsState()
+            val channelRouting by (bluetoothViewModel?.rcChannelRouting
+                ?: MutableStateFlow(state.settings.channelRouting)).collectAsState()
+            val sessionRecording by (bluetoothViewModel?.sessionRecording
+                ?: MutableStateFlow(SessionRecordingUiState())).collectAsState()
+            var csvShareFailed by remember { mutableStateOf(false) }
+            var csvSaveFailed by remember { mutableStateOf(false) }
+            val entitlement = LocalEntitlement.current
+            val wallet = LocalWallet.current
+            val localCenterMode = remember { MutableStateFlow(ControlPanelCenterMode.PLOTS) }
+            val centerMode by (cameraStreamViewModel?.centerMode ?: localCenterMode).collectAsState()
+            val onCenterModeSelected: (ControlPanelCenterMode) -> Unit = { mode ->
+                cameraStreamViewModel?.onCenterModeSelected(mode)
+                    ?: run { localCenterMode.value = mode }
+            }
+            var unlockFeature by remember { mutableStateOf<PremiumFeature?>(null) }
+            // Match Home/Catalog: debug Premium does not auto-enable Pro center extras.
+            val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+            val cameraUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
+                entitlement.canUseControlPanelCenterExtras(
+                    wallet = wallet,
+                    requiresCoinEntry = requiresCoinEntry,
+                )
+            }
+            val radarUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
+                entitlement.canUseControlPanelRadar(
+                    wallet = wallet,
+                    requiresCoinEntry = requiresCoinEntry,
+                )
+            }
+            val sessionCsvUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
+                entitlement.canUseControlPanelSessionCsv(
+                    wallet = wallet,
+                    requiresCoinEntry = requiresCoinEntry,
+                )
+            }
+            val isCenterModeUnlocked: (ControlPanelCenterMode) -> Boolean =
+                remember(cameraUnlocked, radarUnlocked) {
+                    { mode -> mode.isUnlocked(cameraUnlocked, radarUnlocked) }
+                }
+            LaunchedEffect(cameraUnlocked, radarUnlocked, centerMode) {
+                if (!isCenterModeUnlocked(centerMode)) {
+                    onCenterModeSelected(ControlPanelCenterMode.PLOTS)
+                }
+            }
 
             LaunchedEffect(actualViewModel) {
                 actualViewModel?.onControlPanelEntered()
@@ -177,6 +258,154 @@ fun ControlPanelScreen(
                 onDispose {
                     actualViewModel?.stopSendingRcData()
                 }
+            }
+
+            if (navController != null) {
+                val unlockTitle = unlockFeature?.let { feature ->
+                    stringResource(
+                        when (feature) {
+                            PremiumFeature.CONTROL_PANEL_CENTER_EXTRAS ->
+                                R.string.control_panel_center_camera_title
+                            PremiumFeature.CONTROL_PANEL_RADAR ->
+                                R.string.control_panel_center_radar_title
+                            PremiumFeature.CONTROL_PANEL_SESSION_CSV ->
+                                R.string.control_panel_session_csv_unlock_title
+                            else -> R.string.app_control_panel_title
+                        },
+                    )
+                }.orEmpty()
+                ControlPanelCenterFeatureUnlockDialogs(
+                    unlockFeature = unlockFeature,
+                    featureTitle = unlockTitle,
+                    navController = navController,
+                    onDismiss = { unlockFeature = null },
+                    onUnlocked = {
+                        if (unlockFeature == PremiumFeature.CONTROL_PANEL_SESSION_CSV) {
+                            if (sessionRecording.isRecording.not()) {
+                                actualViewModel?.toggleSessionRecording()
+                            }
+                            return@ControlPanelCenterFeatureUnlockDialogs
+                        }
+                        val unlockedMode = ControlPanelCenterMode.entries.firstOrNull { mode ->
+                            mode.premiumFeature == unlockFeature
+                        }
+                        if (unlockedMode != null) {
+                            onCenterModeSelected(unlockedMode)
+                        }
+                    },
+                )
+            }
+
+            if (sessionRecording.savedLocation.isNotBlank()) {
+                NeoDialog(
+                    onDismissRequest = { actualViewModel?.dismissFinishedSessionCsv() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_session_csv_saved))
+                    },
+                    subtitle = {
+                        NeoDialogBody(
+                            text = stringResource(
+                                R.string.control_panel_session_csv_saved_message,
+                                sessionRecording.finishedFileName,
+                                sessionRecording.savedLocation,
+                            ),
+                        )
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { actualViewModel?.dismissFinishedSessionCsv() },
+                        )
+                    },
+                )
+            }
+
+            sessionRecording.finishedFile?.let { csvFile ->
+                NeoDialog(
+                    onDismissRequest = { actualViewModel?.dismissFinishedSessionCsv() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_session_csv_title))
+                    },
+                    subtitle = {
+                        NeoDialogBody(text = stringResource(R.string.control_panel_session_csv_message))
+                    },
+                    actions = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            NeoPillButton(
+                                text = stringResource(R.string.control_panel_session_csv_share),
+                                onClick = {
+                                    val shared = shareSessionCsv(context, csvFile)
+                                    if (shared) {
+                                        actualViewModel?.dismissFinishedSessionCsv()
+                                    } else {
+                                        csvShareFailed = true
+                                    }
+                                },
+                                fillMaxWidth = true,
+                            )
+                            NeoSecondaryButton(
+                                text = stringResource(R.string.control_panel_session_csv_save),
+                                onClick = {
+                                    actualViewModel?.saveFinishedSessionCsvToDownloads { ok ->
+                                        if (!ok) csvSaveFailed = true
+                                    }
+                                },
+                                fillMaxWidth = true,
+                            )
+                            NeoDialogTextAction(
+                                text = stringResource(R.string.codes_pdf_cancel),
+                                onClick = { actualViewModel?.dismissFinishedSessionCsv() },
+                            )
+                        }
+                    },
+                )
+            }
+
+            if (csvSaveFailed) {
+                NeoDialog(
+                    onDismissRequest = { csvSaveFailed = false },
+                    title = {
+                        NeoDialogTitle(
+                            text = stringResource(R.string.control_panel_session_csv_save_failed_title),
+                        )
+                    },
+                    subtitle = {
+                        NeoDialogBody(
+                            text = stringResource(R.string.control_panel_session_csv_save_failed_message),
+                        )
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { csvSaveFailed = false },
+                        )
+                    },
+                )
+            }
+
+            if (csvShareFailed) {
+                NeoDialog(
+                    onDismissRequest = { csvShareFailed = false },
+                    title = {
+                        NeoDialogTitle(
+                            text = stringResource(R.string.control_panel_session_csv_share_no_app_title),
+                        )
+                    },
+                    subtitle = {
+                        NeoDialogBody(
+                            text = stringResource(R.string.control_panel_session_csv_share_no_app_message),
+                        )
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { csvShareFailed = false },
+                        )
+                    },
+                )
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -313,15 +542,38 @@ fun ControlPanelScreen(
                                             com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType.WIFI,
                                         onBackToModulesClick = {
                                             actualViewModel?.stopSendingRcData()
-                                            navController.navigate(Screen.Applications.route) {
-                                                popUpTo(Screen.Home.route)
+                                            navController.navigate(modulesHubRoute()) {
+                                                popUpTo(Screen.Home.route) {
+                                                    inclusive = false
+                                                }
                                                 launchSingleTop = true
                                             }
                                         },
-                                        onSettingsClick = {
-                                            navController.navigateToApplicationSettings(ApplicationId.CONTROL_PANEL)
+                                        onConnectionSettingsClick = {
+                                            navController.navigateToApplicationSettings(
+                                                ApplicationId.CONTROL_PANEL,
+                                                ApplicationSettingsSection.CONNECTION,
+                                            )
                                         },
                                         onBluetoothDisconnectedClick = onOpenBluetooth,
+                                        centerMode = centerMode,
+                                        isModeUnlocked = isCenterModeUnlocked,
+                                        onCenterModeClick = { mode ->
+                                            if (isCenterModeUnlocked(mode)) {
+                                                onCenterModeSelected(mode)
+                                            } else {
+                                                unlockFeature = mode.premiumFeature
+                                            }
+                                        },
+                                        isSessionRecording = sessionRecording.isRecording,
+                                        isSessionRecordingUnlocked = sessionCsvUnlocked,
+                                        onToggleSessionRecording = {
+                                            if (sessionRecording.isRecording || sessionCsvUnlocked) {
+                                                actualViewModel?.toggleSessionRecording()
+                                            } else {
+                                                unlockFeature = PremiumFeature.CONTROL_PANEL_SESSION_CSV
+                                            }
+                                        },
                                     )
                                 }
                             }
@@ -329,7 +581,14 @@ fun ControlPanelScreen(
                                 bluetoothViewModel = bluetoothViewModel,
                                 telemetryState = actualTelemetryState,
                                 plotLabels = plotLabels,
+                                plotCalibrations = plotCalibrations,
+                                channelRouting = channelRouting,
                                 settingsSyncGeneration = settingsSyncGeneration,
+                                centerMode = centerMode,
+                                centerModeUnlocked = isCenterModeUnlocked(centerMode),
+                                onUnlockCenterMode = {
+                                    unlockFeature = centerMode.premiumFeature
+                                },
                                 modifier = Modifier.fillMaxSize(),
                                 topStartOverlay = centerOverlay,
                             )
@@ -364,11 +623,17 @@ private fun ControlPanelCenterPlotHost(
     bluetoothViewModel: BluetoothViewModel?,
     telemetryState: StateFlow<TelemetryState>,
     plotLabels: List<String>,
+    plotCalibrations: List<PlotCalibration>,
+    channelRouting: ChannelRouting,
     settingsSyncGeneration: Int = 0,
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerModeUnlocked: Boolean = true,
+    onUnlockCenterMode: () -> Unit = {},
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
-    // Center display is two panes × two traces = four plot channels (v0…v3 / CC 33 count=4).
+    // Center display is two panes × two traces = four plot widgets.
+    // Analog bus on the wire is CH1…CH8 (`v0`…`v7` / CC 33 count up to 8).
     if (bluetoothViewModel != null) {
         val plotUi by bluetoothViewModel.rcPlotUiState.collectAsState()
         val displaySeries = remember(plotUi.series, plotLabels, settingsSyncGeneration) {
@@ -376,29 +641,61 @@ private fun ControlPanelCenterPlotHost(
         }
         ControlPanelCenterPlot(
             series = displaySeries,
+            radarSeries = plotUi.radarSeries,
             plotRevision = plotUi.revision,
+            plotCalibrations = plotCalibrations,
+            channelRouting = channelRouting,
+            onRadarSourceChange = bluetoothViewModel::saveChannelBinding,
+            onPlotLabelChange = bluetoothViewModel::savePlotLabel,
+            onPlotChannelChange = { index, channel ->
+                bluetoothViewModel.saveChannelBinding(TelemetrySink.plotAt(index), channel)
+            },
+            onPlotCalibrationChange = bluetoothViewModel::savePlotCalibration,
+            centerMode = centerMode,
+            centerModeUnlocked = centerModeUnlocked,
+            onUnlockCenterMode = onUnlockCenterMode,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
     } else {
         val telemetry by telemetryState.collectAsState()
-        val series by remember {
-            derivedStateOf { telemetry.plotState.series }
-        }
-        val plotRevision by remember {
-            derivedStateOf { telemetry.plotState.revision }
-        }
-        val displaySeries = remember(series, plotLabels, settingsSyncGeneration) {
-            fourPlotSeriesForDisplay(series, plotLabels)
+        val analogHistory = remember { AnalogChannelHistory() }
+        val routed = remember(telemetry, channelRouting, plotLabels, settingsSyncGeneration) {
+            analogHistory.ingest(telemetry)
+            RoutedPreviewPlots(
+                series = fourPlotSeriesForDisplay(
+                    TelemetryChannelRouter.plotSeries(
+                        telemetry = telemetry,
+                        routing = channelRouting,
+                        analogHistory = analogHistory,
+                        plotLabels = plotLabels,
+                    ),
+                    plotLabels,
+                ),
+                radarSeries = TelemetryChannelRouter.radarSeries(telemetry, analogHistory),
+                revision = telemetry.plotState.revision,
+            )
         }
         ControlPanelCenterPlot(
-            series = displaySeries,
-            plotRevision = plotRevision,
+            series = routed.series,
+            radarSeries = routed.radarSeries,
+            plotRevision = routed.revision,
+            plotCalibrations = plotCalibrations,
+            channelRouting = channelRouting,
+            centerMode = centerMode,
+            centerModeUnlocked = centerModeUnlocked,
+            onUnlockCenterMode = onUnlockCenterMode,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
     }
 }
+
+private data class RoutedPreviewPlots(
+    val series: List<PlotData>,
+    val radarSeries: List<PlotData>,
+    val revision: Long,
+)
 
 /** Exactly [UserSettings.PLOT_LABEL_COUNT] series for the dual-pane Cartesian plot. */
 private fun fourPlotSeriesForDisplay(
@@ -410,7 +707,17 @@ private fun fourPlotSeriesForDisplay(
 @Composable
 private fun ControlPanelCenterPlot(
     series: List<PlotData>,
+    radarSeries: List<PlotData> = emptyList(),
     plotRevision: Long,
+    plotCalibrations: List<PlotCalibration> = PlotCalibration.defaults(),
+    channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerModeUnlocked: Boolean = true,
+    onUnlockCenterMode: () -> Unit = {},
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
@@ -418,7 +725,17 @@ private fun ControlPanelCenterPlot(
         modifier = modifier,
         // Indices 0–1 → top pane; 2–3 → bottom pane (see CartesianPlot).
         series = series,
+        radarSeries = radarSeries,
         plotRevision = plotRevision,
+        plotCalibrations = plotCalibrations,
+        channelRouting = channelRouting,
+        onRadarSourceChange = onRadarSourceChange,
+        onPlotLabelChange = onPlotLabelChange,
+        onPlotChannelChange = onPlotChannelChange,
+        onPlotCalibrationChange = onPlotCalibrationChange,
+        centerMode = centerMode,
+        centerModeUnlocked = centerModeUnlocked,
+        onUnlockCenterMode = onUnlockCenterMode,
         topStartOverlay = topStartOverlay,
     )
 }
@@ -452,13 +769,19 @@ private fun ControlPanelLeftControllerHost(
     } else {
         val rcState by rcControlState.collectAsState()
         val telemetry by telemetryState.collectAsState()
-        val sideTelemetry by remember {
-            derivedStateOf { telemetry.toLeftSideTelemetry() }
-        }
+        val sideTelemetry = telemetry.toLeftSideTelemetry().copy(
+            panelNumber = TelemetryChannelRouter.panelLeft(telemetry, settings.channelRouting),
+            panelOn = settings.leftPanelOn,
+            panelColorArgb = UserSettings.panelColorArgb(settings.leftPanelColorGreen),
+            ledValues = TelemetryChannelRouter.ledByte(telemetry, settings.channelRouting),
+        )
         val indicator by remember {
             derivedStateOf {
                 SideIndicatorUi(
-                    value = telemetry.indicatorState.analogValue,
+                    value = TelemetryChannelRouter.analogGaugeU8(
+                        telemetry,
+                        settings.channelRouting,
+                    ),
                     title = telemetry.indicatorState.analogTitle,
                 )
             }
@@ -517,6 +840,9 @@ private fun ControlPanelLeftControllerConnected(
                     onKnobValueChange = onKnobValueChange,
                     onTopPress = onTopPress,
                     onBottomPress = onBottomPress,
+                    onStickModeChange = { mode ->
+                        bluetoothViewModel.saveStickMode(isRightStick = false, mode = mode)
+                    },
                 )
             }
         }
@@ -552,13 +878,19 @@ private fun ControlPanelRightControllerHost(
     } else {
         val rcState by rcControlState.collectAsState()
         val telemetry by telemetryState.collectAsState()
-        val sideTelemetry by remember {
-            derivedStateOf { telemetry.toRightSideTelemetry() }
-        }
+        val sideTelemetry = telemetry.toRightSideTelemetry().copy(
+            panelNumber = TelemetryChannelRouter.panelRight(telemetry, settings.channelRouting),
+            panelOn = settings.rightPanelOn,
+            panelColorArgb = UserSettings.panelColorArgb(settings.rightPanelColorGreen),
+            ledValues = TelemetryChannelRouter.ledByte(telemetry, settings.channelRouting),
+        )
         val indicator by remember {
             derivedStateOf {
                 SideIndicatorUi(
-                    value = telemetry.indicatorState.batteryLevel,
+                    value = TelemetryChannelRouter.batteryGaugeU8(
+                        telemetry,
+                        settings.channelRouting,
+                    ),
                     title = telemetry.indicatorState.batteryTitle,
                 )
             }
@@ -617,6 +949,9 @@ private fun ControlPanelRightControllerConnected(
                     onKnobValueChange = onKnobValueChange,
                     onTopPress = onTopPress,
                     onBottomPress = onBottomPress,
+                    onStickModeChange = { mode ->
+                        bluetoothViewModel.saveStickMode(isRightStick = true, mode = mode)
+                    },
                 )
             }
         }
@@ -630,6 +965,9 @@ private fun ControlPanelLeftTelemetryLayer(
 ) {
     val sideTelemetry by bluetoothViewModel.rcLeftSideTelemetry.collectAsState()
     val indicator by bluetoothViewModel.rcLeftIndicator.collectAsState()
+    val routing by bluetoothViewModel.rcChannelRouting.collectAsState()
+    var panelMenu by remember { mutableStateOf(false) }
+    var analogMenu by remember { mutableStateOf(false) }
     ControllerSideTelemetryRow(
         modifier = Modifier.fillMaxWidth(),
         side = ButtonSide.LEFT,
@@ -638,8 +976,52 @@ private fun ControlPanelLeftTelemetryLayer(
         extraContentSize = metrics.extraContentSize,
         ledSize = metrics.ledSize,
         ledSpacing = metrics.ledSpacing,
+        onPanelDoubleTap = { panelMenu = true },
+        panelMenu = {
+            TelemetryWidgetOptionsMenu(
+                expanded = panelMenu,
+                sink = TelemetrySink.PANEL_LEFT,
+                selectedChannel = routing.sourceFor(TelemetrySink.PANEL_LEFT),
+                widgetLabel = sideTelemetry.panelTitle,
+                onChannelSelected = { channel ->
+                    bluetoothViewModel.saveChannelBinding(TelemetrySink.PANEL_LEFT, channel)
+                },
+                onLabelChange = { label ->
+                    bluetoothViewModel.saveWidgetLabel(TelemetrySink.PANEL_LEFT, label)
+                },
+                onDismiss = { panelMenu = false },
+                panelOn = sideTelemetry.panelOn,
+                onPanelOnChange = { isOn ->
+                    bluetoothViewModel.saveNumericPanelOn(TelemetrySink.PANEL_LEFT, isOn)
+                },
+                panelColorGreen = sideTelemetry.panelColorArgb == UserSettings.PANEL_COLOR_GREEN_ARGB,
+                onPanelColorGreenChange = { isGreen ->
+                    bluetoothViewModel.saveNumericPanelColorGreen(TelemetrySink.PANEL_LEFT, isGreen)
+                },
+            )
+        },
         topExtraContent = { mod ->
-            AnalogIndicator(modifier = mod, value = indicator.value, title = indicator.title)
+            Box {
+                AnalogIndicator(
+                    modifier = mod,
+                    value = indicator.value,
+                    title = indicator.title,
+                    onDoubleTap = { analogMenu = true },
+                )
+                TelemetryWidgetOptionsMenu(
+                    expanded = analogMenu,
+                    sink = TelemetrySink.ANALOG_GAUGE,
+                    selectedChannel = routing.sourceFor(TelemetrySink.ANALOG_GAUGE),
+                    widgetLabel = indicator.title,
+                    onChannelSelected = { channel ->
+                        bluetoothViewModel.saveChannelBinding(TelemetrySink.ANALOG_GAUGE, channel)
+                    },
+                    onLabelChange = { label ->
+                        bluetoothViewModel.saveWidgetLabel(TelemetrySink.ANALOG_GAUGE, label)
+                    },
+                    onDismiss = { analogMenu = false },
+                )
+            }
         },
     )
 }
@@ -655,6 +1037,7 @@ private fun ControlPanelLeftControlsLayer(
     onKnobValueChange: (Float) -> Unit,
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
+    onStickModeChange: (JoystickMode) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         ControlPanelKnobSlot(
@@ -684,6 +1067,7 @@ private fun ControlPanelLeftControlsLayer(
                 settingsSyncGeneration = settingsSyncGeneration,
                 stickPosition = bluetoothViewModel.rcLeftStickPosition,
                 onMove = onMove,
+                onStickModeChange = onStickModeChange,
             )
             ControlPanelSwitchesSlot(
                 switchStates = bluetoothViewModel.rcLeftSwitchStates,
@@ -701,6 +1085,9 @@ private fun ControlPanelRightTelemetryLayer(
 ) {
     val sideTelemetry by bluetoothViewModel.rcRightSideTelemetry.collectAsState()
     val indicator by bluetoothViewModel.rcRightIndicator.collectAsState()
+    val routing by bluetoothViewModel.rcChannelRouting.collectAsState()
+    var panelMenu by remember { mutableStateOf(false) }
+    var batteryMenu by remember { mutableStateOf(false) }
     ControllerSideTelemetryRow(
         modifier = Modifier.fillMaxWidth(),
         side = ButtonSide.RIGHT,
@@ -709,8 +1096,52 @@ private fun ControlPanelRightTelemetryLayer(
         extraContentSize = metrics.extraContentSize,
         ledSize = metrics.ledSize,
         ledSpacing = metrics.ledSpacing,
+        onPanelDoubleTap = { panelMenu = true },
+        panelMenu = {
+            TelemetryWidgetOptionsMenu(
+                expanded = panelMenu,
+                sink = TelemetrySink.PANEL_RIGHT,
+                selectedChannel = routing.sourceFor(TelemetrySink.PANEL_RIGHT),
+                widgetLabel = sideTelemetry.panelTitle,
+                onChannelSelected = { channel ->
+                    bluetoothViewModel.saveChannelBinding(TelemetrySink.PANEL_RIGHT, channel)
+                },
+                onLabelChange = { label ->
+                    bluetoothViewModel.saveWidgetLabel(TelemetrySink.PANEL_RIGHT, label)
+                },
+                onDismiss = { panelMenu = false },
+                panelOn = sideTelemetry.panelOn,
+                onPanelOnChange = { isOn ->
+                    bluetoothViewModel.saveNumericPanelOn(TelemetrySink.PANEL_RIGHT, isOn)
+                },
+                panelColorGreen = sideTelemetry.panelColorArgb == UserSettings.PANEL_COLOR_GREEN_ARGB,
+                onPanelColorGreenChange = { isGreen ->
+                    bluetoothViewModel.saveNumericPanelColorGreen(TelemetrySink.PANEL_RIGHT, isGreen)
+                },
+            )
+        },
         topExtraContent = { mod ->
-            BatteryStatus(level = indicator.value, modifier = mod, title = indicator.title)
+            Box {
+                BatteryStatus(
+                    level = indicator.value,
+                    modifier = mod,
+                    title = indicator.title,
+                    onDoubleTap = { batteryMenu = true },
+                )
+                TelemetryWidgetOptionsMenu(
+                    expanded = batteryMenu,
+                    sink = TelemetrySink.BATTERY_GAUGE,
+                    selectedChannel = routing.sourceFor(TelemetrySink.BATTERY_GAUGE),
+                    widgetLabel = indicator.title,
+                    onChannelSelected = { channel ->
+                        bluetoothViewModel.saveChannelBinding(TelemetrySink.BATTERY_GAUGE, channel)
+                    },
+                    onLabelChange = { label ->
+                        bluetoothViewModel.saveWidgetLabel(TelemetrySink.BATTERY_GAUGE, label)
+                    },
+                    onDismiss = { batteryMenu = false },
+                )
+            }
         },
     )
 }
@@ -726,6 +1157,7 @@ private fun ControlPanelRightControlsLayer(
     onKnobValueChange: (Float) -> Unit,
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
+    onStickModeChange: (JoystickMode) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         ControlPanelKnobSlot(
@@ -755,6 +1187,7 @@ private fun ControlPanelRightControlsLayer(
                 settingsSyncGeneration = settingsSyncGeneration,
                 stickPosition = bluetoothViewModel.rcRightStickPosition,
                 onMove = onMove,
+                onStickModeChange = onStickModeChange,
             )
             ControlPanelSwitchesSlot(
                 switchStates = bluetoothViewModel.rcRightSwitchStates,
@@ -773,21 +1206,43 @@ private fun BoxScope.ControlPanelStickSlot(
     settingsSyncGeneration: Int,
     stickPosition: StateFlow<Pair<Float, Float>>,
     onMove: (Float, Float) -> Unit,
+    onStickModeChange: (JoystickMode) -> Unit,
 ) {
     val position by stickPosition.collectAsState()
     val joystickSize = metrics.joystickSize
-    ControllerSideJoystick(
-        modifier = Modifier
-            .offset(
-                x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f),
-                y = (-joystickSize * 0.1f),
-            )
-            .fillMaxSize(),
-        mode = mode,
-        stickPosition = position,
-        settingsSyncGeneration = settingsSyncGeneration,
-        onMove = onMove,
+    var menuExpanded by remember { mutableStateOf(false) }
+    val stickName = stringResource(
+        if (side == ButtonSide.RIGHT) {
+            R.string.rc_controller_settings_right_stick
+        } else {
+            R.string.rc_controller_settings_left_stick
+        },
     )
+    Box(modifier = Modifier.fillMaxSize()) {
+        ControllerSideJoystick(
+            modifier = Modifier
+                .offset(
+                    x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f),
+                    y = (-joystickSize * 0.1f),
+                )
+                .fillMaxSize(),
+            mode = mode,
+            stickPosition = position,
+            settingsSyncGeneration = settingsSyncGeneration,
+            onMove = onMove,
+            onDoubleTap = { menuExpanded = true },
+            contentDescription = stringResource(
+                R.string.control_panel_widget_config_content_description,
+                stickName,
+            ),
+        )
+        StickOptionsMenu(
+            expanded = menuExpanded,
+            selectedMode = mode,
+            onModeSelected = onStickModeChange,
+            onDismiss = { menuExpanded = false },
+        )
+    }
 }
 
 @Composable
@@ -897,16 +1352,47 @@ private fun ControlPanelRightController(
     )
 }
 
-@Composable
-fun LockScreenOrientation(orientation: Int) {
-    val context = LocalContext.current
-    DisposableEffect(Unit) {
-        val activity = context as? Activity ?: return@DisposableEffect onDispose {}
-        val originalOrientation = activity.requestedOrientation
-        activity.requestedOrientation = orientation
-        onDispose {
-            activity.requestedOrientation = originalOrientation
+private fun shareSessionCsv(context: Context, file: java.io.File): Boolean {
+    return try {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file,
+        )
+        fun sendIntent(mimeType: String): Intent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, file.name)
+            clipData = ClipData.newRawUri(file.name, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        val csvIntent = sendIntent("text/csv")
+        val plainIntent = sendIntent("text/plain")
+        val hasCsvTargets = context.packageManager
+            .queryIntentActivities(csvIntent, PackageManager.MATCH_DEFAULT_ONLY)
+            .isNotEmpty()
+        val sendIntent = if (hasCsvTargets) csvIntent else plainIntent
+        context.packageManager
+            .queryIntentActivities(sendIntent, PackageManager.MATCH_DEFAULT_ONLY)
+            .forEach { resolve ->
+                context.grantUriPermission(
+                    resolve.activityInfo.packageName,
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+        val chooser = Intent.createChooser(
+            sendIntent,
+            context.getString(R.string.control_panel_session_csv_share_chooser_title),
+        ).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(chooser)
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: IllegalArgumentException) {
+        false
     }
 }
 

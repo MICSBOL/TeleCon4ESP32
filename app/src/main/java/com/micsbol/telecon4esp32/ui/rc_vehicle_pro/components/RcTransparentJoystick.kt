@@ -1,9 +1,10 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components
 
+import android.os.SystemClock
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -25,7 +27,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +52,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private const val RADIUS_FRACTION = 0.88f
+/** Visual thumb is ~0.28 of pad radius; extra margin is for fat-finger grab. */
+private const val THUMB_GRAB_RADIUS_FRACTION = 0.45f
 private val LEVEL_POSITIONS = listOf(-1f, -0.5f, 0f, 0.5f, 1f)
 
 /** Slow enough for ~20 Hz RC packets to deliver a usable motor ramp on release. */
@@ -71,6 +79,9 @@ fun RcTransparentJoystick(
     modifier: Modifier = Modifier,
     size: Dp = RcVehicleProLayout.JoystickSize,
     deadzone: Float = RcVehicleProLayout.StickDeadzone,
+    settingsSyncGeneration: Int = 0,
+    onDoubleTap: (() -> Unit)? = null,
+    contentDescription: String? = null,
 ) {
     val ringColor = brandPrimary().copy(alpha = 0.45f)
     val levelColor = brandPrimary()
@@ -84,11 +95,18 @@ fun RcTransparentJoystick(
     val onMoveState = rememberUpdatedState(onMove)
     val stickPositionState = rememberUpdatedState(stickPosition)
     val deadzoneState = rememberUpdatedState(deadzone)
+    val modeState = rememberUpdatedState(mode)
+    val initialNormalizedState = rememberUpdatedState(initialNormalized)
+    val onDoubleTapState = rememberUpdatedState(onDoubleTap)
     val scope = rememberCoroutineScope()
     val springReturnJob = remember { SpringReturnJobHolder() }
 
     DisposableEffect(mode) {
         onDispose { springReturnJob.cancel() }
+    }
+
+    LaunchedEffect(settingsSyncGeneration) {
+        springReturnJob.cancel()
     }
 
     fun emitStick(x: Float, y: Float) {
@@ -102,7 +120,7 @@ fun RcTransparentJoystick(
 
     fun startSpringReturn(from: Pair<Float, Float>) {
         springReturnJob.cancel()
-        val end = initialNormalized
+        val end = initialNormalizedState.value
         if (
             abs(from.first - end.first) < 0.001f &&
             abs(from.second - end.second) < 0.001f
@@ -127,49 +145,115 @@ fun RcTransparentJoystick(
     }
 
     Box(
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .then(
+                if (contentDescription != null) {
+                    Modifier.semantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(mode, initialNormalized, deadzone) {
-                    fun updateFromTouch(touch: Offset) {
-                        val center = Offset(this.size.width / 2f, this.size.height / 2f)
-                        val radius = joystickRadius(this.size.width.toFloat(), this.size.height.toFloat())
-                        val vector = constrainVector(touch - center, radius, mode)
-                        val normalized = vectorToNormalized(vector, radius)
-                        emitStick(normalized.first, normalized.second)
-                    }
+                .pointerInput(Unit) {
+                    var lastTapUptime = 0L
+                    awaitPointerEventScope {
+                        fun emitFromPadPoint(padPoint: Offset) {
+                            val pad = this@pointerInput.size
+                            val center = Offset(pad.width / 2f, pad.height / 2f)
+                            val radius = joystickRadius(pad.width.toFloat(), pad.height.toFloat())
+                            val vector = constrainVector(padPoint - center, radius, modeState.value)
+                            val normalized = vectorToNormalized(vector, radius)
+                            emitStick(normalized.first, normalized.second)
+                        }
 
-                    detectDragGestures(
-                        onDragStart = { offset ->
+                        fun thumbCenter(): Offset {
+                            val pad = this@pointerInput.size
+                            val center = Offset(pad.width / 2f, pad.height / 2f)
+                            val radius = joystickRadius(pad.width.toFloat(), pad.height.toFloat())
+                            return center + normalizedToOffset(stickPositionState.value, radius)
+                        }
+
+                        fun grabRadius(): Float {
+                            val pad = this@pointerInput.size
+                            return joystickRadius(pad.width.toFloat(), pad.height.toFloat()) *
+                                THUMB_GRAB_RADIUS_FRACTION
+                        }
+
+                        fun rememberTapIfStationary(maxMove: Float, slop: Float, downTime: Long) {
+                            val upTime = SystemClock.uptimeMillis()
+                            val doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis
+                            if (
+                                onDoubleTapState.value != null &&
+                                maxMove < slop &&
+                                upTime - downTime <= doubleTapTimeout
+                            ) {
+                                lastTapUptime = upTime
+                            } else {
+                                lastTapUptime = 0L
+                            }
+                        }
+
+                        while (true) {
+                            val down = awaitFirstDown()
+                            val now = SystemClock.uptimeMillis()
+                            val slop = viewConfiguration.touchSlop
+                            val doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis
+                            val doubleTapMin = viewConfiguration.doubleTapMinTimeMillis
+                            val doubleTapHandler = onDoubleTapState.value
+                            val isDoubleTap = doubleTapHandler != null &&
+                                now - lastTapUptime in doubleTapMin..doubleTapTimeout
+                            if (isDoubleTap) {
+                                doubleTapHandler.invoke()
+                                lastTapUptime = 0L
+                                down.consume()
+                                consumeUntilUp(down.id, down.position)
+                                continue
+                            }
+
+                            val grabbed = (down.position - thumbCenter()).getDistance() <= grabRadius()
+                            if (!grabbed) {
+                                down.consume()
+                                val maxMove = consumeUntilUp(down.id, down.position)
+                                rememberTapIfStationary(maxMove, slop, now)
+                                continue
+                            }
+
                             cancelSpringReturn()
-                            updateFromTouch(offset)
-                        },
-                        onDragEnd = {
-                            when (mode) {
-                                is JoystickMode.Spring,
-                                is JoystickMode.VerticalSpring,
-                                is JoystickMode.HorizontalSpring,
-                                -> startSpringReturn(stickPositionState.value)
-
-                                else -> Unit
+                            val touchOffsetFromStick = down.position - thumbCenter()
+                            down.consume()
+                            val downPosition = down.position
+                            var maxMove = 0f
+                            val dragPointerId = down.id
+                            try {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val dragEvent = event.changes.firstOrNull { it.id == dragPointerId }
+                                    if (dragEvent == null || !dragEvent.pressed) {
+                                        when (modeState.value) {
+                                            is JoystickMode.Spring,
+                                            is JoystickMode.VerticalSpring,
+                                            is JoystickMode.HorizontalSpring,
+                                            -> startSpringReturn(stickPositionState.value)
+                                            else -> Unit
+                                        }
+                                        break
+                                    }
+                                    maxMove = maxOf(
+                                        maxMove,
+                                        (dragEvent.position - downPosition).getDistance(),
+                                    )
+                                    dragEvent.consume()
+                                    emitFromPadPoint(dragEvent.position - touchOffsetFromStick)
+                                }
+                            } finally {
+                                rememberTapIfStationary(maxMove, slop, now)
                             }
-                        },
-                        onDragCancel = {
-                            when (mode) {
-                                is JoystickMode.Spring,
-                                is JoystickMode.VerticalSpring,
-                                is JoystickMode.HorizontalSpring,
-                                -> startSpringReturn(stickPositionState.value)
-
-                                else -> Unit
-                            }
-                        },
-                    ) { change, _ ->
-                        change.consume()
-                        updateFromTouch(change.position)
+                        }
                     }
                 },
         ) {
@@ -223,6 +307,21 @@ fun RcTransparentJoystick(
 
 private fun joystickRadius(width: Float, height: Float): Float {
     return minOf(width, height) / 2f * RADIUS_FRACTION
+}
+
+private suspend fun AwaitPointerEventScope.consumeUntilUp(
+    pointerId: PointerId,
+    downPosition: Offset,
+): Float {
+    var maxMove = 0f
+    while (true) {
+        val event = awaitPointerEvent()
+        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+        change.consume()
+        maxMove = maxOf(maxMove, (change.position - downPosition).getDistance())
+        if (!change.pressed) break
+    }
+    return maxMove
 }
 
 private fun DrawScope.drawRingLevelTicks(

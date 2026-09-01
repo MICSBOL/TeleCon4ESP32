@@ -9,8 +9,11 @@ object SimpleProtocolTelemetryMapper {
 
     const val MAX_PLOT_POINTS = 100
 
-    /** RC Control Panel center graph supports four channels (two panes × two traces). */
-    const val MAX_PLOT_SERIES = UserSettings.PLOT_LABEL_COUNT
+    /**
+     * Numbered analog bus on `RC:PLOT` / `CC 33` (`v0`…`v7` = CH1…CH8).
+     * The Control Panel still shows four plot widgets; extra channels are map sources.
+     */
+    const val MAX_PLOT_SERIES = UserSettings.ANALOG_CHANNEL_COUNT
 
     val DEFAULT_PLOT_COLORS_ARGB = listOf(
         0xFF00FFFF.toInt(), // Cyan
@@ -19,15 +22,13 @@ object SimpleProtocolTelemetryMapper {
         0xFFFFFF00.toInt(), // Yellow
         0xFFFF00FF.toInt(), // Magenta
         0xFFFFFFFF.toInt(), // White
+        0xFFFF8000.toInt(), // Orange
+        0xFF8080FF.toInt(), // Periwinkle
     )
 
     fun applyRcData(values: Map<String, String>, current: TelemetryState): TelemetryState {
         val leftValue = values["left"]?.toIntOrNull() ?: current.panelState.leftValue
         val rightValue = values["right"]?.toIntOrNull() ?: current.panelState.rightValue
-        val leftOn = values["lo"]?.toBooleanLike() ?: current.panelState.leftOn
-        val rightOn = values["ro"]?.toBooleanLike() ?: current.panelState.rightOn
-        val leftGreen = values["lg"]?.toBooleanLike() ?: true
-        val rightGreen = values["rg"]?.toBooleanLike() ?: true
         val analog = values["analog"]?.toIntOrNull() ?: current.indicatorState.analogValue
         val battery = values["batt"]?.toIntOrNull() ?: current.indicatorState.batteryLevel
         val ledValues = values["led"]?.toIntOrNull(16)?.toByte()
@@ -37,10 +38,6 @@ object SimpleProtocolTelemetryMapper {
             panelState = current.panelState.copy(
                 leftValue = leftValue,
                 rightValue = rightValue,
-                leftOn = leftOn,
-                rightOn = rightOn,
-                leftColorArgb = if (leftGreen) 0xFF00FF00.toInt() else 0xFFFF0000.toInt(),
-                rightColorArgb = if (rightGreen) 0xFF00FF00.toInt() else 0xFFFF0000.toInt(),
                 leftTitle = values["lt"] ?: current.panelState.leftTitle,
                 rightTitle = values["rt"] ?: current.panelState.rightTitle,
             ),
@@ -111,7 +108,7 @@ object SimpleProtocolTelemetryMapper {
                     val seriesIndex = updatedSeries.size
                     updatedSeries.add(
                         PlotData(
-                            name = plotNames[seriesIndex] ?: "Plot ${seriesIndex + 1}",
+                            name = plotNames[seriesIndex] ?: "CH${seriesIndex + 1}",
                             dataPoints = emptyList(),
                             colorArgb = plotColors.getOrElse(seriesIndex) { 0xFFFFFFFF.toInt() },
                         ),
@@ -143,10 +140,4 @@ object SimpleProtocolTelemetryMapper {
             val intValue = value.toIntOrNull() ?: return@mapNotNull null
             index to intValue
         }.toMap()
-}
-
-private fun String.toBooleanLike(): Boolean = when (lowercase()) {
-    "1", "true", "on", "yes" -> true
-    "0", "false", "off", "no" -> false
-    else -> toIntOrNull()?.let { it != 0 } ?: false
 }

@@ -52,6 +52,7 @@ fun CoinUnlockPillButton(
         else -> AppGlass.SurfaceAlphaStrong * 0.92f
     }
 
+    val stretch = fixedWidth != null || fillMaxWidth
     Row(
         modifier = modifier
             .then(if (fixedWidth != null) Modifier.width(fixedWidth) else Modifier)
@@ -67,7 +68,11 @@ fun CoinUnlockPillButton(
             )
             .padding(horizontal = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = if (stretch) {
+            Arrangement.SpaceBetween
+        } else {
+            Arrangement.spacedBy(8.dp)
+        },
     ) {
         Text(
             text = stringResource(R.string.coins_unlock_action),
@@ -76,9 +81,11 @@ fun CoinUnlockPillButton(
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 8.dp),
+            modifier = if (stretch) {
+                Modifier.weight(1f).padding(end = 8.dp)
+            } else {
+                Modifier
+            },
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,

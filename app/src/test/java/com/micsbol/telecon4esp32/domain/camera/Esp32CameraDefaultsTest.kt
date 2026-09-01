@@ -36,16 +36,16 @@ class Esp32CameraDefaultsTest {
     @Test
     fun camConfigUrl_appendsPathAndQuery() {
         assertEquals(
-            "http://192.168.4.1/camconfig?framesize=qvga&quality=22&fps=10",
+            "http://192.168.4.1/camconfig?framesize=qqvga&quality=28&fps=8&ampdu_rx=0",
             Esp32CameraDefaults.camConfigUrl(
-                query = "framesize=qvga&quality=22&fps=10",
+                query = "framesize=qqvga&quality=28&fps=8&ampdu_rx=0",
             ),
         )
         assertEquals(
-            "http://192.168.4.1/camconfig?framesize=vga&quality=15&fps=0",
+            "http://192.168.4.1/camconfig?framesize=vga&quality=15&fps=12",
             Esp32CameraDefaults.camConfigUrl(
                 "http://192.168.4.1/",
-                "?framesize=vga&quality=15&fps=0",
+                "?framesize=vga&quality=15&fps=12",
             ),
         )
     }

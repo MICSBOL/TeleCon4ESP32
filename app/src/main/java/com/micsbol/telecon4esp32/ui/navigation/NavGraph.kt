@@ -26,22 +26,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.domain.model.hasEntryAccess
+import com.micsbol.telecon4esp32.domain.model.isApplicationCatalogVisible
 import com.micsbol.telecon4esp32.domain.model.isShipped
-import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.bluetooth.WrapApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.about.AboutScreen
 import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
+import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationsScreen
 import com.micsbol.telecon4esp32.ui.applications.ProApplicationPlaceholderScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.codes.CodesHubScreen
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
+import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelCameraStreamViewModel
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelScreen
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
@@ -96,103 +96,17 @@ fun AppNavGraph(
         composable(Screen.Home.route) {
             val state by bluetoothViewModel.state.collectAsState()
             val lastApplicationId by bluetoothViewModel.lastApplicationId.collectAsState()
-            val lastDeviceName by bluetoothViewModel.lastDeviceName.collectAsState()
-            val context = LocalContext.current
-            val activity = context as? ComponentActivity
-            val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-            val bluetoothAdapter = bluetoothManager?.adapter
-
-            val enableBluetoothLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.StartActivityForResult()
-            ) {}
-
-            val permissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestMultiplePermissions()
-            ) { perms ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val scanGranted = perms[Manifest.permission.BLUETOOTH_SCAN] == true
-                    val connectGranted = perms[Manifest.permission.BLUETOOTH_CONNECT] == true
-                    if (scanGranted && connectGranted && bluetoothAdapter?.isEnabled == false) {
-                        enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                    }
-                }
-            }
-
-            fun ensureBluetoothReadyBeforeAction(onReady: () -> Unit) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val scanGranted = ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.BLUETOOTH_SCAN
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    val connectGranted = ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.BLUETOOTH_CONNECT
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (!scanGranted || !connectGranted) {
-                        permissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.BLUETOOTH_SCAN,
-                                Manifest.permission.BLUETOOTH_CONNECT
-                            )
-                        )
-                        return
-                    }
-                }
-
-                if (bluetoothAdapter?.isEnabled == false && activity != null) {
-                    enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                    return
-                }
-
-                onReady()
-            }
 
             CyberHomeScreen(
                 navController = navController,
                 isConnecting = state.isConnecting,
                 activeSession = state.activeSession,
                 lastApplicationId = lastApplicationId,
-                lastDeviceName = state.activeSession?.deviceName ?: lastDeviceName,
                 errorMessage = state.errorMessage,
                 connectFailure = state.connectFailure,
                 handshakeFailure = state.handshakeFailure,
                 onDismissError = bluetoothViewModel::dismissError,
                 onOpenApplications = { navController.navigate(Screen.Applications.route) },
-                onContinueSession = {
-                    val sessionAppId = state.activeSession?.applicationId
-                    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
-                    if (
-                        sessionAppId != null &&
-                        !sessionAppId.hasEntryAccess(
-                            entitlement = entitlement,
-                            wallet = wallet,
-                            requiresCoinEntry = requiresCoinEntry,
-                            includeSessionGrants = false,
-                        )
-                    ) {
-                        navController.navigate(Screen.Applications.route)
-                        return@CyberHomeScreen
-                    }
-                    bluetoothViewModel.continueLastSession { route ->
-                        navController.navigate(route)
-                    }
-                },
-                onOpenRecentProject = { applicationId ->
-                    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
-                    // Home must not re-enter via a consumed one-use (session) grant.
-                    if (!applicationId.hasEntryAccess(
-                            entitlement = entitlement,
-                            wallet = wallet,
-                            requiresCoinEntry = requiresCoinEntry,
-                            includeSessionGrants = false,
-                        )
-                    ) {
-                        return@CyberHomeScreen
-                    }
-                    bluetoothViewModel.openRecentProject(applicationId) { route ->
-                        navController.navigate(route)
-                    }
-                },
             )
         }
         composable(Screen.Bluetooth.route) {
@@ -309,12 +223,22 @@ fun AppNavGraph(
             )
         }
         composable(Screen.Applications.route) {
-            ApplicationsScreen(navController = navController)
+            if (!isApplicationCatalogVisible()) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Applications.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            } else {
+                ApplicationsScreen(navController = navController)
+            }
         }
         composable(Screen.ControlPanel.route) {
             ControlPanelScreen(
                 bluetoothViewModel = bluetoothViewModel,
                 navController = navController,
+                cameraStreamViewModel = hiltViewModel<ControlPanelCameraStreamViewModel>(),
             )
         }
         composable(Screen.RcVehiclePro.route) {
@@ -340,6 +264,11 @@ fun AppNavGraph(
             route = Screen.ApplicationSettings.route,
             arguments = listOf(
                 navArgument("applicationId") { type = NavType.StringType },
+                navArgument("section") {
+                    type = NavType.StringType
+                    defaultValue = ApplicationSettingsSection.CONNECTION.name
+                    nullable = true
+                },
             ),
         ) { backStackEntry ->
             val applicationId = backStackEntry.arguments
@@ -347,15 +276,14 @@ fun AppNavGraph(
                 ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
                 ?.takeIf { it.isShipped() }
                 ?: return@composable
+            val section = ApplicationSettingsSection.fromNav(
+                backStackEntry.arguments?.getString("section"),
+            )
             ApplicationSettingsHostScreen(
                 navController = navController,
                 applicationId = applicationId,
+                settingsSection = section,
                 settingsViewModel = settingsViewModel,
-                onDisplayLabelsApplied = { draft ->
-                    if (applicationId == ApplicationId.CONTROL_PANEL) {
-                        bluetoothViewModel.applyDisplayLabelSettings(draft)
-                    }
-                },
             )
         }
         composable(

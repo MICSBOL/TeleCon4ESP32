@@ -2,14 +2,14 @@ package com.micsbol.telecon4esp32.domain.camera
 
 /**
  * Shared SoftAP HTTP camera lifecycle for Kit A ([CameraLinkProfile.WIFI_SOFTAP])
- * and Kit B ([CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE]).
+ * and DevKit Bluetooth + SoftAP camera overlay ([CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT]).
  *
  * Call [onVisible] / [onHidden] from the screen lifecycle, and [setProfile] when
- * board / transport settings change so DevKit stops polling SoftAP.
+ * board / overlay / connection settings change so DevKit-only stops polling SoftAP.
  *
  * Important: [apply] must not call [CameraStreamRepository.startStream] again while
  * already streaming — that cancels the HTTP client and leaves the HUD on one frame
- * (e.g. after BLE connect on Kit B).
+ * (e.g. after Bluetooth connect while SoftAP video is already running).
  */
 class Esp32CameraLinkSession(
     private val repository: CameraStreamRepository,

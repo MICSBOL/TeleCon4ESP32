@@ -10,15 +10,16 @@ sealed interface CameraStreamState {
 }
 
 /**
- * SoftAP HTTP defaults shared by Kit A (CAM SoftAP video + TCP) and Kit B
- * (CAM SoftAP video-only + DevKit BLE). Same SSID / URLs for both kits.
+ * SoftAP HTTP defaults shared by Kit A (CAM SoftAP video + TCP) and the optional
+ * CAM video overlay (video-only SoftAP + DevKit Bluetooth). Overlay video uses the
+ * starter SSID; Kit A Advanced uses [SOFTAP_SSID].
  */
 object Esp32CameraDefaults {
     /** Default ESP32-CAM soft-AP address when the module hosts its own network. */
     const val DEFAULT_BASE_URL = "http://192.168.4.1"
 
     const val DEFAULT_SOFTAP_HOST = "192.168.4.1"
-    /** Kit A SoftAP TCP control port; unused for Kit B (BLE on DevKit). */
+    /** Kit A SoftAP TCP control port; unused when Bluetooth is the control link. */
     const val DEFAULT_CONTROL_PORT = 3333
     /** Advanced Kit A SoftAP SSID (`proto=wifi`). */
     const val SOFTAP_SSID = "TeleCon-RC-CAM"

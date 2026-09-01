@@ -35,10 +35,21 @@ import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.navigation.mainRoute
+import com.micsbol.telecon4esp32.ui.navigation.modulesHubRoute
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
+import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcCameraPan
 import com.micsbol.telecon4esp32.domain.model.RcState
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
+import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
+import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryChannelRouter
+import com.micsbol.telecon4esp32.domain.use_case.SaveSettingsUseCases
+import com.micsbol.telecon4esp32.domain.repository.ISessionCsvRepository
+import com.micsbol.telecon4esp32.domain.session.SessionCsv
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationConnectionModeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationProtocolModeUseCase
@@ -78,6 +89,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.BufferedWriter
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -93,6 +109,8 @@ open class BluetoothViewModel @Inject constructor(
     private val getApplicationConnectionMode: GetApplicationConnectionModeUseCase,
     private val getApplicationBoard: GetApplicationBoardUseCase,
     getSoftApPerformancePreset: GetSoftApPerformancePresetUseCase,
+    private val sessionCsvRepository: ISessionCsvRepository,
+    private val saveSettings: SaveSettingsUseCases,
 ) : ViewModel() {
 
     val controlPanelProtocolMode: StateFlow<BluetoothProtocolMode> =
@@ -177,13 +195,35 @@ open class BluetoothViewModel @Inject constructor(
             initialValue = List(UserSettings.PLOT_LABEL_COUNT) { "" },
         )
 
+    val rcPlotCalibrations: StateFlow<List<PlotCalibration>> = _telemetryLabelSettings
+        .map { it.plotCalibrations }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = PlotCalibration.defaults(),
+        )
+
+    private val analogChannelHistory = AnalogChannelHistory()
+
+    val rcChannelRouting: StateFlow<ChannelRouting> = _telemetryLabelSettings
+        .map { it.channelRouting }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = ChannelRouting.defaults(),
+        )
+
     /** Panel/LED slice — does not change when only plot points are appended. */
     val rcLeftSideTelemetry: StateFlow<SideTelemetry> = combine(
         telemetryState,
         telemetryLabelsFromSettings,
     ) { telemetry, labels ->
         telemetry.toLeftSideTelemetry().copy(
+            panelNumber = TelemetryChannelRouter.panelLeft(telemetry, labels.channelRouting),
             panelTitle = telemetry.panelState.leftTitle.orSettingsFallback(labels.leftPanelUnit),
+            panelOn = labels.leftPanelOn,
+            panelColorArgb = UserSettings.panelColorArgb(labels.leftPanelColorGreen),
+            ledValues = TelemetryChannelRouter.ledByte(telemetry, labels.channelRouting),
         )
     }
         .distinctUntilChanged()
@@ -191,7 +231,12 @@ open class BluetoothViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = telemetryState.value.toLeftSideTelemetry(),
+            initialValue = telemetryState.value.toLeftSideTelemetry().copy(
+                panelOn = _telemetryLabelSettings.value.leftPanelOn,
+                panelColorArgb = UserSettings.panelColorArgb(
+                    _telemetryLabelSettings.value.leftPanelColorGreen,
+                ),
+            ),
         )
 
     val rcRightSideTelemetry: StateFlow<SideTelemetry> = combine(
@@ -199,7 +244,11 @@ open class BluetoothViewModel @Inject constructor(
         telemetryLabelsFromSettings,
     ) { telemetry, labels ->
         telemetry.toRightSideTelemetry().copy(
+            panelNumber = TelemetryChannelRouter.panelRight(telemetry, labels.channelRouting),
             panelTitle = telemetry.panelState.rightTitle.orSettingsFallback(labels.rightPanelUnit),
+            panelOn = labels.rightPanelOn,
+            panelColorArgb = UserSettings.panelColorArgb(labels.rightPanelColorGreen),
+            ledValues = TelemetryChannelRouter.ledByte(telemetry, labels.channelRouting),
         )
     }
         .distinctUntilChanged()
@@ -207,7 +256,12 @@ open class BluetoothViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = telemetryState.value.toRightSideTelemetry(),
+            initialValue = telemetryState.value.toRightSideTelemetry().copy(
+                panelOn = _telemetryLabelSettings.value.rightPanelOn,
+                panelColorArgb = UserSettings.panelColorArgb(
+                    _telemetryLabelSettings.value.rightPanelColorGreen,
+                ),
+            ),
         )
 
     val rcLeftIndicator: StateFlow<SideIndicatorUi> = combine(
@@ -215,7 +269,7 @@ open class BluetoothViewModel @Inject constructor(
         telemetryLabelsFromSettings,
     ) { telemetry, labels ->
         SideIndicatorUi(
-            value = telemetry.indicatorState.analogValue,
+            value = TelemetryChannelRouter.analogGaugeU8(telemetry, labels.channelRouting),
             title = telemetry.indicatorState.analogTitle
                 .orSettingsFallback(labels.analogIndicatorUnit),
         )
@@ -236,7 +290,7 @@ open class BluetoothViewModel @Inject constructor(
         telemetryLabelsFromSettings,
     ) { telemetry, labels ->
         SideIndicatorUi(
-            value = telemetry.indicatorState.batteryLevel,
+            value = TelemetryChannelRouter.batteryGaugeU8(telemetry, labels.channelRouting),
             title = telemetry.indicatorState.batteryTitle
                 .orSettingsFallback(labels.batteryLabel),
         )
@@ -328,6 +382,9 @@ open class BluetoothViewModel @Inject constructor(
     private var deviceConnectionJob: Job? = null
     private var sendingJob: Job? = null
     private var plotThrottleJob: Job? = null
+    private var sessionCsvJob: Job? = null
+    private var sessionCsvWriter: BufferedWriter? = null
+    private var sessionCsvStartedAtMs: Long = 0L
     private var rcDataSendingActive = false
     private val rcPlotScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -337,8 +394,12 @@ open class BluetoothViewModel @Inject constructor(
     private val _rcSettingsSyncGeneration = MutableStateFlow(0)
     val rcSettingsSyncGeneration: StateFlow<Int> = _rcSettingsSyncGeneration
 
+    private val _sessionRecording = MutableStateFlow(SessionRecordingUiState())
+    val sessionRecording: StateFlow<SessionRecordingUiState> = _sessionRecording
+
     companion object {
         private const val RC_PLOT_UI_PERIOD_MS = 33L
+        private const val SESSION_CSV_PERIOD_MS = 50L
         private const val HANDSHAKE_TIMEOUT_MS = 2_500L
         private const val RC_WIFI_TAG = "RcWifiSoftAp"
         /** NavGraph pops the back stack when this route is emitted after a successful connect. */
@@ -551,7 +612,7 @@ open class BluetoothViewModel @Inject constructor(
             onNavigate(session.applicationId.mainRoute())
             return
         }
-        onNavigate(Screen.Applications.route)
+        onNavigate(modulesHubRoute())
     }
 
     init {
@@ -717,13 +778,22 @@ open class BluetoothViewModel @Inject constructor(
             var latest = RcPlotUiState()
             var hasPending = false
             val collectJob = launch {
-                telemetryState
-                    .map { state ->
-                        RcPlotUiState(
-                            series = state.plotState.series,
-                            revision = state.plotState.revision,
-                        )
-                    }
+                combine(telemetryState, telemetryLabelsFromSettings) { state, labels ->
+                    analogChannelHistory.ingest(state)
+                    RcPlotUiState(
+                        series = TelemetryChannelRouter.plotSeries(
+                            telemetry = state,
+                            routing = labels.channelRouting,
+                            analogHistory = analogChannelHistory,
+                            plotLabels = labels.plotLabels,
+                        ),
+                        radarSeries = TelemetryChannelRouter.radarSeries(
+                            telemetry = state,
+                            analogHistory = analogChannelHistory,
+                        ),
+                        revision = state.plotState.revision,
+                    )
+                }
                     .collect { plotState ->
                         latest = plotState
                         hasPending = true
@@ -749,8 +819,9 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     /**
-     * Called when an RC screen is shown. Applies [UserSettings] after a cold start or when
-     * RcSettings changed; otherwise keeps the last in-session [rcControlState].
+     * Called when an RC screen is shown. Loads HUD labels and stick modes; live stick,
+     * switch, and knob values stay as they are until connect applies rest positions
+     * or the user moves them.
      */
     fun onControlPanelEntered() {
         viewModelScope.launch {
@@ -799,7 +870,8 @@ open class BluetoothViewModel @Inject constructor(
 
     /** Applies display labels immediately so the control panel updates before DataStore propagates. */
     fun applyDisplayLabelSettings(draft: DisplayLabelDraft) {
-        _telemetryLabelSettings.value = draft.toTelemetryLabelSettings()
+        val currentAppearance = _telemetryLabelSettings.value
+        _telemetryLabelSettings.value = draft.toTelemetryLabelSettings(currentAppearance)
         val persisted = (userSettings.value as? SettingsUiState.Success)?.settings
         if (persisted != null) {
             lastAppliedSettings = persisted.copy(
@@ -808,9 +880,306 @@ open class BluetoothViewModel @Inject constructor(
                 analogIndicatorUnit = draft.analogIndicatorUnit,
                 batteryLabel = draft.batteryLabel,
                 plotLabels = draft.plotLabels,
+                plotCalibrations = draft.toPlotCalibrations(),
+                channelRouting = currentAppearance.channelRouting,
+                leftPanelOn = currentAppearance.leftPanelOn,
+                rightPanelOn = currentAppearance.rightPanelOn,
+                leftPanelColorGreen = currentAppearance.leftPanelColorGreen,
+                rightPanelColorGreen = currentAppearance.rightPanelColorGreen,
             )
         }
         _rcSettingsSyncGeneration.update { it + 1 }
+    }
+
+    fun savePlotLabel(index: Int, label: String) {
+        if (index !in 0 until UserSettings.PLOT_LABEL_COUNT) return
+        val trimmed = label.trim()
+        _telemetryLabelSettings.update { current ->
+            current.copy(
+                plotLabels = List(UserSettings.PLOT_LABEL_COUNT) { i ->
+                    if (i == index) trimmed else current.plotLabels.getOrElse(i) { "" }
+                },
+            )
+        }
+        lastAppliedSettings = lastAppliedSettings?.copy(
+            plotLabels = _telemetryLabelSettings.value.plotLabels,
+        )
+        _rcSettingsSyncGeneration.update { it + 1 }
+        viewModelScope.launch { saveSettings.savePlotLabel(index, trimmed) }
+    }
+
+    fun savePlotCalibration(index: Int, calibration: PlotCalibration) {
+        if (index !in 0 until UserSettings.PLOT_LABEL_COUNT) return
+        _telemetryLabelSettings.update { current ->
+            val updated = PlotCalibration.padded(current.plotCalibrations).toMutableList()
+            updated[index] = calibration
+            current.copy(plotCalibrations = updated)
+        }
+        lastAppliedSettings = lastAppliedSettings?.copy(
+            plotCalibrations = _telemetryLabelSettings.value.plotCalibrations,
+        )
+        _rcSettingsSyncGeneration.update { it + 1 }
+        viewModelScope.launch { saveSettings.savePlotCalibration(index, calibration) }
+    }
+
+    fun saveStickMode(isRightStick: Boolean, mode: JoystickMode) {
+        val base = lastAppliedSettings
+            ?: (userSettings.value as? SettingsUiState.Success)?.settings
+            ?: UserSettings()
+        lastAppliedSettings = if (isRightStick) {
+            base.copy(rightStickMode = mode)
+        } else {
+            base.copy(leftStickMode = mode)
+        }
+        val rest = mode.initialPositionNormalized()
+        _rcControlState.update { current ->
+            if (isRightStick) current.copy(rightStickPosition = rest)
+            else current.copy(leftStickPosition = rest)
+        }
+        _rcSettingsSyncGeneration.update { it + 1 }
+        viewModelScope.launch {
+            if (isRightStick) saveSettings.saveRightStickMode(mode)
+            else saveSettings.saveLeftStickMode(mode)
+        }
+    }
+
+    fun saveChannelBinding(sink: TelemetrySink, channel: TelemetryChannel) {
+        val updated = _telemetryLabelSettings.value.channelRouting.with(sink, channel)
+        _telemetryLabelSettings.update { it.copy(channelRouting = updated) }
+        viewModelScope.launch {
+            saveSettings.saveChannelRouting(updated)
+        }
+    }
+
+    fun saveTelemetryWidgetConfig(sink: TelemetrySink, channel: TelemetryChannel, label: String) {
+        if (sink !in HUD_CONFIG_SINKS) return
+        val trimmed = label.trim()
+        val updatedRouting = _telemetryLabelSettings.value.channelRouting.with(sink, channel)
+        _telemetryLabelSettings.update { current ->
+            current.copy(
+                channelRouting = updatedRouting,
+                leftPanelUnit = if (sink == TelemetrySink.PANEL_LEFT) trimmed else current.leftPanelUnit,
+                rightPanelUnit = if (sink == TelemetrySink.PANEL_RIGHT) trimmed else current.rightPanelUnit,
+                analogIndicatorUnit = if (sink == TelemetrySink.ANALOG_GAUGE) {
+                    trimmed
+                } else {
+                    current.analogIndicatorUnit
+                },
+                batteryLabel = if (sink == TelemetrySink.BATTERY_GAUGE) trimmed else current.batteryLabel,
+            )
+        }
+        val appearance = _telemetryLabelSettings.value
+        lastAppliedSettings = lastAppliedSettings?.copy(
+            leftPanelUnit = appearance.leftPanelUnit,
+            rightPanelUnit = appearance.rightPanelUnit,
+            analogIndicatorUnit = appearance.analogIndicatorUnit,
+            batteryLabel = appearance.batteryLabel,
+            channelRouting = appearance.channelRouting,
+        )
+        _rcSettingsSyncGeneration.update { it + 1 }
+        viewModelScope.launch {
+            saveSettings.saveChannelRouting(updatedRouting)
+            when (sink) {
+                TelemetrySink.PANEL_LEFT -> saveSettings.saveLeftPanelUnit(trimmed)
+                TelemetrySink.PANEL_RIGHT -> saveSettings.saveRightPanelUnit(trimmed)
+                TelemetrySink.ANALOG_GAUGE -> saveSettings.saveAnalogIndicatorUnit(trimmed)
+                TelemetrySink.BATTERY_GAUGE -> saveSettings.saveBatteryLabel(trimmed)
+                else -> Unit
+            }
+        }
+    }
+
+    fun saveWidgetLabel(sink: TelemetrySink, label: String) {
+        if (sink !in HUD_CONFIG_SINKS) return
+        val trimmed = label.trim()
+        _telemetryLabelSettings.update { current ->
+            current.copy(
+                leftPanelUnit = if (sink == TelemetrySink.PANEL_LEFT) trimmed else current.leftPanelUnit,
+                rightPanelUnit = if (sink == TelemetrySink.PANEL_RIGHT) trimmed else current.rightPanelUnit,
+                analogIndicatorUnit = if (sink == TelemetrySink.ANALOG_GAUGE) {
+                    trimmed
+                } else {
+                    current.analogIndicatorUnit
+                },
+                batteryLabel = if (sink == TelemetrySink.BATTERY_GAUGE) trimmed else current.batteryLabel,
+            )
+        }
+        val appearance = _telemetryLabelSettings.value
+        lastAppliedSettings = lastAppliedSettings?.copy(
+            leftPanelUnit = appearance.leftPanelUnit,
+            rightPanelUnit = appearance.rightPanelUnit,
+            analogIndicatorUnit = appearance.analogIndicatorUnit,
+            batteryLabel = appearance.batteryLabel,
+        )
+        _rcSettingsSyncGeneration.update { it + 1 }
+        viewModelScope.launch {
+            when (sink) {
+                TelemetrySink.PANEL_LEFT -> saveSettings.saveLeftPanelUnit(trimmed)
+                TelemetrySink.PANEL_RIGHT -> saveSettings.saveRightPanelUnit(trimmed)
+                TelemetrySink.ANALOG_GAUGE -> saveSettings.saveAnalogIndicatorUnit(trimmed)
+                TelemetrySink.BATTERY_GAUGE -> saveSettings.saveBatteryLabel(trimmed)
+                else -> Unit
+            }
+        }
+    }
+
+    fun saveNumericPanelOn(sink: TelemetrySink, isOn: Boolean) {
+        when (sink) {
+            TelemetrySink.PANEL_LEFT -> {
+                _telemetryLabelSettings.update { it.copy(leftPanelOn = isOn) }
+                lastAppliedSettings = lastAppliedSettings?.copy(leftPanelOn = isOn)
+                viewModelScope.launch { saveSettings.saveLeftPanelOn(isOn) }
+            }
+            TelemetrySink.PANEL_RIGHT -> {
+                _telemetryLabelSettings.update { it.copy(rightPanelOn = isOn) }
+                lastAppliedSettings = lastAppliedSettings?.copy(rightPanelOn = isOn)
+                viewModelScope.launch { saveSettings.saveRightPanelOn(isOn) }
+            }
+            else -> return
+        }
+        _rcSettingsSyncGeneration.update { it + 1 }
+    }
+
+    fun saveNumericPanelColorGreen(sink: TelemetrySink, isGreen: Boolean) {
+        when (sink) {
+            TelemetrySink.PANEL_LEFT -> {
+                _telemetryLabelSettings.update { it.copy(leftPanelColorGreen = isGreen) }
+                lastAppliedSettings = lastAppliedSettings?.copy(leftPanelColorGreen = isGreen)
+                viewModelScope.launch { saveSettings.saveLeftPanelColorGreen(isGreen) }
+            }
+            TelemetrySink.PANEL_RIGHT -> {
+                _telemetryLabelSettings.update { it.copy(rightPanelColorGreen = isGreen) }
+                lastAppliedSettings = lastAppliedSettings?.copy(rightPanelColorGreen = isGreen)
+                viewModelScope.launch { saveSettings.saveRightPanelColorGreen(isGreen) }
+            }
+            else -> return
+        }
+        _rcSettingsSyncGeneration.update { it + 1 }
+    }
+
+    fun toggleSessionRecording() {
+        if (_sessionRecording.value.isRecording) {
+            stopSessionRecording(showExport = true)
+        } else {
+            startSessionRecording()
+        }
+    }
+
+    fun dismissFinishedSessionCsv() {
+        _sessionRecording.update {
+            it.copy(finishedFile = null, finishedFileName = "", savedLocation = "")
+        }
+    }
+
+    fun saveFinishedSessionCsvToDownloads(onResult: (Boolean) -> Unit = {}) {
+        val file = _sessionRecording.value.finishedFile
+        val name = _sessionRecording.value.finishedFileName
+        if (file == null || name.isBlank()) {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val saved = runCatching {
+                sessionCsvRepository.saveToDownloads(file, name)
+            }.onFailure { error ->
+                Log.e("BluetoothViewModel", "Session CSV save failed", error)
+            }
+            val location = saved.getOrNull()
+            if (location != null) {
+                _sessionRecording.value = SessionRecordingUiState(
+                    finishedFileName = name,
+                    savedLocation = location,
+                )
+                onResult(true)
+            } else {
+                onResult(false)
+            }
+        }
+    }
+
+    private var sessionCsvFile: File? = null
+
+    private fun startSessionRecording() {
+        if (_sessionRecording.value.isRecording) return
+        val fileName = sessionCsvFileName()
+        val file = runCatching { sessionCsvRepository.createCacheFile(fileName) }.getOrNull()
+            ?: return
+        val writer = runCatching { file.bufferedWriter() }.getOrNull() ?: return
+        val labels = _telemetryLabelSettings.value.plotLabels
+        val calibrations = PlotCalibration.padded(_telemetryLabelSettings.value.plotCalibrations)
+        writer.write(SessionCsv.commentLines(labels, calibrations))
+        writer.write(SessionCsv.header())
+        writer.flush()
+        sessionCsvWriter = writer
+        sessionCsvFile = file
+        sessionCsvStartedAtMs = System.currentTimeMillis()
+        _sessionRecording.value = SessionRecordingUiState(isRecording = true)
+        sessionCsvJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                appendSessionCsvRow()
+                delay(SESSION_CSV_PERIOD_MS)
+            }
+        }
+    }
+
+    private fun stopSessionRecording(showExport: Boolean) {
+        sessionCsvJob?.cancel()
+        sessionCsvJob = null
+        runCatching {
+            sessionCsvWriter?.flush()
+            sessionCsvWriter?.close()
+        }
+        sessionCsvWriter = null
+        val file = sessionCsvFile
+        sessionCsvFile = null
+        _sessionRecording.value = if (showExport && file != null && file.exists()) {
+            SessionRecordingUiState(
+                isRecording = false,
+                finishedFile = file,
+                finishedFileName = file.name,
+            )
+        } else {
+            SessionRecordingUiState()
+        }
+    }
+
+    private fun appendSessionCsvRow() {
+        val writer = sessionCsvWriter ?: return
+        val telemetry = telemetryState.value
+        val control = rcControlState.value
+        val calibrations = PlotCalibration.padded(_telemetryLabelSettings.value.plotCalibrations)
+        val now = System.currentTimeMillis()
+        val plotNormalized = List(UserSettings.ANALOG_CHANNEL_COUNT) { index ->
+            telemetry.plotState.series.getOrNull(index)?.dataPoints?.lastOrNull()
+        }
+        val switches = control.leftSwitches + control.rightSwitches
+        val line = SessionCsv.row(
+            timestampMs = now,
+            elapsedMs = now - sessionCsvStartedAtMs,
+            plotNormalized = plotNormalized,
+            calibrations = calibrations,
+            leftPanel = telemetry.panelState.leftValue,
+            rightPanel = telemetry.panelState.rightValue,
+            analog = telemetry.indicatorState.analogValue,
+            battery = telemetry.indicatorState.batteryLevel,
+            led = telemetry.indicatorState.ledValues.toInt() and 0xFF,
+            leftStickX = control.leftStickPosition.first,
+            leftStickY = control.leftStickPosition.second,
+            rightStickX = control.rightStickPosition.first,
+            rightStickY = control.rightStickPosition.second,
+            leftKnob = control.leftKnobValue,
+            rightKnob = control.rightKnobValue,
+            switches = switches,
+        )
+        runCatching {
+            writer.write(line)
+            writer.flush()
+        }
+    }
+
+    private fun sessionCsvFileName(): String {
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
+        return "telecon_session_$stamp.csv"
     }
 
     fun startSendingRcData() {
@@ -879,41 +1248,24 @@ open class BluetoothViewModel @Inject constructor(
 
     private fun applySettingsIfChanged(settings: UserSettings) {
         if (settings == lastAppliedSettings) return
-        applySettingsToRcControl(settings)
         lastAppliedSettings = settings
         _rcSettingsSyncGeneration.update { it + 1 }
     }
 
-    private fun applySettingsToRcControl(settings: UserSettings) {
-        Log.d("BluetoothViewModel", "Applying saved settings to RcControlState.")
-        _rcControlState.update {
-            it.copy(
-                leftStickPosition = gridPositionToNormalized(settings.leftStickMode.initialPosition),
-                rightStickPosition = gridPositionToNormalized(settings.rightStickMode.initialPosition),
-                leftKnobValue = settings.leftKnobInitialValue,
-                rightKnobValue = settings.rightKnobInitialValue,
-                leftSwitches = listOf(
-                    settings.switchInitialStates[0] ?: false,
-                    settings.switchInitialStates[1] ?: false,
-                    settings.switchInitialStates[2] ?: false
-                ),
-                rightSwitches = listOf(
-                    settings.switchInitialStates[3] ?: false,
-                    settings.switchInitialStates[4] ?: false,
-                    settings.switchInitialStates[5] ?: false
-                )
-            )
-        }
-    }
-
-    private fun gridPositionToNormalized(pos: Pair<Int, Int>): Pair<Float, Float> {
-        val x = (pos.first - 6) / 6f
-        val y = (pos.second - 6) / -6f
-        return Pair(x, y)
+    fun resetLiveRcControlsToZero() {
+        val settings = lastAppliedSettings
+            ?: (userSettings.value as? SettingsUiState.Success)?.settings
+            ?: UserSettings()
+        _rcControlState.value = RcControlState(
+            leftStickPosition = settings.leftStickMode.initialPositionNormalized(),
+            rightStickPosition = settings.rightStickMode.initialPositionNormalized(),
+        )
+        _rcSettingsSyncGeneration.update { it + 1 }
     }
 
     override fun onCleared() {
         super.onCleared()
+        stopSessionRecording(showExport = false)
         stopSendingRcData()
         disconnectFromDevice()
     }
@@ -973,7 +1325,7 @@ open class BluetoothViewModel @Inject constructor(
 
     fun openApplications() {
         viewModelScope.launch {
-            _navigateToScreen.send(Screen.Applications.route)
+            _navigateToScreen.send(modulesHubRoute())
         }
     }
 
@@ -1081,6 +1433,10 @@ open class BluetoothViewModel @Inject constructor(
             )
         }
         pendingSessionContext = null
+        resetLiveRcControlsToZero()
+        if (context.applicationId == ApplicationId.RC_VEHICLE_PRO) {
+            setRcCameraPanFront(restartSending = false)
+        }
         if (context.transport == BluetoothTransportType.WIFI && rcDataSendingActive) {
             restartRcDataSending()
         }
@@ -1186,6 +1542,13 @@ open class BluetoothViewModel @Inject constructor(
     }
 }
 
+private val HUD_CONFIG_SINKS = setOf(
+    TelemetrySink.PANEL_LEFT,
+    TelemetrySink.PANEL_RIGHT,
+    TelemetrySink.ANALOG_GAUGE,
+    TelemetrySink.BATTERY_GAUGE,
+)
+
 private fun RcControlState.toRcState(): RcState = RcState(
     leftStickX = (leftStickPosition.first * 100).toInt(),
     leftStickY = (leftStickPosition.second * 100).toInt(),
@@ -1232,14 +1595,22 @@ data class RcControlState(
     val rightStickPosition: Pair<Float, Float> = Pair(0f, 0f),
     val leftSwitches: List<Boolean> = List(3) { false },
     val rightSwitches: List<Boolean> = List(3) { false },
-    val leftKnobValue: Float = 0.5f,
-    val rightKnobValue: Float = 0.5f
+    val leftKnobValue: Float = 0f,
+    val rightKnobValue: Float = 0f
 )
 
 /** Throttled plot snapshot for the RC screen (series history + monotonic revision). */
 data class RcPlotUiState(
     val series: List<PlotData> = emptyList(),
+    val radarSeries: List<PlotData> = emptyList(),
     val revision: Long = 0L,
+)
+
+data class SessionRecordingUiState(
+    val isRecording: Boolean = false,
+    val finishedFile: File? = null,
+    val finishedFileName: String = "",
+    val savedLocation: String = "",
 )
 
 private data class TelemetryLabelSettings(
@@ -1248,6 +1619,12 @@ private data class TelemetryLabelSettings(
     val analogIndicatorUnit: String = "",
     val batteryLabel: String = "",
     val plotLabels: List<String> = List(UserSettings.PLOT_LABEL_COUNT) { "" },
+    val plotCalibrations: List<PlotCalibration> = PlotCalibration.defaults(),
+    val channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    val leftPanelOn: Boolean = true,
+    val rightPanelOn: Boolean = true,
+    val leftPanelColorGreen: Boolean = true,
+    val rightPanelColorGreen: Boolean = true,
 )
 
 private fun String.orSettingsFallback(settingsLabel: String): String =
@@ -1259,12 +1636,26 @@ private fun UserSettings.toTelemetryLabelSettings() = TelemetryLabelSettings(
     analogIndicatorUnit = analogIndicatorUnit,
     batteryLabel = batteryLabel,
     plotLabels = plotLabels,
+    plotCalibrations = PlotCalibration.padded(plotCalibrations),
+    channelRouting = channelRouting,
+    leftPanelOn = leftPanelOn,
+    rightPanelOn = rightPanelOn,
+    leftPanelColorGreen = leftPanelColorGreen,
+    rightPanelColorGreen = rightPanelColorGreen,
 )
 
-private fun DisplayLabelDraft.toTelemetryLabelSettings() = TelemetryLabelSettings(
+private fun DisplayLabelDraft.toTelemetryLabelSettings(
+    appearance: TelemetryLabelSettings = TelemetryLabelSettings(),
+) = TelemetryLabelSettings(
     leftPanelUnit = leftPanelUnit,
     rightPanelUnit = rightPanelUnit,
     analogIndicatorUnit = analogIndicatorUnit,
     batteryLabel = batteryLabel,
     plotLabels = plotLabels,
+    plotCalibrations = toPlotCalibrations(),
+    channelRouting = appearance.channelRouting,
+    leftPanelOn = appearance.leftPanelOn,
+    rightPanelOn = appearance.rightPanelOn,
+    leftPanelColorGreen = appearance.leftPanelColorGreen,
+    rightPanelColorGreen = appearance.rightPanelColorGreen,
 )

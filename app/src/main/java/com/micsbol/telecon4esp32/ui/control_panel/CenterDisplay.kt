@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,19 +21,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -40,9 +57,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -50,8 +71,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
+import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
+import com.micsbol.telecon4esp32.domain.model.PlotGraphMode
+import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
+import com.micsbol.telecon4esp32.domain.model.TelemetrySink
+import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.parseCalibrationFloat
+import com.micsbol.telecon4esp32.domain.model.toCalibrationDraftText
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
+import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelDisplayFrame
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.ui.control_panel.components.HorizontalTextAnimation
@@ -77,9 +109,20 @@ private val CenterDisplayHeaderLogoSize = 16.dp
 fun CenterDisplay(
     modifier: Modifier = Modifier,
     series: List<PlotData> = emptyList(),
+    radarSeries: List<PlotData> = emptyList(),
     plotRevision: Long = 0L,
+    plotCalibrations: List<PlotCalibration> = PlotCalibration.defaults(),
+    channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerModeUnlocked: Boolean = true,
+    onUnlockCenterMode: () -> Unit = {},
     topStartOverlay: @Composable () -> Unit = {},
 ) {
+    var radarSettings by remember { mutableStateOf(RadarDisplaySettings()) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -99,7 +142,7 @@ fun CenterDisplay(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .padding(start = 1.dp, top = 2.dp),
+                        .padding(start = 1.dp, top = 2.dp, bottom = 2.dp),
                     contentAlignment = Alignment.TopStart,
                 ) {
                     topStartOverlay()
@@ -126,43 +169,69 @@ fun CenterDisplay(
                             color = brandPrimary(),
                         )
                     }
-                    when (PlotType.CARTESIAN) {
-                        PlotType.CARTESIAN -> {
-                            CartesianPlot(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth(),
-                                series = series,
-                                plotRevision = plotRevision,
-                            )
-                        }
-
-                        PlotType.COMPLEX_CIRCULAR -> {
-                            val realPart = series.getOrNull(0)?.dataPoints?.lastOrNull() ?: 0f
-                            val imagPart = series.getOrNull(1)?.dataPoints?.lastOrNull() ?: 0f
-                            ComplexCircularPlot(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                points = listOf(
-                                    ComplexPlotData(
-                                        real = realPart,
-                                        imaginary = imagPart,
-                                        color = Color.Magenta,
-                                    ),
-                                ),
-                            )
-                        }
-
-                        PlotType.BAR_GRAPH -> {
-                            BarGraph(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                series = series,
-                            )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        when (centerMode) {
+                            ControlPanelCenterMode.PLOTS -> {
+                                CartesianPlot(
+                                    modifier = Modifier.fillMaxSize(),
+                                    series = series,
+                                    plotRevision = plotRevision,
+                                    calibrations = plotCalibrations,
+                                    channelRouting = channelRouting,
+                                    onPlotLabelChange = onPlotLabelChange,
+                                    onPlotChannelChange = onPlotChannelChange,
+                                    onPlotCalibrationChange = onPlotCalibrationChange,
+                                )
+                            }
+                            ControlPanelCenterMode.CAMERA -> {
+                                if (centerModeUnlocked) {
+                                    ControlPanelCameraDisplay(modifier = Modifier.fillMaxSize())
+                                } else {
+                                    ControlPanelCenterLockedPane(
+                                        mode = centerMode,
+                                        onUnlockClick = onUnlockCenterMode,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                            }
+                            ControlPanelCenterMode.RADAR -> {
+                                if (centerModeUnlocked) {
+                                    val radarSources = radarSeries.ifEmpty { series }
+                                    ControlPanelRadarDisplay(
+                                        series = radarSources,
+                                        settings = radarSettings.copy(
+                                            angleSeriesIndex = channelRouting
+                                                .sourceFor(TelemetrySink.RADAR_ANGLE)
+                                                .u8Index(),
+                                            rangeSeriesIndex = channelRouting
+                                                .sourceFor(TelemetrySink.RADAR_RANGE)
+                                                .u8Index(),
+                                        ),
+                                        onSettingsChange = { updated ->
+                                            radarSettings = updated
+                                            val angle = TelemetryChannel.u8At(updated.angleSeriesIndex)
+                                            val range = TelemetryChannel.u8At(updated.rangeSeriesIndex)
+                                            if (angle != channelRouting.sourceFor(TelemetrySink.RADAR_ANGLE)) {
+                                                onRadarSourceChange(TelemetrySink.RADAR_ANGLE, angle)
+                                            }
+                                            if (range != channelRouting.sourceFor(TelemetrySink.RADAR_RANGE)) {
+                                                onRadarSourceChange(TelemetrySink.RADAR_RANGE, range)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                } else {
+                                    ControlPanelCenterLockedPane(
+                                        mode = centerMode,
+                                        onUnlockClick = onUnlockCenterMode,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -179,15 +248,67 @@ enum class PlotType {
 
 private val CartesianPlotHorizontalPadding = 6.dp
 
+private fun booleanListSaver(default: Boolean) = Saver<List<Boolean>, String>(
+    save = { it.joinToString(",") { bit -> if (bit) "1" else "0" } },
+    restore = { encoded ->
+        val parsed = encoded.split(',').map { token -> token == "1" }
+        List(UserSettings.PLOT_LABEL_COUNT) { index -> parsed.getOrElse(index) { default } }
+    },
+)
+
+private val PlotGraphModeListSaver = Saver<List<PlotGraphMode>, String>(
+    save = { it.joinToString(",") { mode -> mode.name } },
+    restore = { encoded ->
+        val parsed = encoded.split(',').map { token ->
+            PlotGraphMode.entries.find { it.name == token } ?: PlotGraphMode.CONTINUOUS
+        }
+        List(UserSettings.PLOT_LABEL_COUNT) { index ->
+            parsed.getOrElse(index) { PlotGraphMode.CONTINUOUS }
+        }
+    },
+)
+
+private val PlotLineStyleListSaver = Saver<List<PlotLineStyle>, String>(
+    save = { it.joinToString(",") { style -> style.name } },
+    restore = { encoded ->
+        val parsed = encoded.split(',').map { token ->
+            PlotLineStyle.entries.find { it.name == token } ?: PlotLineStyle.LINE
+        }
+        List(UserSettings.PLOT_LABEL_COUNT) { index ->
+            parsed.getOrElse(index) { PlotLineStyle.LINE }
+        }
+    },
+)
+
 @Composable
 fun CartesianPlot(
     modifier: Modifier,
     series: List<PlotData> = emptyList(),
     plotRevision: Long = 0L,
+    calibrations: List<PlotCalibration> = PlotCalibration.defaults(),
+    channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
 ) {
     // Four channels: top pane = series 0–1, bottom pane = series 2–3.
+    val paddedCalibrations = PlotCalibration.padded(calibrations)
     val topSeries = series.take(2)
     val bottomSeries = series.drop(2).take(2)
+    val topCalibrations = paddedCalibrations.take(2)
+    val bottomCalibrations = paddedCalibrations.drop(2).take(2)
+    var plotVisible by rememberSaveable(stateSaver = booleanListSaver(default = true)) {
+        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { true })
+    }
+    var graphModes by rememberSaveable(stateSaver = PlotGraphModeListSaver) {
+        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { PlotGraphMode.CONTINUOUS })
+    }
+    var lineStyles by rememberSaveable(stateSaver = PlotLineStyleListSaver) {
+        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { PlotLineStyle.LINE })
+    }
+    var plotOnTop by rememberSaveable(stateSaver = booleanListSaver(default = false)) {
+        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { false })
+    }
 
     Column(
         modifier = modifier
@@ -202,7 +323,29 @@ fun CartesianPlot(
             CartesianPlotPane(
                 modifier = Modifier.weight(1f),
                 series = topSeries,
+                calibrations = topCalibrations,
                 plotRevision = plotRevision,
+                paneStart = 0,
+                channelRouting = channelRouting,
+                visible = plotVisible.take(2),
+                graphModes = graphModes.take(2),
+                lineStyles = lineStyles.take(2),
+                onTop = plotOnTop.take(2),
+                onVisibleChange = { index, visible ->
+                    plotVisible = plotVisible.toMutableList().also { it[index] = visible }
+                },
+                onGraphModeChange = { index, mode ->
+                    graphModes = graphModes.toMutableList().also { it[index] = mode }
+                },
+                onLineStyleChange = { index, style ->
+                    lineStyles = lineStyles.toMutableList().also { it[index] = style }
+                },
+                onOnTopSelected = { index ->
+                    plotOnTop = exclusivePlotOnTop(plotOnTop, selectedIndex = index, paneStart = 0)
+                },
+                onPlotLabelChange = onPlotLabelChange,
+                onPlotChannelChange = onPlotChannelChange,
+                onPlotCalibrationChange = onPlotCalibrationChange,
             )
             Box(
                 modifier = Modifier
@@ -213,7 +356,29 @@ fun CartesianPlot(
             CartesianPlotPane(
                 modifier = Modifier.weight(1f),
                 series = bottomSeries,
+                calibrations = bottomCalibrations,
                 plotRevision = plotRevision,
+                paneStart = 2,
+                channelRouting = channelRouting,
+                visible = plotVisible.drop(2).take(2),
+                graphModes = graphModes.drop(2).take(2),
+                lineStyles = lineStyles.drop(2).take(2),
+                onTop = plotOnTop.drop(2).take(2),
+                onVisibleChange = { index, visible ->
+                    plotVisible = plotVisible.toMutableList().also { it[index + 2] = visible }
+                },
+                onGraphModeChange = { index, mode ->
+                    graphModes = graphModes.toMutableList().also { it[index + 2] = mode }
+                },
+                onLineStyleChange = { index, style ->
+                    lineStyles = lineStyles.toMutableList().also { it[index + 2] = style }
+                },
+                onOnTopSelected = { index ->
+                    plotOnTop = exclusivePlotOnTop(plotOnTop, selectedIndex = index, paneStart = 2)
+                },
+                onPlotLabelChange = onPlotLabelChange,
+                onPlotChannelChange = onPlotChannelChange,
+                onPlotCalibrationChange = onPlotCalibrationChange,
             )
         }
         Text(
@@ -228,44 +393,332 @@ fun CartesianPlot(
     }
 }
 
+private fun PlotLineStyle.labelRes(): Int = when (this) {
+    PlotLineStyle.LINE -> R.string.rc_plot_style_line
+    PlotLineStyle.STAIR -> R.string.rc_plot_style_stair
+    PlotLineStyle.TRIANGLE -> R.string.rc_plot_style_triangle
+}
+
+/** Only one trace in a two-plot pane can be on top. */
+internal fun exclusivePlotOnTop(
+    onTop: List<Boolean>,
+    selectedIndex: Int,
+    paneStart: Int,
+    paneSize: Int = 2,
+): List<Boolean> {
+    val paneEnd = paneStart + paneSize
+    val globalIndex = paneStart + selectedIndex
+    return onTop.mapIndexed { index, wasOnTop ->
+        if (index in paneStart until paneEnd) index == globalIndex else wasOnTop
+    }
+}
+
 @Composable
 private fun PlotLegendItem(
     plotData: PlotData,
+    calibration: PlotCalibration,
+    sink: TelemetrySink,
+    selectedChannel: TelemetryChannel,
     textStyle: TextStyle,
     characterThreshold: Int,
+    visible: Boolean,
+    graphMode: PlotGraphMode,
+    lineStyle: PlotLineStyle,
+    onTop: Boolean,
+    onVisibleChange: (Boolean) -> Unit,
+    onGraphModeChange: (PlotGraphMode) -> Unit,
+    onLineStyleChange: (PlotLineStyle) -> Unit,
+    onOnTopSelected: () -> Unit,
+    onLabelChange: (String) -> Unit,
+    onChannelSelected: (TelemetryChannel) -> Unit,
+    onCalibrationChange: (PlotCalibration) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.padding(vertical = 0.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
-    ) {
-        Box(
-            modifier = Modifier
-                .width(8.dp)
-                .height(2.dp)
-                .background(Color(plotData.colorArgb)),
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        HorizontalTextAnimation(
-            text = plotData.name,
-            style = textStyle,
-            color = Color.LightGray,
-            characterThreshold = characterThreshold,
-        )
+    val lastNormalized = plotData.dataPoints.lastOrNull()
+    val valueText = lastNormalized?.let { calibration.formatEngineering(it) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var offsetText by remember(menuExpanded) {
+        mutableStateOf(calibration.offset.toCalibrationDraftText())
     }
+    var spanText by remember(menuExpanded) {
+        mutableStateOf(calibration.span.toCalibrationDraftText())
+    }
+    var unitText by remember(menuExpanded) { mutableStateOf(calibration.unit) }
+    val focusManager = LocalFocusManager.current
+    val commitCalibration = {
+        onCalibrationChange(calibrationFromDraft(offsetText, spanText, unitText))
+    }
+    val modeLabel = stringResource(
+        if (graphMode == PlotGraphMode.CONTINUOUS) {
+            R.string.rc_plot_graph_continuous
+        } else {
+            R.string.rc_plot_graph_on_change
+        },
+    )
+    val styleLabel = stringResource(lineStyle.labelRes())
+    val visibilityLabel = stringResource(
+        if (visible) R.string.rc_plot_legend_visible else R.string.rc_plot_legend_hidden,
+    )
+    val optionsDescription = stringResource(
+        R.string.rc_plot_legend_options_content_description,
+        plotData.name,
+        modeLabel,
+        styleLabel,
+        visibilityLabel,
+    )
+    val fieldColors = hudMenuOutlinedFieldColors()
+    Box {
+        Row(
+            modifier = Modifier
+                .alpha(if (visible) 1f else 0.4f)
+                .clickable(role = Role.Button) { menuExpanded = true }
+                .semantics {
+                    role = Role.Button
+                    contentDescription = optionsDescription
+                }
+                .padding(vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(8.dp)
+                    .height(2.dp)
+                    .background(Color(plotData.colorArgb).copy(alpha = if (visible) 1f else 0.45f)),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            HorizontalTextAnimation(
+                text = plotData.name,
+                style = textStyle,
+                color = Color.LightGray,
+                characterThreshold = characterThreshold,
+            )
+            if (valueText != null) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = valueText,
+                    style = textStyle,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
+        }
+        TelemetryWidgetOptionsMenu(
+            expanded = menuExpanded,
+            sink = sink,
+            selectedChannel = selectedChannel,
+            widgetLabel = plotData.name,
+            onChannelSelected = onChannelSelected,
+            onLabelChange = onLabelChange,
+            onDismiss = {
+                commitCalibration()
+                menuExpanded = false
+            },
+        ) { closeMenu ->
+            HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+            PlotHudTextField(
+                value = offsetText,
+                onValueChange = { offsetText = it },
+                label = stringResource(R.string.rc_controller_settings_plot_offset),
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next,
+                colors = fieldColors,
+            )
+            PlotHudTextField(
+                value = spanText,
+                onValueChange = { spanText = it },
+                label = stringResource(R.string.rc_controller_settings_plot_span),
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next,
+                colors = fieldColors,
+            )
+            PlotHudTextField(
+                value = unitText,
+                onValueChange = { unitText = it },
+                label = stringResource(R.string.rc_controller_settings_plot_unit),
+                placeholder = stringResource(R.string.rc_controller_settings_plot_unit_hint),
+                imeAction = ImeAction.Done,
+                colors = fieldColors,
+                onDone = {
+                    commitCalibration()
+                    focusManager.clearFocus()
+                },
+            )
+            HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+            PlotLegendMenuItem(
+                label = stringResource(R.string.rc_plot_graph_continuous),
+                selected = graphMode == PlotGraphMode.CONTINUOUS,
+                onClick = {
+                    onGraphModeChange(PlotGraphMode.CONTINUOUS)
+                    closeMenu()
+                },
+            )
+            PlotLegendMenuItem(
+                label = stringResource(R.string.rc_plot_graph_on_change),
+                selected = graphMode == PlotGraphMode.ON_CHANGE,
+                onClick = {
+                    onGraphModeChange(PlotGraphMode.ON_CHANGE)
+                    closeMenu()
+                },
+            )
+            HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+            PlotLineStyle.entries.forEach { style ->
+                PlotLegendMenuItem(
+                    label = stringResource(style.labelRes()),
+                    selected = lineStyle == style,
+                    onClick = {
+                        onLineStyleChange(style)
+                        closeMenu()
+                    },
+                )
+            }
+            HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+            PlotLegendMenuItem(
+                label = stringResource(R.string.rc_plot_on_top),
+                selected = onTop,
+                onClick = {
+                    onOnTopSelected()
+                    closeMenu()
+                },
+            )
+            PlotLegendMenuItem(
+                label = stringResource(
+                    if (visible) R.string.rc_plot_hide else R.string.rc_plot_show,
+                ),
+                selected = false,
+                onClick = {
+                    onVisibleChange(!visible)
+                    closeMenu()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlotLegendMenuItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = label,
+                color = if (selected) Neo.Accent else Neo.TextPrimary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        onClick = onClick,
+        trailingIcon = if (selected) {
+            {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = Neo.Accent,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        } else {
+            null
+        },
+        colors = MenuDefaults.itemColors(
+            textColor = Neo.TextPrimary,
+            trailingIconColor = Neo.Accent,
+        ),
+    )
+}
+
+@Composable
+private fun PlotHudTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    colors: TextFieldColors,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Done,
+    placeholder: String? = null,
+    onDone: (() -> Unit)? = null,
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = {
+            Text(
+                text = label,
+                color = Neo.TextPrimary,
+            )
+        },
+        placeholder = placeholder?.let { hint ->
+            {
+                Text(
+                    text = hint,
+                    color = Neo.TextMuted,
+                )
+            }
+        },
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Neo.TextPrimary),
+        singleLine = true,
+        colors = colors,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = KeyboardActions(
+            onDone = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onDone?.invoke()
+            },
+        ),
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .width(220.dp),
+    )
+}
+
+private fun calibrationFromDraft(
+    offsetText: String,
+    spanText: String,
+    unitText: String,
+): PlotCalibration {
+    val span = parseCalibrationFloat(spanText, PlotCalibration.DEFAULT_SPAN).let { parsed ->
+        if (parsed == 0f) PlotCalibration.DEFAULT_SPAN else parsed
+    }
+    return PlotCalibration(
+        offset = parseCalibrationFloat(offsetText, PlotCalibration.DEFAULT_OFFSET),
+        span = span,
+        unit = unitText.trim(),
+    )
 }
 
 @Composable
 private fun CartesianPlotPane(
     modifier: Modifier = Modifier,
     series: List<PlotData>,
+    calibrations: List<PlotCalibration>,
     plotRevision: Long,
+    paneStart: Int,
+    channelRouting: ChannelRouting,
+    visible: List<Boolean>,
+    graphModes: List<PlotGraphMode>,
+    lineStyles: List<PlotLineStyle>,
+    onTop: List<Boolean>,
+    onVisibleChange: (Int, Boolean) -> Unit,
+    onGraphModeChange: (Int, PlotGraphMode) -> Unit,
+    onLineStyleChange: (Int, PlotLineStyle) -> Unit,
+    onOnTopSelected: (Int) -> Unit,
+    onPlotLabelChange: (Int, String) -> Unit,
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit,
+    onPlotCalibrationChange: (Int, PlotCalibration) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         RealTimePlot(
             modifier = Modifier.fillMaxSize(),
             series = series,
             plotRevision = plotRevision,
+            visible = visible,
+            graphModes = graphModes,
+            lineStyles = lineStyles,
+            onTop = onTop,
         )
         // Scale legend so two labels never stack-overflow on short landscape panes.
         val compact = maxHeight < 72.dp
@@ -282,17 +735,32 @@ private fun CartesianPlotPane(
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxWidth(0.55f)
-                .padding(start = 4.dp, top = 10.dp, end = 2.dp)
-                .clipToBounds(),
+                .fillMaxWidth(0.72f)
+                .padding(start = 4.dp, top = 10.dp, end = 2.dp),
             verticalArrangement = Arrangement.spacedBy(legendSpacing),
             horizontalAlignment = Alignment.Start,
         ) {
-            series.forEach { plotData ->
+            series.forEachIndexed { index, plotData ->
+                val plotIndex = paneStart + index
+                val sink = TelemetrySink.plotAt(plotIndex)
                 PlotLegendItem(
                     plotData = plotData,
+                    calibration = calibrations.getOrElse(index) { PlotCalibration.DEFAULT },
+                    sink = sink,
+                    selectedChannel = channelRouting.sourceFor(sink),
                     textStyle = legendStyle,
                     characterThreshold = characterThreshold,
+                    visible = visible.getOrElse(index) { true },
+                    graphMode = graphModes.getOrElse(index) { PlotGraphMode.CONTINUOUS },
+                    lineStyle = lineStyles.getOrElse(index) { PlotLineStyle.LINE },
+                    onTop = onTop.getOrElse(index) { false },
+                    onVisibleChange = { onVisibleChange(index, it) },
+                    onGraphModeChange = { onGraphModeChange(index, it) },
+                    onLineStyleChange = { onLineStyleChange(index, it) },
+                    onOnTopSelected = { onOnTopSelected(index) },
+                    onLabelChange = { onPlotLabelChange(plotIndex, it) },
+                    onChannelSelected = { onPlotChannelChange(plotIndex, it) },
+                    onCalibrationChange = { onPlotCalibrationChange(plotIndex, it) },
                 )
             }
         }

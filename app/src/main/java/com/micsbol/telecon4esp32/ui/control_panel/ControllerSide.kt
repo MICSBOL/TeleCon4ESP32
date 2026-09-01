@@ -384,6 +384,8 @@ internal fun ControllerSideJoystick(
     settingsSyncGeneration: Int,
     onMove: (x: Float, y: Float) -> Unit,
     modifier: Modifier = Modifier,
+    onDoubleTap: (() -> Unit)? = null,
+    contentDescription: String? = null,
 ) {
     Joystick_RC3D(
         modifier = modifier,
@@ -391,6 +393,8 @@ internal fun ControllerSideJoystick(
         stickPosition = stickPosition,
         settingsSyncGeneration = settingsSyncGeneration,
         onMove = onMove,
+        onDoubleTap = onDoubleTap,
+        contentDescription = contentDescription,
     )
 }
 
@@ -448,6 +452,8 @@ internal fun ControllerSideTelemetryRow(
     ledSize: Dp = 14.dp,
     ledSpacing: Dp = 8.dp,
     topExtraContent: (@Composable (Modifier) -> Unit)?,
+    onPanelDoubleTap: (() -> Unit)? = null,
+    panelMenu: @Composable () -> Unit = {},
 ) {
     val ledStates = remember(telemetry.ledValues, side) {
         if (side == ButtonSide.LEFT) {
@@ -477,23 +483,31 @@ internal fun ControllerSideTelemetryRow(
             Column(verticalArrangement = Arrangement.spacedBy(ledSpacing)) {
                 ledStates.forEach { isOn -> LedIndicator(isOn = isOn, size = ledSize) }
             }
-            SevenSegmentedPanel(
-                width = panelWidth,
-                value = telemetry.panelNumber / 10f,
-                on = telemetry.panelOn,
-                onColor = panelColor,
-                title = telemetry.panelTitle
-            )
+            Box {
+                SevenSegmentedPanel(
+                    width = panelWidth,
+                    value = telemetry.panelNumber / 10f,
+                    on = telemetry.panelOn,
+                    onColor = panelColor,
+                    title = telemetry.panelTitle,
+                    onDoubleTap = onPanelDoubleTap,
+                )
+                panelMenu()
+            }
             topExtraContent?.invoke(Modifier.size(extraContentSize))
         } else {
             topExtraContent?.invoke(Modifier.size(extraContentSize))
-            SevenSegmentedPanel(
-                width = panelWidth,
-                value = telemetry.panelNumber / 10f,
-                on = telemetry.panelOn,
-                onColor = panelColor,
-                title = telemetry.panelTitle
-            )
+            Box {
+                SevenSegmentedPanel(
+                    width = panelWidth,
+                    value = telemetry.panelNumber / 10f,
+                    on = telemetry.panelOn,
+                    onColor = panelColor,
+                    title = telemetry.panelTitle,
+                    onDoubleTap = onPanelDoubleTap,
+                )
+                panelMenu()
+            }
             Column(verticalArrangement = Arrangement.spacedBy(ledSpacing)) {
                 ledStates.forEach { isOn -> LedIndicator(isOn = isOn, size = ledSize) }
             }

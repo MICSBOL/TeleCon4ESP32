@@ -30,11 +30,8 @@ import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
 /**
- * Footer on application settings: explains the current board + connection choice
- * and shows placeholder Code / Documentation links (not wired yet).
- *
- * Kit B shows two code links (DevKit BLE + CAM SoftAP video). Other modes show
- * one code link that names the target board.
+ * Shows the matching sketch / documentation links for the current board + connection.
+ * Long role explanations live behind the Connection and SoftAP (i) icons.
  */
 @Composable
 fun ApplicationSettingsSelectionGuideSection(
@@ -42,21 +39,23 @@ fun ApplicationSettingsSelectionGuideSection(
     selectedBoard: Esp32Board,
     selectedMode: BluetoothConnectionMode,
     modifier: Modifier = Modifier,
+    useSoftApCamera: Boolean = false,
     titleColor: Color = Neo.TextPrimary,
     bodyColor: Color = Neo.TextSecondary,
     linkColor: Color = Neo.Accent,
     useNeoCard: Boolean = true,
 ) {
     val context = LocalContext.current
-    val cameraProfile = remember(applicationId, selectedBoard, selectedMode) {
-        resolveCameraLinkProfile(applicationId, selectedBoard, selectedMode)
+    val cameraProfile = remember(applicationId, selectedBoard, selectedMode, useSoftApCamera) {
+        resolveCameraLinkProfile(applicationId, selectedBoard, selectedMode, useSoftApCamera)
     }
-    val camKitLabels = cameraProfile != CameraLinkProfile.CONTROL_ONLY
+    val camKitLabels = cameraProfile == CameraLinkProfile.WIFI_SOFTAP
     val boardLabel = stringResource(
         when (selectedBoard) {
-            Esp32Board.DEV_KIT -> R.string.app_settings_device_dev_kit
+            Esp32Board.DEV_KIT,
+            Esp32Board.CAM_AND_DEV_KIT,
+            -> R.string.app_settings_device_dev_kit
             Esp32Board.CAM -> R.string.app_settings_device_cam
-            Esp32Board.CAM_AND_DEV_KIT -> R.string.app_settings_device_cam_and_dev_kit
         },
     )
     val modeOption = connectionModeMenuOption(
@@ -95,12 +94,6 @@ fun ApplicationSettingsSelectionGuideSection(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = titleColor,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = modeOption.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = bodyColor,
             )
             Spacer(modifier = Modifier.height(14.dp))
             Column(
@@ -152,8 +145,8 @@ private fun selectionGuideCodeLinkLabels(
     selectedBoard: Esp32Board,
     selectedMode: BluetoothConnectionMode,
 ): List<String> = when (profile) {
-    CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE -> listOf(
-        stringResource(R.string.app_settings_selection_guide_code_devkit_ble),
+    CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT -> listOf(
+        stringResource(devkitBluetoothSketchRes(selectedMode)),
         stringResource(R.string.app_settings_selection_guide_code_cam_video),
     )
     CameraLinkProfile.WIFI_SOFTAP -> listOf(
@@ -170,15 +163,23 @@ private fun selectionGuideCodeLinkLabels(
             selectedMode.isWifiLink -> stringResource(
                 R.string.app_settings_selection_guide_code_devkit_wifi,
             )
-            selectedMode == BluetoothConnectionMode.BLE_BINARY -> stringResource(
-                R.string.app_settings_selection_guide_code_devkit_ble_only,
-            )
+            selectedMode.isBluetoothLink -> stringResource(devkitBluetoothSketchRes(selectedMode))
             selectedBoard.usesSoftApCamera -> stringResource(
                 R.string.app_settings_selection_guide_code_cam,
             )
             else -> stringResource(R.string.app_settings_selection_guide_code_devkit)
         },
     )
+}
+
+private fun devkitBluetoothSketchRes(mode: BluetoothConnectionMode): Int = when (mode) {
+    BluetoothConnectionMode.CLASSIC_SIMPLE ->
+        R.string.app_settings_selection_guide_code_devkit_classic_simple
+    BluetoothConnectionMode.CLASSIC_BINARY ->
+        R.string.app_settings_selection_guide_code_devkit_classic_binary
+    BluetoothConnectionMode.BLE_BINARY ->
+        R.string.app_settings_selection_guide_code_devkit_ble
+    else -> R.string.app_settings_selection_guide_code_devkit
 }
 
 @Composable

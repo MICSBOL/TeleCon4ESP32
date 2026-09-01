@@ -37,8 +37,8 @@ import kotlin.coroutines.coroutineContext
  * [Esp32CameraDefaults.CAPTURE_PATH]. Kit B uses a video-only CAM + separate DevKit
  * BLE, so `/stream` stays preferred while BLE is connected.
  *
- * [setPreferCapturePolling] remains for lab / single-radio experiments only; product
- * kits do not rely on `/stream` 503 “BLE linked” behaviour.
+ * [setPreferCapturePolling] is used for Smooth / at-risk SoftAP so the HUD
+ * reads `/capture` (latest still) instead of a queued MJPEG `/stream`.
  *
  * [setHudPreviewOptions] opts RC Vehicle Pro SoftAP HUD into cheaper decode and
  * optional max publish FPS. Greenhouse leaves [HudPreviewOptions.FULL_QUALITY].
@@ -55,8 +55,6 @@ class Esp32CameraStreamRepository @Inject constructor(
 
     private var streamJob: Job? = null
     private var activeBitmap: Bitmap? = null
-    /** Previous frame kept one cycle so Compose can finish drawing before recycle. */
-    private var pendingRecycle: Bitmap? = null
     private var activeBaseUrl: String? = null
     private val preferCaptureOnly = AtomicBoolean(false)
     private val hudPreviewOptions = AtomicReference(HudPreviewOptions.FULL_QUALITY)
@@ -157,9 +155,13 @@ class Esp32CameraStreamRepository @Inject constructor(
             preferCaptureOnly.set(false)
         }
         lastJpegBytes.set(null)
-        recycleBitmaps()
         releaseWifiLockIfHeld()
+        // Publish Idle before recycle so Compose drops the Image. Recycle is always
+        // deferred — Huawei display lists can draw a frame after we replace it.
+        val stale = listOfNotNull(activeBitmap)
+        activeBitmap = null
         _streamState.value = CameraStreamState.Idle
+        stale.forEach { scheduleRecycle(it) }
     }
 
     private fun acquireWifiLockIfNeeded() {
@@ -211,10 +213,13 @@ class Esp32CameraStreamRepository @Inject constructor(
                         Log.d(TAG, "Leaving /stream — preferCaptureOnly")
                         break
                     }
-                    // Drain SoftAP backlog without allocating discarded JPEG byte arrays.
-                    while (input.available() >= SKIP_AHEAD_AVAILABLE_BYTES) {
+                    // Drop every complete JPEG already in the socket — decode only what
+                    // arrives after the backlog so the HUD is not a delayed movie.
+                    var skipped = 0
+                    while (input.available() > 0 && skipped < MAX_SKIP_AHEAD_FRAMES) {
                         if (!discardNextJpeg(input)) break
                         dropped++
+                        skipped++
                     }
                     val jpeg = readNextJpeg(input) ?: break
                     // Always retain JPEG for photo; may skip decode/publish under FPS cap.
@@ -251,6 +256,13 @@ class Esp32CameraStreamRepository @Inject constructor(
             if (!preferCaptureOnly.get() && okStreak >= CAPTURE_BEFORE_STREAM_RETRY) {
                 Log.d(TAG, "Capture stable — retrying /stream")
                 return
+            }
+            if (preferCaptureOnly.get() && lastPublishMs > 0L) {
+                val minGap = hudPreviewOptions.get().minPublishGapMs(MIN_PUBLISH_GAP_MS)
+                val elapsed = System.currentTimeMillis() - lastPublishMs
+                if (elapsed < minGap) {
+                    delay(minGap - elapsed)
+                }
             }
             try {
                 val connection = openGetConnection(Esp32CameraDefaults.captureUrl(baseUrl))
@@ -464,17 +476,21 @@ class Esp32CameraStreamRepository @Inject constructor(
     }
 
     private fun replaceFrame(bitmap: Bitmap) {
-        pendingRecycle?.recycle()
-        pendingRecycle = activeBitmap
+        val previous = activeBitmap
         activeBitmap = bitmap
         _streamState.value = CameraStreamState.Frame(bitmap)
+        if (previous != null && previous !== bitmap) {
+            scheduleRecycle(previous)
+        }
     }
 
-    private fun recycleBitmaps() {
-        pendingRecycle?.recycle()
-        pendingRecycle = null
-        activeBitmap?.recycle()
-        activeBitmap = null
+    /** Never recycle on the stream thread — Compose / hardware layers may still draw it. */
+    private fun scheduleRecycle(bitmap: Bitmap) {
+        scope.launch {
+            delay(BITMAP_RECYCLE_DELAY_MS)
+            if (bitmap === activeBitmap) return@launch
+            if (!bitmap.isRecycled) bitmap.recycle()
+        }
     }
 
     private companion object {
@@ -485,14 +501,16 @@ class Esp32CameraStreamRepository @Inject constructor(
         private const val STREAM_READ_TIMEOUT_MS = 15_000
         private const val ERROR_RETRY_MS = 250L
         private const val CAPTURE_BEFORE_STREAM_RETRY = 30
-        private const val INPUT_BUFFER_BYTES = 64 * 1024
-        private const val SCAN_CHUNK_BYTES = 8 * 1024
-        private const val JPEG_HINT_BYTES = 32 * 1024
+        private const val INPUT_BUFFER_BYTES = 8 * 1024
+        private const val SCAN_CHUNK_BYTES = 4 * 1024
+        private const val JPEG_HINT_BYTES = 16 * 1024
         private const val MAX_JPEG_BYTES = 512 * 1024
         /** Soft floor between Compose publishes — prefer latest over decoding every SoftAP JPEG. */
         private const val MIN_PUBLISH_GAP_MS = 16L
-        /** When this much is already buffered, skip ahead to a newer JPEG before decode. */
-        private const val SKIP_AHEAD_AVAILABLE_BYTES = 4 * 1024
+        /** Cap discard-loop so a flood cannot starve decode forever. */
+        private const val MAX_SKIP_AHEAD_FRAMES = 24
         private const val HOLDER_STREAM = "stream"
+        /** Huawei/EMUI display lists can replay a BitmapPainter after the next frame. */
+        private const val BITMAP_RECYCLE_DELAY_MS = 500L
     }
 }

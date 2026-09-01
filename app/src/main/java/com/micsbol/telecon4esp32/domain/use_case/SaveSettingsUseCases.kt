@@ -1,6 +1,8 @@
 package com.micsbol.telecon4esp32.domain.use_case
 
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import javax.inject.Inject
 
@@ -15,6 +17,12 @@ data class SaveSettingsUseCases @Inject constructor(
     val saveAnalogIndicatorUnit: SaveAnalogIndicatorUnitUseCase,
     val saveBatteryLabel: SaveBatteryLabelUseCase,
     val savePlotLabel: SavePlotLabelUseCase,
+    val savePlotCalibration: SavePlotCalibrationUseCase,
+    val saveChannelRouting: SaveChannelRoutingUseCase,
+    val saveLeftPanelOn: SaveLeftPanelOnUseCase,
+    val saveRightPanelOn: SaveRightPanelOnUseCase,
+    val saveLeftPanelColorGreen: SaveLeftPanelColorGreenUseCase,
+    val saveRightPanelColorGreen: SaveRightPanelColorGreenUseCase,
 )
 
 class SaveLeftStickModeUseCase @Inject constructor(
@@ -75,4 +83,41 @@ class SavePlotLabelUseCase @Inject constructor(
     private val repository: ISettingsRepository,
 ) {
     suspend operator fun invoke(index: Int, value: String) = repository.savePlotLabel(index, value)
+}
+
+class SavePlotCalibrationUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(index: Int, calibration: PlotCalibration) =
+        repository.savePlotCalibration(index, calibration)
+}
+
+class SaveChannelRoutingUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(routing: ChannelRouting) = repository.saveChannelRouting(routing)
+}
+
+class SaveLeftPanelOnUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(isOn: Boolean) = repository.saveLeftPanelOn(isOn)
+}
+
+class SaveRightPanelOnUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(isOn: Boolean) = repository.saveRightPanelOn(isOn)
+}
+
+class SaveLeftPanelColorGreenUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(isGreen: Boolean) = repository.saveLeftPanelColorGreen(isGreen)
+}
+
+class SaveRightPanelColorGreenUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(isGreen: Boolean) = repository.saveRightPanelColorGreen(isGreen)
 }

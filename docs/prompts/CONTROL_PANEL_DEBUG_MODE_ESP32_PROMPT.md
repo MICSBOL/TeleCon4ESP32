@@ -46,13 +46,13 @@ When hardware I/O is off (or Classic Simple auto-telemetry is on):
 |---------------|---------------|
 | Left stick X | Left panel (0–9999) |
 | Right stick X | Right panel (0–9999) |
-| Left / right stick activity | Panel on / color bits (optional, match BLE) |
+| Left / right stick activity | Panel numeric values |
 | Left knob | Analog gauge + plot `v0` |
 | Right knob | Battery gauge + plot `v2` |
 | Left stick X | Plot `v1` |
 | Right stick Y | Plot `v3` |
 | Switch byte | LED mask (`CC 22` / `RC:DATA` `led`) |
-| Action buttons | Toggle panel on/color in simulate (BLE does this) |
+| Action buttons | Control events only (panel on/color are app settings) |
 
 Send rates (match BLE):
 
@@ -67,7 +67,7 @@ the phone (Classic SPP or BLE NUS), same idea as BLE `TeleConBle` inject path.
 Classic Simple already documents:
 
 ```text
-RC:DATA,left,1200,right,3400,lo,1,ro,0,lg,1,rg,0,analog,42,batt,88,led,0F
+RC:DATA,left,1200,right,3400,analog,42,batt,88,led,0F
 RC:PLOT,v0,128,v1,200,v2,64,v3,180
 ```
 
@@ -92,7 +92,6 @@ Already correct. Do not regress:
 - `TELECON_USE_HW_IO` (default 0)
 - `TELECON_DEBUG` / `TELECON_SERIAL_INJECT`
 - Echo mapping in `ControlPanelHandlers.cpp` (`readPanel*` / `readPlot*` when `!TELECON_USE_HW_IO`)
-- Button toggles panel flags in simulate
 - Banner explains: App Settings = **BLE Binary**
 
 ### B. Classic Simple — align naming + docs
@@ -105,7 +104,7 @@ Tighten to BLE parity:
    - `TELECON_AUTO_TELEMETRY` ≈ simulate echo (keep flag if renaming would break docs)
    - Ensure mapping matches BLE table above (panels, gauges, LEDs, four plots).
 2. Keep `TELECON_SERIAL_INJECT` and boot banner with example `RC:DATA` / `RC:PLOT` lines.
-3. On button (`RC:BTN`), optional: toggle `lo`/`ro`/`lg`/`rg` like BLE (nice-to-have).
+3. On button (`RC:BTN`), keep sending control events only (panel on/color are app settings).
 4. Banner: App Settings = **Classic Simple** (not BLE / not Binary).
 
 ### C. Classic Binary — main work

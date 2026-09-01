@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -300,7 +301,7 @@ fun NeoPillButton(
     Row(
         modifier = modifier
             .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
-            .height(height)
+            .heightIn(min = height)
             .drawBehind {
                 val r = cornerRadius.toPx()
                 if (enabled) {
@@ -682,6 +683,10 @@ fun NeoDialog(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     horizontalMargin: Dp = 16.dp,
+    surfaceColor: Color = AppGlass.DialogSurface,
+    surfaceAlpha: Float = AppGlass.DialogSurfaceAlpha,
+    scrimAlpha: Float = 0f,
+    wrapContentHeight: Boolean = false,
     title: (@Composable () -> Unit)? = null,
     subtitle: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit = {},
@@ -708,6 +713,13 @@ fun NeoDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(
+                        if (scrimAlpha > 0f) {
+                            Modifier.background(Color.Black.copy(alpha = scrimAlpha))
+                        } else {
+                            Modifier
+                        },
+                    )
                     .clickable(
                         interactionSource = scrimInteraction,
                         indication = null,
@@ -716,37 +728,59 @@ fun NeoDialog(
                     .padding(horizontal = horizontalMargin, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Column(
-                    modifier = modifier
-                        .fillMaxWidth()
-                        .heightIn(max = maxDialogHeight)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(AppGlass.DialogSurface.copy(alpha = AppGlass.DialogSurfaceAlpha))
-                        .border(
-                            1.dp,
-                            AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha),
-                            RoundedCornerShape(24.dp),
-                        )
-                        .clickable(
-                            interactionSource = cardInteraction,
-                            indication = null,
-                            onClick = {},
-                        )
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    title?.invoke()
-                    subtitle?.invoke()
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        content = content,
+                val cardModifier = modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(surfaceColor.copy(alpha = surfaceAlpha))
+                    .border(
+                        1.dp,
+                        AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha),
+                        RoundedCornerShape(24.dp),
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    actions()
+                    .clickable(
+                        interactionSource = cardInteraction,
+                        indication = null,
+                        onClick = {},
+                    )
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+
+                if (wrapContentHeight) {
+                    Column(
+                        modifier = cardModifier
+                            .wrapContentHeight(unbounded = false, align = Alignment.Top)
+                            .heightIn(max = maxDialogHeight),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        title?.invoke()
+                        subtitle?.invoke()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            content = content,
+                        )
+                        actions()
+                    }
+                } else {
+                    Column(
+                        modifier = cardModifier.heightIn(max = maxDialogHeight),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        title?.invoke()
+                        subtitle?.invoke()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            content = content,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        actions()
+                    }
                 }
             }
         }

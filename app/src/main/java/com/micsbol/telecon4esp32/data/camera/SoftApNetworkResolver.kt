@@ -55,6 +55,29 @@ class SoftApNetworkResolver @Inject constructor(
         }
     }
 
+    /**
+     * True when a Wi‑Fi network already has an ESP32 SoftAP address (192.168.4.x).
+     * Does not fall back to "any Wi‑Fi" — home Wi‑Fi must not count as the CAM AP.
+     */
+    fun hasEsp32SoftApLinkAddress(
+        host: String = Esp32CameraDefaults.DEFAULT_SOFTAP_HOST,
+    ): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val candidates = buildList {
+            softApWifiSession.currentNetwork()?.let(::add)
+            addAll(cm.allNetworks.toList())
+        }
+        return candidates.any { network ->
+            val caps = cm.getNetworkCapabilities(network) ?: return@any false
+            if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return@any false
+            val linkProps = cm.getLinkProperties(network) ?: return@any false
+            linkProps.linkAddresses.any { addr ->
+                val ip = addr.address.hostAddress.orEmpty()
+                ip == host || ip.startsWith("192.168.4.")
+            }
+        }
+    }
+
     fun openHttpConnection(urlString: String): HttpURLConnection {
         val url = URL(urlString)
         val host = Esp32CameraDefaults.softApHostFromBaseUrl(urlString)

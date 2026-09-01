@@ -27,13 +27,13 @@ class Esp32CameraLinkSessionTest {
     @Test
     fun startStream_onlyOnce_whileAlreadyStreaming() {
         session.setCameraEnabled(false)
-        session.setProfile(CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE)
+        session.setProfile(CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT)
         session.setCameraEnabled(true)
         session.onVisible()
         assertEquals(1, fake.startCount)
 
         // DataStore / profile re-emits must not tear down HTTP MJPEG.
-        session.setProfile(CameraLinkProfile.WIFI_CAMERA_DEVKIT_BLE)
+        session.setProfile(CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT)
         session.setCameraEnabled(true)
         session.onVisible()
         assertEquals(1, fake.startCount)

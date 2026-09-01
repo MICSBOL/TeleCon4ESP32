@@ -13,8 +13,22 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 
-fun NavController.navigateToApplicationSettings(applicationId: ApplicationId) {
-    navigate(Screen.ApplicationSettings.createRoute(applicationId))
+enum class ApplicationSettingsSection {
+    CONNECTION,
+    ;
+
+    companion object {
+        fun fromNav(value: String?): ApplicationSettingsSection =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: CONNECTION
+    }
+}
+
+fun NavController.navigateToApplicationSettings(
+    applicationId: ApplicationId,
+    section: ApplicationSettingsSection = ApplicationSettingsSection.CONNECTION,
+) {
+    navigate(Screen.ApplicationSettings.createRoute(applicationId, section))
 }
 
 fun applicationSettingsTitleRes(applicationId: ApplicationId): Int = when (applicationId) {
@@ -26,6 +40,10 @@ fun applicationSettingsTitleRes(applicationId: ApplicationId): Int = when (appli
     ApplicationId.WATER_TANK -> R.string.app_water_tank_settings_title
     ApplicationId.SMART_DOOR_LOCK -> R.string.app_smart_door_lock_settings_title
     ApplicationId.SMART_LIGHTING -> R.string.app_smart_lighting_settings_title
+}
+
+fun controlPanelSettingsTitleRes(section: ApplicationSettingsSection): Int = when (section) {
+    ApplicationSettingsSection.CONNECTION -> R.string.control_panel_connection_settings_title
 }
 
 @Composable

@@ -72,7 +72,7 @@ TCP port with SoftAP SSID `TeleCon-RC-CAM` — do not mix with DevKit SoftAP SSI
 shows these mismatches and does **not** leave a connected session.
 
 **Bench debug:** with auto-telemetry / simulate echo enabled, map `RC:CTRL` sticks and knobs
-into `RC:DATA` / `RC:PLOT` (four series) so the Control Panel UI updates without extra wiring.
+into `RC:DATA` / `RC:PLOT` (CH1…CH8 analog samples; four-sample echo is still fine) so the Control Panel UI updates without extra wiring.
 Optional Serial inject forwards typed protocol lines to the phone. Same UX as Classic/BLE
 Binary — see
 [prompts/CONTROL_PANEL_DEBUG_MODE_ESP32_PROMPT.md](prompts/CONTROL_PANEL_DEBUG_MODE_ESP32_PROMPT.md).
@@ -137,45 +137,46 @@ Phone-side **drive assist** (dual-rate, expo, reverse, deadzone) reshapes sticks
 #### `RC:DATA` — panels, indicators, LEDs
 
 ```
-RC:DATA,left,1234,right,5678,lo,1,ro,0,lg,1,rg,0,analog,42,batt,88,led,0F,lt,RPM,rt,Speed,at,Load,bt,Batt
+RC:DATA,left,1234,right,5678,analog,42,batt,88,led,0F
 ```
 
 | Key    | Description                    |
 |--------|--------------------------------|
 | left   | Left seven-segment value       |
 | right  | Right seven-segment value      |
-| lo, ro | Panel on (1/0)                 |
-| lg, rg | Panel color green (1) / red (0)|
-| lt, rt | Panel titles                   |
 | analog | Analog gauge 0–255             |
 | batt   | Battery gauge 0–255            |
-| at, bt | Indicator titles               |
 | led    | LED byte (hex, e.g. `0F`)      |
 
-#### `RC:PLOT` — live plot samples (send periodically, e.g. 10–30 Hz)
+Panel **on/off** and **green/red** color are configured in the Android Panel settings screen, not in firmware. Optional legacy keys (`lo`, `ro`, `lg`, `rg`, `lt`, `rt`, `at`, `bt`) are ignored for appearance.
+
+**Android channel map:** the phone can retarget these fields (and `RC:PLOT` `v0`…`v7` = CH1…CH8) onto plots, radar, gauges, panels, or LEDs. Firmware keeps sending the same keys; do **not** add `RC:RADAR` / `RC:CH` packets. Four-sample sketches (`v0`…`v3`) remain valid; unused CH5–CH8 stay at 0 on the phone.
+
+#### `RC:PLOT` — live analog samples (send periodically, e.g. 10–30 Hz)
 
 ```
-RC:PLOT,v0,128,v1,200,v2,64,v3,180
+RC:PLOT,v0,128,v1,200,v2,64,v3,180,v4,0,v5,0,v6,0,v7,0
 ```
 
-| Key | Description                                      |
-|-----|--------------------------------------------------|
-| v0  | New sample for series 0, integer **0–255**       |
-| v1  | New sample for series 1                          |
-| v2  | New sample for series 2                          |
-| v3  | New sample for series 3                          |
-| …   | One sample per key per line; app keeps last 100 |
+| Key | Phone label | Description |
+|-----|-------------|-------------|
+| v0  | CH1 | Sample 0, integer **0–255** |
+| v1  | CH2 | Sample 1 |
+| v2  | CH3 | Sample 2 |
+| v3  | CH4 | Sample 3 |
+| v4  | CH5 | Sample 4 (optional; send `0` if unused) |
+| v5  | CH6 | Sample 5 (optional) |
+| v6  | CH7 | Sample 6 (optional) |
+| v7  | CH8 | Sample 7 (optional) |
+| …   | | One sample per key per line; app keeps last 100 |
 
 Values match the **binary** plot packet scale: `0` = bottom, `255` = top of the graph.
 
-The app shows **four** channels (two traces in the top pane, two in the bottom). Colors are
-fixed by index (cyan, red, green, yellow, …). **Plot / panel / indicator labels are set in
-the Android RC settings** — do **not** send `RC:PLOTCFG` or binary `CC 44` config packets
-from firmware.
+The Control Panel shows **four plot widgets** (two traces in the top pane, two in the bottom). Those widgets default to CH1–CH4; CH5–CH8 are extra analog sources in the channel map (bind them to a plot, radar, or gauge). Colors are fixed by analog index (cyan, red, green, yellow, magenta, white, orange, periwinkle). **Plot / panel / indicator labels and the telemetry channel map are set in the Android RC settings** — do **not** send `RC:PLOTCFG` or binary `CC 44` config packets from firmware. Radar still uses analog samples (defaults CH1 / CH2); the user can retarget those in the channel map.
 
 **Typical flow:**
 
-1. In `loop()`: every 50–100 ms send `RC:PLOT,v0,...,v3,...` with current sensor readings mapped to 0–255.
+1. In `loop()`: every 50–100 ms send `RC:PLOT,v0,...,v7,...` with current sensor readings mapped to 0–255. Sending only `v0`…`v3` is still accepted.
 2. Optionally interleave `RC:DATA,...` for gauges and panels at a lower rate.
 
 ---
@@ -288,8 +289,10 @@ int toPlotByte(float value, float minVal, float maxVal) {
   return (int)(t * 255.f + 0.5f);
 }
 
-void sendPlotSample(int v0, int v1, int v2, int v3) {
-  SerialBT.printf("RC:PLOT,v0,%d,v1,%d,v2,%d,v3,%d\n", v0, v1, v2, v3);
+void sendPlotSample(int v0, int v1, int v2, int v3,
+                    int v4 = 0, int v5 = 0, int v6 = 0, int v7 = 0) {
+  SerialBT.printf("RC:PLOT,v0,%d,v1,%d,v2,%d,v3,%d,v4,%d,v5,%d,v6,%d,v7,%d\n",
+                  v0, v1, v2, v3, v4, v5, v6, v7);
 }
 
 void sendRcData(int analogVal, int battVal) {

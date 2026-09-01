@@ -123,4 +123,10 @@ class ApplicationEntryAccessTest {
             ),
         )
     }
+
+    @Test
+    fun catalogHiddenWhileFewAppsShipped() {
+        assertEquals(2, shippedApplicationCount())
+        assertFalse(isApplicationCatalogVisible())
+    }
 }

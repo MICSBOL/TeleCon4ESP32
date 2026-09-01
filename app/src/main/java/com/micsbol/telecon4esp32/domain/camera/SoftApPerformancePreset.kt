@@ -1,5 +1,7 @@
 package com.micsbol.telecon4esp32.domain.camera
 
+import com.micsbol.telecon4esp32.domain.model.ApplicationId
+
 /**
  * SoftAP HTTP video load presets for mid-range vs flagship phones
  * (Kit A SoftAP and Kit B SoftAP camera + DevKit BLE).
@@ -30,9 +32,9 @@ enum class SoftApPerformancePreset {
         get() = this != HIGH_QUALITY
 
     /** Null = no hard cap beyond the SoftAP publish floor. */
-    val maxHudFps: Int?
+        val maxHudFps: Int?
         get() = when (this) {
-            SMOOTH -> 10
+            SMOOTH -> 8
             BALANCED -> 15
             HIGH_QUALITY -> null
         }
@@ -46,12 +48,12 @@ enum class SoftApPerformancePreset {
 
     /**
      * Phase 2 firmware `/camconfig` query (no leading `?`).
-     * Smooth cuts SoftAP airtime; Balanced / High keep VGA with quality tweaks.
+     * Smooth cuts SoftAP airtime; Balanced paces VGA so one-board TCP RC can breathe.
      */
     val camConfigQuery: String
         get() = when (this) {
-            SMOOTH -> "framesize=qvga&quality=22&fps=10"
-            BALANCED -> "framesize=vga&quality=15&fps=0"
+            SMOOTH -> "framesize=qqvga&quality=28&fps=8&ampdu_rx=0"
+            BALANCED -> "framesize=vga&quality=15&fps=12"
             HIGH_QUALITY -> "framesize=vga&quality=12&fps=0"
         }
 
@@ -71,8 +73,15 @@ enum class SoftApPerformancePreset {
         /** UI / fail-safe ceiling — never approach the ESP32 CTRL timeout. */
         const val MAX_CTRL_PERIOD_MS = 200L
 
-        fun fromStored(value: String?): SoftApPerformancePreset =
-            value?.let { runCatching { valueOf(it) }.getOrNull() } ?: DEFAULT
+        /** RC Vehicle one-board SoftAP defaults to Smooth; Control Panel stays Balanced. */
+        fun defaultFor(applicationId: ApplicationId): SoftApPerformancePreset =
+            if (applicationId == ApplicationId.RC_VEHICLE_PRO) SMOOTH else DEFAULT
+
+        fun fromStored(
+            value: String?,
+            default: SoftApPerformancePreset = DEFAULT,
+        ): SoftApPerformancePreset =
+            value?.let { runCatching { valueOf(it) }.getOrNull() } ?: default
     }
 }
 
