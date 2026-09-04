@@ -3,6 +3,7 @@ package com.micsbol.telecon4esp32.ui.control_panel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.hypot
 import kotlin.math.sin
 
 class RadarSectorGeometryTest {
@@ -69,5 +70,62 @@ class RadarSectorGeometryTest {
         assertEquals(0.5f, points[0].rangeFraction, 0.001f)
         assertEquals(3, points[0].colorArgb)
         assertEquals(0.8f, points[1].rangeFraction, 0.001f)
+    }
+
+    @Test
+    fun `camera elevation is derived from the plot floor and stays readable`() {
+        val hud = radarCameraElevationDegrees(340f, 250f)
+        val square = radarCameraElevationDegrees(200f, 200f)
+        assertTrue(hud in 42f..54f)
+        assertTrue(square in 42f..54f)
+        assertTrue(square >= hud)
+    }
+
+    @Test
+    fun `perspective view puts north above the origin and east to the right`() {
+        val view = computeRadarViewProjection(340f, 250f, 180f, 0f)
+        val origin = view.project(0f, 0f)
+        val north = view.project(0f, 1f)
+        val east = view.project(90f, 1f)
+        val west = view.project(-90f, 1f)
+        assertTrue(north.y < origin.y)
+        assertTrue(east.x > origin.x)
+        assertTrue(west.x < origin.x)
+        assertEquals(origin.x, view.originX, 0.01f)
+        assertEquals(origin.y, view.originY, 0.01f)
+    }
+
+    @Test
+    fun `near rim is larger than the far rim`() {
+        val view = computeRadarViewProjection(340f, 250f, 270f, 0f)
+        val origin = view.project(0f, 0f)
+        val north = view.project(0f, 1f)
+        val south = view.project(180f, 1f)
+        val northDist = hypot(north.x - origin.x, north.y - origin.y)
+        val southDist = hypot(south.x - origin.x, south.y - origin.y)
+        assertTrue(southDist > northDist)
+        assertTrue(view.depthScale(180f, 1f) > view.depthScale(0f, 1f))
+    }
+
+    @Test
+    fun `hovering disc sits above its floor shadow`() {
+        val view = computeRadarViewProjection(340f, 250f, 180f, 0f)
+        val air = view.project(0f, 0f)
+        val floor = view.projectFloor(0f, 0f)
+        assertTrue(air.y < floor.y)
+    }
+
+    @Test
+    fun `projected sector fits inside the plot`() {
+        val width = 340f
+        val height = 250f
+        val padding = 8f
+        val view = computeRadarViewProjection(width, height, 270f, padding)
+        val bearings = radarGridBearingsFromNorth(270f, stepDegrees = 15f)
+        val points = bearings.map { view.project(it, 1f) } + view.project(0f, 0f)
+        points.forEach { point ->
+            assertTrue(point.x in padding - 0.05f..width - padding + 0.05f)
+            assertTrue(point.y in padding - 0.05f..height - padding + 0.05f)
+        }
     }
 }

@@ -15,9 +15,12 @@
 local.properties
 .kotlin/
 
-# Cursor IDE / agent artifacts (keep off GitHub)
+# Cursor IDE / collaboration (keep off GitHub)
 .cursor/
 
 # Python
 __pycache__/
 *.pyc
+
+# Local scratch (image crops, previews)
+.tmp/

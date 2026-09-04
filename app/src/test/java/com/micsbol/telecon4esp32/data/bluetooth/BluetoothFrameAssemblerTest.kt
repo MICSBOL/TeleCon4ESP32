@@ -10,16 +10,16 @@ class BluetoothFrameAssemblerTest {
 
     @Test
     fun `parses text line terminated by newline`() {
-        val frames = assembler.feed("GH:DATA,temp,26.2,hum,68\n".toByteArray())
+        val frames = assembler.feed("RC:DATA,batt,82,left,150\n".toByteArray())
 
-        assertEquals(listOf(IncomingBluetoothFrame.TextLine("GH:DATA,temp,26.2,hum,68")), frames)
+        assertEquals(listOf(IncomingBluetoothFrame.TextLine("RC:DATA,batt,82,left,150")), frames)
     }
 
     @Test
     fun `strips carriage return from text line`() {
-        val frames = assembler.feed("WT:DATA,level,74\r\n".toByteArray())
+        val frames = assembler.feed("RC:DATA,batt,74\r\n".toByteArray())
 
-        assertEquals(listOf(IncomingBluetoothFrame.TextLine("WT:DATA,level,74")), frames)
+        assertEquals(listOf(IncomingBluetoothFrame.TextLine("RC:DATA,batt,74")), frames)
     }
 
     @Test
@@ -45,14 +45,14 @@ class BluetoothFrameAssemblerTest {
     }
 
     @Test
-    fun `parses length prefixed gh packet split across chunks`() {
-        // CC 47 + length(2 LE) + type + 2-byte payload + checksum
+    fun `parses length prefixed plot packet split across chunks`() {
+        // CC 33 + length(2 LE) + payload + checksum
         val payload = byteArrayOf(0x01, 0x2A, 0x3B)
         val length = payload.size
         var checksum = length and 0xFF
         payload.forEach { checksum += it.toInt() and 0xFF }
         val packet = byteArrayOf(
-            0xCC.toByte(), 0x47,
+            0xCC.toByte(), 0x33,
             length.toByte(), 0x00,
         ) + payload + byteArrayOf((checksum and 0xFF).toByte())
 
@@ -70,15 +70,15 @@ class BluetoothFrameAssemblerTest {
             0x2A, 0x58, 0x0F,
             (0x2A + 0x58 + 0x0F).toByte(),
         )
-        val stream = "GH:ACK,app,GH\n".toByteArray() + indicator + "GH:DATA,temp,25\n".toByteArray()
+        val stream = "RC:ACK,app,RC\n".toByteArray() + indicator + "RC:DATA,batt,82\n".toByteArray()
 
         val frames = assembler.feed(stream)
 
         assertEquals(
             listOf(
-                IncomingBluetoothFrame.TextLine("GH:ACK,app,GH"),
+                IncomingBluetoothFrame.TextLine("RC:ACK,app,RC"),
                 IncomingBluetoothFrame.BinaryPacket(indicator),
-                IncomingBluetoothFrame.TextLine("GH:DATA,temp,25"),
+                IncomingBluetoothFrame.TextLine("RC:DATA,batt,82"),
             ),
             frames,
         )
@@ -86,8 +86,8 @@ class BluetoothFrameAssemblerTest {
 
     @Test
     fun `unknown binary subtype resyncs to text`() {
-        val frames = assembler.feed(byteArrayOf(0xCC.toByte(), 0x7F) + "SP:DATA,solar_w,480\n".toByteArray())
+        val frames = assembler.feed(byteArrayOf(0xCC.toByte(), 0x7F) + "RC:DATA,batt,82\n".toByteArray())
 
-        assertEquals(listOf(IncomingBluetoothFrame.TextLine("SP:DATA,solar_w,480")), frames)
+        assertEquals(listOf(IncomingBluetoothFrame.TextLine("RC:DATA,batt,82")), frames)
     }
 }

@@ -1,19 +1,22 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -27,9 +30,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,10 +42,16 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.autoConnectSoftApControlWhenCameraOnline
+import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
+import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
+import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryChannelRouter
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
+import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
+import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsIconButton
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
@@ -58,16 +68,20 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcCameraPreview
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcCenterControls
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcControlZone
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcGlassAccentEdge
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudLinkStatusIcons
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudMetricsRow
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudNoticeBanner
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudTopBarStatusRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcTelemetryPlotPanel
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcTelemetryPlotSession
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcVehicleHudTopBar
-import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.rememberTelemetryPlotSamples
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.rememberTelemetryPlotSession
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcStickTrim
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcStickMapping
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout.CAMERA_PAN_CENTER
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -89,10 +103,13 @@ fun RcVehicleProScreen(
     val cameraKnobValue by bluetoothViewModel.rcRightKnobValue.collectAsStateWithLifecycle()
     // Mapped throttle Y after drive-assist pipeline (for HUD speed estimate).
     val leftStickPosition by bluetoothViewModel.rcLeftStickPosition.collectAsStateWithLifecycle()
+    val rightStickPosition by bluetoothViewModel.rcRightStickPosition.collectAsStateWithLifecycle()
+    val telemetry by bluetoothViewModel.telemetryState.collectAsStateWithLifecycle()
+    val channelRouting by bluetoothViewModel.rcChannelRouting.collectAsStateWithLifecycle()
+    val plotLabels by bluetoothViewModel.rcPlotDisplayLabels.collectAsStateWithLifecycle()
     val controlSettings by viewModel.controlSettings.collectAsStateWithLifecycle()
     val bluetoothSession = LocalApplicationBluetoothSession.current
     val onBluetoothConnect by rememberUpdatedState(bluetoothSession?.onConnect)
-    val context = LocalContext.current
     val linkProfile = uiState.cameraLinkProfile
     val isWifiSoftApMode = linkProfile == CameraLinkProfile.WIFI_SOFTAP
     val usesWifiLink = isWifiSoftApMode || bluetoothSession?.usesWifiLink == true
@@ -116,28 +133,10 @@ fun RcVehicleProScreen(
     LaunchedEffect(uiState.photoFeedback) {
         when (uiState.photoFeedback) {
             PhotoFeedback.None -> Unit
-            PhotoFeedback.Saved -> {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.rc_vehicle_photo_saved),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                viewModel.consumePhotoFeedback()
-            }
-            PhotoFeedback.NoFrame -> {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.rc_vehicle_photo_no_frame),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                viewModel.consumePhotoFeedback()
-            }
+            PhotoFeedback.Saved,
+            PhotoFeedback.NoFrame,
             PhotoFeedback.Failed -> {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.rc_vehicle_photo_failed),
-                    Toast.LENGTH_SHORT,
-                ).show()
+                delay(2_000L)
                 viewModel.consumePhotoFeedback()
             }
         }
@@ -174,6 +173,8 @@ fun RcVehicleProScreen(
         RcVehicleProCameraLayer(
             cameraPreviewState = viewModel.cameraPreviewState,
             cameraLinkProfile = viewModel.cameraLinkProfile,
+            isControlConnected = uiState.isBluetoothConnected,
+            onConnectControl = { onBluetoothConnect?.invoke() },
         )
 
         val showStreamQuality = uiState.isCameraStreamArmed
@@ -181,15 +182,52 @@ fun RcVehicleProScreen(
         val hudRate by viewModel.softApHudProcessingRate.collectAsStateWithLifecycle()
 
         CompositionLocalProvider(LocalHudSystemBarsHidden provides true) {
+        val analogHistory = remember { AnalogChannelHistory() }
+        remember(telemetry, telemetry.plotState.revision) {
+            analogHistory.ingest(telemetry)
+            telemetry.plotState.revision
+        }
+        val plotHudSeries = remember(
+            telemetry,
+            telemetry.plotState.revision,
+            channelRouting,
+            plotLabels,
+        ) {
+            PlotHudSeries(
+                radar = TelemetryChannelRouter.radarSeries(telemetry, analogHistory),
+                plots = TelemetryChannelRouter.plotSeries(
+                    telemetry = telemetry,
+                    routing = channelRouting,
+                    analogHistory = analogHistory,
+                    plotLabels = plotLabels,
+                ),
+            )
+        }
         RcVehicleProContent(
             uiState = uiState,
             controlSettings = controlSettings,
-            isBluetoothConnecting = isBluetoothConnecting,
-            isWifiSoftApMode = usesWifiLink,
+            plotThrottleY = leftStickPosition.second,
+            plotSteerX = rightStickPosition.first,
+            radarSeries = plotHudSeries.radar,
+            plotSeries = plotHudSeries.plots,
+            channelRouting = channelRouting,
+            onRadarSourceChange = bluetoothViewModel::saveChannelBinding,
+            onPlotLabelChange = bluetoothViewModel::savePlotLabel,
+            onPlotChannelChange = { index, channel ->
+                bluetoothViewModel.saveChannelBinding(TelemetrySink.plotAt(index), channel)
+            },
             onNavigateBack = { navController.navigateUp() },
             onBluetoothDisconnectedClick = { onBluetoothConnect?.invoke() },
             settingsAction = {
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RcHudLinkStatusIcons(
+                        profile = linkProfile,
+                        isControlConnected = uiState.isBluetoothConnected,
+                        isControlConnecting = isBluetoothConnecting,
+                        isCameraOnline = uiState.isCameraOnline,
+                        usesWifiControl = usesWifiLink,
+                        onDisconnectedClick = { onBluetoothConnect?.invoke() },
+                    )
                     if (showStreamQuality) {
                         SoftApRuntimeStreamQualityControl(
                             selectedPreset = preset,
@@ -241,6 +279,8 @@ fun RcVehicleProScreen(
 private fun RcVehicleProCameraLayer(
     cameraPreviewState: StateFlow<CameraStreamState>,
     cameraLinkProfile: StateFlow<CameraLinkProfile>,
+    isControlConnected: Boolean,
+    onConnectControl: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cameraState by cameraPreviewState.collectAsStateWithLifecycle()
@@ -248,6 +288,8 @@ private fun RcVehicleProCameraLayer(
     RcCameraPreview(
         cameraState = cameraState,
         cameraLinkProfile = profile,
+        isControlConnected = isControlConnected,
+        onConnectControl = onConnectControl,
         modifier = modifier.fillMaxSize(),
     )
 }
@@ -256,8 +298,6 @@ private fun RcVehicleProCameraLayer(
 fun RcVehicleProContent(
     uiState: RcVehicleProUiState,
     controlSettings: RcVehicleProControlSettings = RcVehicleProControlSettings.DEFAULT,
-    isBluetoothConnecting: Boolean = false,
-    isWifiSoftApMode: Boolean = false,
     onNavigateBack: () -> Unit,
     onBluetoothDisconnectedClick: () -> Unit = {},
     settingsAction: @Composable () -> Unit,
@@ -266,6 +306,14 @@ fun RcVehicleProContent(
     onControlSettingsChange: ((RcVehicleProControlSettings) -> RcVehicleProControlSettings) -> Unit = {},
     onCycleThrottleTravel: () -> Unit = {},
     onCycleSteerTravel: () -> Unit = {},
+    plotThrottleY: Float = 0f,
+    plotSteerX: Float = 0f,
+    radarSeries: List<PlotData> = emptyList(),
+    plotSeries: List<PlotData> = emptyList(),
+    channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
     onPhotoClick: () -> Unit,
     onRecordClick: () -> Unit,
     onLightsClick: () -> Unit,
@@ -289,14 +337,20 @@ fun RcVehicleProContent(
         mutableStateOf(controlSettings.rightStickMode.initialPositionNormalized())
     }
     var stickSettingsGeneration by remember { mutableIntStateOf(0) }
-    var panExpanded by remember { mutableStateOf(true) }
+    var panExpanded by remember { mutableStateOf(false) }
     var plotExpanded by remember { mutableStateOf(true) }
-    var topBarExpanded by remember { mutableStateOf(true) }
-    var centerExpanded by remember { mutableStateOf(true) }
+    var topBarExpanded by remember { mutableStateOf(false) }
+    var centerExpanded by remember { mutableStateOf(false) }
     var leftStickExpanded by remember { mutableStateOf(true) }
     var rightStickExpanded by remember { mutableStateOf(true) }
-    val telemetryPlotSamples = rememberTelemetryPlotSamples(
+    var stickResizeMode by remember { mutableStateOf(false) }
+    var panResizeMode by remember { mutableStateOf(false) }
+    val telemetryPlotSession = rememberTelemetryPlotSession(
         speedKmh = uiState.speedKmh,
+        batteryPercent = uiState.batteryPercent,
+        motorTempCelsius = uiState.motorTempCelsius,
+        throttleY = plotThrottleY,
+        steerX = plotSteerX,
         fromTelemetry = uiState.speedFromTelemetry,
     )
     val disconnectedBannerInsets = LocalDisconnectedBannerInsets.current
@@ -379,21 +433,22 @@ fun RcVehicleProContent(
                 RcHudMetricsRow(uiState = uiState)
             },
             statusContent = {
-                RcHudTopBarStatusRow(
-                    uiState = uiState,
-                    isBluetoothConnecting = isBluetoothConnecting,
-                    onBluetoothDisconnectedClick = onBluetoothDisconnectedClick,
-                    isWifiSoftApMode = isWifiSoftApMode,
-                )
+                RcHudTopBarStatusRow(uiState = uiState)
             },
             actions = settingsAction,
             hideRowStartContent = {
                 if (!plotExpanded) {
-                    RcTelemetryPlotPanel(
+                    RcVehicleHudPlotPanel(
+                        session = telemetryPlotSession,
+                        radarSeries = radarSeries,
+                        plotSeries = plotSeries,
+                        channelRouting = channelRouting,
+                        onRadarSourceChange = onRadarSourceChange,
+                        onPlotLabelChange = onPlotLabelChange,
+                        onPlotChannelChange = onPlotChannelChange,
                         modifier = Modifier.wrapContentWidth(),
                         expanded = false,
                         onExpandedChange = { plotExpanded = it },
-                        samples = telemetryPlotSamples,
                     )
                 }
             },
@@ -425,28 +480,47 @@ fun RcVehicleProContent(
             val showControlTitles = maxWidth >= 700.dp
             val leftStickAlone = leftStickExpanded && !rightStickExpanded
             val rightStickAlone = rightStickExpanded && !leftStickExpanded
-            val oneStickWithCenter = (leftStickAlone || rightStickAlone) && centerExpanded
             val panOverlapsRightStick = panExpanded && rightStickExpanded
             val bothSticksVisible = leftStickExpanded && rightStickExpanded
-            val fillLeftover = !centerExpanded ||
-                !leftStickExpanded ||
-                !rightStickExpanded
+            val configuration = LocalConfiguration.current
+            val maxHudHeight = RcVehicleProLayout.maxResizeHeight(
+                configuration.screenHeightDp.dp,
+            )
             val joystickSize = RcVehicleProLayout.joystickPadSize(
                 slotWidth = maxWidth,
                 slotHeight = maxHeight,
-                centerExpanded = centerExpanded,
+                centerExpanded = false,
                 leftStickExpanded = leftStickExpanded,
                 rightStickExpanded = rightStickExpanded,
-                fillLeftover = fillLeftover,
+                fillLeftover = true,
+            )
+            val baseStickWidth = RcVehicleProLayout.sharedStickContainerWidth(
+                slotWidth = maxWidth,
+            )
+            val baseStickHeight = RcVehicleProLayout.stickContainerBaseHeight(
+                slotHeight = maxHeight,
+                joystickSize = joystickSize,
+                immersiveHeight = null,
+            )
+            val stickGroupMaxScale = RcVehicleProLayout.maxScaleForBaseHeight(
+                baseHeight = baseStickHeight,
+                maxHeight = maxHudHeight,
+            )
+            val stickGroupScale = RcVehicleProLayout.coerceStickGroupScale(
+                scale = controlSettings.stickGroupScale,
+                maxScale = stickGroupMaxScale,
+            )
+            val (stickWidth, stickHeight) = RcVehicleProLayout.scaledStickContainerSize(
+                baseWidth = baseStickWidth,
+                baseHeight = baseStickHeight,
+                scale = stickGroupScale,
+                maxWidth = maxWidth / 2,
+                maxHeight = minOf(maxHeight, maxHudHeight),
             )
             val halfScreenWidth = maxWidth / 2
+            val centerOverlayMaxWidth = maxWidth / 3f
             val panTowardCenterPadding = if (panOverlapsRightStick) {
-                RcVehicleProLayout.rightStickColumnWidth(
-                    slotWidth = maxWidth,
-                    centerExpanded = centerExpanded,
-                    leftStickExpanded = leftStickExpanded,
-                    rightStickExpanded = rightStickExpanded,
-                )
+                stickWidth
             } else {
                 0.dp
             }
@@ -460,20 +534,36 @@ fun RcVehicleProContent(
                     (maxWidth - RcVehicleProLayout.HudEdgeChevronWidth).coerceAtLeast(1.dp)
                 }
             }
-            val (fittedPlotWidth, fittedPlotHeight) = RcVehicleProLayout.telemetryPlotSize(
-                availableWidth = oneStickPlotSlotWidth,
-                availableHeight = maxHeight,
-            )
+            val (fittedPlotWidth, fittedPlotHeight) = if (bothSticksVisible) {
+                RcVehicleProLayout.telemetryPlotSizeBetweenSticks(
+                    hudWidth = maxWidth,
+                    hudHeight = maxHeight,
+                    stickPadSize = joystickSize,
+                )
+            } else {
+                RcVehicleProLayout.telemetryPlotSize(
+                    availableWidth = oneStickPlotSlotWidth,
+                    availableHeight = maxHeight,
+                )
+            }
             Box(modifier = Modifier.fillMaxSize()) {
                 if (plotExpanded && bothSticksVisible) {
-                    RcTelemetryPlotPanel(
+                    RcVehicleHudPlotPanel(
+                        session = telemetryPlotSession,
+                        radarSeries = radarSeries,
+                        plotSeries = plotSeries,
+                        channelRouting = channelRouting,
+                        onRadarSourceChange = onRadarSourceChange,
+                        onPlotLabelChange = onPlotLabelChange,
+                        onPlotChannelChange = onPlotChannelChange,
                         modifier = Modifier
-                            .align(Alignment.Center)
+                            .align(Alignment.TopCenter)
                             .wrapContentWidth()
-                            .zIndex(0f),
+                            .zIndex(1.5f),
                         expanded = plotExpanded,
                         onExpandedChange = { plotExpanded = it },
-                        samples = telemetryPlotSamples,
+                        plotWidth = fittedPlotWidth,
+                        plotHeight = fittedPlotHeight,
                     )
                 }
                 Row(
@@ -481,22 +571,15 @@ fun RcVehicleProContent(
                         .fillMaxSize()
                         .zIndex(1f),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     val leftSlotModifier = when {
                         !leftStickExpanded -> Modifier.wrapContentWidth()
-                        leftStickAlone -> Modifier.width(halfScreenWidth)
-                        else -> Modifier.weight(1f)
+                        else -> Modifier.width(stickWidth).height(stickHeight)
                     }
                     val rightSlotModifier = when {
                         !rightStickExpanded -> Modifier.wrapContentWidth()
-                        rightStickAlone -> Modifier.width(halfScreenWidth)
-                        else -> Modifier.weight(1f)
-                    }
-                    val centerSlotModifier = when {
-                        !centerExpanded -> Modifier.wrapContentWidth()
-                        oneStickWithCenter -> Modifier.weight(1f)
-                        else -> Modifier.fillMaxWidth(1f / 3f)
+                        else -> Modifier.width(stickWidth).height(stickHeight)
                     }
                     RcControlZone(
                         modifier = leftSlotModifier,
@@ -513,6 +596,14 @@ fun RcVehicleProContent(
                         accentEdge = RcGlassAccentEdge.START,
                         joystickSize = joystickSize,
                         showTitle = showControlTitles,
+                        fillHeight = leftStickExpanded,
+                        resizeMode = stickResizeMode,
+                        stickGroupScale = stickGroupScale,
+                        onResizeModeChange = { stickResizeMode = it },
+                        onStickGroupScaleChange = { next ->
+                            onControlSettingsChange { it.copy(stickGroupScale = next) }
+                        },
+                        maxScale = stickGroupMaxScale,
                         onMove = { x, y ->
                             if (!leftTrimMode) {
                                 publishThrottle(x, y)
@@ -551,35 +642,8 @@ fun RcVehicleProContent(
                             leftTrimMode = false
                             publishLeftAtRest()
                         },
+                        collapsedIcon = Icons.Filled.SwapVert,
                     )
-
-                    if (leftStickAlone && !centerExpanded) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-
-                    RcCenterControls(
-                        modifier = centerSlotModifier,
-                        expanded = centerExpanded,
-                        onExpandedChange = { centerExpanded = it },
-                        isRecording = uiState.isRecording,
-                        lightsOn = uiState.lightsOn,
-                        onPhotoClick = onPhotoClick,
-                        onRecordClick = onRecordClick,
-                        onLightsClick = onLightsClick,
-                        throttleTravelPercent = RcStickMapping.travelPercentLabel(
-                            controlSettings.throttleTravel,
-                        ),
-                        steerTravelPercent = RcStickMapping.travelPercentLabel(
-                            controlSettings.steerTravel,
-                        ),
-                        onCycleThrottleTravel = onCycleThrottleTravel,
-                        onCycleSteerTravel = onCycleSteerTravel,
-                        onOpenDriveAssist = { showDriveAssist = true },
-                    )
-
-                    if (rightStickAlone && !centerExpanded) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
 
                     RcControlZone(
                         modifier = rightSlotModifier,
@@ -596,6 +660,14 @@ fun RcVehicleProContent(
                         accentEdge = RcGlassAccentEdge.END,
                         joystickSize = joystickSize,
                         showTitle = showControlTitles,
+                        fillHeight = rightStickExpanded,
+                        resizeMode = stickResizeMode,
+                        stickGroupScale = stickGroupScale,
+                        onResizeModeChange = { stickResizeMode = it },
+                        onStickGroupScaleChange = { next ->
+                            onControlSettingsChange { it.copy(stickGroupScale = next) }
+                        },
+                        maxScale = stickGroupMaxScale,
                         onMove = { x, y ->
                             if (!rightTrimMode) {
                                 publishSteer(x, y)
@@ -631,27 +703,77 @@ fun RcVehicleProContent(
                             rightTrimMode = false
                             publishRightAtRest()
                         },
+                        collapsedIcon = Icons.Filled.SwapHoriz,
                     )
                     }
+                    RcCenterControls(
+                        modifier = Modifier
+                            .align(
+                                RcVehicleProLayout.centerControlsOverlayAlignment(
+                                    leftStickExpanded = leftStickExpanded,
+                                    rightStickExpanded = rightStickExpanded,
+                                ),
+                            )
+                            .padding(
+                                RcVehicleProLayout.centerControlsOverlayPadding(
+                                    leftStickExpanded = leftStickExpanded,
+                                    rightStickExpanded = rightStickExpanded,
+                                ),
+                            )
+                            .widthIn(max = centerOverlayMaxWidth)
+                            .wrapContentWidth()
+                            .zIndex(2f),
+                        fillWidth = false,
+                        expanded = centerExpanded,
+                        onExpandedChange = { centerExpanded = it },
+                        isRecording = uiState.isRecording,
+                        lightsOn = uiState.lightsOn,
+                        onPhotoClick = onPhotoClick,
+                        onRecordClick = onRecordClick,
+                        onLightsClick = onLightsClick,
+                        throttleTravelPercent = RcStickMapping.travelPercentLabel(
+                            controlSettings.throttleTravel,
+                        ),
+                        steerTravelPercent = RcStickMapping.travelPercentLabel(
+                            controlSettings.steerTravel,
+                        ),
+                        onCycleThrottleTravel = onCycleThrottleTravel,
+                        onCycleSteerTravel = onCycleSteerTravel,
+                        onOpenDriveAssist = { showDriveAssist = true },
+                    )
                     if (plotExpanded && !bothSticksVisible) {
                     val plotAlignment = if (leftStickAlone) {
                         Alignment.TopEnd
                     } else {
                         Alignment.TopStart
                     }
-                    RcTelemetryPlotPanel(
+                    RcVehicleHudPlotPanel(
+                        session = telemetryPlotSession,
+                        radarSeries = radarSeries,
+                        plotSeries = plotSeries,
+                        channelRouting = channelRouting,
+                        onRadarSourceChange = onRadarSourceChange,
+                        onPlotLabelChange = onPlotLabelChange,
+                        onPlotChannelChange = onPlotChannelChange,
                         modifier = Modifier
                             .align(plotAlignment)
                             .wrapContentWidth()
                             .zIndex(1f),
                         expanded = plotExpanded,
                         onExpandedChange = { plotExpanded = it },
-                        samples = telemetryPlotSamples,
                         plotWidth = fittedPlotWidth,
                         plotHeight = fittedPlotHeight,
                     )
                     }
                     if (panExpanded) {
+                    val cameraPanMaxScale = RcVehicleProLayout.maxScaleForBaseHeight(
+                        baseHeight = RcVehicleProLayout.ControlZoneKnobSize,
+                        maxHeight = maxHudHeight,
+                    )
+                    val cameraPanScale = RcVehicleProLayout.coerceStickGroupScale(
+                        scale = controlSettings.cameraPanScale,
+                        maxScale = cameraPanMaxScale,
+                    )
                     RcCameraPanPanel(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -663,48 +785,64 @@ fun RcVehicleProContent(
                         value = cameraKnobValue,
                         onValueChange = onCameraKnobChange,
                         onFrontClick = onCameraFrontClick,
+                        resizeMode = panResizeMode,
+                        panelScale = cameraPanScale,
+                        onResizeModeChange = { panResizeMode = it },
+                        onPanelScaleChange = { next ->
+                            onControlSettingsChange { it.copy(cameraPanScale = next) }
+                        },
+                        maxScale = cameraPanMaxScale,
                     )
                     }
                 }
             }
         }
-        if (!plotExpanded && !topBarExpanded) {
-            RcTelemetryPlotPanel(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .wrapContentWidth()
-                    .zIndex(2f)
-                    .safeHudPadding(
-                        includeTop = true,
-                        includeBottom = false,
-                        includeHorizontal = true,
-                    )
-                    .padding(start = 4.dp),
-                expanded = false,
-                onExpandedChange = { plotExpanded = it },
-                samples = telemetryPlotSamples,
-            )
+        val photoNotice = when (uiState.photoFeedback) {
+            PhotoFeedback.Saved -> stringResource(R.string.rc_vehicle_photo_saved)
+            PhotoFeedback.NoFrame -> stringResource(R.string.rc_vehicle_photo_no_frame)
+            PhotoFeedback.Failed -> stringResource(R.string.rc_vehicle_photo_failed)
+            PhotoFeedback.None -> null
         }
-        if (!panExpanded && !topBarExpanded) {
-            RcCameraPanPanel(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .wrapContentWidth()
-                    .zIndex(2f)
-                    .safeHudPadding(
-                        includeTop = true,
-                        includeBottom = false,
-                        includeHorizontal = true,
-                    )
-                    .padding(end = 4.dp),
-                expanded = false,
-                onExpandedChange = { panExpanded = it },
-                value = cameraKnobValue,
-                onValueChange = onCameraKnobChange,
-                onFrontClick = onCameraFrontClick,
-            )
+        if (photoNotice != null) {
+            RcHudNoticeBanner(text = photoNotice)
         }
     }
+}
+
+private data class PlotHudSeries(
+    val radar: List<PlotData>,
+    val plots: List<PlotData>,
+)
+
+@Composable
+private fun RcVehicleHudPlotPanel(
+    session: RcTelemetryPlotSession,
+    radarSeries: List<PlotData>,
+    plotSeries: List<PlotData>,
+    channelRouting: ChannelRouting,
+    onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit,
+    onPlotLabelChange: (Int, String) -> Unit,
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    plotWidth: Dp = RcVehicleProLayout.TelemetryPlotWidth,
+    plotHeight: Dp = RcVehicleProLayout.TelemetryPlotHeight,
+) {
+    RcTelemetryPlotPanel(
+        session = session,
+        modifier = modifier,
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        plotWidth = plotWidth,
+        plotHeight = plotHeight,
+        radarSeries = radarSeries,
+        plotSeries = plotSeries,
+        channelRouting = channelRouting,
+        onRadarSourceChange = onRadarSourceChange,
+        onPlotLabelChange = onPlotLabelChange,
+        onPlotChannelChange = onPlotChannelChange,
+    )
 }
 
 @Preview(showBackground = true, widthDp = 844, heightDp = 390)
@@ -715,6 +853,7 @@ private fun RcVehicleProContentPreview() {
             RcCameraPreview(
                 cameraState = CameraStreamState.Idle,
                 cameraLinkProfile = CameraLinkProfile.WIFI_SOFTAP,
+                isControlConnected = true,
                 modifier = Modifier.fillMaxSize(),
             )
             RcVehicleProContent(

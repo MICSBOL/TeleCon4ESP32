@@ -21,6 +21,10 @@ data class RcVehicleProControlSettings(
     val steerExpo: Float = 0.35f,
     val throttleExpo: Float = 0.15f,
     val deadzone: Float = 0.08f,
+    /** Uniform scale for both stick containers (1 = layout max). */
+    val stickGroupScale: Float = 1f,
+    /** Uniform scale for the camera-pan knob card (1 = default size). */
+    val cameraPanScale: Float = 1f,
 ) {
     companion object {
         val DEFAULT_LEFT_STICK_MODE = JoystickMode.VerticalHold(JoystickMode.DOWN)

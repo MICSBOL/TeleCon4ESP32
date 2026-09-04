@@ -10,8 +10,8 @@ class ProtocolHandshakeTest {
     @Test
     fun buildConnectLine_usesSimpleWireValue() {
         assertEquals(
-            "GH:CONNECT,proto,simple",
-            ProtocolHandshake.buildConnectLine(ApplicationId.GREENHOUSE, BluetoothProtocolMode.SIMPLE),
+            "RC:CONNECT,proto,simple",
+            ProtocolHandshake.buildConnectLine(ApplicationId.CONTROL_PANEL, BluetoothProtocolMode.SIMPLE),
         )
     }
 
@@ -104,22 +104,22 @@ class ProtocolHandshakeTest {
     }
 
     @Test
-    fun parseAckAppId_mapsGhPrefix() {
+    fun parseAckAppId_mapsRcPrefix() {
         assertEquals(
-            ApplicationId.GREENHOUSE,
-            ProtocolHandshake.parseAckAppId(mapOf("app" to "GH")),
+            ApplicationId.CONTROL_PANEL,
+            ProtocolHandshake.parseAckAppId(mapOf("app" to "RC")),
         )
     }
 
     @Test
     fun parseNakReason_appMismatch() {
         val failure = ProtocolHandshake.parseNakReason(
-            mapOf("reason" to "app_mismatch", "expected" to "GH", "actual" to "RC"),
+            mapOf("reason" to "app_mismatch", "expected" to "RC", "actual" to "XX"),
         )
         assertTrue(failure is HandshakeFailure.AppMismatch)
         val mismatch = failure as HandshakeFailure.AppMismatch
-        assertEquals("GH", mismatch.device)
-        assertEquals("RC", mismatch.requested)
+        assertEquals("RC", mismatch.device)
+        assertEquals("XX", mismatch.requested)
     }
 
     @Test

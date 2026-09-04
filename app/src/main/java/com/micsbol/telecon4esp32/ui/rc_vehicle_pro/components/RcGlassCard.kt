@@ -45,7 +45,9 @@ fun RcGlassCard(
     val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceAlpha)
 
     Surface(
-        modifier = modifier.clip(EmitterCardShape),
+        modifier = modifier
+            .then(if (fillMaxHeight) Modifier.fillMaxHeight() else Modifier)
+            .clip(EmitterCardShape),
         shape = EmitterCardShape,
         color = Color.Transparent,
         tonalElevation = 0.dp,

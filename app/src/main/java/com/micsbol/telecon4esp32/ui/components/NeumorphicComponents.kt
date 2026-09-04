@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
@@ -584,6 +586,8 @@ fun NeoTopBar(
     onNavigateBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
+    val hud = LocalHudGlassDialog.current
+    val titleColor = if (hud) brandPrimary() else Neo.TextPrimary
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -598,45 +602,63 @@ fun NeoTopBar(
         val backSize = if (compact) 40.dp else 44.dp
         val titleGap = if (compact) 8.dp else 14.dp
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = edgePad, vertical = if (compact) 10.dp else 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (onNavigateBack != null) {
-                NeoIconButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    onClick = onNavigateBack,
-                    contentDescription = null,
-                    size = backSize,
-                )
-                Spacer(modifier = Modifier.width(titleGap))
-            }
-            Column(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .widthIn(min = 0.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = edgePad, vertical = if (compact) 10.dp else 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = title,
-                    color = Neo.TextPrimary,
-                    fontSize = if (compact) 17.sp else 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (subtitle != null) {
+                if (onNavigateBack != null) {
+                    NeoIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        onClick = onNavigateBack,
+                        contentDescription = null,
+                        size = backSize,
+                    )
+                    Spacer(modifier = Modifier.width(titleGap))
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(min = 0.dp),
+                ) {
                     Text(
-                        text = subtitle,
-                        color = Neo.TextSecondary,
-                        fontSize = if (compact) 12.sp else 13.sp,
+                        text = title,
+                        color = titleColor,
+                        fontSize = if (compact) 17.sp else 22.sp,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            color = Neo.TextSecondary,
+                            fontSize = if (compact) 12.sp else 13.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
+                actions()
             }
-            actions()
+            if (hud) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    brandPrimary().copy(alpha = 0.85f),
+                                    brandSecondary().copy(alpha = 0.85f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
+            }
         }
     }
 }
@@ -677,6 +699,11 @@ fun NeoScaffold(
     }
 }
 
+private val HudDialogSurface = Color(0xFF101820)
+private const val HudDialogSurfaceAlpha = 0.86f
+private const val HudDialogScrimAlpha = 0.48f
+private val HudDialogMaxWidth = 560.dp
+
 /** Frosted glass dialog shell for help, codes export, and similar overlays. */
 @Composable
 fun NeoDialog(
@@ -692,11 +719,24 @@ fun NeoDialog(
     content: @Composable ColumnScope.() -> Unit = {},
     actions: @Composable () -> Unit,
 ) {
+    val hud = LocalHudGlassDialog.current
+    val accent = brandPrimary()
+    val secondary = brandSecondary()
     val configuration = LocalConfiguration.current
     val heightFraction = if (configuration.screenHeightDp < 500) 0.92f else 0.86f
     val maxDialogHeight = (configuration.screenHeightDp * heightFraction)
         .dp
         .coerceAtLeast(220.dp)
+    val shape = if (hud) EmitterCardShape else RoundedCornerShape(24.dp)
+    val resolvedSurface = if (hud) HudDialogSurface else surfaceColor
+    val resolvedAlpha = if (hud) HudDialogSurfaceAlpha else surfaceAlpha
+    val resolvedScrim = if (hud) HudDialogScrimAlpha else scrimAlpha
+    val borderColor = if (hud) {
+        accent.copy(alpha = 0.50f)
+    } else {
+        AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha)
+    }
+    val resolvedMargin = if (hud) 24.dp else horizontalMargin
 
     ProvideCappedFontScale(maxFontScale = 1.15f) {
         Dialog(
@@ -714,8 +754,8 @@ fun NeoDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
-                        if (scrimAlpha > 0f) {
-                            Modifier.background(Color.Black.copy(alpha = scrimAlpha))
+                        if (resolvedScrim > 0f) {
+                            Modifier.background(Color.Black.copy(alpha = resolvedScrim))
                         } else {
                             Modifier
                         },
@@ -725,62 +765,73 @@ fun NeoDialog(
                         indication = null,
                         onClick = onDismissRequest,
                     )
-                    .padding(horizontal = horizontalMargin, vertical = 8.dp),
+                    .padding(horizontal = resolvedMargin, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 val cardModifier = modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(surfaceColor.copy(alpha = surfaceAlpha))
-                    .border(
-                        1.dp,
-                        AppGlass.BorderColor.copy(alpha = AppGlass.BorderAlpha),
-                        RoundedCornerShape(24.dp),
-                    )
+                    .then(if (hud) Modifier.widthIn(max = HudDialogMaxWidth) else Modifier)
+                    .clip(shape)
+                    .background(resolvedSurface.copy(alpha = resolvedAlpha))
+                    .border(1.dp, borderColor, shape)
                     .clickable(
                         interactionSource = cardInteraction,
                         indication = null,
                         onClick = {},
                     )
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
 
-                if (wrapContentHeight) {
+                val dialogBody: @Composable ColumnScope.() -> Unit = {
+                    title?.invoke()
+                    subtitle?.invoke()
                     Column(
-                        modifier = cardModifier
-                            .wrapContentHeight(unbounded = false, align = Alignment.Top)
-                            .heightIn(max = maxDialogHeight),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        title?.invoke()
-                        subtitle?.invoke()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f, fill = false)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            content = content,
-                        )
-                        actions()
-                    }
-                } else {
-                    Column(
-                        modifier = cardModifier.heightIn(max = maxDialogHeight),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        title?.invoke()
-                        subtitle?.invoke()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f, fill = false)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            content = content,
-                        )
+                        content = content,
+                    )
+                    if (!wrapContentHeight) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        actions()
                     }
+                    actions()
+                }
+
+                Row(
+                    modifier = cardModifier
+                        .then(
+                            if (wrapContentHeight) {
+                                Modifier
+                                    .wrapContentHeight(unbounded = false, align = Alignment.Top)
+                                    .heightIn(max = maxDialogHeight)
+                            } else {
+                                Modifier.heightIn(max = maxDialogHeight)
+                            },
+                        )
+                        .height(IntrinsicSize.Min),
+                ) {
+                    if (hud) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .fillMaxHeight()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            accent.copy(alpha = 0.95f),
+                                            secondary.copy(alpha = 0.90f),
+                                        ),
+                                    ),
+                                ),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        content = dialogBody,
+                    )
                 }
             }
         }
@@ -791,7 +842,7 @@ fun NeoDialog(
 fun NeoDialogTitle(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = Neo.TextPrimary,
+    color: Color = if (LocalHudGlassDialog.current) brandPrimary() else Neo.TextPrimary,
 ) {
     Text(
         text = text,
@@ -809,10 +860,15 @@ fun NeoDialogBody(
     text: String,
     modifier: Modifier = Modifier,
 ) {
+    val color = if (LocalHudGlassDialog.current) {
+        Color.White.copy(alpha = 0.86f)
+    } else {
+        Neo.TextSecondary
+    }
     Text(
         text = text,
         modifier = modifier.fillMaxWidth(),
-        color = Neo.TextSecondary,
+        color = color,
         fontSize = 14.sp,
         lineHeight = 20.sp,
     )

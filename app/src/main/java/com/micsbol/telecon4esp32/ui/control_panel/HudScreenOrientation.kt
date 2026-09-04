@@ -31,6 +31,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Control Panel and RC Vehicle Pro must never render in portrait.
@@ -70,6 +71,12 @@ private val OEM_SENSOR_LANDSCAPE_UNRELIABLE = listOf(
 )
 
 /**
+ * Nested [HideHudSystemBars] callers (HUD → settings) must not restore bars
+ * while another screen still wants them hidden.
+ */
+private val hudSystemBarsHideCount = AtomicInteger(0)
+
+/**
  * Hides the status bar and navigation bar while a HUD is visible.
  * A swipe from the screen edge shows them briefly, then they hide again.
  */
@@ -98,6 +105,7 @@ fun HideHudSystemBars() {
             }
         }
 
+        hudSystemBarsHideCount.incrementAndGet()
         hideBars()
         val lifecycleObserver = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) hideBars()
@@ -116,8 +124,11 @@ fun HideHudSystemBars() {
             if (decorView.viewTreeObserver.isAlive) {
                 decorView.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
             }
-            WindowCompat.getInsetsController(window, view)
-                .show(WindowInsetsCompat.Type.systemBars())
+            if (hudSystemBarsHideCount.decrementAndGet() <= 0) {
+                hudSystemBarsHideCount.set(0)
+                WindowCompat.getInsetsController(window, view)
+                    .show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
 }

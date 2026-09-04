@@ -81,6 +81,8 @@ private object PreferencesKeys {
     val RC_VP_STEER_EXPO = floatPreferencesKey("rc_vehicle_pro_steer_expo")
     val RC_VP_THROTTLE_EXPO = floatPreferencesKey("rc_vehicle_pro_throttle_expo")
     val RC_VP_DEADZONE = floatPreferencesKey("rc_vehicle_pro_deadzone")
+    val RC_VP_STICK_GROUP_SCALE = floatPreferencesKey("rc_vehicle_pro_stick_group_scale")
+    val RC_VP_CAMERA_PAN_SCALE = floatPreferencesKey("rc_vehicle_pro_camera_pan_scale")
 }
 
 private fun protocolModeKey(applicationId: ApplicationId) =
@@ -524,6 +526,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 throttleExpo = preferences[PreferencesKeys.RC_VP_THROTTLE_EXPO]
                     ?: defaults.throttleExpo,
                 deadzone = preferences[PreferencesKeys.RC_VP_DEADZONE] ?: defaults.deadzone,
+                stickGroupScale = (preferences[PreferencesKeys.RC_VP_STICK_GROUP_SCALE]
+                    ?: defaults.stickGroupScale).coerceIn(0.5f, 8f),
+                cameraPanScale = (preferences[PreferencesKeys.RC_VP_CAMERA_PAN_SCALE]
+                    ?: defaults.cameraPanScale).coerceIn(0.5f, 8f),
             )
         }
 
@@ -549,6 +555,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             preferences[PreferencesKeys.RC_VP_STEER_EXPO] = settings.steerExpo
             preferences[PreferencesKeys.RC_VP_THROTTLE_EXPO] = settings.throttleExpo
             preferences[PreferencesKeys.RC_VP_DEADZONE] = settings.deadzone
+            preferences[PreferencesKeys.RC_VP_STICK_GROUP_SCALE] =
+                settings.stickGroupScale.coerceIn(0.5f, 8f)
+            preferences[PreferencesKeys.RC_VP_CAMERA_PAN_SCALE] =
+                settings.cameraPanScale.coerceIn(0.5f, 8f)
         }
     }
 }

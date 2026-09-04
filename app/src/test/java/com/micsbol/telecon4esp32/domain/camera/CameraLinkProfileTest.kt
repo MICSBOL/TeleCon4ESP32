@@ -175,34 +175,6 @@ class CameraLinkProfileTest {
     }
 
     @Test
-    fun `greenhouse and door lock share portable softap cam profiles`() {
-        listOf(ApplicationId.GREENHOUSE, ApplicationId.SMART_DOOR_LOCK).forEach { app ->
-            assertEquals(
-                app.name,
-                CameraLinkProfile.WIFI_SOFTAP,
-                resolveCameraLinkProfile(app, Esp32Board.CAM, BluetoothTransportType.WIFI),
-            )
-            assertEquals(
-                app.name,
-                CameraLinkProfile.WIFI_SOFTAP,
-                resolveCameraLinkProfile(app, Esp32Board.CAM, BluetoothConnectionMode.WIFI_BINARY),
-            )
-        }
-    }
-
-    @Test
-    fun `non camera apps stay control only on cam board`() {
-        assertEquals(
-            CameraLinkProfile.CONTROL_ONLY,
-            resolveCameraLinkProfile(
-                ApplicationId.WATER_TANK,
-                Esp32Board.CAM,
-                BluetoothConnectionMode.BLE_BINARY,
-            ),
-        )
-    }
-
-    @Test
     fun `control panel cam board uses softap video plus tcp`() {
         assertEquals(
             CameraLinkProfile.WIFI_SOFTAP,
@@ -269,6 +241,95 @@ class CameraLinkProfileTest {
     }
 
     @Test
+    fun `camera join warning follows kit and control link`() {
+        assertFalse(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.CONTROL_ONLY,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
+        assertTrue(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_SOFTAP,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
+        assertFalse(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_SOFTAP,
+                hasLiveFrame = false,
+                isControlConnected = true,
+            ),
+        )
+        assertFalse(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_SOFTAP,
+                hasLiveFrame = true,
+                isControlConnected = false,
+            ),
+        )
+        assertTrue(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = false,
+                isControlConnected = true,
+            ),
+        )
+        assertTrue(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
+        assertFalse(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = true,
+                isControlConnected = true,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningStartsExpanded(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                isControlConnected = true,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningStartsExpanded(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                isControlConnected = false,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningStartsExpanded(
+                CameraLinkProfile.WIFI_SOFTAP,
+                isControlConnected = false,
+            ),
+        )
+        assertTrue(
+            cameraJoinWarningShowsBluetoothConnect(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                isControlConnected = false,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningShowsBluetoothConnect(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                isControlConnected = true,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningShowsBluetoothConnect(
+                CameraLinkProfile.WIFI_SOFTAP,
+                isControlConnected = false,
+            ),
+        )
+    }
+
+    @Test
     fun `softap performance settings hidden without softap camera`() {
         assertFalse(
             showSoftApPerformanceSettings(
@@ -281,13 +342,6 @@ class CameraLinkProfileTest {
             showSoftApPerformanceSettings(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.DEV_KIT,
-                BluetoothConnectionMode.WIFI_BINARY,
-            ),
-        )
-        assertFalse(
-            showSoftApPerformanceSettings(
-                ApplicationId.GREENHOUSE,
-                Esp32Board.CAM,
                 BluetoothConnectionMode.WIFI_BINARY,
             ),
         )

@@ -9,22 +9,22 @@ class LineProtocolCodecTest {
     @Test
     fun `encode builds comma-separated key value line`() {
         val line = LineProtocolCodec.encode(
-            app = "GH",
+            app = "RC",
             type = "SET",
-            pairs = mapOf("fan" to 1, "pump" to 0),
+            pairs = mapOf("steer_center" to 1, "echo" to 0),
         )
 
-        assertEquals("GH:SET,fan,1,pump,0", line)
+        assertEquals("RC:SET,steer_center,1,echo,0", line)
     }
 
     @Test
     fun `decode parses data line`() {
-        val message = LineProtocolCodec.decode("WT:DATA,level,74,pump,0,status,0")
+        val message = LineProtocolCodec.decode("RC:DATA,batt,74,left,150,status,0")
 
-        assertEquals("WT", message?.app)
+        assertEquals("RC", message?.app)
         assertEquals("DATA", message?.type)
-        assertEquals("74", message?.values?.get("level"))
-        assertEquals("0", message?.values?.get("pump"))
+        assertEquals("74", message?.values?.get("batt"))
+        assertEquals("150", message?.values?.get("left"))
         assertEquals("0", message?.values?.get("status"))
     }
 

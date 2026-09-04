@@ -41,6 +41,13 @@ val WindowInsets.Companion.safeHud: WindowInsets
  */
 val LocalHudSystemBarsHidden = compositionLocalOf { false }
 
+/**
+ * When true, [com.micsbol.telecon4esp32.ui.components.NeoDialog] overlays use the
+ * RC Vehicle HUD glass shell (cyan border, compact landscape width) instead of
+ * the general AppGlass dialog.
+ */
+val LocalHudGlassDialog = compositionLocalOf { false }
+
 /** When 3-button nav reports 0 bottom inset, pad at least this much. */
 private val BottomNavFallback = 48.dp
 

@@ -51,8 +51,6 @@ class SoftApStreamQualityDefaultsTest {
     fun supportsRuntimeSoftApStreamQuality_onlyRcAndControlPanel() {
         assertTrue(ApplicationId.RC_VEHICLE_PRO.supportsRuntimeSoftApStreamQuality())
         assertTrue(ApplicationId.CONTROL_PANEL.supportsRuntimeSoftApStreamQuality())
-        assertFalse(ApplicationId.GREENHOUSE.supportsRuntimeSoftApStreamQuality())
-        assertFalse(ApplicationId.SMART_DOOR_LOCK.supportsRuntimeSoftApStreamQuality())
     }
 
     @Test

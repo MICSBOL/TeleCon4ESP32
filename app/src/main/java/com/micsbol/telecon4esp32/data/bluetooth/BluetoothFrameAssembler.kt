@@ -9,10 +9,10 @@ import android.util.Log
  * transports share this state machine. Feed bytes in any chunk size; frames are emitted
  * as soon as they are complete.
  *
- * Wire families (see docs/SIMPLE_PROTOCOL_ESP32.md and docs/BINARY_PROTOCOL_GH.md):
+ * Wire families (see docs/SIMPLE_PROTOCOL_ESP32.md):
  * - Text lines terminated by `\n` (`APP:TYPE,key,value,...`)
  * - Binary frames starting with `0xCC`: fixed-size panel (`0x11`, 8 B) and indicator
- *   (`0x22`, 6 B) packets, and length-prefixed plot/config/GH packets (`0x33`, `0x44`, `0x47`)
+ *   (`0x22`, 6 B) packets, and length-prefixed plot/config packets (`0x33`, `0x44`)
  */
 class BluetoothFrameAssembler {
 
@@ -85,8 +85,6 @@ class BluetoothFrameAssembler {
             SUBTYPE_PANEL -> startFixedPacket(byte, PANEL_PACKET_SIZE)
             SUBTYPE_INDICATOR -> startFixedPacket(byte, INDICATOR_PACKET_SIZE)
             SUBTYPE_PLOT, SUBTYPE_CONFIG,
-            GH_INBOUND_APP_BYTE, WT_INBOUND_APP_BYTE, SP_INBOUND_APP_BYTE,
-            SH_INBOUND_APP_BYTE, DL_INBOUND_APP_BYTE, LT_INBOUND_APP_BYTE,
             -> {
                 packetBuffer = ByteArray(LENGTH_HEADER_SIZE)
                 packetBuffer[0] = BINARY_HEADER
@@ -145,15 +143,6 @@ class BluetoothFrameAssembler {
         private const val SUBTYPE_INDICATOR = 0x22.toByte()
         private const val SUBTYPE_PLOT = 0x33.toByte()
         private const val SUBTYPE_CONFIG = 0x44.toByte()
-
-        /** Greenhouse inbound telemetry (`CC 47`). */
-        private const val GH_INBOUND_APP_BYTE = 0x47.toByte()
-        private const val WT_INBOUND_APP_BYTE = 0x57.toByte()
-        private const val SP_INBOUND_APP_BYTE = 0x53.toByte()
-        private const val SH_INBOUND_APP_BYTE = 0x48.toByte()
-        /** Door lock uses `K` to avoid colliding with RC config (`CC 44`). */
-        private const val DL_INBOUND_APP_BYTE = 0x4B.toByte()
-        private const val LT_INBOUND_APP_BYTE = 0x4C.toByte()
 
         private const val PANEL_PACKET_SIZE = 8
         private const val INDICATOR_PACKET_SIZE = 6

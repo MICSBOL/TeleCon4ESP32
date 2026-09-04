@@ -87,7 +87,7 @@ enum class SoftApPerformancePreset {
 
 /**
  * SoftAP HUD decode / publish options applied by [CameraStreamRepository].
- * [FULL_QUALITY] is the Greenhouse default (no downsample, no FPS cap).
+ * [FULL_QUALITY] is the unthrottled camera default (no downsample, no FPS cap).
  */
 data class HudPreviewOptions(
     val inSampleSize: Int = 1,

@@ -87,10 +87,6 @@ dependencies {
     kapt("androidx.hilt:hilt-compiler:1.2.0")
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation("androidx.datastore:datastore:1.1.1")
-    implementation("com.google.protobuf:protobuf-javalite:3.25.3")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("io.coil-kt:coil-gif:2.7.0")
 
     implementation("androidx.compose.foundation:foundation:1.10.1")
 

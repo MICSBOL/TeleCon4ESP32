@@ -44,14 +44,7 @@ enum class Esp32Board {
  * Applications that include a live camera view and can target the ESP32-CAM board
  * or an optional SoftAP camera overlay on DevKit Bluetooth control.
  */
-fun ApplicationId.usesCamera(): Boolean = when (this) {
-    ApplicationId.CONTROL_PANEL,
-    ApplicationId.RC_VEHICLE_PRO,
-    ApplicationId.GREENHOUSE,
-    ApplicationId.SMART_DOOR_LOCK,
-    -> true
-    else -> false
-}
+fun ApplicationId.usesCamera(): Boolean = true
 
 /** SoftAP camera overlay toggle is shown for DevKit control (not single-CAM SoftAP kits). */
 fun showSoftApCameraOverlaySetting(

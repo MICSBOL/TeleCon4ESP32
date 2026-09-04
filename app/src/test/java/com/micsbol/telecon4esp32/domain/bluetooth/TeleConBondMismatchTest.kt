@@ -13,7 +13,7 @@ class TeleConBondMismatchTest {
         assertTrue(
             TeleConBondMismatch.isStaleFirmwareBond(
                 bondedName = "TeleCon-BLE-RC-V",
-                advertisedName = "ESP32-TeleCon-GH",
+                advertisedName = "ESP32-TC-RC-BLE-Binary",
             ),
         )
     }
@@ -22,8 +22,8 @@ class TeleConBondMismatchTest {
     fun notStale_whenNamesMatchIgnoringCase() {
         assertFalse(
             TeleConBondMismatch.isStaleFirmwareBond(
-                bondedName = "ESP32-TeleCon-GH",
-                advertisedName = "esp32-telecon-gh",
+                bondedName = "ESP32-TC-RC-BLE-Binary",
+                advertisedName = "esp32-tc-rc-ble-binary",
             ),
         )
     }
@@ -32,14 +32,14 @@ class TeleConBondMismatchTest {
     fun notStale_whenEitherNameBlank() {
         assertFalse(
             TeleConBondMismatch.isStaleFirmwareBond(
-                bondedName = "ESP32-TeleCon-GH",
+                bondedName = "ESP32-TC-RC-BLE-Binary",
                 advertisedName = null,
             ),
         )
         assertFalse(
             TeleConBondMismatch.isStaleFirmwareBond(
                 bondedName = "  ",
-                advertisedName = "ESP32-TeleCon-GH",
+                advertisedName = "ESP32-TC-RC-BLE-Binary",
             ),
         )
     }
@@ -47,7 +47,7 @@ class TeleConBondMismatchTest {
     @Test
     fun findStale_matchesSameAddressDifferentName() {
         val scanned = listOf(
-            BluetoothDevice(name = "ESP32-TeleCon-GH", address = "AA:BB:CC:DD:EE:FF"),
+            BluetoothDevice(name = "ESP32-TC-RC-BLE-Binary", address = "AA:BB:CC:DD:EE:FF"),
         )
         val paired = listOf(
             BluetoothDevice(name = "TeleCon-BLE-RC-V", address = "aa:bb:cc:dd:ee:ff"),
@@ -58,7 +58,7 @@ class TeleConBondMismatchTest {
     @Test
     fun findStale_nullWhenNoMismatch() {
         val devices = listOf(
-            BluetoothDevice(name = "ESP32-TeleCon-GH", address = "AA:BB:CC:DD:EE:FF"),
+            BluetoothDevice(name = "ESP32-TC-RC-BLE-Binary", address = "AA:BB:CC:DD:EE:FF"),
         )
         assertNull(TeleConBondMismatch.findStaleFirmwareDevice(devices, devices))
     }

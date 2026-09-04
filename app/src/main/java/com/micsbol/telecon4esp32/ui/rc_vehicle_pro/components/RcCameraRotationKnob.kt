@@ -2,7 +2,8 @@ package com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -44,6 +45,11 @@ import kotlin.math.sin
 private const val MIN_PAN_ANGLE = -135f
 private const val MAX_PAN_ANGLE = 135f
 private const val RADIUS_FRACTION = 0.78f
+internal const val PAN_THUMB_DISTANCE_FRACTION = 0.68f
+internal const val PAN_THUMB_VISUAL_FRACTION = 0.09f
+internal const val PAN_THUMB_GRAB_FRACTION = 0.36f
+internal const val PAN_RING_INNER_FRACTION = 0.42f
+internal const val PAN_RING_OUTER_FRACTION = 1.12f
 
 /** Normalized pan: 0 = full left, 0.5 = center, 1 = full right. */
 private val PAN_MARKERS = listOf(
@@ -68,10 +74,10 @@ fun RcCameraRotationKnob(
     val ringColor = Color.White.copy(alpha = 0.14f)
 
     var isDragging by remember { mutableStateOf(false) }
-    var dragStartAngle by remember { mutableFloatStateOf(0f) }
     var panAngle by remember { mutableFloatStateOf(valueToPanAngle(value)) }
 
     val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val panAngleState = rememberUpdatedState(panAngle)
 
     LaunchedEffect(value) {
         if (!isDragging) {
@@ -87,28 +93,46 @@ fun RcCameraRotationKnob(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    val canvasWidth = size.width.toFloat()
-                    val canvasHeight = size.height.toFloat()
-
-                    detectDragGestures(
-                        onDragStart = { start ->
-                            isDragging = true
-                            val center = knobCenter(canvasWidth, canvasHeight)
-                            dragStartAngle = touchAngle(center, start)
-                        },
-                        onDragEnd = { isDragging = false },
-                        onDragCancel = { isDragging = false },
-                    ) { change, _ ->
-                        change.consume()
+                    // Pan only starts on the white thumb and follows the ring;
+                    // other hits pass through so the panel can resize.
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        val canvasWidth = size.width.toFloat()
+                        val canvasHeight = size.height.toFloat()
                         val center = knobCenter(canvasWidth, canvasHeight)
-                        val currentAngle = touchAngle(center, change.position)
-                        var delta = currentAngle - dragStartAngle
-                        if (delta > 180f) delta -= 360f
-                        if (delta < -180f) delta += 360f
-
-                        panAngle = (panAngle + delta).coerceIn(MIN_PAN_ANGLE, MAX_PAN_ANGLE)
-                        dragStartAngle = currentAngle
-                        currentOnValueChange(panAngleToValue(panAngle))
+                        val radius = knobRadius(canvasWidth, canvasHeight)
+                        val grabRadius = maxOf(
+                            radius * PAN_THUMB_GRAB_FRACTION,
+                            20.dp.toPx(),
+                        )
+                        val startPan = panAngleState.value
+                        if (!isOnPanThumb(down.position, center, radius, startPan, grabRadius)) {
+                            return@awaitEachGesture
+                        }
+                        down.consume()
+                        isDragging = true
+                        var lastAngle = touchAngle(center, down.position)
+                        val pointerId = down.id
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointerId }
+                                    ?: break
+                                change.consume()
+                                if (!change.pressed) break
+                                if (!isOnPanRing(change.position, center, radius)) {
+                                    lastAngle = touchAngle(center, change.position)
+                                    continue
+                                }
+                                val currentAngle = touchAngle(center, change.position)
+                                val delta = wrappedAngleDelta(lastAngle, currentAngle)
+                                panAngle = (panAngle + delta).coerceIn(MIN_PAN_ANGLE, MAX_PAN_ANGLE)
+                                lastAngle = currentAngle
+                                currentOnValueChange(panAngleToValue(panAngle))
+                            }
+                        } finally {
+                            isDragging = false
+                        }
                     }
                 },
         ) {
@@ -139,6 +163,43 @@ private fun knobCenter(width: Float, height: Float): Offset {
 
 private fun knobRadius(width: Float, height: Float): Float {
     return minOf(width, height) / 2f * RADIUS_FRACTION
+}
+
+internal fun panThumbCenter(center: Offset, radius: Float, panAngle: Float): Offset {
+    val radians = Math.toRadians((panAngle - 90f).toDouble()).toFloat()
+    val distance = radius * PAN_THUMB_DISTANCE_FRACTION
+    return Offset(
+        center.x + cos(radians) * distance,
+        center.y + sin(radians) * distance,
+    )
+}
+
+internal fun isOnPanThumb(
+    touch: Offset,
+    center: Offset,
+    radius: Float,
+    panAngle: Float,
+    hitRadius: Float = radius * PAN_THUMB_GRAB_FRACTION,
+): Boolean {
+    return (touch - panThumbCenter(center, radius, panAngle)).getDistance() <= hitRadius
+}
+
+internal fun isOnPanRing(
+    touch: Offset,
+    center: Offset,
+    radius: Float,
+    innerFraction: Float = PAN_RING_INNER_FRACTION,
+    outerFraction: Float = PAN_RING_OUTER_FRACTION,
+): Boolean {
+    val distance = (touch - center).getDistance()
+    return distance >= radius * innerFraction && distance <= radius * outerFraction
+}
+
+internal fun wrappedAngleDelta(fromDegrees: Float, toDegrees: Float): Float {
+    var delta = toDegrees - fromDegrees
+    if (delta > 180f) delta -= 360f
+    if (delta < -180f) delta += 360f
+    return delta
 }
 
 private fun touchAngle(center: Offset, touch: Offset): Float {
@@ -264,8 +325,8 @@ private fun DrawScope.drawSightLine(
 ) {
     val radians = Math.toRadians((panAngle - 90f).toDouble()).toFloat()
     val end = Offset(
-        center.x + cos(radians) * radius * 0.68f,
-        center.y + sin(radians) * radius * 0.68f,
+        center.x + cos(radians) * radius * PAN_THUMB_DISTANCE_FRACTION,
+        center.y + sin(radians) * radius * PAN_THUMB_DISTANCE_FRACTION,
     )
     drawLine(
         color = color.copy(alpha = 0.35f),
@@ -274,7 +335,7 @@ private fun DrawScope.drawSightLine(
         strokeWidth = 2f.dp.toPx(),
         cap = StrokeCap.Round,
     )
-    drawCircle(color = color, radius = radius * 0.09f, center = end)
+    drawCircle(color = color, radius = radius * PAN_THUMB_VISUAL_FRACTION, center = end)
     drawCircle(
         color = accent.copy(alpha = 0.4f),
         radius = radius * 0.05f,

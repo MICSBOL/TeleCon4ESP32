@@ -101,17 +101,17 @@ class ApplicationProtocolSupportTest {
     }
 
     @Test
-    fun `premium required for advanced greenhouse mode`() {
+    fun `premium required for advanced rc vehicle mode`() {
         assertFalse(
             Entitlement.Free.effectiveProtocolMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothProtocolMode.ADVANCED,
             ).let { it == BluetoothProtocolMode.ADVANCED },
         )
         assertEquals(
             BluetoothProtocolMode.ADVANCED,
             Entitlement.Premium(PremiumSource.PURCHASE).effectiveProtocolMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothProtocolMode.ADVANCED,
                 requiresCoinEntry = false,
             ),
@@ -123,7 +123,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothProtocolMode.SIMPLE,
             Entitlement.Free.effectiveProtocolMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothProtocolMode.SIMPLE,
             ),
         )
@@ -222,19 +222,19 @@ class ApplicationProtocolSupportTest {
     fun `free users cannot select binary or ble for premium apps`() {
         assertTrue(
             Entitlement.Free.canUseConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothConnectionMode.CLASSIC_SIMPLE,
             ),
         )
         assertFalse(
             Entitlement.Free.canUseConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothConnectionMode.CLASSIC_BINARY,
             ),
         )
         assertFalse(
             Entitlement.Free.canUseConnectionMode(
-                ApplicationId.WATER_TANK,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothConnectionMode.BLE_BINARY,
             ),
         )
@@ -245,7 +245,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothConnectionMode.CLASSIC_SIMPLE,
             Entitlement.Free.effectiveConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.BLE,
                 BluetoothProtocolMode.ADVANCED,
             ),
@@ -253,7 +253,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothConnectionMode.BLE_BINARY,
             Entitlement.Premium(PremiumSource.PURCHASE).effectiveConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.BLE,
                 BluetoothProtocolMode.ADVANCED,
             ),
@@ -265,8 +265,6 @@ class ApplicationProtocolSupportTest {
         listOf(
             ApplicationId.CONTROL_PANEL,
             ApplicationId.RC_VEHICLE_PRO,
-            ApplicationId.GREENHOUSE,
-            ApplicationId.SMART_DOOR_LOCK,
         ).forEach { app ->
             assertEquals(
                 app.name,
@@ -337,7 +335,7 @@ class ApplicationProtocolSupportTest {
                 BluetoothConnectionMode.WIFI_SIMPLE,
                 BluetoothConnectionMode.WIFI_BINARY,
             ),
-            ApplicationId.WATER_TANK.availableConnectionModes(Esp32Board.CAM),
+            ApplicationId.RC_VEHICLE_PRO.availableConnectionModes(Esp32Board.DEV_KIT),
         )
     }
 
@@ -354,7 +352,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothConnectionMode.WIFI_BINARY,
             Entitlement.Premium(PremiumSource.PURCHASE).coerceConnectionModeForBoard(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
                 BluetoothConnectionMode.CLASSIC_BINARY,
             ),
@@ -402,7 +400,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothConnectionMode.WIFI_SIMPLE,
             Entitlement.Free.effectiveConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.WIFI,
                 BluetoothProtocolMode.SIMPLE,
                 Esp32Board.DEV_KIT,
@@ -411,7 +409,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothConnectionMode.WIFI_SIMPLE,
             Entitlement.Free.effectiveConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.WIFI,
                 BluetoothProtocolMode.ADVANCED,
                 Esp32Board.DEV_KIT,
@@ -420,7 +418,7 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             BluetoothConnectionMode.WIFI_BINARY,
             Entitlement.Premium(PremiumSource.PURCHASE).effectiveConnectionMode(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.WIFI,
                 BluetoothProtocolMode.ADVANCED,
                 Esp32Board.DEV_KIT,
@@ -449,7 +447,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             listOf(BluetoothConnectionMode.CLASSIC_SIMPLE),
-            ApplicationId.GREENHOUSE.connectionModesForFamily(
+            ApplicationId.RC_VEHICLE_PRO.connectionModesForFamily(
                 Esp32Board.DEV_KIT,
                 ConnectionLinkFamily.BLUETOOTH,
                 SettingsUserType.NORMAL,
@@ -457,7 +455,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             listOf(BluetoothConnectionMode.WIFI_SIMPLE),
-            ApplicationId.GREENHOUSE.connectionModesForFamily(
+            ApplicationId.RC_VEHICLE_PRO.connectionModesForFamily(
                 Esp32Board.DEV_KIT,
                 ConnectionLinkFamily.WIFI,
                 SettingsUserType.NORMAL,
@@ -480,7 +478,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             BluetoothConnectionMode.CLASSIC_BINARY,
-            ApplicationId.GREENHOUSE.preferredConnectionMode(
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
                 Esp32Board.DEV_KIT,
                 ConnectionLinkFamily.BLUETOOTH,
                 SettingsUserType.ADVANCED,
@@ -489,7 +487,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             BluetoothConnectionMode.WIFI_BINARY,
-            ApplicationId.GREENHOUSE.preferredConnectionMode(
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
                 Esp32Board.DEV_KIT,
                 ConnectionLinkFamily.WIFI,
                 SettingsUserType.ADVANCED,
@@ -516,7 +514,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             BluetoothConnectionMode.WIFI_CAM_STARTER,
-            ApplicationId.GREENHOUSE.preferredConnectionMode(
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
                 Esp32Board.CAM,
                 ConnectionLinkFamily.WIFI,
                 SettingsUserType.NORMAL,
@@ -534,7 +532,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             BluetoothConnectionMode.WIFI_BINARY,
-            ApplicationId.GREENHOUSE.preferredConnectionMode(
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
                 Esp32Board.CAM,
                 ConnectionLinkFamily.WIFI,
                 SettingsUserType.ADVANCED,
@@ -543,7 +541,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             BluetoothConnectionMode.WIFI_BINARY,
-            ApplicationId.GREENHOUSE.preferredConnectionMode(
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
                 Esp32Board.CAM,
                 ConnectionLinkFamily.BLUETOOTH,
                 SettingsUserType.ADVANCED,
@@ -590,7 +588,7 @@ class ApplicationProtocolSupportTest {
         )
         assertEquals(
             BluetoothConnectionMode.CLASSIC_BINARY,
-            ApplicationId.GREENHOUSE.preferredConnectionMode(
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
                 Esp32Board.CAM_AND_DEV_KIT,
                 ConnectionLinkFamily.WIFI,
                 SettingsUserType.ADVANCED,

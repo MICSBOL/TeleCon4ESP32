@@ -19,13 +19,13 @@ class ApplicationEntryAccessTest {
     }
 
     @Test
-    fun deferredApp_neverHasEntryAccessWhileUnshipped() {
-        assertFalse(ApplicationId.GREENHOUSE.isShipped())
+    fun shippedProApp_requiresPremiumOrGrant() {
+        assertTrue(ApplicationId.RC_VEHICLE_PRO.isShipped())
         assertFalse(
-            ApplicationId.GREENHOUSE.hasEntryAccess(
-                entitlement = Entitlement.Premium(PremiumSource.PURCHASE),
+            ApplicationId.RC_VEHICLE_PRO.hasEntryAccess(
+                entitlement = Entitlement.Free,
                 wallet = CoinWalletState.Empty,
-                requiresCoinEntry = false,
+                requiresCoinEntry = true,
             ),
         )
     }
@@ -55,8 +55,8 @@ class ApplicationEntryAccessTest {
     fun resolveHomeFeatured_fallsBackToControlPanelWhenExpired() {
         val wallet = CoinWalletState(
             grants = mapOf(
-                PremiumFeature.GREENHOUSE to FeatureGrant(
-                    feature = PremiumFeature.GREENHOUSE,
+                PremiumFeature.RC_VEHICLE_PRO to FeatureGrant(
+                    feature = PremiumFeature.RC_VEHICLE_PRO,
                     option = CoinUnlockOption.HOURS_4,
                     expiresAtEpochMs = 1_000L,
                 ),
@@ -64,7 +64,7 @@ class ApplicationEntryAccessTest {
         )
         val featured = resolveHomeFeaturedApplication(
             activeSessionApplicationId = null,
-            lastApplicationId = ApplicationId.GREENHOUSE,
+            lastApplicationId = ApplicationId.RC_VEHICLE_PRO,
             entitlement = Entitlement.Free,
             wallet = wallet,
             requiresCoinEntry = true,

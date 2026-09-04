@@ -40,6 +40,7 @@ import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
@@ -74,14 +75,14 @@ fun BluetoothScreen(
                     modifier = Modifier
                         .size(28.dp)
                         .padding(end = 4.dp),
-                    color = Neo.Accent,
+                    color = settingsChromeAccent(),
                     strokeWidth = 3.dp
                 )
                 IconButton(onClick = onStopScan) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(R.string.bluetooth_stop_scan),
-                        tint = Neo.Accent,
+                        tint = settingsChromeAccent(),
                     )
                 }
             } else {
@@ -89,7 +90,7 @@ fun BluetoothScreen(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = stringResource(R.string.bluetooth_start_scan),
-                        tint = Neo.Accent,
+                        tint = settingsChromeAccent(),
                     )
                 }
             }
@@ -119,7 +120,7 @@ fun BluetoothScreen(
             if (state.isScanning && state.pairedDevices.isEmpty() && state.scannedDevices.isEmpty()) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = Neo.Accent
+                    color = settingsChromeAccent()
                 )
             }
 
@@ -132,7 +133,7 @@ fun BluetoothScreen(
                 ) {
                     NeoCard(modifier = Modifier.padding(24.dp)) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Neo.Accent)
+                            CircularProgressIndicator(color = settingsChromeAccent())
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = stringResource(R.string.home_bluetooth_status_connecting),

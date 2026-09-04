@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -39,7 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -238,38 +236,7 @@ fun HexIcon(
     }
 }
 
-/**
- * Regular flat-top hexagon centred in [size], symmetric on both axes.
- * Sized off the smaller dimension so it always fits and never skews.
- */
-/** Hexagonal neon frame holding an image (e.g. the app brand logo). */
-@Composable
-fun HexImage(
-    painter: Painter,
-    modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
-    tint: Color = CyberColors.NeonPrimary,
-    contentDescription: String? = null,
-) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .drawBehind {
-                val path = hexagonPath(this.size)
-                drawNeonGlow(path, tint, blurRadius = 10f, strokeWidth = 2.5f, alpha = 0.5f)
-                drawPath(path, color = tint.copy(alpha = 0.10f))
-                drawPath(path, color = tint, style = Stroke(width = 1.8f))
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painter,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(size * 0.56f),
-        )
-    }
-}
-
+/** Regular flat-top hexagon centred in [size], symmetric on both axes. */
 private fun hexagonPath(size: Size): Path {
     val inset = 2f
     val cx = size.width / 2f

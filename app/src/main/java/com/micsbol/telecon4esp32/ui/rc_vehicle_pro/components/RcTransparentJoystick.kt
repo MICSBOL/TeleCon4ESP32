@@ -217,8 +217,7 @@ fun RcTransparentJoystick(
 
                             val grabbed = (down.position - thumbCenter()).getDistance() <= grabRadius()
                             if (!grabbed) {
-                                down.consume()
-                                val maxMove = consumeUntilUp(down.id, down.position)
+                                val maxMove = waitUntilUpUnconsumed(down.id, down.position)
                                 rememberTapIfStationary(maxMove, slop, now)
                                 continue
                             }
@@ -318,6 +317,20 @@ private suspend fun AwaitPointerEventScope.consumeUntilUp(
         val event = awaitPointerEvent()
         val change = event.changes.firstOrNull { it.id == pointerId } ?: break
         change.consume()
+        maxMove = maxOf(maxMove, (change.position - downPosition).getDistance())
+        if (!change.pressed) break
+    }
+    return maxMove
+}
+
+private suspend fun AwaitPointerEventScope.waitUntilUpUnconsumed(
+    pointerId: PointerId,
+    downPosition: Offset,
+): Float {
+    var maxMove = 0f
+    while (true) {
+        val event = awaitPointerEvent()
+        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
         maxMove = maxOf(maxMove, (change.position - downPosition).getDistance())
         if (!change.pressed) break
     }

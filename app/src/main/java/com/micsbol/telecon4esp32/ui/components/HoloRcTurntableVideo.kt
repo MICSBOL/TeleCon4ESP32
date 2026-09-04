@@ -30,13 +30,6 @@ private const val HOLO_DEFAULT_FRAME_COUNT = 36
 fun ApplicationId.holoTurntableAssetDir(): String? = when (this) {
     ApplicationId.CONTROL_PANEL -> "holo_control_panel"
     ApplicationId.RC_VEHICLE_PRO -> "holo_rc_buggy_360"
-    ApplicationId.GREENHOUSE,
-    ApplicationId.SOLAR_POWER,
-    ApplicationId.SMART_HOME,
-    ApplicationId.WATER_TANK,
-    ApplicationId.SMART_DOOR_LOCK,
-    ApplicationId.SMART_LIGHTING,
-    -> null
 }
 
 /**

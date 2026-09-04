@@ -27,6 +27,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
 /**
@@ -42,7 +43,7 @@ fun ApplicationSettingsSelectionGuideSection(
     useSoftApCamera: Boolean = false,
     titleColor: Color = Neo.TextPrimary,
     bodyColor: Color = Neo.TextSecondary,
-    linkColor: Color = Neo.Accent,
+    linkColor: Color = settingsChromeAccent(),
     useNeoCard: Boolean = true,
 ) {
     val context = LocalContext.current

@@ -41,6 +41,7 @@ import com.micsbol.telecon4esp32.ui.applications.titleRes
 import com.micsbol.telecon4esp32.ui.components.DisconnectedBannerInsets
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
 import com.micsbol.telecon4esp32.ui.components.LocalDisconnectedBannerInsets
+import com.micsbol.telecon4esp32.ui.components.LocalHudGlassDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
 import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
@@ -200,7 +201,9 @@ fun ApplicationBluetoothSessionHost(
             state.activeSession != null &&
             state.activeSession?.applicationId != applicationId
     val conflictSession = state.activeSession
+    val hudGlassDialog = applicationId == ApplicationId.RC_VEHICLE_PRO
 
+    CompositionLocalProvider(LocalHudGlassDialog provides hudGlassDialog) {
     BluetoothConnectionErrorDialog(
         handshakeFailure = state.handshakeFailure,
         connectFailure = state.connectFailure,
@@ -278,6 +281,7 @@ fun ApplicationBluetoothSessionHost(
                 )
             }
         }
+    }
     }
 }
 

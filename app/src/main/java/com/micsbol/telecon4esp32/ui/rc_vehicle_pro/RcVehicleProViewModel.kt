@@ -333,7 +333,7 @@ class RcVehicleProViewModel @Inject constructor(
     }
 
     fun updateDriveMetricsFromThrottle(throttleY: Float) {
-        val stickSpeed = abs(throttleY) * MAX_SPEED_KMH
+        val stickSpeed = abs(throttleY) * RcVehicleProLayout.HUD_MAX_SPEED_KMH
         val displaySpeed = (stickSpeed * 10f).roundToInt() / 10f
         _uiState.update { current ->
             when {
@@ -480,7 +480,6 @@ class RcVehicleProViewModel @Inject constructor(
     )
 
     private companion object {
-        const val MAX_SPEED_KMH = 40f
         const val JPEG_QUALITY = 92
         const val PHOTO_FEEDBACK_MS = 2_000L
 

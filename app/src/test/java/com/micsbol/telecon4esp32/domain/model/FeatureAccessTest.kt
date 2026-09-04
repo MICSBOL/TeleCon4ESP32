@@ -11,7 +11,7 @@ class FeatureAccessTest {
         assertTrue(
             hasPremiumAccess(
                 Entitlement.Premium(PremiumSource.PURCHASE),
-                PremiumFeature.GREENHOUSE,
+                PremiumFeature.RC_VEHICLE_PRO,
                 CoinWalletState.Empty,
             ),
         )
@@ -21,15 +21,15 @@ class FeatureAccessTest {
     fun freeUser_withTimedGrant_hasAccess() {
         val wallet = CoinWalletState(
             grants = mapOf(
-                PremiumFeature.GREENHOUSE to FeatureGrant(
-                    feature = PremiumFeature.GREENHOUSE,
+                PremiumFeature.RC_VEHICLE_PRO to FeatureGrant(
+                    feature = PremiumFeature.RC_VEHICLE_PRO,
                     option = CoinUnlockOption.HOURS_24,
                     expiresAtEpochMs = 4_000_000_000_000L,
                 ),
             ),
         )
         assertTrue(
-            hasPremiumAccess(Entitlement.Free, PremiumFeature.GREENHOUSE, wallet, nowEpochMs = 1L),
+            hasPremiumAccess(Entitlement.Free, PremiumFeature.RC_VEHICLE_PRO, wallet, nowEpochMs = 1L),
         )
     }
 
@@ -37,15 +37,15 @@ class FeatureAccessTest {
     fun freeUser_withExpiredGrant_hasNoAccess() {
         val wallet = CoinWalletState(
             grants = mapOf(
-                PremiumFeature.GREENHOUSE to FeatureGrant(
-                    feature = PremiumFeature.GREENHOUSE,
+                PremiumFeature.RC_VEHICLE_PRO to FeatureGrant(
+                    feature = PremiumFeature.RC_VEHICLE_PRO,
                     option = CoinUnlockOption.HOURS_24,
                     expiresAtEpochMs = 100L,
                 ),
             ),
         )
         assertFalse(
-            hasPremiumAccess(Entitlement.Free, PremiumFeature.GREENHOUSE, wallet, nowEpochMs = 200L),
+            hasPremiumAccess(Entitlement.Free, PremiumFeature.RC_VEHICLE_PRO, wallet, nowEpochMs = 200L),
         )
     }
 
@@ -53,15 +53,15 @@ class FeatureAccessTest {
     fun freeUser_withSessionGrant_hasAccess() {
         val wallet = CoinWalletState(
             grants = mapOf(
-                PremiumFeature.WATER_TANK to FeatureGrant(
-                    feature = PremiumFeature.WATER_TANK,
+                PremiumFeature.RC_VEHICLE_PRO to FeatureGrant(
+                    feature = PremiumFeature.RC_VEHICLE_PRO,
                     option = CoinUnlockOption.ONE_USE,
                     expiresAtEpochMs = null,
                 ),
             ),
         )
         assertTrue(
-            hasPremiumAccess(Entitlement.Free, PremiumFeature.WATER_TANK, wallet),
+            hasPremiumAccess(Entitlement.Free, PremiumFeature.RC_VEHICLE_PRO, wallet),
         )
     }
 
@@ -137,7 +137,7 @@ class FeatureAccessTest {
         )
         assertFalse(
             Entitlement.Free.canUseAdvancedProtocol(
-                ApplicationId.GREENHOUSE,
+                ApplicationId.RC_VEHICLE_PRO,
                 wallet = wallet,
                 requiresCoinEntry = true,
             ),

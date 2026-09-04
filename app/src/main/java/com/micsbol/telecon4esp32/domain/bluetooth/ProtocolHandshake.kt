@@ -65,12 +65,6 @@ object ProtocolHandshake {
 
     private fun applicationIdFromWire(value: String): ApplicationId? = when (value.uppercase()) {
         "RC" -> ApplicationId.CONTROL_PANEL
-        "GH" -> ApplicationId.GREENHOUSE
-        "SP" -> ApplicationId.SOLAR_POWER
-        "SH" -> ApplicationId.SMART_HOME
-        "WT" -> ApplicationId.WATER_TANK
-        "DL" -> ApplicationId.SMART_DOOR_LOCK
-        "LT" -> ApplicationId.SMART_LIGHTING
         else -> null
     }
 

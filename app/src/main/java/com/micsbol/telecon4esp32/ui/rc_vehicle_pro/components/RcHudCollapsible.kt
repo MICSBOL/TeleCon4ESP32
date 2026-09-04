@@ -10,8 +10,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -110,6 +114,22 @@ private fun Modifier.hudEdgeSwipe(
     )
 }
 
+internal fun RcHudChevronDirection.chevronIcon(): ImageVector = when (this) {
+    RcHudChevronDirection.Down -> Icons.Filled.KeyboardDoubleArrowDown
+    RcHudChevronDirection.Up -> Icons.Filled.KeyboardDoubleArrowUp
+    RcHudChevronDirection.Start -> Icons.Filled.KeyboardDoubleArrowLeft
+    RcHudChevronDirection.End -> Icons.Filled.KeyboardDoubleArrowRight
+}
+
+private fun RcHudChevronDirection.handlePadding(): Modifier {
+    val isHorizontal = this == RcHudChevronDirection.Start || this == RcHudChevronDirection.End
+    return if (isHorizontal) {
+        Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+    } else {
+        Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    }
+}
+
 /** Icon-only chevron; no glass container so the camera stays clear. */
 @Composable
 internal fun RcHudBareChevronHandle(
@@ -118,20 +138,8 @@ internal fun RcHudBareChevronHandle(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val padding = if (direction == RcHudChevronDirection.Start ||
-        direction == RcHudChevronDirection.End
-    ) {
-        Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
-    } else {
-        Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-    }
     Icon(
-        imageVector = when (direction) {
-            RcHudChevronDirection.Down -> Icons.Filled.KeyboardDoubleArrowDown
-            RcHudChevronDirection.Up -> Icons.Filled.KeyboardDoubleArrowUp
-            RcHudChevronDirection.Start -> Icons.Filled.KeyboardDoubleArrowLeft
-            RcHudChevronDirection.End -> Icons.Filled.KeyboardDoubleArrowRight
-        },
+        imageVector = direction.chevronIcon(),
         contentDescription = contentDescription,
         tint = brandPrimary(),
         modifier = modifier
@@ -142,14 +150,66 @@ internal fun RcHudBareChevronHandle(
                     Modifier
                 },
             )
-            .then(padding)
+            .then(direction.handlePadding())
             .size(22.dp),
     )
 }
 
+/** Collapsed peek: panel identity plus a small expand chevron. */
+@Composable
+internal fun RcHudCollapsedIdentityHandle(
+    icon: ImageVector,
+    expandDirection: RcHudChevronDirection,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    Column(
+        modifier = modifier
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(role = Role.Button, onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
+            .then(expandDirection.handlePadding()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        if (expandDirection == RcHudChevronDirection.Up) {
+            Icon(
+                imageVector = expandDirection.chevronIcon(),
+                contentDescription = null,
+                tint = brandPrimary(),
+                modifier = Modifier.size(14.dp),
+            )
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = brandPrimary(),
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = brandPrimary(),
+                modifier = Modifier.size(18.dp),
+            )
+            Icon(
+                imageVector = expandDirection.chevronIcon(),
+                contentDescription = null,
+                tint = brandPrimary(),
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
 /**
- * Slides [content] off the start or end edge. When hidden, only a bare chevron
- * remains (no glass container).
+ * Slides [content] off the start or end edge. When hidden, a related identity
+ * icon (or a bare chevron) remains — no glass container.
  */
 @Composable
 internal fun RcHudCollapsibleToEdge(
@@ -160,7 +220,9 @@ internal fun RcHudCollapsibleToEdge(
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
+    fillHeight: Boolean = false,
     swipeEntireContent: Boolean = false,
+    collapsedIcon: ImageVector? = null,
     content: @Composable () -> Unit,
 ) {
     val edgeAlignment = if (towardEnd) Alignment.CenterEnd else Alignment.CenterStart
@@ -181,10 +243,11 @@ internal fun RcHudCollapsibleToEdge(
     } else {
         Modifier.wrapContentWidth(unbounded = true)
     }
+    val heightModifier = if (fillHeight) Modifier.fillMaxHeight() else Modifier
     Box(modifier = modifier, contentAlignment = edgeAlignment) {
         AnimatedVisibility(
             visible = expanded,
-            modifier = widthModifier,
+            modifier = widthModifier.then(heightModifier),
             enter = chromeEnter,
             exit = chromeExit,
         ) {
@@ -207,18 +270,20 @@ internal fun RcHudCollapsibleToEdge(
                 )
             }
             Row(
-                modifier = widthModifier.then(contentSwipe),
+                modifier = widthModifier.then(heightModifier).then(contentSwipe),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val contentBoxModifier = (if (fillWidth) Modifier.weight(1f) else Modifier)
+                    .then(heightModifier)
                 if (towardEnd) {
                     RcHudBareChevronHandle(
                         direction = hideDirection,
                         contentDescription = hideContentDescription,
                         modifier = handleSwipe,
                     )
-                    Box(modifier = if (fillWidth) Modifier.weight(1f) else Modifier) { content() }
+                    Box(modifier = contentBoxModifier) { content() }
                 } else {
-                    Box(modifier = if (fillWidth) Modifier.weight(1f) else Modifier) { content() }
+                    Box(modifier = contentBoxModifier) { content() }
                     RcHudBareChevronHandle(
                         direction = hideDirection,
                         contentDescription = hideContentDescription,
@@ -232,16 +297,27 @@ internal fun RcHudCollapsibleToEdge(
             enter = chromeEnter,
             exit = chromeExit,
         ) {
-            RcHudBareChevronHandle(
-                direction = showDirection,
-                contentDescription = showContentDescription,
-                onClick = { onExpandedChange(true) },
-                modifier = Modifier.hudHorizontalSwipe(
-                    expanded = false,
-                    onExpandedChange = onExpandedChange,
-                    hideTowardEnd = towardEnd,
-                ),
+            val collapsedModifier = Modifier.hudHorizontalSwipe(
+                expanded = false,
+                onExpandedChange = onExpandedChange,
+                hideTowardEnd = towardEnd,
             )
+            if (collapsedIcon != null) {
+                RcHudCollapsedIdentityHandle(
+                    icon = collapsedIcon,
+                    expandDirection = showDirection,
+                    contentDescription = showContentDescription,
+                    onClick = { onExpandedChange(true) },
+                    modifier = collapsedModifier,
+                )
+            } else {
+                RcHudBareChevronHandle(
+                    direction = showDirection,
+                    contentDescription = showContentDescription,
+                    onClick = { onExpandedChange(true) },
+                    modifier = collapsedModifier,
+                )
+            }
         }
     }
 }

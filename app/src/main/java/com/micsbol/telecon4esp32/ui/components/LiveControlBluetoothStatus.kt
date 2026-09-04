@@ -2,7 +2,6 @@ package com.micsbol.telecon4esp32.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,8 +40,8 @@ import com.micsbol.telecon4esp32.ui.theme.StatusConnected
 import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 
 /**
- * Lets application screens (e.g. Greenhouse sticky controls) push the
- * disconnected banner above bottom chrome without overlapping content.
+ * Lets application screens push the disconnected banner above bottom chrome
+ * without overlapping content.
  */
 class DisconnectedBannerInsets {
     var bottomClearance by mutableStateOf(16.dp)
@@ -55,6 +55,8 @@ val LocalDisconnectedBannerInsets = staticCompositionLocalOf { DisconnectedBanne
 enum class LiveControlLinkKind {
     Bluetooth,
     WifiSoftAp,
+    /** SoftAP HTTP camera (fused camera + Wi‑Fi status). */
+    CameraSoftAp,
 }
 
 @Composable
@@ -84,26 +86,25 @@ fun LiveControlBluetoothStatusChip(
         wifiCameraOnly -> brandPrimary()
         else -> StatusDisconnected
     }
-    val statusText = when {
-        isConnecting -> stringResource(R.string.home_bluetooth_status_connecting)
-        isConnected && linkKind == LiveControlLinkKind.WifiSoftAp ->
-            stringResource(R.string.home_wifi_status_connected)
-        isConnected -> stringResource(R.string.home_bluetooth_status_connected)
-        wifiCameraOnly -> stringResource(R.string.home_wifi_status_camera_only)
-        else -> stringResource(R.string.home_bluetooth_status_disconnected)
-    }
     val accessibilityDescription = when {
         isConnecting -> stringResource(R.string.live_control_bluetooth_connecting_content_description)
+        isConnected && linkKind == LiveControlLinkKind.CameraSoftAp ->
+            stringResource(R.string.rc_vehicle_cam_online)
         isConnected && linkKind == LiveControlLinkKind.WifiSoftAp ->
             stringResource(R.string.live_control_wifi_connected_content_description)
         isConnected -> stringResource(R.string.live_control_bluetooth_connected_content_description)
         wifiCameraOnly -> stringResource(R.string.live_control_wifi_camera_only_content_description)
+        linkKind == LiveControlLinkKind.CameraSoftAp ->
+            stringResource(R.string.rc_vehicle_cam_offline)
         linkKind == LiveControlLinkKind.WifiSoftAp ->
             stringResource(R.string.live_control_wifi_disconnected_content_description)
         else -> stringResource(R.string.live_control_bluetooth_disconnected_content_description)
     }
-    val statusIcon: ImageVector =
-        if (linkKind == LiveControlLinkKind.WifiSoftAp) Icons.Default.Wifi else Icons.Default.Bluetooth
+    val statusIcon: ImageVector = when (linkKind) {
+        LiveControlLinkKind.CameraSoftAp -> Icons.Default.Videocam
+        LiveControlLinkKind.WifiSoftAp -> Icons.Default.Wifi
+        LiveControlLinkKind.Bluetooth -> Icons.Default.Bluetooth
+    }
     val isTappable = !isConnected && !isConnecting && onDisconnectedClick != null
 
     Row(
@@ -122,23 +123,14 @@ fun LiveControlBluetoothStatusChip(
                     Modifier.semantics { contentDescription = accessibilityDescription }
                 },
             )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
             imageVector = statusIcon,
             contentDescription = null,
             tint = contentColor,
             modifier = Modifier.size(16.dp),
-        )
-        Text(
-            text = statusText,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            color = contentColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }

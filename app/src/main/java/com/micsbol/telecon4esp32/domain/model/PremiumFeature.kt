@@ -35,22 +35,4 @@ enum class PremiumFeature {
      * Default (Simple) settings stay free. Does not unlock camera or radar.
      */
     ADVANCED_PROTOCOL,
-
-    /** Greenhouse monitoring and control. */
-    GREENHOUSE,
-
-    /** Solar power monitoring. */
-    SOLAR_POWER,
-
-    /** Smart home rooms and scenes. */
-    SMART_HOME,
-
-    /** Water tank level monitoring. */
-    WATER_TANK,
-
-    /** Smart door lock video intercom and GPIO control. */
-    SMART_DOOR_LOCK,
-
-    /** Smart lighting devices, scenes, and schedules. */
-    SMART_LIGHTING,
 }

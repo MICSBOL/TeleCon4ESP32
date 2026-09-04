@@ -19,14 +19,6 @@ class Esp32DevKitSoftApDefaultsTest {
     }
 
     @Test
-    fun softApSsid_otherAppPrefix() {
-        assertEquals(
-            "ESP32-TC-GH-WiFi-Simple",
-            Esp32DevKitSoftApDefaults.softApSsid("GH", BluetoothConnectionMode.WIFI_SIMPLE),
-        )
-    }
-
-    @Test
     fun softApDevice_forDevKitModes() {
         val simple = Esp32SoftApDevice.forConnectionMode(
             BluetoothConnectionMode.WIFI_SIMPLE,

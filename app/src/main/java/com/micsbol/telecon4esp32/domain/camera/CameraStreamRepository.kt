@@ -19,13 +19,13 @@ interface CameraStreamRepository {
 
     /**
      * SoftAP HUD decode / max publish FPS. Pass [HudPreviewOptions.FULL_QUALITY]
-     * (Greenhouse default) or a [SoftApPerformancePreset] mapping.
+     * (unthrottled default) or a [SoftApPerformancePreset] mapping.
      */
     fun setHudPreviewOptions(options: HudPreviewOptions) = Unit
 
     /**
      * SoftAP HUD preview: cheaper BitmapFactory decode (downsample / RGB_565).
-     * Maps to Balanced preset options when enabled; Greenhouse leaves this false.
+     * Maps to Balanced preset options when enabled.
      */
     fun setFastPreviewDecode(enabled: Boolean) {
         setHudPreviewOptions(

@@ -9,12 +9,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
@@ -256,46 +261,60 @@ fun ControlPanelOverlayControls(
     isSessionRecordingUnlocked: Boolean = true,
     onToggleSessionRecording: () -> Unit = {},
 ) {
-    Column(
-        modifier = modifier.fillMaxHeight(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ControlPanelOverlayIconSpacing),
-    ) {
-        ControlPanelPlasticIconButton(
-            onClick = onBackToModulesClick,
-            contentDescription = stringResource(R.string.control_panel_back_to_modules_content_description),
-            icon = Icons.AutoMirrored.Filled.ArrowBack,
-            size = ControlPanelOverlayIconSize,
-        )
-        ControlPanelPlasticIconButton(
-            onClick = onConnectionSettingsClick,
-            contentDescription = stringResource(
-                R.string.applications_settings_content_description,
-                stringResource(R.string.control_panel_connection_settings_title),
-            ),
-            icon = Icons.Filled.Cable,
-            size = ControlPanelOverlayIconSize,
-        )
-        ControlPanelBluetoothStatusButton(
-            isConnected = isBluetoothConnected,
-            isConnecting = isBluetoothConnecting,
-            onDisconnectedClick = onBluetoothDisconnectedClick,
-            size = ControlPanelOverlayIconSize,
-            usesWifiLink = usesWifiLink,
-        )
-        ControlPanelRecordSessionButton(
-            isRecording = isSessionRecording,
-            unlocked = isSessionRecordingUnlocked,
-            onClick = onToggleSessionRecording,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        ControlPanelCenterMode.entries.forEach { mode ->
-            ControlPanelCenterModeButton(
-                mode = mode,
-                selected = centerMode == mode,
-                unlocked = isModeUnlocked(mode),
-                onClick = { onCenterModeClick(mode) },
-            )
+    BoxWithConstraints(modifier = modifier.fillMaxHeight()) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(ControlPanelOverlayIconSpacing),
+            ) {
+                ControlPanelPlasticIconButton(
+                    onClick = onBackToModulesClick,
+                    contentDescription = stringResource(R.string.control_panel_back_to_modules_content_description),
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    size = ControlPanelOverlayIconSize,
+                )
+                ControlPanelPlasticIconButton(
+                    onClick = onConnectionSettingsClick,
+                    contentDescription = stringResource(
+                        R.string.applications_settings_content_description,
+                        stringResource(R.string.control_panel_connection_settings_title),
+                    ),
+                    icon = Icons.Filled.Cable,
+                    size = ControlPanelOverlayIconSize,
+                )
+                ControlPanelBluetoothStatusButton(
+                    isConnected = isBluetoothConnected,
+                    isConnecting = isBluetoothConnecting,
+                    onDisconnectedClick = onBluetoothDisconnectedClick,
+                    size = ControlPanelOverlayIconSize,
+                    usesWifiLink = usesWifiLink,
+                )
+                ControlPanelRecordSessionButton(
+                    isRecording = isSessionRecording,
+                    unlocked = isSessionRecordingUnlocked,
+                    onClick = onToggleSessionRecording,
+                )
+            }
+            Spacer(modifier = Modifier.height(ControlPanelOverlayIconSpacing))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(ControlPanelOverlayIconSpacing),
+            ) {
+                ControlPanelCenterMode.entries.forEach { mode ->
+                    ControlPanelCenterModeButton(
+                        mode = mode,
+                        selected = centerMode == mode,
+                        unlocked = isModeUnlocked(mode),
+                        onClick = { onCenterModeClick(mode) },
+                    )
+                }
+            }
         }
     }
 }

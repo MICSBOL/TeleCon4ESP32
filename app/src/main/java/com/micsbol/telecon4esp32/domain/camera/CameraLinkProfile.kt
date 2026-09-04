@@ -9,7 +9,7 @@ import com.micsbol.telecon4esp32.domain.model.usesCamera
 /**
  * How an application pairs SoftAP HTTP video with the control link.
  *
- * Portable SoftAP model (Control Panel, RC Vehicle, Greenhouse, …):
+ * Portable SoftAP model (Control Panel, RC Vehicle):
  * - Role B — [Esp32Board.CAM] SoftAP TCP+video ([WIFI_SOFTAP]) for
  *   [BluetoothConnectionMode.WIFI_CAM_STARTER], [BluetoothConnectionMode.WIFI_SIMPLE],
  *   [BluetoothConnectionMode.WIFI_BINARY], and legacy [BluetoothConnectionMode.WIFI_SOFTAP]
@@ -88,6 +88,35 @@ val CameraLinkProfile.isBluetoothControlWithCamera: Boolean
     get() = this == CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT
 
 /**
+ * Camera-join HUD help: two-board overlay whenever video is down;
+ * one CAM only while control is disconnected.
+ */
+fun shouldShowCameraJoinWarning(
+    profile: CameraLinkProfile,
+    hasLiveFrame: Boolean,
+    isControlConnected: Boolean,
+): Boolean {
+    if (!profile.shouldStartCameraStream || hasLiveFrame) return false
+    return when (profile) {
+        CameraLinkProfile.CONTROL_ONLY -> false
+        CameraLinkProfile.WIFI_SOFTAP -> !isControlConnected
+        CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT -> true
+    }
+}
+
+/** Camera-join HUD help always starts as the warning icon. */
+@Suppress("UNUSED_PARAMETER")
+fun cameraJoinWarningStartsExpanded(
+    profile: CameraLinkProfile,
+    isControlConnected: Boolean,
+): Boolean = false
+
+fun cameraJoinWarningShowsBluetoothConnect(
+    profile: CameraLinkProfile,
+    isControlConnected: Boolean,
+): Boolean = profile.isBluetoothControlWithCamera && !isControlConnected
+
+/**
  * SoftAP video performance presets (Smooth / Balanced / High) apply whenever
  * SoftAP HTTP video is armed — Kit A SoftAP or DevKit Bluetooth + SoftAP camera overlay.
  */
@@ -97,11 +126,6 @@ fun shouldShowRuntimeStreamQualityPanel(
     mode: BluetoothConnectionMode,
     useSoftApCamera: Boolean = false,
 ): Boolean {
-    if (applicationId != ApplicationId.RC_VEHICLE_PRO &&
-        applicationId != ApplicationId.CONTROL_PANEL
-    ) {
-        return false
-    }
     val profile = resolveCameraLinkProfile(applicationId, board, mode, useSoftApCamera)
     return profile.shouldStartCameraStream
 }

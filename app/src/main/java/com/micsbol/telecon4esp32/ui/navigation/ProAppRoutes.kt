@@ -7,9 +7,6 @@ import com.micsbol.telecon4esp32.domain.model.PremiumFeature
  *
  * Sub-routes (help, settings, camera) stay inside the same feature family so
  * one-use session grants are not cleared when opening in-app screens.
- *
- * Deferred-app routes are omitted while those modules are not shipped; restore
- * from tag `archive/full-apps-with-media` when re-enabling them.
  */
 object ProAppRoutes {
 

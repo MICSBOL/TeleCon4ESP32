@@ -127,7 +127,6 @@ fun UpgradeScreen(navController: NavController) {
                 UpgradeBenefitLine(stringResource(R.string.upgrade_benefit_ad_free))
                 UpgradeBenefitLine(stringResource(R.string.upgrade_benefit_no_coins))
                 UpgradeBenefitLine(stringResource(R.string.upgrade_benefit_rc_vehicle))
-                UpgradeBenefitLine(stringResource(R.string.upgrade_benefit_applications))
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(

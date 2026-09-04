@@ -37,9 +37,4 @@ fun resolveSoftApHudPreviewOptions(
 }
 
 /** Apps that expose runtime SoftAP stream-quality on the live camera surface. */
-fun ApplicationId.supportsRuntimeSoftApStreamQuality(): Boolean = when (this) {
-    ApplicationId.RC_VEHICLE_PRO,
-    ApplicationId.CONTROL_PANEL,
-    -> true
-    else -> false
-}
+fun ApplicationId.supportsRuntimeSoftApStreamQuality(): Boolean = true

@@ -69,6 +69,7 @@ import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.components.NeoToggle
+import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
@@ -467,7 +468,7 @@ fun SettingsUserTypeSection(
     fieldColors: TextFieldColors = settingsDropdownFieldColors(),
     menuBackground: Color = AppGlass.DialogSurface,
     descriptionColor: Color = Neo.TextSecondary,
-    accent: Color = Neo.Accent,
+    accent: Color = settingsChromeAccent(),
     dividerColor: Color = Neo.TextSecondary.copy(alpha = 0.28f),
     labelColor: Color = Neo.TextPrimary,
     mutedLabelColor: Color = Neo.TextMuted,
@@ -505,7 +506,7 @@ fun SettingsUserTypeSelector(
     fieldColors: TextFieldColors = settingsDropdownFieldColors(),
     menuBackground: Color = AppGlass.DialogSurface,
     descriptionColor: Color = Neo.TextSecondary,
-    accent: Color = Neo.Accent,
+    accent: Color = settingsChromeAccent(),
     dividerColor: Color = Neo.TextSecondary.copy(alpha = 0.28f),
     labelColor: Color = Neo.TextPrimary,
     mutedLabelColor: Color = Neo.TextMuted,
@@ -782,10 +783,10 @@ fun <T> SettingsOptionDropdown(
     modifier: Modifier = Modifier,
     label: String? = null,
     sectionInfo: String? = null,
-    fieldColors: TextFieldColors = settingsDropdownFieldColors(),
+    fieldColors: TextFieldColors = settingsDropdownFieldColors(accent = settingsChromeAccent()),
     menuBackground: Color = AppGlass.DialogSurface,
     descriptionColor: Color = Neo.TextSecondary,
-    accent: Color = Neo.Accent,
+    accent: Color = settingsChromeAccent(),
     dividerColor: Color = Neo.TextSecondary.copy(alpha = 0.28f),
     labelColor: Color = Neo.TextPrimary,
     mutedLabelColor: Color = Neo.TextMuted,
@@ -966,7 +967,7 @@ fun <T> SettingsOptionDropdown(
 
 @Composable
 fun settingsDropdownFieldColors(
-    accent: Color = Neo.Accent,
+    accent: Color = settingsChromeAccent(),
     text: Color = Neo.TextPrimary,
     secondary: Color = Neo.TextSecondary,
 ): TextFieldColors = OutlinedTextFieldDefaults.colors(

@@ -1,8 +1,12 @@
 package com.micsbol.telecon4esp32.ui.control_panel
 
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 enum class RadarScanSpan(val degrees: Float) {
     DEGREES_180(180f),
@@ -71,6 +75,171 @@ fun computeRadarSectorLayout(
         canvasStartAngleDegrees = -90f - span / 2f,
         sweepAngleDegrees = span,
     )
+}
+
+/**
+ * Horizon of the RC HUD perspective floor, measured from the top of the plot.
+ * The radar camera elevation is derived from this so the disc sits in that 3D space.
+ */
+const val RADAR_PLOT_HORIZON_FRACTION = 3f / 4f
+
+private const val RADAR_CAMERA_DISTANCE_RADII = 2.55f
+private const val RADAR_LOOK_AT_FORWARD = 0.16f
+private const val RADAR_HOVER_HEIGHT = 0.16f
+private const val MIN_RADAR_ELEVATION_DEGREES = 42f
+private const val MAX_RADAR_ELEVATION_DEGREES = 54f
+
+data class RadarCanvasPoint(val x: Float, val y: Float)
+
+/**
+ * Front-upper view of a ground-plane radar. +Z is north (ahead), +X is east.
+ * [project] maps a polar sample onto the canvas after perspective divide.
+ */
+class RadarViewProjection internal constructor(
+    val originX: Float,
+    val originY: Float,
+    val elevationDegrees: Float,
+    private val mapWorld: (Float, Float, Float) -> RadarCanvasPoint,
+    private val worldDepthScale: (Float, Float, Float) -> Float,
+    private val hoverY: Float,
+) {
+    fun project(bearingFromNorth: Float, rangeFraction: Float): RadarCanvasPoint {
+        val (x, z) = radarPlanePoint(bearingFromNorth, rangeFraction)
+        return mapWorld(x, hoverY, z)
+    }
+
+    fun projectFloor(worldX: Float, worldZ: Float): RadarCanvasPoint =
+        mapWorld(worldX, 0f, worldZ)
+
+    fun depthScale(bearingFromNorth: Float, rangeFraction: Float): Float {
+        val (x, z) = radarPlanePoint(bearingFromNorth, rangeFraction)
+        return worldDepthScale(x, hoverY, z)
+    }
+}
+
+/**
+ * Elevation of the virtual camera above the radar plane, from the plot's floor
+ * band (horizon at [RADAR_PLOT_HORIZON_FRACTION]) and aspect. Clamped so the
+ * disc stays readable instead of flattening into an edge-on line.
+ */
+fun radarCameraElevationDegrees(width: Float, height: Float): Float {
+    val w = width.coerceAtLeast(1f)
+    val h = height.coerceAtLeast(1f)
+    val groundBand = h * (1f - RADAR_PLOT_HORIZON_FRACTION)
+    val fromFloor = Math.toDegrees(atan2(groundBand.toDouble(), (w * 0.5).toDouble()))
+    val fromFill = Math.toDegrees(atan2(h.toDouble(), w.toDouble()))
+    return (fromFloor * 0.35 + fromFill * 0.65).toFloat()
+        .coerceIn(MIN_RADAR_ELEVATION_DEGREES, MAX_RADAR_ELEVATION_DEGREES)
+}
+
+/** Unit-disc point on the ground: x = east, z = north. */
+fun radarPlanePoint(bearingFromNorth: Float, rangeFraction: Float): Pair<Float, Float> {
+    val rad = Math.toRadians(bearingFromNorth.toDouble())
+    val r = rangeFraction.coerceAtLeast(0f)
+    return sin(rad).toFloat() * r to cos(rad).toFloat() * r
+}
+
+/**
+ * Fits a north-centered ground sector into [width] x [height], viewed from
+ * front-upper so the near rim is larger than the far (north) rim.
+ */
+fun computeRadarViewProjection(
+    width: Float,
+    height: Float,
+    spanDegrees: Float,
+    padding: Float,
+): RadarViewProjection {
+    val span = spanDegrees.coerceIn(
+        RadarScanSpan.DEGREES_180.degrees,
+        RadarScanSpan.DEGREES_270.degrees,
+    )
+    val availableW = (width - 2f * padding).coerceAtLeast(1f)
+    val availableH = (height - 2f * padding).coerceAtLeast(1f)
+    val elevation = radarCameraElevationDegrees(width, height)
+    val elevRad = Math.toRadians(elevation.toDouble()).toFloat()
+    val dist = RADAR_CAMERA_DISTANCE_RADII
+    val cam = Vec3(0f, dist * sin(elevRad), -dist * cos(elevRad))
+    val lookAt = Vec3(0f, 0f, RADAR_LOOK_AT_FORWARD)
+    val forward = (lookAt - cam).normalized()
+    val worldUp = Vec3(0f, 1f, 0f)
+    val right = worldUp.cross(forward).normalized()
+    val up = forward.cross(right).normalized()
+
+    fun projectNdc(worldX: Float, worldY: Float, worldZ: Float): Pair<Float, Float> {
+        val toPoint = Vec3(worldX, worldY, worldZ) - cam
+        val cx = toPoint.dot(right)
+        val cy = toPoint.dot(up)
+        val cz = toPoint.dot(forward).coerceAtLeast(0.08f)
+        return (cx / cz) to (cy / cz)
+    }
+
+    fun depthScale(worldX: Float, worldY: Float, worldZ: Float): Float {
+        val distPoint = (Vec3(worldX, worldY, worldZ) - cam).length()
+        val distOrigin = (Vec3(0f, worldY, 0f) - cam).length().coerceAtLeast(1e-4f)
+        return (distOrigin / distPoint).coerceIn(0.55f, 1.55f)
+    }
+
+    val hoverY = RADAR_HOVER_HEIGHT
+    val steps = 48
+    val ndcs = ArrayList<Pair<Float, Float>>(steps + 2)
+    ndcs.add(projectNdc(0f, hoverY, 0f))
+    for (i in 0..steps) {
+        val bearing = -span / 2f + span * i / steps
+        val (wx, wz) = radarPlanePoint(bearing, 1f)
+        ndcs.add(projectNdc(wx, hoverY, wz))
+    }
+    var minX = Float.POSITIVE_INFINITY
+    var maxX = Float.NEGATIVE_INFINITY
+    var minY = Float.POSITIVE_INFINITY
+    var maxY = Float.NEGATIVE_INFINITY
+    ndcs.forEach { (x, y) ->
+        minX = min(minX, x)
+        maxX = max(maxX, x)
+        minY = min(minY, y)
+        maxY = max(maxY, y)
+    }
+    val ndcW = (maxX - minX).coerceAtLeast(1e-4f)
+    val ndcH = (maxY - minY).coerceAtLeast(1e-4f)
+    val scale = min(availableW / ndcW, availableH / ndcH)
+    val x0 = padding + (availableW - ndcW * scale) / 2f
+    val y0 = padding + (availableH - ndcH * scale) / 2f
+
+    fun mapWorld(worldX: Float, worldY: Float, worldZ: Float): RadarCanvasPoint {
+        val (ndcX, ndcY) = projectNdc(worldX, worldY, worldZ)
+        return RadarCanvasPoint(
+            x = x0 + (ndcX - minX) * scale,
+            y = y0 + (maxY - ndcY) * scale,
+        )
+    }
+
+    val origin = mapWorld(0f, hoverY, 0f)
+    return RadarViewProjection(
+        originX = origin.x,
+        originY = origin.y,
+        elevationDegrees = elevation,
+        mapWorld = ::mapWorld,
+        worldDepthScale = ::depthScale,
+        hoverY = hoverY,
+    )
+}
+
+private data class Vec3(val x: Float, val y: Float, val z: Float) {
+    operator fun minus(other: Vec3) = Vec3(x - other.x, y - other.y, z - other.z)
+
+    fun dot(other: Vec3): Float = x * other.x + y * other.y + z * other.z
+
+    fun cross(other: Vec3): Vec3 = Vec3(
+        y * other.z - z * other.y,
+        z * other.x - x * other.z,
+        x * other.y - y * other.x,
+    )
+
+    fun length(): Float = sqrt(x * x + y * y + z * z)
+
+    fun normalized(): Vec3 {
+        val len = length().coerceAtLeast(1e-6f)
+        return Vec3(x / len, y / len, z / len)
+    }
 }
 
 fun radarSeriesIndex(index: Int): Int =

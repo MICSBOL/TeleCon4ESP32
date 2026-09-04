@@ -36,13 +36,16 @@ import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationsScreen
-import com.micsbol.telecon4esp32.ui.applications.ProApplicationPlaceholderScreen
+import com.micsbol.telecon4esp32.ui.applications.usesImmersiveHudChrome
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.codes.CodesHubScreen
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
+import com.micsbol.telecon4esp32.ui.components.LocalHudGlassDialog
+import com.micsbol.telecon4esp32.ui.components.LocalHudSystemBarsHidden
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelCameraStreamViewModel
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelScreen
+import com.micsbol.telecon4esp32.ui.control_panel.HideHudSystemBars
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.cyber.screens.CyberHomeScreen
@@ -205,22 +208,32 @@ fun AppNavGraph(
                 }
             }
 
-            BluetoothScreen(
-                state = state,
-                onNavigateBack = { navController.navigateUp() },
-                onStartScan = {
-                    ensureBluetoothReadyBeforeAction {
-                        bluetoothViewModel.startScan()
+            val lastApplicationId by bluetoothViewModel.lastApplicationId.collectAsState()
+            val immersiveHud = lastApplicationId?.usesImmersiveHudChrome() == true
+            if (immersiveHud) {
+                HideHudSystemBars()
+            }
+            CompositionLocalProvider(
+                LocalHudSystemBarsHidden provides immersiveHud,
+                LocalHudGlassDialog provides immersiveHud,
+            ) {
+                BluetoothScreen(
+                    state = state,
+                    onNavigateBack = { navController.navigateUp() },
+                    onStartScan = {
+                        ensureBluetoothReadyBeforeAction {
+                            bluetoothViewModel.startScan()
+                        }
+                    },
+                    onStopScan = bluetoothViewModel::stopScan,
+                    onDismissError = bluetoothViewModel::dismissError,
+                    onDeviceClick = { device ->
+                        ensureBluetoothReadyBeforeAction {
+                            bluetoothViewModel.connectToDevice(device)
+                        }
                     }
-                },
-                onStopScan = bluetoothViewModel::stopScan,
-                onDismissError = bluetoothViewModel::dismissError,
-                onDeviceClick = { device ->
-                    ensureBluetoothReadyBeforeAction {
-                        bluetoothViewModel.connectToDevice(device)
-                    }
-                }
-            )
+                )
+            }
         }
         composable(Screen.Applications.route) {
             if (!isApplicationCatalogVisible()) {
@@ -284,22 +297,6 @@ fun AppNavGraph(
                 applicationId = applicationId,
                 settingsSection = section,
                 settingsViewModel = settingsViewModel,
-            )
-        }
-        composable(
-            route = Screen.ProPlaceholder.route,
-            arguments = listOf(
-                navArgument("applicationId") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val applicationId = backStackEntry.arguments
-                ?.getString("applicationId")
-                ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
-                ?.takeIf { it.isShipped() }
-                ?: return@composable
-            ProApplicationPlaceholderScreen(
-                navController = navController,
-                applicationId = applicationId,
             )
         }
         composable(Screen.Tutorial.route) {

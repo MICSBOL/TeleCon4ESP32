@@ -60,6 +60,7 @@ import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelCenterFeatureUnlockDialogs
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.theme.HudCyan
@@ -339,7 +340,7 @@ private fun SoftApCredentialsCard(
                     contentDescription = stringResource(
                         R.string.app_settings_option_info_content_description,
                     ),
-                    tint = if (infoExpanded) Neo.Accent else Neo.TextSecondary,
+                    tint = if (infoExpanded) settingsChromeAccent() else Neo.TextSecondary,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -444,7 +445,7 @@ fun ApplicationProtocolSettingsLoadingScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(color = Neo.Accent)
+            CircularProgressIndicator(color = settingsChromeAccent())
         }
     }
 }

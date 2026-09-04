@@ -29,15 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,16 +46,16 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import kotlinx.coroutines.delay
-import kotlin.math.cos
+import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 private val RadarCanvasPadding = 8.dp
 
 /**
  * Sweeping radar pane for Control Panel center. The scan sector is 180° or 270°,
- * centered on 12 o'clock. Servo angle from ESP32 plot data sits at the center of the
- * colored beam; 0 and 1 are the left and right extremes of that sector.
+ * centered on north, drawn as a holographic disc hovering above a perspective
+ * floor and viewed from front-upper. Servo angle from ESP32 plot data sits at
+ * the center of the colored beam; 0 and 1 are the left and right extremes.
  */
 @Composable
 fun ControlPanelRadarDisplay(
@@ -64,12 +63,12 @@ fun ControlPanelRadarDisplay(
     modifier: Modifier = Modifier,
     settings: RadarDisplaySettings = RadarDisplaySettings(),
     onSettingsChange: (RadarDisplaySettings) -> Unit = {},
+    accent: Color = brandPrimary(),
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var idleProgress by remember { mutableFloatStateOf(0.5f) }
     var idleForward by remember { mutableStateOf(true) }
 
-    val accent = brandPrimary()
     val span = settings.scanSpan.degrees
     val angleIndex = radarSeriesIndex(settings.angleSeriesIndex)
     val rangeIndex = radarSeriesIndex(settings.rangeSeriesIndex)
@@ -146,142 +145,102 @@ fun ControlPanelRadarDisplay(
                 .fillMaxSize()
                 .padding(RadarCanvasPadding),
         ) {
-            val layout = computeRadarSectorLayout(
+            val view = computeRadarViewProjection(
                 width = size.width,
                 height = size.height,
                 spanDegrees = span,
                 padding = 0f,
             )
-            val origin = Offset(layout.originX, layout.originY)
-            val radius = layout.radius
-            val sectorRect = Rect(
-                left = origin.x - radius,
-                top = origin.y - radius,
-                right = origin.x + radius,
-                bottom = origin.y + radius,
-            )
-            val sectorPath = Path().apply {
-                moveTo(origin.x, origin.y)
-                arcTo(
-                    rect = sectorRect,
-                    startAngleDegrees = layout.canvasStartAngleDegrees,
-                    sweepAngleDegrees = layout.sweepAngleDegrees,
-                    forceMoveTo = false,
-                )
-                close()
-            }
-            val grid = Color.White.copy(alpha = 0.22f)
+            val origin = Offset(view.originX, view.originY)
+            val sectorPath = view.sectorPath(span)
+            val grid = accent.copy(alpha = 0.42f)
+            val ringStroke = Stroke(width = 1.35f, join = StrokeJoin.Round)
             val ringCount = settings.rangeRingCount.coerceIn(
                 RadarDisplaySettings.MIN_RANGE_RINGS,
                 RadarDisplaySettings.MAX_RANGE_RINGS,
             )
 
-            clipPath(sectorPath) {
-                drawPath(sectorPath, color = accent.copy(alpha = 0.08f))
+            if (settings.showGrid) {
+                drawRadarAirGrid(view, accent)
+            }
+            drawPath(
+                path = view.floorShadowPath(span),
+                color = Color.Black.copy(alpha = 0.22f),
+            )
+            drawPath(
+                path = sectorPath,
+                color = accent.copy(alpha = 0.12f),
+                style = Stroke(width = 16f, join = StrokeJoin.Round),
+            )
+            drawPath(
+                path = sectorPath,
+                color = accent.copy(alpha = 0.20f),
+                style = Stroke(width = 7f, join = StrokeJoin.Round),
+            )
 
-                if (settings.showGrid) {
-                    (1..ringCount).forEach { ring ->
-                        drawArc(
-                            color = grid,
-                            startAngle = layout.canvasStartAngleDegrees,
-                            sweepAngle = layout.sweepAngleDegrees,
-                            useCenter = false,
-                            topLeft = Offset(
-                                origin.x - radius * ring / ringCount,
-                                origin.y - radius * ring / ringCount,
-                            ),
-                            size = Size(
-                                radius * 2f * ring / ringCount,
-                                radius * 2f * ring / ringCount,
-                            ),
-                            style = Stroke(width = 1.2f),
-                        )
-                    }
-                    radarGridBearingsFromNorth(span).forEach { fromNorth ->
-                        val canvasRad = Math.toRadians((-90f + fromNorth).toDouble()).toFloat()
-                        drawLine(
-                            color = grid,
-                            start = origin,
-                            end = Offset(
-                                origin.x + cos(canvasRad) * radius,
-                                origin.y + sin(canvasRad) * radius,
-                            ),
-                            strokeWidth = 1.2f,
-                        )
-                    }
-                }
+            clipPath(sectorPath) {
+                drawPath(sectorPath, color = accent.copy(alpha = 0.05f))
 
                 val trailWidth = (settings.beamWidth.halfAngleDegrees * 2f).coerceAtMost(span)
-                rotate(degrees = bearingFromNorth, pivot = origin) {
-                    if (settings.showSweepTrail) {
-                        drawArc(
-                            color = accent.copy(alpha = 0.48f),
-                            startAngle = -90f - trailWidth / 2f,
-                            sweepAngle = trailWidth,
-                            useCenter = true,
-                            topLeft = Offset(origin.x - radius, origin.y - radius),
-                            size = Size(radius * 2f, radius * 2f),
-                        )
-                    }
-                    drawLine(
-                        color = accent.copy(alpha = 1f),
-                        start = origin,
-                        end = Offset(origin.x, origin.y - radius),
-                        strokeWidth = 2.4f,
-                        cap = StrokeCap.Butt,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
+                if (settings.showSweepTrail) {
+                    drawPath(
+                        path = view.beamPath(bearingFromNorth, trailWidth),
+                        color = accent.copy(alpha = 0.28f),
                     )
                 }
+                drawLine(
+                    color = accent.copy(alpha = 1f),
+                    start = origin,
+                    end = view.offset(bearingFromNorth, 1f),
+                    strokeWidth = 2.4f,
+                    cap = StrokeCap.Butt,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
+                )
 
                 blips.forEach { blip ->
-                    val canvasRad = Math.toRadians((-90f + blip.bearingFromNorth).toDouble()).toFloat()
-                    val r = radius * blip.rangeFraction
-                    val center = Offset(
-                        origin.x + cos(canvasRad) * r,
-                        origin.y + sin(canvasRad) * r,
-                    )
+                    val center = view.offset(blip.bearingFromNorth, blip.rangeFraction)
+                    val depth = view.depthScale(blip.bearingFromNorth, blip.rangeFraction)
                     drawCircle(
                         color = blip.color.copy(alpha = 0.25f * blip.alpha),
-                        radius = 12f,
+                        radius = 12f * depth,
                         center = center,
                     )
                     drawCircle(
                         color = blip.color.copy(alpha = 0.9f * blip.alpha),
-                        radius = 5f,
+                        radius = 5f * depth,
                         center = center,
                     )
                 }
             }
 
-            drawArc(
-                color = grid.copy(alpha = 0.45f),
-                startAngle = layout.canvasStartAngleDegrees,
-                sweepAngle = layout.sweepAngleDegrees,
-                useCenter = false,
-                topLeft = Offset(origin.x - radius, origin.y - radius),
-                size = Size(radius * 2f, radius * 2f),
-                style = Stroke(width = 1.8f),
-            )
-            val leftRad = Math.toRadians(layout.canvasStartAngleDegrees.toDouble()).toFloat()
-            val rightRad = Math.toRadians(
-                (layout.canvasStartAngleDegrees + layout.sweepAngleDegrees).toDouble(),
-            ).toFloat()
-            drawLine(
-                color = grid.copy(alpha = 0.45f),
-                start = origin,
-                end = Offset(origin.x + cos(leftRad) * radius, origin.y + sin(leftRad) * radius),
-                strokeWidth = 1.8f,
-            )
-            drawLine(
-                color = grid.copy(alpha = 0.45f),
-                start = origin,
-                end = Offset(origin.x + cos(rightRad) * radius, origin.y + sin(rightRad) * radius),
-                strokeWidth = 1.8f,
+            if (settings.showGrid) {
+                (1..ringCount).forEach { ring ->
+                    drawPath(
+                        path = view.arcPath(span, ring / ringCount.toFloat()),
+                        color = grid,
+                        style = ringStroke,
+                    )
+                }
+                radarGridBearingsFromNorth(span).forEach { fromNorth ->
+                    drawLine(
+                        color = grid,
+                        start = origin,
+                        end = view.offset(fromNorth, 1f),
+                        strokeWidth = 1.35f,
+                    )
+                }
+            }
+
+            drawPath(
+                path = sectorPath,
+                color = accent.copy(alpha = 0.78f),
+                style = Stroke(width = 2f, join = StrokeJoin.Round),
             )
         }
 
         RadarSettingsChipLauncher(
             spanDegrees = span.roundToInt(),
+            accent = accent,
             onClick = { showSettings = true },
             modifier = Modifier.align(Alignment.TopEnd),
         )
@@ -313,8 +272,8 @@ private fun RadarSettingsChipLauncher(
     spanDegrees: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    accent: Color = brandPrimary(),
 ) {
-    val accent = brandPrimary()
     val shape = RoundedCornerShape(12.dp)
     val openLabel = stringResource(R.string.control_panel_radar_settings_content_description)
 
@@ -379,6 +338,111 @@ private fun radarScanBlips(
             rangeFraction = radarRangeFraction(rangeSample),
             color = color,
             alpha = 0.28f + 0.72f * age,
+        )
+    }
+}
+
+private fun RadarViewProjection.offset(
+    bearingFromNorth: Float,
+    rangeFraction: Float,
+): Offset {
+    val point = project(bearingFromNorth, rangeFraction)
+    return Offset(point.x, point.y)
+}
+
+private fun RadarViewProjection.sectorPath(spanDegrees: Float, steps: Int = 80): Path {
+    val half = spanDegrees / 2f
+    return Path().apply {
+        moveTo(originX, originY)
+        for (i in 0..steps) {
+            val bearing = -half + spanDegrees * i / steps
+            val point = offset(bearing, 1f)
+            lineTo(point.x, point.y)
+        }
+        close()
+    }
+}
+
+private fun RadarViewProjection.arcPath(
+    spanDegrees: Float,
+    rangeFraction: Float,
+    steps: Int = 80,
+): Path {
+    val half = spanDegrees / 2f
+    return Path().apply {
+        for (i in 0..steps) {
+            val bearing = -half + spanDegrees * i / steps
+            val point = offset(bearing, rangeFraction)
+            if (i == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y)
+        }
+    }
+}
+
+private fun RadarViewProjection.beamPath(
+    bearingFromNorth: Float,
+    widthDegrees: Float,
+    steps: Int = 36,
+): Path {
+    val half = widthDegrees / 2f
+    return Path().apply {
+        moveTo(originX, originY)
+        for (i in 0..steps) {
+            val bearing = bearingFromNorth - half + widthDegrees * i / steps
+            val point = offset(bearing, 1f)
+            lineTo(point.x, point.y)
+        }
+        close()
+    }
+}
+
+private fun RadarViewProjection.floorShadowPath(spanDegrees: Float, steps: Int = 64): Path {
+    val half = spanDegrees / 2f
+    val origin = projectFloor(0f, 0f)
+    return Path().apply {
+        moveTo(origin.x, origin.y)
+        for (i in 0..steps) {
+            val bearing = -half + spanDegrees * i / steps
+            val (wx, wz) = radarPlanePoint(bearing, 1f)
+            val point = projectFloor(wx, wz)
+            lineTo(point.x, point.y)
+        }
+        close()
+    }
+}
+
+private fun DrawScope.drawRadarAirGrid(view: RadarViewProjection, accent: Color) {
+    val xMin = -2.1f
+    val xMax = 2.1f
+    val zMin = -0.65f
+    val zMax = 1.55f
+    val xCount = 12
+    val zCount = 11
+    val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 7f), 0f)
+    val xHalf = xCount / 2f
+    for (i in 0..xCount) {
+        val x = xMin + (xMax - xMin) * i / xCount
+        val start = view.projectFloor(x, zMin)
+        val end = view.projectFloor(x, zMax)
+        val edge = abs(i - xHalf) / xHalf
+        drawLine(
+            color = accent.copy(alpha = 0.10f + 0.16f * (1f - edge)),
+            start = Offset(start.x, start.y),
+            end = Offset(end.x, end.y),
+            strokeWidth = 1.15f,
+            pathEffect = dash,
+        )
+    }
+    for (i in 0..zCount) {
+        val z = zMin + (zMax - zMin) * i / zCount
+        val start = view.projectFloor(xMin, z)
+        val end = view.projectFloor(xMax, z)
+        val far = i / zCount.toFloat()
+        drawLine(
+            color = accent.copy(alpha = 0.10f + 0.18f * (1f - far)),
+            start = Offset(start.x, start.y),
+            end = Offset(end.x, end.y),
+            strokeWidth = 1.15f,
+            pathEffect = dash,
         )
     }
 }

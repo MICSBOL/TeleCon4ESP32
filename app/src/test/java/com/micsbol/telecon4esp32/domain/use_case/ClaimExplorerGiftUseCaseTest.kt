@@ -21,7 +21,7 @@ class ClaimExplorerGiftUseCaseTest {
         val wallet = FakeWalletRepository()
         val useCase = ClaimExplorerGiftUseCase(gift, wallet)
 
-        val result = useCase(PremiumFeature.GREENHOUSE)
+        val result = useCase(PremiumFeature.RC_VEHICLE_PRO)
 
         assertEquals(WalletUnlockResult.Success, result)
         assertFalse(gift.isAvailable.value)
@@ -34,7 +34,7 @@ class ClaimExplorerGiftUseCaseTest {
         val wallet = FakeWalletRepository()
         val useCase = ClaimExplorerGiftUseCase(gift, wallet)
 
-        val result = useCase(PremiumFeature.GREENHOUSE)
+        val result = useCase(PremiumFeature.RC_VEHICLE_PRO)
 
         assertEquals(WalletUnlockResult.AlreadyUnlocked, result)
         assertEquals(null, wallet.lastGrantedOption)

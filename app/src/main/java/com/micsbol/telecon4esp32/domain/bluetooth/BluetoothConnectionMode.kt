@@ -3,7 +3,7 @@ package com.micsbol.telecon4esp32.domain.bluetooth
 /**
  * User-facing link choice for an application.
  *
- * SoftAP TCP modes are shared across apps (Control Panel, RC Vehicle, Greenhouse, …):
+ * SoftAP TCP modes are shared by Control Panel and RC Vehicle:
  * - [WIFI_SIMPLE] / [WIFI_BINARY] — SoftAP TCP with `proto=simple` / `proto=binary`
  * - On [com.micsbol.telecon4esp32.domain.model.Esp32Board.CAM] + camera apps, those modes
  *   also attach SoftAP HTTP video (same SoftAP, different sketch SSID).
@@ -69,7 +69,7 @@ enum class BluetoothConnectionMode {
 
     /**
      * SoftAP TCP modes that carry camera HTTP when the board is CAM + camera app.
-     * Shared base for RC Vehicle, Greenhouse, etc.
+     * Shared SoftAP TCP base for Control Panel and RC Vehicle.
      */
     val isSoftApTcp: Boolean
         get() = when (this) {

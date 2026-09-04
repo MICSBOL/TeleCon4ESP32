@@ -110,12 +110,6 @@ private fun handshakeAppLabel(wireValue: String?): String {
     val normalized = wireValue?.trim()?.uppercase().orEmpty()
     return when (normalized) {
         "RC" -> stringResource(R.string.bluetooth_firmware_app_rc)
-        "GH" -> stringResource(R.string.app_greenhouse_title)
-        "SP" -> stringResource(R.string.app_solar_title)
-        "SH" -> stringResource(R.string.app_smart_home_title)
-        "WT" -> stringResource(R.string.app_water_tank_title)
-        "DL" -> stringResource(R.string.app_smart_door_lock_title)
-        "LT" -> stringResource(R.string.app_smart_lighting_title)
         "" -> stringResource(R.string.bluetooth_handshake_value_unknown)
         else -> wireValue!!.trim()
     }

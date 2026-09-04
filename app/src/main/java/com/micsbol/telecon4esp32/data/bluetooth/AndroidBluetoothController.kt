@@ -23,15 +23,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
 import com.micsbol.telecon4esp32.domain.bluetooth.RcBinaryTelemetryMapper
-import com.micsbol.telecon4esp32.domain.bluetooth.gh.GhBinaryTelemetryMapper
-import com.micsbol.telecon4esp32.domain.bluetooth.wt.WtBinaryTelemetryMapper
-import com.micsbol.telecon4esp32.domain.bluetooth.sp.SpBinaryTelemetryMapper
-import com.micsbol.telecon4esp32.domain.bluetooth.sh.ShBinaryTelemetryMapper
-import com.micsbol.telecon4esp32.domain.bluetooth.dl.DlBinaryTelemetryMapper
-import com.micsbol.telecon4esp32.domain.bluetooth.lt.LtBinaryTelemetryMapper
 import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
-import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolTelemetryMapper
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.data.camera.SoftApNetworkResolver
@@ -217,43 +209,7 @@ class AndroidBluetoothController @Inject constructor(
                 Log.d("BluetoothController_config", "Parsed config packet")
                 parseConfigPacket(bytes)
             }
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x47.toByte() -> parseGhDataPacket(bytes)
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x57.toByte() -> emitAppData(
-                ApplicationId.WATER_TANK,
-                WtBinaryTelemetryMapper.decodeDataPacket(bytes),
-            )
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x53.toByte() -> emitAppData(
-                ApplicationId.SOLAR_POWER,
-                SpBinaryTelemetryMapper.decodeDataPacket(bytes),
-            )
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x48.toByte() -> emitAppData(
-                ApplicationId.SMART_HOME,
-                ShBinaryTelemetryMapper.decodeDataPacket(bytes),
-            )
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x4B.toByte() -> emitAppData(
-                ApplicationId.SMART_DOOR_LOCK,
-                DlBinaryTelemetryMapper.decodeDataPacket(bytes),
-            )
-            bytes[0] == 0xCC.toByte() && bytes[1] == 0x4C.toByte() -> emitAppData(
-                ApplicationId.SMART_LIGHTING,
-                LtBinaryTelemetryMapper.decodeDataPacket(bytes),
-            )
         }
-    }
-
-    private fun emitAppData(applicationId: ApplicationId, values: Map<String, String>?) {
-        if (values == null) return
-        _messages.tryEmit(
-            EspMessage(
-                app = applicationId.protocolPrefix(),
-                type = "DATA",
-                values = values,
-            ),
-        )
-    }
-
-    private fun parseGhDataPacket(bytes: ByteArray) {
-        emitAppData(ApplicationId.GREENHOUSE, GhBinaryTelemetryMapper.decodeDataPacket(bytes))
     }
 
     private fun parseIncomingLine(line: String) {

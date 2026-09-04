@@ -28,7 +28,7 @@ class Esp32CameraLinkSession(
     }
 
     /**
-     * Optional UI toggle (e.g. Smart Door Lock camera mute). When false, stream
+     * Optional UI toggle. When false, stream
      * stops even if the profile would otherwise start SoftAP HTTP video.
      */
     fun setCameraEnabled(enabled: Boolean) {

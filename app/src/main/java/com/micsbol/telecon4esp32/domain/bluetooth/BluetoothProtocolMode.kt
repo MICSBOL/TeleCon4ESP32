@@ -6,7 +6,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
  * How the app exchanges data with the ESP32 for a given application profile.
  *
  * - [SIMPLE] — human-readable line protocol (`APP:TYPE,key,value,...\\n`)
- * - [ADVANCED] — binary packets (RC control panel; Greenhouse GH binary for premium)
+ * - [ADVANCED] — binary packets (Control Panel / RC Vehicle `CC 11/22/33`)
  */
 enum class BluetoothProtocolMode {
     SIMPLE,

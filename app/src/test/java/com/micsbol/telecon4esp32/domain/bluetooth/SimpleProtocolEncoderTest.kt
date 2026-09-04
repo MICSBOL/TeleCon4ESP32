@@ -36,8 +36,8 @@ class SimpleProtocolEncoderTest {
 
     @Test
     fun `buildSetLine uses application prefix`() {
-        val line = SimpleProtocolEncoder.buildSetLine("GH", mapOf("fan" to 1))
-        assertEquals("GH:SET,fan,1", line)
+        val line = SimpleProtocolEncoder.buildSetLine("RC", mapOf("steer_center" to 1))
+        assertEquals("RC:SET,steer_center,1", line)
     }
 
     @Test

@@ -41,7 +41,7 @@ import kotlin.coroutines.coroutineContext
  * reads `/capture` (latest still) instead of a queued MJPEG `/stream`.
  *
  * [setHudPreviewOptions] opts RC Vehicle Pro SoftAP HUD into cheaper decode and
- * optional max publish FPS. Greenhouse leaves [HudPreviewOptions.FULL_QUALITY].
+ * optional max publish FPS. Full-quality preview leaves [HudPreviewOptions.FULL_QUALITY].
  */
 @Singleton
 class Esp32CameraStreamRepository @Inject constructor(
