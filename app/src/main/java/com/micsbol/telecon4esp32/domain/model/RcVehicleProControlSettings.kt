@@ -7,6 +7,8 @@ package com.micsbol.telecon4esp32.domain.model
 data class RcVehicleProControlSettings(
     val leftStickMode: JoystickMode = DEFAULT_LEFT_STICK_MODE,
     val rightStickMode: JoystickMode = DEFAULT_RIGHT_STICK_MODE,
+    val leftStickRangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
+    val rightStickRangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
     val leftTrimX: Float = 0f,
     val leftTrimY: Float = 0f,
     val rightTrimX: Float = 0f,
@@ -25,6 +27,10 @@ data class RcVehicleProControlSettings(
     val stickGroupScale: Float = 1f,
     /** Uniform scale for the camera-pan knob card (1 = default size). */
     val cameraPanScale: Float = 1f,
+    /** Optional CH1…CH8 link for the left stick axes. */
+    val leftStickChannels: StickChannelLink = StickChannelLink.DEFAULT_LEFT,
+    /** Optional CH1…CH8 link for the right stick axes. */
+    val rightStickChannels: StickChannelLink = StickChannelLink.DEFAULT_RIGHT,
 ) {
     companion object {
         val DEFAULT_LEFT_STICK_MODE = JoystickMode.VerticalHold(JoystickMode.DOWN)

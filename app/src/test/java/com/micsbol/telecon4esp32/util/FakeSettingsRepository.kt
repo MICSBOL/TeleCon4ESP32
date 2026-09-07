@@ -10,6 +10,7 @@ import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.UserSettings
@@ -22,6 +23,7 @@ import com.micsbol.telecon4esp32.domain.use_case.SaveLeftPanelColorGreenUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLeftPanelOnUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLeftPanelUnitUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveLeftStickModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveLeftStickRangeShapeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SavePlotCalibrationUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SavePlotLabelUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveRightKnobValueUseCase
@@ -29,6 +31,7 @@ import com.micsbol.telecon4esp32.domain.use_case.SaveRightPanelColorGreenUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveRightPanelOnUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveRightPanelUnitUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveRightStickModeUseCase
+import com.micsbol.telecon4esp32.domain.use_case.SaveRightStickRangeShapeUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveSettingsUseCases
 import com.micsbol.telecon4esp32.domain.use_case.SaveSwitchStateUseCase
 import kotlinx.coroutines.flow.Flow
@@ -66,6 +69,12 @@ class FakeSettingsRepository : ISettingsRepository {
     }
     override suspend fun saveRightStickMode(mode: JoystickMode) {
         _settings.update { it.copy(rightStickMode = mode) }
+    }
+    override suspend fun saveLeftStickRangeShape(shape: JoystickRangeShape) {
+        _settings.update { it.copy(leftStickRangeShape = shape) }
+    }
+    override suspend fun saveRightStickRangeShape(shape: JoystickRangeShape) {
+        _settings.update { it.copy(rightStickRangeShape = shape) }
     }
     override suspend fun saveSwitchState(index: Int, isOn: Boolean) {
         _settings.update { it.copy(switchInitialStates = it.switchInitialStates + (index to isOn)) }
@@ -281,6 +290,24 @@ class FakeSettingsRepository : ISettingsRepository {
         _rcVehicleProControl.update { settings }
     }
 
+    private val _rcVehicleProHudPlotChrome = MutableStateFlow("")
+
+    override fun rcVehicleProHudPlotChromeFlow(): Flow<String> =
+        _rcVehicleProHudPlotChrome.asStateFlow()
+
+    override suspend fun saveRcVehicleProHudPlotChrome(encoded: String) {
+        _rcVehicleProHudPlotChrome.value = encoded
+    }
+
+    private val _controlPanelPlotDisplay = MutableStateFlow("")
+
+    override fun controlPanelPlotDisplayFlow(): Flow<String> =
+        _controlPanelPlotDisplay.asStateFlow()
+
+    override suspend fun saveControlPanelPlotDisplay(encoded: String) {
+        _controlPanelPlotDisplay.value = encoded
+    }
+
     // ── Helpers for tests ────────────────────────────────────────────────────
     fun setSettings(settings: UserSettings) = _settings.update { settings }
     fun setLastDevice(address: String, name: String?) = _lastDevice.update { address to name }
@@ -289,6 +316,8 @@ class FakeSettingsRepository : ISettingsRepository {
     fun toSaveSettingsUseCases() = SaveSettingsUseCases(
         saveLeftStickMode = SaveLeftStickModeUseCase(this),
         saveRightStickMode = SaveRightStickModeUseCase(this),
+        saveLeftStickRangeShape = SaveLeftStickRangeShapeUseCase(this),
+        saveRightStickRangeShape = SaveRightStickRangeShapeUseCase(this),
         saveSwitchState = SaveSwitchStateUseCase(this),
         saveLeftKnobValue = SaveLeftKnobValueUseCase(this),
         saveRightKnobValue = SaveRightKnobValueUseCase(this),

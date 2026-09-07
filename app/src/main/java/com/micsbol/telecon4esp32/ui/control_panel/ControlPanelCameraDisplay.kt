@@ -18,6 +18,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
+import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.bluetooth.openSystemWifiSettings
 import com.micsbol.telecon4esp32.ui.bluetooth.rememberOpenWifiSettingsThenConnect
 import com.micsbol.telecon4esp32.ui.bluetooth.supportsInAppSoftApJoin
@@ -48,6 +49,7 @@ fun ControlPanelCameraDisplay(
     val preset by viewModel.softApPerformancePreset.collectAsStateWithLifecycle()
     val hudRate by viewModel.softApHudProcessingRate.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val bluetoothSession = LocalApplicationBluetoothSession.current
     val retry = viewModel::retryCameraWifi
     val openWifiThenRetry = rememberOpenWifiSettingsThenConnect(retry)
     val joinCameraWifi = {
@@ -75,6 +77,8 @@ fun ControlPanelCameraDisplay(
                 RcCameraPreview(
                     cameraState = cameraState,
                     cameraLinkProfile = streamingProfile,
+                    isControlConnected = bluetoothSession?.isConnected == true,
+                    onConnectControl = bluetoothSession?.onConnect,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

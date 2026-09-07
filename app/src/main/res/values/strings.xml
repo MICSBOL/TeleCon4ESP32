@@ -58,6 +58,7 @@
     <string name="control_panel_panel_settings_title">Panel initial values</string>
     <string name="control_panel_back_to_modules_content_description">Back to modules</string>
     <string name="control_panel_center_mode_plots">Plots</string>
+    <string name="control_panel_center_mode_stick">Stick</string>
     <string name="control_panel_center_mode_camera">Camera</string>
     <string name="control_panel_center_mode_radar">Radar</string>
     <string name="control_panel_center_mode_picker_title">Center display</string>
@@ -67,13 +68,18 @@
     <string name="control_panel_center_extras_title">Center display modes</string>
     <string name="control_panel_center_camera_title">Control Panel camera</string>
     <string name="control_panel_center_radar_title">Control Panel radar</string>
+    <string name="control_panel_center_stick_title">Control Panel stick graph</string>
     <string name="control_panel_center_camera_locked_content_description">Unlock Control Panel camera with coins or subscription</string>
+    <string name="control_panel_center_camera_enable_content_description">Enable camera. Connection settings will show the ESP32-CAM over Wi‑Fi</string>
+    <string name="control_panel_center_camera_disable_content_description">Disable camera. Hide the camera device in connection settings</string>
     <string name="control_panel_center_radar_locked_content_description">Unlock Control Panel radar with coins or subscription</string>
+    <string name="control_panel_center_stick_locked_content_description">Unlock Control Panel stick graph with coins or subscription</string>
     <string name="control_panel_session_csv_unlock_title">Control Panel session CSV</string>
     <string name="control_panel_record_session_locked_content_description">Unlock session CSV recording with coins or subscription</string>
     <string name="control_panel_center_mode_locked_content_description">Locked</string>
     <string name="control_panel_radar_waiting">Waiting for plot data…</string>
     <string name="control_panel_radar_settings_content_description">Radar display settings</string>
+    <string name="control_panel_stick_settings_content_description">Stick plot channel settings</string>
     <string name="control_panel_radar_settings_title">Radar display</string>
     <string name="control_panel_radar_settings_body">Beam follows the servo plot channel; 0–255 map the scan sweep.</string>
     <string name="control_panel_radar_scan_range_label">Scan range</string>
@@ -223,12 +229,15 @@
     <string name="rc_vehicle_camera_overlay_idle">Role A: 1) Flash TeleCon_ControlPanel_CAM_SoftAP_Video and join SoftAP TeleCon-RC-CAM-Starter (password telecon1234) for video.\n2) Tap Connect and pair the selected Bluetooth mode to the DevKit for sticks.\nVideo stays on SoftAP HTTP (/stream). No SoftAP TCP :3333.</string>
     <string name="rc_vehicle_camera_devkit_idle">DevKit mode — no SoftAP camera. Connect Bluetooth for control and telemetry.</string>
     <string name="rc_vehicle_camera_connecting">Connecting to ESP32-CAM…</string>
-    <string name="rc_vehicle_camera_unavailable">No camera stream. Join Wi‑Fi SSID TeleCon-RC-CAM-Starter or TeleCon-RC-CAM (password telecon1234).\nThen open http://192.168.4.1/stream</string>
+    <string name="rc_vehicle_link_missing_camera">Camera: join Wi‑Fi TeleCon-RC-CAM-Starter or TeleCon-RC-CAM (password telecon1234), then http://192.168.4.1/stream</string>
+    <string name="rc_vehicle_link_missing_control_wifi">Control: stay on TeleCon-RC-CAM-Starter or TeleCon-RC-CAM and tap Connect control (TCP 192.168.4.1:3333).</string>
+    <string name="rc_vehicle_link_missing_control_bluetooth">Control: connect Bluetooth to the DevKit.</string>
     <string name="rc_vehicle_camera_warning_icon">Camera help</string>
     <string name="rc_vehicle_camera_warning_tap">Tap</string>
     <string name="rc_vehicle_camera_warning_minimize">Hide camera help</string>
-    <string name="rc_vehicle_camera_connect_bluetooth">Connect Bluetooth</string>
-    <string name="rc_vehicle_camera_connect_wifi">Connect Wi‑Fi</string>
+    <string name="rc_vehicle_camera_connect_bluetooth">Connect control (Bluetooth)</string>
+    <string name="rc_vehicle_control_connect_wifi">Connect control (Wi‑Fi)</string>
+    <string name="rc_vehicle_camera_connect_wifi">Connect camera Wi‑Fi</string>
     <string name="rc_vehicle_camera_open_wifi">Wi‑Fi settings</string>
     <string name="rc_vehicle_camera_connect_stream">Connect stream</string>
     <string name="rc_vehicle_camera_overlay_wifi_section_title">Optional SoftAP camera</string>
@@ -312,15 +321,37 @@
     <string name="rc_vehicle_plot_hide_legend">Hide channel names</string>
     <string name="rc_vehicle_plot_show_legend">Show channel names</string>
     <string name="rc_vehicle_plot_settings_title">Plot channels</string>
-    <string name="rc_vehicle_plot_settings_body">Hold the graph for 2 seconds to open these settings. Configure each of the four traces.</string>
+    <string name="rc_vehicle_plot_settings_body">Hold the Plot tab for 2 seconds to open these settings. Configure each of the four traces.</string>
     <string name="rc_vehicle_plot_settings_channel_section">Trace</string>
     <string name="rc_vehicle_plot_settings_channel">Ch %1$d</string>
     <string name="rc_vehicle_plot_settings_source">Source</string>
     <string name="rc_vehicle_plot_settings_name">Name</string>
     <string name="rc_vehicle_plot_settings_color">Color</string>
     <string name="rc_vehicle_plot_settings_style">Line style</string>
+    <string name="rc_vehicle_plot_settings_y_scale">Y scale</string>
+    <string name="rc_vehicle_plot_settings_y_min">Y min</string>
+    <string name="rc_vehicle_plot_settings_y_max">Y max</string>
+    <string name="rc_vehicle_plot_settings_y_scale_sides_hint">Ch 1 and 2 scale on the left, Ch 3 and 4 on the right.</string>
     <string name="rc_vehicle_plot_settings_visible">Visible</string>
     <string name="rc_vehicle_plot_style_dashed">Dashed</string>
+    <string name="rc_vehicle_batt_settings_title">Battery plot</string>
+    <string name="rc_vehicle_batt_settings_body">Choose the analog source and how the battery trace is drawn.</string>
+    <string name="rc_vehicle_temp_settings_title">Temperature plot</string>
+    <string name="rc_vehicle_temp_settings_body">Choose the analog source and how the temperature trace is drawn.</string>
+    <string name="rc_vehicle_stick_settings_title">Stick plot</string>
+    <string name="rc_vehicle_stick_settings_body">Style each stick point. Values appear beside the marker as (x,y).</string>
+    <string name="rc_vehicle_stick_channel_none_hint">Pick CH1–CH8 per axis. None keeps the joystick.</string>
+    <string name="rc_vehicle_scope_fill">Fill under the line</string>
+    <string name="rc_vehicle_stick_show_grid">Show grid</string>
+    <string name="rc_vehicle_stick_show_axes">Show axes</string>
+    <string name="rc_vehicle_stick_thick_trail">Thick trail</string>
+    <string name="rc_vehicle_stick_point_left">Left</string>
+    <string name="rc_vehicle_stick_point_right">Right</string>
+    <string name="rc_vehicle_stick_point_section">Point</string>
+    <string name="rc_vehicle_stick_show_value">Show (x,y)</string>
+    <string name="rc_vehicle_stick_show_trail">Show trail</string>
+    <string name="rc_vehicle_stick_large_point">Large marker</string>
+    <string name="rc_vehicle_plot_tab_settings">%1$s settings. Hold 2 seconds to open.</string>
     <string name="rc_vehicle_plot_stats_peak">Peak</string>
     <string name="rc_vehicle_plot_stats_avg">Average</string>
     <string name="rc_vehicle_plot_stats_distance">Distance</string>
@@ -358,6 +389,7 @@
     <string name="rc_vehicle_stick_mode_spring">Spring</string>
     <string name="rc_vehicle_stick_mode_toggle">Stick mode %1$s. Tap to switch spring or hold.</string>
     <string name="rc_vehicle_stick_options_title">STICK</string>
+    <string name="rc_vehicle_stick_use_channel">Use channel</string>
     <string name="rc_vehicle_steer_trim_enable">Steer center trim</string>
     <string name="rc_vehicle_steer_trim_left">Nudge steering left</string>
     <string name="rc_vehicle_steer_trim_right">Nudge steering right</string>
@@ -477,20 +509,8 @@
     <string name="bluetooth_ble_link_failed_title">BLE link failed</string>
     <string name="bluetooth_ble_link_failed_body">The app is set to BLE Binary, but the BLE (Nordic UART) link could not open.\n\nThis usually means the ESP32 is running Classic-only firmware, or BLE is not ready.\n\nOpen Settings and choose Classic Simple or Classic Binary to match a Classic sketch, or flash the BLE Control Panel firmware and keep BLE Binary selected.</string>
     <string name="bluetooth_wifi_softap_link_failed_title">Wi‑Fi SoftAP unreachable</string>
-    <string name="bluetooth_wifi_softap_link_failed_body">Could not open TCP control on 192.168.4.1:3333.
-
-Approve the SoftAP Wi-Fi panel when TeleCon asks (SSID in Settings: Default TeleCon-RC-CAM-Starter; Advanced TeleCon-RC-CAM; password telecon1234), or join that SoftAP in system Wi-Fi settings, then tap Connect again.
-
-No internet on SoftAP is normal — Android may warn about it; that is not an app failure. Keep TeleCon in the foreground. On Xiaomi/POCO, turn off mobile data while using SoftAP if the phone still disconnects, and disable battery restriction for TeleCon if the link drops when the screen dims.
-
-Disable VPN if SoftAP routes fail. Flash the matching CAM SoftAP firmware (Simple starter or Binary) if the AP or port is missing.</string>
-    <string name="bluetooth_wifi_devkit_softap_link_failed_body">Could not open TCP control on 192.168.4.1:3333.
-
-Approve the SoftAP Wi-Fi panel when TeleCon asks (Control Panel Simple: ESP32-TC-RC-WiFi-Simple / telecon1234; Binary: ESP32-TC-RC-WiFi-Binary), or join that SoftAP in system Wi-Fi settings, then tap Connect again.
-
-No internet on SoftAP is normal — Android may warn about it; that is not an app failure. Keep TeleCon in the foreground. On Xiaomi/POCO, turn off mobile data while using SoftAP if the phone still disconnects, and disable battery restriction for TeleCon if the link drops when the screen dims.
-
-Disable VPN if SoftAP routes fail.</string>
+    <string name="bluetooth_wifi_softap_link_failed_body">Could not reach SoftAP control (192.168.4.1:3333).\n\nJoin TeleCon-RC-CAM-Starter (Default) or TeleCon-RC-CAM (Advanced), password telecon1234. Approve the Wi‑Fi panel or join in system settings, then tap Connect.\n\nNo internet on SoftAP is normal. Keep TeleCon in front, turn off VPN, and on Xiaomi/POCO turn off mobile data if the link drops.</string>
+    <string name="bluetooth_wifi_devkit_softap_link_failed_body">Could not reach SoftAP control (192.168.4.1:3333).\n\nJoin ESP32-TC-RC-WiFi-Simple (Default) or ESP32-TC-RC-WiFi-Binary (Advanced), password telecon1234. Then tap Connect.\n\nNo internet on SoftAP is normal. Keep TeleCon in front, turn off VPN, and on Xiaomi/POCO turn off mobile data if the link drops.</string>
     <string name="bluetooth_stale_firmware_bond_title">Previous firmware still paired</string>
     <string name="bluetooth_stale_firmware_bond_body">This device was previously paired with a different firmware. Please forget it in Android Bluetooth Settings and scan again.</string>
     <string name="bluetooth_paired_devices">Paired Devices</string>
@@ -621,6 +641,8 @@ Disable VPN if SoftAP routes fail.</string>
     <string name="rc_joystick_mode_horizontal_hold">Horizontal hold</string>
     <string name="rc_joystick_axis_vertical">Vertical</string>
     <string name="rc_joystick_axis_horizontal">Horizontal</string>
+    <string name="rc_joystick_range_circle">Circle</string>
+    <string name="rc_joystick_range_square">Square</string>
     <string name="rc_joystick_position_center">Center</string>
     <string name="rc_joystick_position_up">Up</string>
     <string name="rc_joystick_position_down">Down</string>

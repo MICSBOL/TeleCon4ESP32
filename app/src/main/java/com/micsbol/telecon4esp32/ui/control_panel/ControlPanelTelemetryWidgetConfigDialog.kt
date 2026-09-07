@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.ui.rc_settings.labelRes
@@ -242,8 +243,11 @@ fun StickOptionsMenu(
     selectedMode: JoystickMode,
     onModeSelected: (JoystickMode) -> Unit,
     onDismiss: () -> Unit,
+    selectedRangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
+    onRangeShapeSelected: (JoystickRangeShape) -> Unit = {},
 ) {
     var draft by remember(expanded) { mutableStateOf(selectedMode) }
+    var rangeDraft by remember(expanded) { mutableStateOf(selectedRangeShape) }
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
@@ -291,6 +295,23 @@ fun StickOptionsMenu(
                     val next = draft.togglingAxis(JoystickAxis.HORIZONTAL)
                     draft = next
                     onModeSelected(next)
+                },
+            )
+            HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+            TelemetryOptionsMenuItem(
+                label = stringResource(R.string.rc_joystick_range_circle),
+                selected = rangeDraft == JoystickRangeShape.CIRCLE,
+                onClick = {
+                    rangeDraft = JoystickRangeShape.CIRCLE
+                    onRangeShapeSelected(JoystickRangeShape.CIRCLE)
+                },
+            )
+            TelemetryOptionsMenuItem(
+                label = stringResource(R.string.rc_joystick_range_square),
+                selected = rangeDraft == JoystickRangeShape.SQUARE,
+                onClick = {
+                    rangeDraft = JoystickRangeShape.SQUARE
+                    onRangeShapeSelected(JoystickRangeShape.SQUARE)
                 },
             )
             HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))

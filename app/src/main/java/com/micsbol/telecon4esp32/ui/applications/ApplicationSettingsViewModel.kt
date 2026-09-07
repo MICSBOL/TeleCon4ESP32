@@ -7,8 +7,6 @@ import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
-import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
-import com.micsbol.telecon4esp32.domain.bluetooth.linkFamily
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
@@ -18,17 +16,14 @@ import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Entitlement
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.SettingsUserType
-import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
 import com.micsbol.telecon4esp32.domain.model.canUseConnectionMode
 import com.micsbol.telecon4esp32.domain.model.coerceConnectionModeForBoard
 import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
 import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
 import com.micsbol.telecon4esp32.domain.model.originalDefaultConnectionMode
-import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
-import com.micsbol.telecon4esp32.domain.model.settingsUserType
-import com.micsbol.telecon4esp32.domain.model.toSelection
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
+import com.micsbol.telecon4esp32.domain.use_case.ApplyCameraHardwareRoleUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetAdvancedSettingsRevealedUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationConnectionModeUseCase
@@ -69,6 +64,7 @@ class ApplicationSettingsViewModel @Inject constructor(
     private val saveApplicationBoard: SaveApplicationBoardUseCase,
     getUseSoftApCamera: GetUseSoftApCameraUseCase,
     private val saveUseSoftApCamera: SaveUseSoftApCameraUseCase,
+    private val applyCameraHardwareRole: ApplyCameraHardwareRoleUseCase,
     getAdvancedSettingsRevealed: GetAdvancedSettingsRevealedUseCase,
     private val saveAdvancedSettingsRevealed: SaveAdvancedSettingsRevealedUseCase,
     getControlPanelCenterMode: GetControlPanelCenterModeUseCase,
@@ -313,61 +309,8 @@ class ApplicationSettingsViewModel @Inject constructor(
     }
 
     fun onCameraHardwareRoleSelected(role: CameraHardwareRole) {
-        val selection = role.toSelection()
         viewModelScope.launch {
-            saveApplicationBoard(applicationId, selection.board)
-            saveUseSoftApCamera(applicationId, selection.useSoftApCamera)
-            val access = entitlement.value
-            val coinWallet = wallet.value
-            val coinEntry = requiresCoinEntry(access)
-            val current = storedConnectionMode.value
-                ?: access.effectiveConnectionMode(
-                    applicationId = applicationId,
-                    transport = transportType.value,
-                    storedProtocol = storedProtocolMode.value,
-                    board = selection.board,
-                    wallet = coinWallet,
-                    requiresCoinEntry = coinEntry,
-                )
-            val family = when {
-                selection.bluetoothControlOnly -> ConnectionLinkFamily.BLUETOOTH
-                role == CameraHardwareRole.ONE_CAM -> ConnectionLinkFamily.WIFI
-                else -> current.linkFamily
-            }
-            val preferred = applicationId.preferredConnectionMode(
-                board = selection.board,
-                family = family,
-                userType = current.settingsUserType,
-                canUseAdvanced = access.canUseAdvancedProtocol(
-                    applicationId,
-                    coinWallet,
-                    coinEntry,
-                ),
-            )
-            val coerced = access.coerceConnectionModeForBoard(
-                applicationId = applicationId,
-                board = selection.board,
-                mode = preferred ?: current,
-                wallet = coinWallet,
-                requiresCoinEntry = coinEntry,
-            )
-            val next = if (selection.bluetoothControlOnly && coerced.isWifiLink) {
-                applicationId.preferredConnectionMode(
-                    board = selection.board,
-                    family = ConnectionLinkFamily.BLUETOOTH,
-                    userType = current.settingsUserType,
-                    canUseAdvanced = access.canUseAdvancedProtocol(
-                        applicationId,
-                        coinWallet,
-                        coinEntry,
-                    ),
-                ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE
-            } else {
-                coerced
-            }
-            if (next != current || storedConnectionMode.value == null) {
-                saveApplicationConnectionMode(applicationId, next)
-            }
+            applyCameraHardwareRole(applicationId, role)
         }
     }
 

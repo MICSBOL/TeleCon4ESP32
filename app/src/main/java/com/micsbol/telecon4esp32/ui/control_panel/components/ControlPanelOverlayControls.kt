@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -152,6 +153,10 @@ fun ControlPanelCenterModeButton(
     val cornerPx = size * 0.26f
     val modeName = stringResource(mode.titleRes)
     val accessibilityDescription = when {
+        mode == ControlPanelCenterMode.CAMERA && unlocked && selected ->
+            stringResource(R.string.control_panel_center_camera_disable_content_description)
+        mode == ControlPanelCenterMode.CAMERA && unlocked ->
+            stringResource(R.string.control_panel_center_camera_enable_content_description)
         unlocked && selected -> stringResource(
             R.string.control_panel_center_mode_button_content_description,
             modeName,
@@ -164,6 +169,8 @@ fun ControlPanelCenterModeButton(
             stringResource(R.string.control_panel_center_camera_locked_content_description)
         mode == ControlPanelCenterMode.RADAR ->
             stringResource(R.string.control_panel_center_radar_locked_content_description)
+        mode == ControlPanelCenterMode.STICK ->
+            stringResource(R.string.control_panel_center_stick_locked_content_description)
         else -> stringResource(R.string.control_panel_center_extras_locked_content_description)
     }
 
@@ -226,7 +233,10 @@ fun ControlPanelCenterModeButton(
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = mode.icon,
+            imageVector = when {
+                mode == ControlPanelCenterMode.CAMERA && !selected -> Icons.Filled.VideocamOff
+                else -> mode.icon
+            },
             contentDescription = null,
             tint = if (unlocked) brandPrimary() else ProGold,
             modifier = Modifier.size(size * 0.5f),

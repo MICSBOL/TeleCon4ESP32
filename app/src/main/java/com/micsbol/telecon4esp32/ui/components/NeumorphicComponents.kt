@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
@@ -780,39 +779,21 @@ fun NeoDialog(
                         onClick = {},
                     )
 
-                val dialogBody: @Composable ColumnScope.() -> Unit = {
-                    title?.invoke()
-                    subtitle?.invoke()
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        content = content,
-                    )
-                    if (!wrapContentHeight) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    actions()
-                }
-
-                Row(
-                    modifier = cardModifier
-                        .then(
-                            if (wrapContentHeight) {
-                                Modifier
-                                    .wrapContentHeight(unbounded = false, align = Alignment.Top)
-                                    .heightIn(max = maxDialogHeight)
-                            } else {
-                                Modifier.heightIn(max = maxDialogHeight)
-                            },
-                        )
-                        .height(IntrinsicSize.Min),
+                Box(
+                    modifier = cardModifier.then(
+                        if (wrapContentHeight) {
+                            Modifier
+                                .wrapContentHeight(unbounded = false, align = Alignment.Top)
+                                .heightIn(max = maxDialogHeight)
+                        } else {
+                            Modifier.heightIn(max = maxDialogHeight)
+                        },
+                    ),
                 ) {
                     if (hud) {
                         Box(
                             modifier = Modifier
+                                .align(Alignment.CenterStart)
                                 .width(4.dp)
                                 .fillMaxHeight()
                                 .background(
@@ -827,11 +808,28 @@ fun NeoDialog(
                     }
                     Column(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                            .fillMaxWidth()
+                            .heightIn(max = maxDialogHeight)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .then(if (hud) Modifier.padding(start = 4.dp) else Modifier),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                        content = dialogBody,
-                    )
+                    ) {
+                        title?.invoke()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            subtitle?.invoke()
+                            content()
+                        }
+                        if (!wrapContentHeight) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        actions()
+                    }
                 }
             }
         }

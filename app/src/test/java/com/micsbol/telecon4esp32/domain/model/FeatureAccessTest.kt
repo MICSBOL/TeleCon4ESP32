@@ -167,6 +167,43 @@ class FeatureAccessTest {
                 requiresCoinEntry = true,
             ),
         )
+        assertFalse(
+            Entitlement.Free.canUseControlPanelStick(
+                wallet = wallet,
+                requiresCoinEntry = true,
+            ),
+        )
+    }
+
+    @Test
+    fun stickGrant_doesNotUnlockCameraOrRadar() {
+        val wallet = CoinWalletState(
+            grants = mapOf(
+                PremiumFeature.CONTROL_PANEL_STICK to FeatureGrant(
+                    feature = PremiumFeature.CONTROL_PANEL_STICK,
+                    option = CoinUnlockOption.HOURS_24,
+                    expiresAtEpochMs = 4_000_000_000_000L,
+                ),
+            ),
+        )
+        assertTrue(
+            Entitlement.Free.canUseControlPanelStick(
+                wallet = wallet,
+                requiresCoinEntry = true,
+            ),
+        )
+        assertFalse(
+            Entitlement.Free.canUseControlPanelCenterExtras(
+                wallet = wallet,
+                requiresCoinEntry = true,
+            ),
+        )
+        assertFalse(
+            Entitlement.Free.canUseControlPanelRadar(
+                wallet = wallet,
+                requiresCoinEntry = true,
+            ),
+        )
     }
 
     @Test
@@ -227,6 +264,9 @@ class FeatureAccessTest {
         )
         assertFalse(
             Entitlement.Free.canUseControlPanelRadar(requiresCoinEntry = true),
+        )
+        assertFalse(
+            Entitlement.Free.canUseControlPanelStick(requiresCoinEntry = true),
         )
         assertFalse(
             Entitlement.Free.canUseControlPanelSessionCsv(requiresCoinEntry = true),

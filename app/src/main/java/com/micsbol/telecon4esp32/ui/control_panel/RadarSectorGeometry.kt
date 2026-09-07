@@ -30,11 +30,42 @@ data class RadarDisplaySettings(
     val keepLastPoints: Boolean = false,
     val rangeRingCount: Int = 4,
 ) {
+    fun encode(): String = listOf(
+        scanSpan.name,
+        beamWidth.name,
+        angleSeriesIndex.toString(),
+        rangeSeriesIndex.toString(),
+        if (showGrid) "1" else "0",
+        if (showSweepTrail) "1" else "0",
+        if (showHistory) "1" else "0",
+        if (keepLastPoints) "1" else "0",
+        rangeRingCount.toString(),
+    ).joinToString(",")
+
     companion object {
         const val MIN_RANGE_RINGS = 2
         const val MAX_RANGE_RINGS = 6
         const val HISTORY_SAMPLE_COUNT = 8
         val SERIES_COUNT: Int get() = com.micsbol.telecon4esp32.domain.model.TelemetryChannel.U8_SOURCES.size
+
+        fun decode(encoded: String?): RadarDisplaySettings {
+            if (encoded.isNullOrBlank()) return RadarDisplaySettings()
+            val parts = encoded.split(',')
+            val defaults = RadarDisplaySettings()
+            return RadarDisplaySettings(
+                scanSpan = RadarScanSpan.entries.find { it.name == parts.getOrNull(0) }
+                    ?: RadarScanSpan.DEGREES_180,
+                beamWidth = RadarBeamWidth.entries.find { it.name == parts.getOrNull(1) }
+                    ?: RadarBeamWidth.MEDIUM,
+                angleSeriesIndex = parts.getOrNull(2)?.toIntOrNull() ?: 0,
+                rangeSeriesIndex = parts.getOrNull(3)?.toIntOrNull() ?: 1,
+                showGrid = parts.getOrNull(4) != "0",
+                showSweepTrail = parts.getOrNull(5) != "0",
+                showHistory = parts.getOrNull(6) != "0",
+                keepLastPoints = parts.getOrNull(7) == "1",
+                rangeRingCount = parts.getOrNull(8)?.toIntOrNull() ?: defaults.rangeRingCount,
+            )
+        }
     }
 }
 

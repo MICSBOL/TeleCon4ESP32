@@ -18,9 +18,11 @@ import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode.Companion.toStringRepresentation
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
+import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,6 +34,8 @@ import javax.inject.Singleton
 private object PreferencesKeys {
     val LEFT_STICK_MODE = stringPreferencesKey("left_stick_mode")
     val RIGHT_STICK_MODE = stringPreferencesKey("right_stick_mode")
+    val LEFT_STICK_RANGE_SHAPE = stringPreferencesKey("left_stick_range_shape")
+    val RIGHT_STICK_RANGE_SHAPE = stringPreferencesKey("right_stick_range_shape")
     val SWITCH_STATES = stringPreferencesKey("switch_states")
     val LEFT_KNOB_VALUE = floatPreferencesKey("left_knob_value")
     val RIGHT_KNOB_VALUE = floatPreferencesKey("right_knob_value")
@@ -69,6 +73,8 @@ private object PreferencesKeys {
     val RC_VP_STEERING_HOLD = booleanPreferencesKey("rc_vehicle_pro_steering_hold")
     val RC_VP_LEFT_STICK_MODE = stringPreferencesKey("rc_vehicle_pro_left_stick_mode")
     val RC_VP_RIGHT_STICK_MODE = stringPreferencesKey("rc_vehicle_pro_right_stick_mode")
+    val RC_VP_LEFT_STICK_RANGE_SHAPE = stringPreferencesKey("rc_vehicle_pro_left_stick_range_shape")
+    val RC_VP_RIGHT_STICK_RANGE_SHAPE = stringPreferencesKey("rc_vehicle_pro_right_stick_range_shape")
     val RC_VP_STEER_TRIM = floatPreferencesKey("rc_vehicle_pro_steer_trim")
     val RC_VP_LEFT_TRIM_X = floatPreferencesKey("rc_vehicle_pro_left_trim_x")
     val RC_VP_LEFT_TRIM_Y = floatPreferencesKey("rc_vehicle_pro_left_trim_y")
@@ -83,6 +89,10 @@ private object PreferencesKeys {
     val RC_VP_DEADZONE = floatPreferencesKey("rc_vehicle_pro_deadzone")
     val RC_VP_STICK_GROUP_SCALE = floatPreferencesKey("rc_vehicle_pro_stick_group_scale")
     val RC_VP_CAMERA_PAN_SCALE = floatPreferencesKey("rc_vehicle_pro_camera_pan_scale")
+    val RC_VP_LEFT_STICK_CHANNELS = stringPreferencesKey("rc_vehicle_pro_left_stick_channels")
+    val RC_VP_RIGHT_STICK_CHANNELS = stringPreferencesKey("rc_vehicle_pro_right_stick_channels")
+    val RC_VP_HUD_PLOT_CHROME = stringPreferencesKey("rc_vehicle_pro_hud_plot_chrome")
+    val CONTROL_PANEL_PLOT_DISPLAY = stringPreferencesKey("control_panel_plot_display")
 }
 
 private fun protocolModeKey(applicationId: ApplicationId) =
@@ -131,6 +141,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         UserSettings(
             leftStickMode = JoystickMode.fromString(leftModeString),
             rightStickMode = JoystickMode.fromString(rightModeString),
+            leftStickRangeShape = JoystickRangeShape.fromStored(
+                preferences[PreferencesKeys.LEFT_STICK_RANGE_SHAPE],
+            ),
+            rightStickRangeShape = JoystickRangeShape.fromStored(
+                preferences[PreferencesKeys.RIGHT_STICK_RANGE_SHAPE],
+            ),
             switchInitialStates = switchStatesMap,
             leftKnobInitialValue = leftKnobValue,
             rightKnobInitialValue = rightKnobValue,
@@ -368,6 +384,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         }
     }
 
+    override suspend fun saveLeftStickRangeShape(shape: JoystickRangeShape) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LEFT_STICK_RANGE_SHAPE] = shape.name
+        }
+    }
+
+    override suspend fun saveRightStickRangeShape(shape: JoystickRangeShape) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RIGHT_STICK_RANGE_SHAPE] = shape.name
+        }
+    }
+
     override suspend fun saveSwitchState(index: Int, isOn: Boolean) {
         context.dataStore.edit { preferences ->
             val currentStateString = preferences[PreferencesKeys.SWITCH_STATES]
@@ -508,6 +536,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                     stored = preferences[PreferencesKeys.RC_VP_RIGHT_STICK_MODE],
                     steeringHold = preferences[PreferencesKeys.RC_VP_STEERING_HOLD],
                 ),
+                leftStickRangeShape = JoystickRangeShape.fromStored(
+                    preferences[PreferencesKeys.RC_VP_LEFT_STICK_RANGE_SHAPE],
+                ),
+                rightStickRangeShape = JoystickRangeShape.fromStored(
+                    preferences[PreferencesKeys.RC_VP_RIGHT_STICK_RANGE_SHAPE],
+                ),
                 leftTrimX = preferences[PreferencesKeys.RC_VP_LEFT_TRIM_X] ?: 0f,
                 leftTrimY = preferences[PreferencesKeys.RC_VP_LEFT_TRIM_Y] ?: 0f,
                 rightTrimX = preferences[PreferencesKeys.RC_VP_RIGHT_TRIM_X]
@@ -530,6 +564,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                     ?: defaults.stickGroupScale).coerceIn(0.5f, 8f),
                 cameraPanScale = (preferences[PreferencesKeys.RC_VP_CAMERA_PAN_SCALE]
                     ?: defaults.cameraPanScale).coerceIn(0.5f, 8f),
+                leftStickChannels = StickChannelLink.decode(
+                    preferences[PreferencesKeys.RC_VP_LEFT_STICK_CHANNELS],
+                ),
+                rightStickChannels = StickChannelLink.decode(
+                    preferences[PreferencesKeys.RC_VP_RIGHT_STICK_CHANNELS],
+                ),
             )
         }
 
@@ -539,6 +579,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 settings.leftStickMode.toStringRepresentation()
             preferences[PreferencesKeys.RC_VP_RIGHT_STICK_MODE] =
                 settings.rightStickMode.toStringRepresentation()
+            preferences[PreferencesKeys.RC_VP_LEFT_STICK_RANGE_SHAPE] =
+                settings.leftStickRangeShape.name
+            preferences[PreferencesKeys.RC_VP_RIGHT_STICK_RANGE_SHAPE] =
+                settings.rightStickRangeShape.name
             // Keep hold flags in sync so older builds still restore spring vs hold.
             preferences[PreferencesKeys.RC_VP_THROTTLE_HOLD] = !settings.leftStickMode.isSpring
             preferences[PreferencesKeys.RC_VP_STEERING_HOLD] = !settings.rightStickMode.isSpring
@@ -559,6 +603,32 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 settings.stickGroupScale.coerceIn(0.5f, 8f)
             preferences[PreferencesKeys.RC_VP_CAMERA_PAN_SCALE] =
                 settings.cameraPanScale.coerceIn(0.5f, 8f)
+            preferences[PreferencesKeys.RC_VP_LEFT_STICK_CHANNELS] =
+                settings.leftStickChannels.encode()
+            preferences[PreferencesKeys.RC_VP_RIGHT_STICK_CHANNELS] =
+                settings.rightStickChannels.encode()
+        }
+    }
+
+    override fun rcVehicleProHudPlotChromeFlow(): Flow<String> =
+        context.dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.RC_VP_HUD_PLOT_CHROME].orEmpty()
+        }
+
+    override suspend fun saveRcVehicleProHudPlotChrome(encoded: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.RC_VP_HUD_PLOT_CHROME] = encoded
+        }
+    }
+
+    override fun controlPanelPlotDisplayFlow(): Flow<String> =
+        context.dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.CONTROL_PANEL_PLOT_DISPLAY].orEmpty()
+        }
+
+    override suspend fun saveControlPanelPlotDisplay(encoded: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CONTROL_PANEL_PLOT_DISPLAY] = encoded
         }
     }
 }

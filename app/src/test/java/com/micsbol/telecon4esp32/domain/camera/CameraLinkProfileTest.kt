@@ -242,6 +242,14 @@ class CameraLinkProfileTest {
 
     @Test
     fun `camera join warning follows kit and control link`() {
+        assertEquals(
+            CameraJoinMissingLinks(camera = false, control = false),
+            cameraJoinMissingLinks(
+                CameraLinkProfile.CONTROL_ONLY,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
         assertFalse(
             shouldShowCameraJoinWarning(
                 CameraLinkProfile.CONTROL_ONLY,
@@ -249,6 +257,14 @@ class CameraLinkProfileTest {
                 isControlConnected = false,
             ),
         )
+        assertEquals(
+            CameraJoinMissingLinks(camera = true, control = true),
+            cameraJoinMissingLinks(
+                CameraLinkProfile.WIFI_SOFTAP,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
         assertTrue(
             shouldShowCameraJoinWarning(
                 CameraLinkProfile.WIFI_SOFTAP,
@@ -256,15 +272,24 @@ class CameraLinkProfileTest {
                 isControlConnected = false,
             ),
         )
-        assertFalse(
+        assertEquals(
+            CameraJoinMissingLinks(camera = true, control = false),
+            cameraJoinMissingLinks(
+                CameraLinkProfile.WIFI_SOFTAP,
+                hasLiveFrame = false,
+                isControlConnected = true,
+            ),
+        )
+        assertTrue(
             shouldShowCameraJoinWarning(
                 CameraLinkProfile.WIFI_SOFTAP,
                 hasLiveFrame = false,
                 isControlConnected = true,
             ),
         )
-        assertFalse(
-            shouldShowCameraJoinWarning(
+        assertEquals(
+            CameraJoinMissingLinks(camera = false, control = true),
+            cameraJoinMissingLinks(
                 CameraLinkProfile.WIFI_SOFTAP,
                 hasLiveFrame = true,
                 isControlConnected = false,
@@ -272,6 +297,14 @@ class CameraLinkProfileTest {
         )
         assertTrue(
             shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_SOFTAP,
+                hasLiveFrame = true,
+                isControlConnected = false,
+            ),
+        )
+        assertEquals(
+            CameraJoinMissingLinks(camera = true, control = false),
+            cameraJoinMissingLinks(
                 CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = false,
                 isControlConnected = true,
@@ -281,6 +314,36 @@ class CameraLinkProfileTest {
             shouldShowCameraJoinWarning(
                 CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = false,
+                isControlConnected = true,
+            ),
+        )
+        assertEquals(
+            CameraJoinMissingLinks(camera = true, control = true),
+            cameraJoinMissingLinks(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
+        assertTrue(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = false,
+                isControlConnected = false,
+            ),
+        )
+        assertEquals(
+            CameraJoinMissingLinks(camera = false, control = true),
+            cameraJoinMissingLinks(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = true,
+                isControlConnected = false,
+            ),
+        )
+        assertTrue(
+            shouldShowCameraJoinWarning(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
+                hasLiveFrame = true,
                 isControlConnected = false,
             ),
         )
@@ -324,6 +387,24 @@ class CameraLinkProfileTest {
         assertFalse(
             cameraJoinWarningShowsBluetoothConnect(
                 CameraLinkProfile.WIFI_SOFTAP,
+                isControlConnected = false,
+            ),
+        )
+        assertTrue(
+            cameraJoinWarningShowsWifiControlConnect(
+                CameraLinkProfile.WIFI_SOFTAP,
+                isControlConnected = false,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningShowsWifiControlConnect(
+                CameraLinkProfile.WIFI_SOFTAP,
+                isControlConnected = true,
+            ),
+        )
+        assertFalse(
+            cameraJoinWarningShowsWifiControlConnect(
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 isControlConnected = false,
             ),
         )

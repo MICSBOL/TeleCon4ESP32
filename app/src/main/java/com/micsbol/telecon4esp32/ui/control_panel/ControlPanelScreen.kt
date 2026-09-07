@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -81,6 +82,7 @@ import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelCenterExtras
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelRadar
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelSessionCsv
+import com.micsbol.telecon4esp32.domain.model.canUseControlPanelStick
 import com.micsbol.telecon4esp32.domain.model.isUnlocked
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothConnectionErrorDialog
@@ -93,6 +95,7 @@ import com.micsbol.telecon4esp32.ui.control_panel.components.AnalogIndicator
 import com.micsbol.telecon4esp32.ui.control_panel.components.BatteryStatus
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.ui.ads.InterstitialTrigger
 import com.micsbol.telecon4esp32.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
@@ -233,6 +236,12 @@ fun ControlPanelScreen(
                     requiresCoinEntry = requiresCoinEntry,
                 )
             }
+            val stickUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
+                entitlement.canUseControlPanelStick(
+                    wallet = wallet,
+                    requiresCoinEntry = requiresCoinEntry,
+                )
+            }
             val sessionCsvUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
                 entitlement.canUseControlPanelSessionCsv(
                     wallet = wallet,
@@ -240,10 +249,16 @@ fun ControlPanelScreen(
                 )
             }
             val isCenterModeUnlocked: (ControlPanelCenterMode) -> Boolean =
-                remember(cameraUnlocked, radarUnlocked) {
-                    { mode -> mode.isUnlocked(cameraUnlocked, radarUnlocked) }
+                remember(cameraUnlocked, radarUnlocked, stickUnlocked) {
+                    { mode ->
+                        mode.isUnlocked(
+                            cameraUnlocked = cameraUnlocked,
+                            radarUnlocked = radarUnlocked,
+                            stickUnlocked = stickUnlocked,
+                        )
+                    }
                 }
-            LaunchedEffect(cameraUnlocked, radarUnlocked, centerMode) {
+            LaunchedEffect(cameraUnlocked, radarUnlocked, stickUnlocked, centerMode) {
                 if (!isCenterModeUnlocked(centerMode)) {
                     onCenterModeSelected(ControlPanelCenterMode.PLOTS)
                 }
@@ -268,6 +283,8 @@ fun ControlPanelScreen(
                                 R.string.control_panel_center_camera_title
                             PremiumFeature.CONTROL_PANEL_RADAR ->
                                 R.string.control_panel_center_radar_title
+                            PremiumFeature.CONTROL_PANEL_STICK ->
+                                R.string.control_panel_center_stick_title
                             PremiumFeature.CONTROL_PANEL_SESSION_CSV ->
                                 R.string.control_panel_session_csv_unlock_title
                             else -> R.string.app_control_panel_title
@@ -580,6 +597,7 @@ fun ControlPanelScreen(
                             ControlPanelCenterPlotHost(
                                 bluetoothViewModel = bluetoothViewModel,
                                 telemetryState = actualTelemetryState,
+                                rcControlState = actualRcControlState,
                                 plotLabels = plotLabels,
                                 plotCalibrations = plotCalibrations,
                                 channelRouting = channelRouting,
@@ -622,6 +640,7 @@ fun ControlPanelScreen(
 private fun ControlPanelCenterPlotHost(
     bluetoothViewModel: BluetoothViewModel?,
     telemetryState: StateFlow<TelemetryState>,
+    rcControlState: StateFlow<RcControlState>,
     plotLabels: List<String>,
     plotCalibrations: List<PlotCalibration>,
     channelRouting: ChannelRouting,
@@ -632,6 +651,7 @@ private fun ControlPanelCenterPlotHost(
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
+    val rcState by rcControlState.collectAsState()
     // Center display is two panes × two traces = four plot widgets.
     // Analog bus on the wire is CH1…CH8 (`v0`…`v7` / CC 33 count up to 8).
     if (bluetoothViewModel != null) {
@@ -639,7 +659,7 @@ private fun ControlPanelCenterPlotHost(
         val displaySeries = remember(plotUi.series, plotLabels, settingsSyncGeneration) {
             fourPlotSeriesForDisplay(plotUi.series, plotLabels)
         }
-        ControlPanelCenterPlot(
+        PersistedControlPanelCenterPlot(
             series = displaySeries,
             radarSeries = plotUi.radarSeries,
             plotRevision = plotUi.revision,
@@ -654,6 +674,8 @@ private fun ControlPanelCenterPlotHost(
             centerMode = centerMode,
             centerModeUnlocked = centerModeUnlocked,
             onUnlockCenterMode = onUnlockCenterMode,
+            leftStickXy = rcState.leftStickPosition,
+            rightStickXy = rcState.rightStickPosition,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
@@ -685,6 +707,8 @@ private fun ControlPanelCenterPlotHost(
             centerMode = centerMode,
             centerModeUnlocked = centerModeUnlocked,
             onUnlockCenterMode = onUnlockCenterMode,
+            leftStickXy = rcState.leftStickPosition,
+            rightStickXy = rcState.rightStickPosition,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
@@ -718,8 +742,12 @@ private fun ControlPanelCenterPlot(
     centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
+    leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
+    displaySettings: ControlPanelPlotDisplaySettings? = null,
+    onDisplaySettingsChange: (ControlPanelPlotDisplaySettings) -> Unit = {},
 ) {
     CenterDisplay(
         modifier = modifier,
@@ -736,7 +764,54 @@ private fun ControlPanelCenterPlot(
         centerMode = centerMode,
         centerModeUnlocked = centerModeUnlocked,
         onUnlockCenterMode = onUnlockCenterMode,
+        leftStickXy = leftStickXy,
+        rightStickXy = rightStickXy,
         topStartOverlay = topStartOverlay,
+        displaySettings = displaySettings,
+        onDisplaySettingsChange = onDisplaySettingsChange,
+    )
+}
+
+@Composable
+private fun PersistedControlPanelCenterPlot(
+    series: List<PlotData>,
+    radarSeries: List<PlotData> = emptyList(),
+    plotRevision: Long,
+    plotCalibrations: List<PlotCalibration> = PlotCalibration.defaults(),
+    channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
+    onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
+    onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerModeUnlocked: Boolean = true,
+    onUnlockCenterMode: () -> Unit = {},
+    leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    modifier: Modifier = Modifier,
+    topStartOverlay: @Composable () -> Unit = {},
+) {
+    val displayVm: ControlPanelPlotDisplayViewModel = hiltViewModel()
+    val displaySettings by displayVm.settings.collectAsState()
+    ControlPanelCenterPlot(
+        series = series,
+        radarSeries = radarSeries,
+        plotRevision = plotRevision,
+        plotCalibrations = plotCalibrations,
+        channelRouting = channelRouting,
+        onRadarSourceChange = onRadarSourceChange,
+        onPlotLabelChange = onPlotLabelChange,
+        onPlotChannelChange = onPlotChannelChange,
+        onPlotCalibrationChange = onPlotCalibrationChange,
+        centerMode = centerMode,
+        centerModeUnlocked = centerModeUnlocked,
+        onUnlockCenterMode = onUnlockCenterMode,
+        leftStickXy = leftStickXy,
+        rightStickXy = rightStickXy,
+        modifier = modifier,
+        topStartOverlay = topStartOverlay,
+        displaySettings = displaySettings,
+        onDisplaySettingsChange = displayVm::save,
     )
 }
 
@@ -842,6 +917,13 @@ private fun ControlPanelLeftControllerConnected(
                     onBottomPress = onBottomPress,
                     onStickModeChange = { mode ->
                         bluetoothViewModel.saveStickMode(isRightStick = false, mode = mode)
+                    },
+                    rangeShape = settings.leftStickRangeShape,
+                    onRangeShapeChange = { shape ->
+                        bluetoothViewModel.saveStickRangeShape(
+                            isRightStick = false,
+                            shape = shape,
+                        )
                     },
                 )
             }
@@ -952,6 +1034,13 @@ private fun ControlPanelRightControllerConnected(
                     onStickModeChange = { mode ->
                         bluetoothViewModel.saveStickMode(isRightStick = true, mode = mode)
                     },
+                    rangeShape = settings.rightStickRangeShape,
+                    onRangeShapeChange = { shape ->
+                        bluetoothViewModel.saveStickRangeShape(
+                            isRightStick = true,
+                            shape = shape,
+                        )
+                    },
                 )
             }
         }
@@ -1038,6 +1127,8 @@ private fun ControlPanelLeftControlsLayer(
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
     onStickModeChange: (JoystickMode) -> Unit,
+    rangeShape: JoystickRangeShape,
+    onRangeShapeChange: (JoystickRangeShape) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         ControlPanelKnobSlot(
@@ -1068,6 +1159,8 @@ private fun ControlPanelLeftControlsLayer(
                 stickPosition = bluetoothViewModel.rcLeftStickPosition,
                 onMove = onMove,
                 onStickModeChange = onStickModeChange,
+                rangeShape = rangeShape,
+                onRangeShapeChange = onRangeShapeChange,
             )
             ControlPanelSwitchesSlot(
                 switchStates = bluetoothViewModel.rcLeftSwitchStates,
@@ -1158,6 +1251,8 @@ private fun ControlPanelRightControlsLayer(
     onTopPress: () -> Unit,
     onBottomPress: () -> Unit,
     onStickModeChange: (JoystickMode) -> Unit,
+    rangeShape: JoystickRangeShape,
+    onRangeShapeChange: (JoystickRangeShape) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         ControlPanelKnobSlot(
@@ -1188,6 +1283,8 @@ private fun ControlPanelRightControlsLayer(
                 stickPosition = bluetoothViewModel.rcRightStickPosition,
                 onMove = onMove,
                 onStickModeChange = onStickModeChange,
+                rangeShape = rangeShape,
+                onRangeShapeChange = onRangeShapeChange,
             )
             ControlPanelSwitchesSlot(
                 switchStates = bluetoothViewModel.rcRightSwitchStates,
@@ -1207,6 +1304,8 @@ private fun BoxScope.ControlPanelStickSlot(
     stickPosition: StateFlow<Pair<Float, Float>>,
     onMove: (Float, Float) -> Unit,
     onStickModeChange: (JoystickMode) -> Unit,
+    rangeShape: JoystickRangeShape,
+    onRangeShapeChange: (JoystickRangeShape) -> Unit,
 ) {
     val position by stickPosition.collectAsState()
     val joystickSize = metrics.joystickSize
@@ -1219,27 +1318,30 @@ private fun BoxScope.ControlPanelStickSlot(
         },
     )
     Box(modifier = Modifier.fillMaxSize()) {
-        ControllerSideJoystick(
-            modifier = Modifier
-                .offset(
-                    x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f),
-                    y = (-joystickSize * 0.1f),
-                )
-                .fillMaxSize(),
-            mode = mode,
-            stickPosition = position,
-            settingsSyncGeneration = settingsSyncGeneration,
-            onMove = onMove,
-            onDoubleTap = { menuExpanded = true },
-            contentDescription = stringResource(
-                R.string.control_panel_widget_config_content_description,
-                stickName,
-            ),
-        )
+            ControllerSideJoystick(
+                modifier = Modifier
+                    .offset(
+                        x = if (side == ButtonSide.RIGHT) (-joystickSize * -0.03f) else (joystickSize * -0.03f),
+                        y = (-joystickSize * 0.1f),
+                    )
+                    .fillMaxSize(),
+                mode = mode,
+                stickPosition = position,
+                settingsSyncGeneration = settingsSyncGeneration,
+                rangeShape = rangeShape,
+                onMove = onMove,
+                onDoubleTap = { menuExpanded = true },
+                contentDescription = stringResource(
+                    R.string.control_panel_widget_config_content_description,
+                    stickName,
+                ),
+            )
         StickOptionsMenu(
             expanded = menuExpanded,
             selectedMode = mode,
             onModeSelected = onStickModeChange,
+            selectedRangeShape = rangeShape,
+            onRangeShapeSelected = onRangeShapeChange,
             onDismiss = { menuExpanded = false },
         )
     }

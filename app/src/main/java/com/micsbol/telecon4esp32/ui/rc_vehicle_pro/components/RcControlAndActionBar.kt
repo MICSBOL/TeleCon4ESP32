@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -72,6 +73,8 @@ import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
+import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.brandSecondary
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProGlass
@@ -92,6 +95,10 @@ fun RcControlZone(
     onStopClick: (() -> Unit)? = null,
     onBuzzerClick: (() -> Unit)? = null,
     onStickModeChange: ((JoystickMode) -> Unit)? = null,
+    rangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
+    onRangeShapeChange: ((JoystickRangeShape) -> Unit)? = null,
+    channelLink: StickChannelLink = StickChannelLink.DEFAULT,
+    onChannelLinkChange: ((StickChannelLink) -> Unit)? = null,
     settingsSyncGeneration: Int = 0,
     stickConfigContentDescription: String? = null,
     trimMode: Boolean = false,
@@ -115,11 +122,6 @@ fun RcControlZone(
     var menuExpanded by remember { mutableStateOf(false) }
     val trimHint = trimHintForMode(mode, trimX, trimY)
     val trimIsLeftStick = accentEdge == RcGlassAccentEdge.START
-    val trimAlignment = if (trimIsLeftStick) {
-        Alignment.TopStart
-    } else {
-        Alignment.TopEnd
-    }
 
     val zoneCard: @Composable (Modifier) -> Unit = { cardModifier ->
     RcGlassCard(
@@ -141,7 +143,7 @@ fun RcControlZone(
                 .fillMaxWidth()
                 .then(
                     if (fillHeight) {
-                        Modifier.weight(1f)
+                        Modifier.weight(1f).fillMaxHeight()
                     } else {
                         Modifier.height(joystickSize)
                     },
@@ -149,11 +151,7 @@ fun RcControlZone(
         ) {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = if (accentEdge == RcGlassAccentEdge.END) {
-                    Alignment.CenterEnd
-                } else {
-                    Alignment.CenterStart
-                },
+                contentAlignment = Alignment.Center,
             ) {
                 val padSize = minOf(maxWidth, maxHeight)
                 RcTransparentJoystick(
@@ -173,26 +171,24 @@ fun RcControlZone(
                         selectedMode = mode,
                         onModeSelected = onStickModeChange,
                         onDismiss = { menuExpanded = false },
+                        selectedRangeShape = rangeShape,
+                        onRangeShapeSelected = { next -> onRangeShapeChange?.invoke(next) },
+                        channelLink = channelLink,
+                        onChannelLinkChange = { next -> onChannelLinkChange?.invoke(next) },
                     )
                 }
             }
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (trimIsLeftStick && showTrim && !trimMode) {
-                        RcStickTrimControls(
-                            axis = mode.axis,
-                            trimMode = false,
-                            onToggleMode = onTrimModeToggle,
-                            onNudge = onTrimNudge,
-                            onConfirm = onTrimConfirm,
-                        )
-                        if (showTitle) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
-                    }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(
+                        start = if (trimIsLeftStick && showTrim) 40.dp else 0.dp,
+                        end = if (!trimIsLeftStick && showTrim) 40.dp else 0.dp,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (trimIsLeftStick) {
                     if (showTitle) {
                         Text(
                             text = title,
@@ -205,21 +201,29 @@ fun RcControlZone(
                         )
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    if (!trimIsLeftStick && showTrim && !trimMode) {
-                        RcStickTrimControls(
-                            axis = mode.axis,
-                            trimMode = false,
-                            onToggleMode = onTrimModeToggle,
-                            onNudge = onTrimNudge,
-                            onConfirm = onTrimConfirm,
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (showTitle) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
                         )
                     }
                 }
-                if (showTrim && trimMode) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = trimAlignment,
-                    ) {
+            }
+            if (showTrim) {
+                val trimCorner = if (trimIsLeftStick) Alignment.TopStart else Alignment.TopEnd
+                Box(
+                    modifier = Modifier.align(trimCorner),
+                    contentAlignment = trimCorner,
+                ) {
+                    if (trimMode) {
                         Column(horizontalAlignment = if (trimIsLeftStick) Alignment.Start else Alignment.End) {
                             Text(
                                 text = trimHint,
@@ -236,43 +240,46 @@ fun RcControlZone(
                                 onConfirm = onTrimConfirm,
                             )
                         }
+                    } else {
+                        RcStickTrimControls(
+                            axis = mode.axis,
+                            trimMode = false,
+                            onToggleMode = onTrimModeToggle,
+                            onNudge = onTrimNudge,
+                            onConfirm = onTrimConfirm,
+                        )
                     }
                 }
-                if (resizeMode) {
-                    Text(
-                        text = stringResource(R.string.rc_vehicle_hud_resize),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = brandPrimary(),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                onClickLabel = stringResource(R.string.rc_vehicle_hud_resize_done),
-                            ) { onResizeModeChange(false) }
-                            .padding(top = 2.dp, bottom = 2.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                if (onStopClick != null || onBuzzerClick != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        if (onBuzzerClick != null) {
-                            RcBuzzerButton(onClick = onBuzzerClick)
-                        } else {
-                            Spacer(modifier = Modifier.width(1.dp))
-                        }
-                        if (onStopClick != null) {
-                            RcMotorStopButton(onClick = onStopClick)
-                        } else {
-                            Spacer(modifier = Modifier.width(1.dp))
-                        }
+            }
+            if (resizeMode) {
+                Text(
+                    text = stringResource(R.string.rc_vehicle_hud_resize),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = brandPrimary(),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .clickable(
+                            onClickLabel = stringResource(R.string.rc_vehicle_hud_resize_done),
+                        ) { onResizeModeChange(false) }
+                        .padding(top = 20.dp),
+                )
+            }
+            if (onStopClick != null || onBuzzerClick != null) {
+                Box(
+                    modifier = Modifier
+                        .align(
+                            if (trimIsLeftStick) Alignment.BottomStart else Alignment.BottomEnd,
+                        )
+                        .padding(4.dp),
+                ) {
+                    if (onBuzzerClick != null) {
+                        RcBuzzerButton(onClick = onBuzzerClick)
+                    }
+                    if (onStopClick != null) {
+                        RcMotorStopButton(onClick = onStopClick)
                     }
                 }
             }
@@ -526,16 +533,10 @@ fun RcCenterControls(
             enter = chromeEnter,
             exit = chromeExit,
         ) {
-            RcHudCollapsedIdentityHandle(
-                icon = Icons.Filled.CameraAlt,
-                expandDirection = RcHudChevronDirection.Up,
+            RcHudSwipeRevealStrip(
                 contentDescription = stringResource(R.string.rc_vehicle_hud_show_center_controls),
-                onClick = { onExpandedChange(true) },
-                modifier = Modifier.hudVerticalSwipe(
-                    expanded = false,
-                    onExpandedChange = onExpandedChange,
-                    hideTowardBottom = true,
-                ),
+                onExpand = { onExpandedChange(true) },
+                hideTowardBottom = true,
             )
         }
     }

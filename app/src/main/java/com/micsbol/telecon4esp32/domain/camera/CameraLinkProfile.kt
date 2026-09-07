@@ -87,22 +87,34 @@ val CameraLinkProfile.isSoftApControl: Boolean
 val CameraLinkProfile.isBluetoothControlWithCamera: Boolean
     get() = this == CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT
 
-/**
- * Camera-join HUD help: two-board overlay whenever video is down;
- * one CAM only while control is disconnected.
- */
+/** Which live links the HUD join warning should mention. */
+data class CameraJoinMissingLinks(
+    val camera: Boolean,
+    val control: Boolean,
+) {
+    val any: Boolean get() = camera || control
+}
+
+fun cameraJoinMissingLinks(
+    profile: CameraLinkProfile,
+    hasLiveFrame: Boolean,
+    isControlConnected: Boolean,
+): CameraJoinMissingLinks {
+    if (!profile.shouldStartCameraStream) {
+        return CameraJoinMissingLinks(camera = false, control = false)
+    }
+    return CameraJoinMissingLinks(
+        camera = !hasLiveFrame,
+        control = !isControlConnected,
+    )
+}
+
+/** Camera-join HUD help when camera, control, or both are down. */
 fun shouldShowCameraJoinWarning(
     profile: CameraLinkProfile,
     hasLiveFrame: Boolean,
     isControlConnected: Boolean,
-): Boolean {
-    if (!profile.shouldStartCameraStream || hasLiveFrame) return false
-    return when (profile) {
-        CameraLinkProfile.CONTROL_ONLY -> false
-        CameraLinkProfile.WIFI_SOFTAP -> !isControlConnected
-        CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT -> true
-    }
-}
+): Boolean = cameraJoinMissingLinks(profile, hasLiveFrame, isControlConnected).any
 
 /** Camera-join HUD help always starts as the warning icon. */
 @Suppress("UNUSED_PARAMETER")
@@ -115,6 +127,11 @@ fun cameraJoinWarningShowsBluetoothConnect(
     profile: CameraLinkProfile,
     isControlConnected: Boolean,
 ): Boolean = profile.isBluetoothControlWithCamera && !isControlConnected
+
+fun cameraJoinWarningShowsWifiControlConnect(
+    profile: CameraLinkProfile,
+    isControlConnected: Boolean,
+): Boolean = profile.isSoftApControl && !isControlConnected
 
 /**
  * SoftAP video performance presets (Smooth / Balanced / High) apply whenever

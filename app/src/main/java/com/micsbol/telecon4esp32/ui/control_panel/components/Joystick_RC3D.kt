@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import kotlin.coroutines.coroutineContext
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -73,6 +74,7 @@ fun Joystick_RC3D(
     mode: JoystickMode = JoystickMode.Spring(),
     stickPosition: Pair<Float, Float> = Pair(0f, 0f),
     settingsSyncGeneration: Int = 0,
+    rangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
     onMove: (x: Float, y: Float) -> Unit,
     onDoubleTap: (() -> Unit)? = null,
     contentDescription: String? = null,
@@ -122,9 +124,10 @@ fun Joystick_RC3D(
     }
     var isInteracting by remember { mutableStateOf(false) }
 
-    LaunchedEffect(settingsSyncGeneration) {
+    LaunchedEffect(settingsSyncGeneration, rangeShape) {
         if (!isInteracting) {
-            frame = normalizedStickToFrame(stickPosition.first, stickPosition.second)
+            val visual = rangeShape.toVisual(stickPosition.first, stickPosition.second)
+            frame = normalizedStickToFrame(visual.first, visual.second)
         }
     }
 
@@ -150,6 +153,7 @@ fun Joystick_RC3D(
     val currentOnDoubleTap by rememberUpdatedState(onDoubleTap)
     val currentInitialNormalized by rememberUpdatedState(initialPositionNormalized)
     val currentInitialFrame by rememberUpdatedState(initialFrame)
+    val currentRangeShape by rememberUpdatedState(rangeShape)
 
     fun playReleaseAnimation(targetFrame: Int, joystickMode: JoystickMode) {
         releaseAnimationJob?.cancel()
@@ -262,7 +266,11 @@ fun Joystick_RC3D(
                         isInteracting = true
                         val dragPointerId = down.id
                         val gestureMode = currentMode
-                        val emitMove = currentOnMove
+                        val rangeShapeNow = currentRangeShape
+                        val emitMove: (Float, Float) -> Unit = { x, y ->
+                            val mapped = rangeShapeNow.mapOutput(x, y)
+                            currentOnMove(mapped.first, mapped.second)
+                        }
 
                         try {
                             while (true) {

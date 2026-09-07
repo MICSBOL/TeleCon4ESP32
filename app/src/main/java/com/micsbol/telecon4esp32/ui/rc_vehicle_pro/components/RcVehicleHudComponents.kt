@@ -28,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BatteryFull
-import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
@@ -60,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.isBluetoothControlWithCamera
+import com.micsbol.telecon4esp32.domain.camera.isSoftApControl
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothStatusChip
 import com.micsbol.telecon4esp32.ui.components.LiveControlLinkKind
@@ -162,14 +162,10 @@ fun RcVehicleHudTopBar(
                 Box(modifier = Modifier.align(Alignment.TopStart)) {
                     hideRowStartContent()
                 }
-                RcVehicleHudPeekHandle(
-                    onClick = { onExpandedChange(true) },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .hudVerticalSwipe(
-                            expanded = false,
-                            onExpandedChange = onExpandedChange,
-                        ),
+                RcHudSwipeRevealStrip(
+                    contentDescription = stringResource(R.string.rc_vehicle_hud_show_top_bar),
+                    onExpand = { onExpandedChange(true) },
+                    modifier = Modifier.align(Alignment.TopCenter),
                 )
                 Box(modifier = Modifier.align(Alignment.TopEnd)) {
                     hideRowEndContent()
@@ -244,31 +240,6 @@ private fun RcVehicleHudTopBarContent(
                         ),
                     ),
                 ),
-        )
-    }
-}
-
-@Composable
-private fun RcVehicleHudPeekHandle(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(R.string.rc_vehicle_hud_show_top_bar)
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.TOP_BAR_ALPHA + 0.16f),
-            )
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.KeyboardDoubleArrowDown,
-            contentDescription = label,
-            tint = brandPrimary(),
-            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -460,6 +431,7 @@ fun RcHudLinkStatusIcons(
     modifier: Modifier = Modifier,
 ) {
     val showCameraWifi = profile.shouldStartCameraStream
+    val fusedCamAndControl = profile.isSoftApControl
     val showWifiControl = usesWifiControl && !showCameraWifi
     val showBluetooth = profile.isBluetoothControlWithCamera || !usesWifiControl
 
@@ -470,10 +442,15 @@ fun RcHudLinkStatusIcons(
     ) {
         if (showCameraWifi) {
             LiveControlBluetoothStatusChip(
-                isConnected = isCameraOnline,
+                isConnected = if (fusedCamAndControl) isControlConnected else isCameraOnline,
                 isConnecting = usesWifiControl && isControlConnecting,
                 onDisconnectedClick = onDisconnectedClick,
-                linkKind = LiveControlLinkKind.CameraSoftAp,
+                linkKind = if (fusedCamAndControl) {
+                    LiveControlLinkKind.WifiSoftAp
+                } else {
+                    LiveControlLinkKind.CameraSoftAp
+                },
+                isWifiCameraOnly = fusedCamAndControl && isCameraOnline,
             )
         } else if (showWifiControl) {
             LiveControlBluetoothStatusChip(

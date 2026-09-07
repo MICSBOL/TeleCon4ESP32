@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.domain.use_case
 
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import javax.inject.Inject
@@ -9,6 +10,8 @@ import javax.inject.Inject
 data class SaveSettingsUseCases @Inject constructor(
     val saveLeftStickMode: SaveLeftStickModeUseCase,
     val saveRightStickMode: SaveRightStickModeUseCase,
+    val saveLeftStickRangeShape: SaveLeftStickRangeShapeUseCase,
+    val saveRightStickRangeShape: SaveRightStickRangeShapeUseCase,
     val saveSwitchState: SaveSwitchStateUseCase,
     val saveLeftKnobValue: SaveLeftKnobValueUseCase,
     val saveRightKnobValue: SaveRightKnobValueUseCase,
@@ -35,6 +38,20 @@ class SaveRightStickModeUseCase @Inject constructor(
     private val repository: ISettingsRepository
 ) {
     suspend operator fun invoke(mode: JoystickMode) = repository.saveRightStickMode(mode)
+}
+
+class SaveLeftStickRangeShapeUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(shape: JoystickRangeShape) =
+        repository.saveLeftStickRangeShape(shape)
+}
+
+class SaveRightStickRangeShapeUseCase @Inject constructor(
+    private val repository: ISettingsRepository,
+) {
+    suspend operator fun invoke(shape: JoystickRangeShape) =
+        repository.saveRightStickRangeShape(shape)
 }
 
 class SaveSwitchStateUseCase @Inject constructor(

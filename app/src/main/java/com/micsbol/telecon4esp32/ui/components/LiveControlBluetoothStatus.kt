@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +54,7 @@ val LocalDisconnectedBannerInsets = staticCompositionLocalOf { DisconnectedBanne
 enum class LiveControlLinkKind {
     Bluetooth,
     WifiSoftAp,
-    /** SoftAP HTTP camera (fused camera + Wi‑Fi status). */
+    /** SoftAP HTTP camera overlay (video-only; Wi‑Fi join required). */
     CameraSoftAp,
 }
 
@@ -101,7 +100,7 @@ fun LiveControlBluetoothStatusChip(
         else -> stringResource(R.string.live_control_bluetooth_disconnected_content_description)
     }
     val statusIcon: ImageVector = when (linkKind) {
-        LiveControlLinkKind.CameraSoftAp -> Icons.Default.Videocam
+        LiveControlLinkKind.CameraSoftAp,
         LiveControlLinkKind.WifiSoftAp -> Icons.Default.Wifi
         LiveControlLinkKind.Bluetooth -> Icons.Default.Bluetooth
     }

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.max
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.ui.control_panel.components.Joystick_RC3D
 import com.micsbol.telecon4esp32.ui.control_panel.components.Knob3D
 import com.micsbol.telecon4esp32.ui.control_panel.components.LedIndicator
@@ -386,12 +387,14 @@ internal fun ControllerSideJoystick(
     modifier: Modifier = Modifier,
     onDoubleTap: (() -> Unit)? = null,
     contentDescription: String? = null,
+    rangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
 ) {
     Joystick_RC3D(
         modifier = modifier,
         mode = mode,
         stickPosition = stickPosition,
         settingsSyncGeneration = settingsSyncGeneration,
+        rangeShape = rangeShape,
         onMove = onMove,
         onDoubleTap = onDoubleTap,
         contentDescription = contentDescription,

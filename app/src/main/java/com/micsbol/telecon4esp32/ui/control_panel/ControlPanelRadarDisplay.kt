@@ -64,6 +64,7 @@ fun ControlPanelRadarDisplay(
     settings: RadarDisplaySettings = RadarDisplaySettings(),
     onSettingsChange: (RadarDisplaySettings) -> Unit = {},
     accent: Color = brandPrimary(),
+    showSettingsLauncher: Boolean = true,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var idleProgress by remember { mutableFloatStateOf(0.5f) }
@@ -188,14 +189,6 @@ fun ControlPanelRadarDisplay(
                         color = accent.copy(alpha = 0.28f),
                     )
                 }
-                drawLine(
-                    color = accent.copy(alpha = 1f),
-                    start = origin,
-                    end = view.offset(bearingFromNorth, 1f),
-                    strokeWidth = 2.4f,
-                    cap = StrokeCap.Butt,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
-                )
 
                 blips.forEach { blip ->
                     val center = view.offset(blip.bearingFromNorth, blip.rangeFraction)
@@ -231,6 +224,16 @@ fun ControlPanelRadarDisplay(
                 }
             }
 
+            // Draw outside the sector clip so 0 and 1 sit on the 180° / 270° rim.
+            drawLine(
+                color = accent.copy(alpha = 1f),
+                start = origin,
+                end = view.offset(bearingFromNorth, 1f),
+                strokeWidth = 2.4f,
+                cap = StrokeCap.Butt,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f),
+            )
+
             drawPath(
                 path = sectorPath,
                 color = accent.copy(alpha = 0.78f),
@@ -241,7 +244,11 @@ fun ControlPanelRadarDisplay(
         RadarSettingsChipLauncher(
             spanDegrees = span.roundToInt(),
             accent = accent,
-            onClick = { showSettings = true },
+            onClick = if (showSettingsLauncher) {
+                { showSettings = true }
+            } else {
+                null
+            },
             modifier = Modifier.align(Alignment.TopEnd),
         )
 
@@ -258,7 +265,7 @@ fun ControlPanelRadarDisplay(
         }
     }
 
-    if (showSettings) {
+    if (showSettingsLauncher && showSettings) {
         ControlPanelRadarSettingsDialog(
             settings = settings,
             onSettingsChange = onSettingsChange,
@@ -270,15 +277,13 @@ fun ControlPanelRadarDisplay(
 @Composable
 private fun RadarSettingsChipLauncher(
     spanDegrees: Int,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     accent: Color = brandPrimary(),
 ) {
     val shape = RoundedCornerShape(12.dp)
-    val openLabel = stringResource(R.string.control_panel_radar_settings_content_description)
-
-    Row(
-        modifier = modifier
+    val chipModifier = if (onClick != null) {
+        modifier
             .padding(6.dp)
             .clip(shape)
             .background(Color(0xE6121824))
@@ -288,16 +293,31 @@ private fun RadarSettingsChipLauncher(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 8.dp, vertical = 5.dp),
+            .padding(horizontal = 8.dp, vertical = 5.dp)
+    } else {
+        modifier
+            .padding(6.dp)
+            .clip(shape)
+            .background(Color(0xE6121824))
+            .border(1.dp, accent.copy(alpha = 0.45f), shape)
+            .padding(horizontal = 8.dp, vertical = 5.dp)
+    }
+
+    Row(
+        modifier = chipModifier,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = Icons.Default.Tune,
-            contentDescription = openLabel,
-            tint = accent,
-            modifier = Modifier.size(16.dp),
-        )
+        if (onClick != null) {
+            Icon(
+                imageVector = Icons.Default.Tune,
+                contentDescription = stringResource(
+                    R.string.control_panel_radar_settings_content_description,
+                ),
+                tint = accent,
+                modifier = Modifier.size(16.dp),
+            )
+        }
         Text(
             text = stringResource(R.string.control_panel_radar_scan_range_degrees, spanDegrees),
             style = MaterialTheme.typography.labelMedium,

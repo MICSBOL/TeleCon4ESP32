@@ -295,6 +295,30 @@ class RcVehicleProLayoutTest {
     }
 
     @Test
+    fun sharedStickContainerWidth_leavesCenterGutterWhenCenterExpanded() {
+        val slot = 800.dp
+        val reserved = RcVehicleProLayout.centerControlsReservedWidth(
+            slotWidth = slot,
+            centerExpanded = true,
+            bothSticksExpanded = true,
+        )
+        assertEquals(RcVehicleProLayout.CenterControlsExpandedWidth, reserved)
+        val width = RcVehicleProLayout.sharedStickContainerWidth(
+            slotWidth = slot,
+            centerReserved = reserved,
+        )
+        assertEquals((slot - reserved - 8.dp) / 2, width)
+        assertEquals(
+            RcVehicleProLayout.HudCollapsedPeek,
+            RcVehicleProLayout.centerControlsReservedWidth(
+                slotWidth = slot,
+                centerExpanded = false,
+                bothSticksExpanded = true,
+            ),
+        )
+    }
+
+    @Test
     fun commandedSpeedKmh_mapsFullThrottleToHudCap() {
         assertEquals(0f, RcVehicleProLayout.commandedSpeedKmh(0f), 0.001f)
         assertEquals(40f, RcVehicleProLayout.commandedSpeedKmh(1f), 0.001f)

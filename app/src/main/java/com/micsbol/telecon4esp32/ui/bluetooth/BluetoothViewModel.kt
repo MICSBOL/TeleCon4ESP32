@@ -39,6 +39,7 @@ import com.micsbol.telecon4esp32.ui.navigation.modulesHubRoute
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcCameraPan
 import com.micsbol.telecon4esp32.domain.model.RcState
@@ -940,6 +941,22 @@ open class BluetoothViewModel @Inject constructor(
         viewModelScope.launch {
             if (isRightStick) saveSettings.saveRightStickMode(mode)
             else saveSettings.saveLeftStickMode(mode)
+        }
+    }
+
+    fun saveStickRangeShape(isRightStick: Boolean, shape: JoystickRangeShape) {
+        val base = lastAppliedSettings
+            ?: (userSettings.value as? SettingsUiState.Success)?.settings
+            ?: UserSettings()
+        lastAppliedSettings = if (isRightStick) {
+            base.copy(rightStickRangeShape = shape)
+        } else {
+            base.copy(leftStickRangeShape = shape)
+        }
+        _rcSettingsSyncGeneration.update { it + 1 }
+        viewModelScope.launch {
+            if (isRightStick) saveSettings.saveRightStickRangeShape(shape)
+            else saveSettings.saveLeftStickRangeShape(shape)
         }
     }
 

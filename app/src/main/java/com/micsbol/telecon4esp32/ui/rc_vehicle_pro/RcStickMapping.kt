@@ -2,13 +2,14 @@ package com.micsbol.telecon4esp32.ui.rc_vehicle_pro
 
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import kotlin.math.abs
 
 /**
  * Phone-side stick pipeline for RC Vehicle Pro (no ESP32 change required):
- * raw → axis mask from [JoystickMode] → deadzone → expo → travel (dual rate)
- * → reverse → trim (per stick, per enabled axis).
+ * raw → range shape (circle/square) → axis mask from [JoystickMode] → deadzone
+ * → expo → travel (dual rate) → reverse → trim (per stick, per enabled axis).
  */
 object RcStickMapping {
 
@@ -42,6 +43,7 @@ object RcStickMapping {
         rawX = rawX,
         rawY = rawY,
         mode = settings.leftStickMode,
+        rangeShape = settings.leftStickRangeShape,
         mapX = {
             RcStickTrim.apply(
                 mapAssistAxis(it, settings.deadzone, settings.throttleExpo, settings.throttleTravel, settings.reverseThrottle),
@@ -59,6 +61,7 @@ object RcStickMapping {
         rawX = rawX,
         rawY = rawY,
         mode = settings.rightStickMode,
+        rangeShape = settings.rightStickRangeShape,
         mapX = { mapSteerX(it, settings) },
         mapY = {
             RcStickTrim.apply(
@@ -93,11 +96,13 @@ object RcStickMapping {
         rawX: Float,
         rawY: Float,
         mode: JoystickMode,
+        rangeShape: JoystickRangeShape,
         mapX: (Float) -> Float,
         mapY: (Float) -> Float,
     ): Pair<Float, Float> {
-        val x = if (mode.usesHorizontal) mapX(rawX) else 0f
-        val y = if (mode.usesVertical) mapY(rawY) else 0f
+        val shaped = rangeShape.mapOutput(rawX, rawY)
+        val x = if (mode.usesHorizontal) mapX(shaped.first) else 0f
+        val y = if (mode.usesVertical) mapY(shaped.second) else 0f
         return Pair(x, y)
     }
 

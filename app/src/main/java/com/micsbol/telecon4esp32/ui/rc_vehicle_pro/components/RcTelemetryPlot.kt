@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,10 +35,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -56,27 +55,36 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.ControlAnalogHistory
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.displayHistory
+import com.micsbol.telecon4esp32.domain.model.displayXy
 import com.micsbol.telecon4esp32.domain.model.lineVertices
 import com.micsbol.telecon4esp32.domain.model.stairVertices
 import com.micsbol.telecon4esp32.domain.model.triangleContours
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelRadarDisplay
+import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelRadarSettingsDialog
 import com.micsbol.telecon4esp32.ui.control_panel.RADAR_PLOT_HORIZON_FRACTION
+import com.micsbol.telecon4esp32.ui.control_panel.RadarBeamWidth
 import com.micsbol.telecon4esp32.ui.control_panel.RadarDisplaySettings
+import com.micsbol.telecon4esp32.ui.control_panel.RadarScanSpan
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProGlass
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import kotlin.math.abs
@@ -107,19 +115,33 @@ enum class RcTelemetryPlotMode {
     STATS,
 }
 
+data class RcHudPlotChrome(
+    val mode: RcTelemetryPlotMode = RcTelemetryPlotMode.SPEED,
+    val modeBarVisible: Boolean = true,
+    val legendVisible: Boolean = true,
+    val traceStyles: List<RcHudPlotTraceStyle> = RcHudPlotTraceStyle.defaults(),
+    val batteryStyle: RcHudScopeStyle = RcHudScopeStyle.batteryDefault(),
+    val tempStyle: RcHudScopeStyle = RcHudScopeStyle.tempDefault(),
+    val stickStyle: RcHudStickStyle = RcHudStickStyle.defaults(),
+    val radarSettings: RadarDisplaySettings = RadarDisplaySettings(),
+)
+
 data class RcTelemetryPlotSession(
     val speed: List<Float> = emptyList(),
     val command: List<Float> = emptyList(),
     val battery: List<Float> = emptyList(),
     val temp: List<Float> = emptyList(),
-    val steerX: List<Float> = emptyList(),
-    val throttleY: List<Float> = emptyList(),
+    val leftStickX: List<Float> = emptyList(),
+    val leftStickY: List<Float> = emptyList(),
+    val rightStickX: List<Float> = emptyList(),
+    val rightStickY: List<Float> = emptyList(),
     val sessionPeak: Float = 0f,
     val sessionAvg: Float = 0f,
     val sessionDistanceKm: Float = 0f,
     val sessionMinBattery: Float = 0f,
     val sessionMaxTemp: Float = 0f,
     val sessionElapsedSec: Float = 0f,
+    val controlChannels: Map<TelemetryChannel, List<Float>> = emptyMap(),
 )
 
 @Composable
@@ -127,24 +149,29 @@ internal fun rememberTelemetryPlotSession(
     speedKmh: Float,
     batteryPercent: Int,
     motorTempCelsius: Int,
-    throttleY: Float,
-    steerX: Float,
+    leftStickXy: Pair<Float, Float>,
+    rightStickXy: Pair<Float, Float>,
     fromTelemetry: Boolean = false,
+    controlValues: Map<TelemetryChannel, Float> = emptyMap(),
 ): RcTelemetryPlotSession {
     val latestSpeed by rememberUpdatedState(speedKmh)
     val latestBattery by rememberUpdatedState(batteryPercent.toFloat())
     val latestTemp by rememberUpdatedState(motorTempCelsius.toFloat())
-    val latestThrottle by rememberUpdatedState(throttleY)
-    val latestSteer by rememberUpdatedState(steerX)
+    val latestLeft by rememberUpdatedState(leftStickXy)
+    val latestRight by rememberUpdatedState(rightStickXy)
     val latestFromTelemetry by rememberUpdatedState(fromTelemetry)
+    val latestControlValues by rememberUpdatedState(controlValues)
     var session by remember { mutableStateOf(RcTelemetryPlotSession()) }
     var phase by remember { mutableFloatStateOf(0f) }
     val speedBuf = remember { ArrayDeque<Float>() }
     val commandBuf = remember { ArrayDeque<Float>() }
     val batteryBuf = remember { ArrayDeque<Float>() }
     val tempBuf = remember { ArrayDeque<Float>() }
-    val steerBuf = remember { ArrayDeque<Float>() }
-    val throttleBuf = remember { ArrayDeque<Float>() }
+    val leftXBuf = remember { ArrayDeque<Float>() }
+    val leftYBuf = remember { ArrayDeque<Float>() }
+    val rightXBuf = remember { ArrayDeque<Float>() }
+    val rightYBuf = remember { ArrayDeque<Float>() }
+    val controlHistory = remember { ControlAnalogHistory(RcVehicleProLayout.TELEMETRY_PLOT_SAMPLE_COUNT) }
 
     LaunchedEffect(Unit) {
         var collectingLive = false
@@ -168,8 +195,10 @@ internal fun rememberTelemetryPlotSession(
                 commandBuf.clear()
                 batteryBuf.clear()
                 tempBuf.clear()
-                steerBuf.clear()
-                throttleBuf.clear()
+                leftXBuf.clear()
+                leftYBuf.clear()
+                rightXBuf.clear()
+                rightYBuf.clear()
                 sessionSum = 0.0
                 sessionCount = 0
                 sessionPeak = 0f
@@ -185,7 +214,7 @@ internal fun rememberTelemetryPlotSession(
                 phase += ExampleSinePhaseStep
                 exampleSineValue(phase)
             }
-            val command = RcVehicleProLayout.commandedSpeedKmh(latestThrottle)
+            val command = RcVehicleProLayout.commandedSpeedKmh(latestLeft.second)
             if (latestFromTelemetry) {
                 push(speedBuf, speed)
             } else {
@@ -195,8 +224,11 @@ internal fun rememberTelemetryPlotSession(
             push(commandBuf, command)
             push(batteryBuf, latestBattery)
             push(tempBuf, latestTemp)
-            push(steerBuf, latestSteer.coerceIn(-1f, 1f))
-            push(throttleBuf, latestThrottle.coerceIn(-1f, 1f))
+            push(leftXBuf, latestLeft.first.coerceIn(-1f, 1f))
+            push(leftYBuf, latestLeft.second.coerceIn(-1f, 1f))
+            push(rightXBuf, latestRight.first.coerceIn(-1f, 1f))
+            push(rightYBuf, latestRight.second.coerceIn(-1f, 1f))
+            controlHistory.ingest(latestControlValues)
             sessionSum += speed
             sessionCount += 1
             sessionPeak = maxOf(sessionPeak, speed)
@@ -209,14 +241,17 @@ internal fun rememberTelemetryPlotSession(
                 command = commandBuf.toList(),
                 battery = batteryBuf.toList(),
                 temp = tempBuf.toList(),
-                steerX = steerBuf.toList(),
-                throttleY = throttleBuf.toList(),
+                leftStickX = leftXBuf.toList(),
+                leftStickY = leftYBuf.toList(),
+                rightStickX = rightXBuf.toList(),
+                rightStickY = rightYBuf.toList(),
                 sessionPeak = sessionPeak,
                 sessionAvg = if (sessionCount == 0) 0f else (sessionSum / sessionCount).toFloat(),
                 sessionDistanceKm = sessionDistance,
                 sessionMinBattery = if (sessionMinBattery.isFinite()) sessionMinBattery else 0f,
                 sessionMaxTemp = if (sessionMaxTemp.isFinite()) sessionMaxTemp else 0f,
                 sessionElapsedSec = elapsedSec,
+                controlChannels = controlHistory.snapshot(),
             )
             delay(RcVehicleProLayout.TELEMETRY_PLOT_INTERVAL_MS)
         }
@@ -250,6 +285,12 @@ fun RcTelemetryPlotPanel(
     onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit = { _, _ -> },
     onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
+    scanSpan: RadarScanSpan = RadarScanSpan.DEGREES_180,
+    onScanSpanChange: (RadarScanSpan) -> Unit = {},
+    leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    chrome: RcHudPlotChrome = RcHudPlotChrome(),
+    onChromeChange: (RcHudPlotChrome) -> Unit = {},
 ) {
     RcHudCollapsibleToEdge(
         towardEnd = false,
@@ -283,6 +324,12 @@ fun RcTelemetryPlotPanel(
                 onRadarSourceChange = onRadarSourceChange,
                 onPlotLabelChange = onPlotLabelChange,
                 onPlotChannelChange = onPlotChannelChange,
+                scanSpan = scanSpan,
+                onScanSpanChange = onScanSpanChange,
+                leftStickXy = leftStickXy,
+                rightStickXy = rightStickXy,
+                chrome = chrome,
+                onChromeChange = onChromeChange,
             )
         }
     }
@@ -299,17 +346,56 @@ private fun RcTelemetryPlotBody(
     onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit,
     onPlotLabelChange: (Int, String) -> Unit,
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit,
+    scanSpan: RadarScanSpan,
+    onScanSpanChange: (RadarScanSpan) -> Unit,
+    leftStickXy: Pair<Float, Float>,
+    rightStickXy: Pair<Float, Float>,
+    chrome: RcHudPlotChrome,
+    onChromeChange: (RcHudPlotChrome) -> Unit,
 ) {
-    var mode by rememberSaveable { mutableStateOf(RcTelemetryPlotMode.SPEED) }
-    var modeBarVisible by rememberSaveable { mutableStateOf(true) }
-    var legendVisible by rememberSaveable { mutableStateOf(true) }
-    var radarSettings by remember { mutableStateOf(RadarDisplaySettings()) }
-    var showPlotSettings by rememberSaveable { mutableStateOf(false) }
-    var traceStyles by rememberSaveable(stateSaver = RcHudPlotTraceStyleListSaver) {
-        mutableStateOf(RcHudPlotTraceStyle.defaults())
+    val mode = chrome.mode
+    val modeBarVisible = chrome.modeBarVisible
+    val legendVisible = chrome.legendVisible
+    val radarSettings = chrome.radarSettings
+    var showTabSettings by remember { mutableStateOf(false) }
+    var settingsMode by remember { mutableStateOf(RcTelemetryPlotMode.SPEED) }
+    val traceStyles = chrome.traceStyles
+    val batteryStyle = chrome.batteryStyle
+    val tempStyle = chrome.tempStyle
+    val stickStyle = chrome.stickStyle
+    val displaySeries = remember(plotSeries, session, channelRouting) {
+        rcHudPlotDisplaySeries(plotSeries, session, channelRouting)
     }
-    val displaySeries = remember(plotSeries, session) {
-        rcHudPlotDisplaySeries(plotSeries, session)
+    val displayRadar = remember(radarSeries, session) {
+        rcHudRadarDisplaySeries(radarSeries, session)
+    }
+    val batteryChannel = channelRouting.sourceFor(TelemetrySink.BATTERY_GAUGE)
+    val tempChannel = channelRouting.sourceFor(TelemetrySink.ANALOG_GAUGE)
+    val radarUiSettings = radarSettings.copy(
+        scanSpan = scanSpan,
+        angleSeriesIndex = channelRouting.sourceFor(TelemetrySink.RADAR_ANGLE).u8Index(),
+        rangeSeriesIndex = channelRouting.sourceFor(TelemetrySink.RADAR_RANGE).u8Index(),
+    )
+    val commitRadarSettings: (RadarDisplaySettings) -> Unit = { updated ->
+        onChromeChange(chrome.copy(radarSettings = updated))
+        if (updated.scanSpan != scanSpan) {
+            onScanSpanChange(updated.scanSpan)
+        }
+        val angle = TelemetryChannel.u8At(updated.angleSeriesIndex)
+        val range = TelemetryChannel.u8At(updated.rangeSeriesIndex)
+        if (angle != channelRouting.sourceFor(TelemetrySink.RADAR_ANGLE)) {
+            onRadarSourceChange(TelemetrySink.RADAR_ANGLE, angle)
+        }
+        if (range != channelRouting.sourceFor(TelemetrySink.RADAR_RANGE)) {
+            onRadarSourceChange(TelemetrySink.RADAR_RANGE, range)
+        }
+    }
+    val openTabSettings: (RcTelemetryPlotMode) -> Unit = { tab ->
+        if (tab.hasSettings()) {
+            onChromeChange(chrome.copy(mode = tab))
+            settingsMode = tab
+            showTabSettings = true
+        }
     }
     val plotDescription = stringResource(
         when (mode) {
@@ -329,12 +415,15 @@ private fun RcTelemetryPlotBody(
     val showModesLabel = stringResource(R.string.rc_vehicle_plot_show_mode_bar)
     val hideLegendLabel = stringResource(R.string.rc_vehicle_plot_hide_legend)
     val showLegendLabel = stringResource(R.string.rc_vehicle_plot_show_legend)
-    Column(modifier = Modifier.width(plotWidth)) {
+    Column(
+        modifier = Modifier.width(plotWidth),
+    ) {
         if (modeBarVisible) {
             RcTelemetryPlotModeRow(
                 selected = mode,
-                onSelect = { mode = it },
-                onHide = { modeBarVisible = false },
+                onSelect = { onChromeChange(chrome.copy(mode = it)) },
+                onOpenSettings = openTabSettings,
+                onHide = { onChromeChange(chrome.copy(modeBarVisible = false)) },
                 hideContentDescription = hideModesLabel,
             )
         }
@@ -342,7 +431,7 @@ private fun RcTelemetryPlotBody(
             RcHudPlotLegendRow(
                 series = displaySeries,
                 traceStyles = traceStyles,
-                onHide = { legendVisible = false },
+                onHide = { onChromeChange(chrome.copy(legendVisible = false)) },
                 hideContentDescription = hideLegendLabel,
             )
         }
@@ -355,49 +444,83 @@ private fun RcTelemetryPlotBody(
                 RcTelemetryPlotMode.SPEED -> RcHudChannelPlot(
                     series = displaySeries,
                     traceStyles = traceStyles,
-                    onOpenSettings = { showPlotSettings = true },
                 )
                 RcTelemetryPlotMode.BATTERY -> RcTelemetryScopePlot(
-                    samples = session.battery,
+                    samples = rcHudScaledChannelSamples(
+                        series = displayRadar,
+                        channel = batteryChannel,
+                        scale = 100f,
+                        fallback = session.battery,
+                    ),
                     yFloor = 100f,
+                    color = Color(batteryStyle.colorArgb),
+                    dashed = batteryStyle.dashed,
+                    fill = batteryStyle.fill,
                 )
                 RcTelemetryPlotMode.TEMP -> RcTelemetryScopePlot(
-                    samples = session.temp,
+                    samples = rcHudScaledChannelSamples(
+                        series = displayRadar,
+                        channel = tempChannel,
+                        scale = 80f,
+                        fallback = session.temp,
+                    ),
                     yFloor = 80f,
+                    color = Color(tempStyle.colorArgb),
+                    dashed = tempStyle.dashed,
+                    fill = tempStyle.fill,
                 )
                 RcTelemetryPlotMode.RADAR -> RcHudRadarPlot(
-                    series = radarSeries,
-                    settings = radarSettings.copy(
-                        angleSeriesIndex = channelRouting
-                            .sourceFor(TelemetrySink.RADAR_ANGLE)
-                            .u8Index(),
-                        rangeSeriesIndex = channelRouting
-                            .sourceFor(TelemetrySink.RADAR_RANGE)
-                            .u8Index(),
-                    ),
-                    onSettingsChange = { updated ->
-                        radarSettings = updated
-                        val angle = TelemetryChannel.u8At(updated.angleSeriesIndex)
-                        val range = TelemetryChannel.u8At(updated.rangeSeriesIndex)
-                        if (angle != channelRouting.sourceFor(TelemetrySink.RADAR_ANGLE)) {
-                            onRadarSourceChange(TelemetrySink.RADAR_ANGLE, angle)
-                        }
-                        if (range != channelRouting.sourceFor(TelemetrySink.RADAR_RANGE)) {
-                            onRadarSourceChange(TelemetrySink.RADAR_RANGE, range)
-                        }
-                    },
+                    series = displayRadar,
+                    settings = radarUiSettings,
+                    onSettingsChange = commitRadarSettings,
                 )
-                RcTelemetryPlotMode.ENVELOPE -> RcStickEnvelopePlot(
-                    steerX = session.steerX,
-                    throttleY = session.throttleY,
-                )
+                RcTelemetryPlotMode.ENVELOPE -> {
+                    val lastU8: (TelemetryChannel) -> Float? = { channel ->
+                        displayRadar.getOrNull(channel.u8Index())?.dataPoints?.lastOrNull()
+                    }
+                    val historyU8: (TelemetryChannel) -> List<Float>? = { channel ->
+                        displayRadar.getOrNull(channel.u8Index())?.dataPoints
+                            ?.takeIf { it.isNotEmpty() }
+                    }
+                    val leftLink = stickStyle.left.channelLink()
+                    val rightLink = stickStyle.right.channelLink()
+                    val leftMapped = leftLink.displayXy(
+                        leftStickXy.first,
+                        leftStickXy.second,
+                        lastU8,
+                    )
+                    val rightMapped = rightLink.displayXy(
+                        rightStickXy.first,
+                        rightStickXy.second,
+                        lastU8,
+                    )
+                    val leftHistory = leftLink.displayHistory(
+                        session.leftStickX,
+                        session.leftStickY,
+                        historyU8,
+                    )
+                    val rightHistory = rightLink.displayHistory(
+                        session.rightStickX,
+                        session.rightStickY,
+                        historyU8,
+                    )
+                    RcStickEnvelopePlot(
+                        leftX = leftHistory.first,
+                        leftY = leftHistory.second,
+                        rightX = rightHistory.first,
+                        rightY = rightHistory.second,
+                        leftNow = leftMapped,
+                        rightNow = rightMapped,
+                        style = stickStyle,
+                    )
+                }
                 RcTelemetryPlotMode.STATS -> RcTelemetryPlotStats(session = session)
             }
             if (!modeBarVisible) {
                 PlotModeBarChevron(
                     expand = true,
                     contentDescription = showModesLabel,
-                    onClick = { modeBarVisible = true },
+                    onClick = { onChromeChange(chrome.copy(modeBarVisible = true)) },
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
@@ -412,7 +535,7 @@ private fun RcTelemetryPlotBody(
                         .size(18.dp)
                         .clickable(
                             role = Role.Button,
-                            onClick = { legendVisible = true },
+                            onClick = { onChromeChange(chrome.copy(legendVisible = true)) },
                         )
                         .semantics { role = Role.Button },
                 )
@@ -420,16 +543,47 @@ private fun RcTelemetryPlotBody(
         }
     }
 
-    if (showPlotSettings) {
-        RcHudPlotSettingsDialog(
-            series = displaySeries,
-            traceStyles = traceStyles,
-            channelRouting = channelRouting,
-            onTraceStylesChange = { traceStyles = it },
-            onPlotLabelChange = onPlotLabelChange,
-            onPlotChannelChange = onPlotChannelChange,
-            onDismiss = { showPlotSettings = false },
-        )
+    if (showTabSettings) {
+        when (settingsMode) {
+            RcTelemetryPlotMode.SPEED -> RcHudPlotSettingsDialog(
+                series = displaySeries,
+                traceStyles = traceStyles,
+                channelRouting = channelRouting,
+                onTraceStylesChange = { onChromeChange(chrome.copy(traceStyles = it)) },
+                onPlotLabelChange = onPlotLabelChange,
+                onPlotChannelChange = onPlotChannelChange,
+                onDismiss = { showTabSettings = false },
+            )
+            RcTelemetryPlotMode.BATTERY -> RcHudScopeSettingsDialog(
+                title = stringResource(R.string.rc_vehicle_batt_settings_title),
+                body = stringResource(R.string.rc_vehicle_batt_settings_body),
+                selectedChannel = batteryChannel,
+                style = batteryStyle,
+                onChannelChange = { onRadarSourceChange(TelemetrySink.BATTERY_GAUGE, it) },
+                onStyleChange = { onChromeChange(chrome.copy(batteryStyle = it)) },
+                onDismiss = { showTabSettings = false },
+            )
+            RcTelemetryPlotMode.TEMP -> RcHudScopeSettingsDialog(
+                title = stringResource(R.string.rc_vehicle_temp_settings_title),
+                body = stringResource(R.string.rc_vehicle_temp_settings_body),
+                selectedChannel = tempChannel,
+                style = tempStyle,
+                onChannelChange = { onRadarSourceChange(TelemetrySink.ANALOG_GAUGE, it) },
+                onStyleChange = { onChromeChange(chrome.copy(tempStyle = it)) },
+                onDismiss = { showTabSettings = false },
+            )
+            RcTelemetryPlotMode.RADAR -> ControlPanelRadarSettingsDialog(
+                settings = radarUiSettings,
+                onSettingsChange = commitRadarSettings,
+                onDismiss = { showTabSettings = false },
+            )
+            RcTelemetryPlotMode.ENVELOPE -> RcHudStickSettingsDialog(
+                style = stickStyle,
+                onStyleChange = { onChromeChange(chrome.copy(stickStyle = it)) },
+                onDismiss = { showTabSettings = false },
+            )
+            RcTelemetryPlotMode.STATS -> Unit
+        }
     }
 }
 
@@ -437,6 +591,7 @@ private fun RcTelemetryPlotBody(
 private fun RcTelemetryPlotModeRow(
     selected: RcTelemetryPlotMode,
     onSelect: (RcTelemetryPlotMode) -> Unit,
+    onOpenSettings: (RcTelemetryPlotMode) -> Unit,
     onHide: () -> Unit,
     hideContentDescription: String,
 ) {
@@ -454,10 +609,21 @@ private fun RcTelemetryPlotModeRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RcTelemetryPlotMode.entries.forEach { mode ->
+                val label = stringResource(mode.labelRes())
                 RcPlotModeChip(
-                    label = stringResource(mode.labelRes()),
+                    label = label,
                     selected = selected == mode,
+                    settingsHint = if (mode.hasSettings()) {
+                        stringResource(R.string.rc_vehicle_plot_tab_settings, label)
+                    } else {
+                        null
+                    },
                     onClick = { onSelect(mode) },
+                    onHold = if (mode.hasSettings()) {
+                        { onOpenSettings(mode) }
+                    } else {
+                        null
+                    },
                 )
             }
         }
@@ -558,7 +724,9 @@ private fun PlotModeBarChevron(
 private fun RcPlotModeChip(
     label: String,
     selected: Boolean,
+    settingsHint: String?,
     onClick: () -> Unit,
+    onHold: (() -> Unit)?,
 ) {
     val accent = brandPrimary()
     val background = MaterialTheme.colorScheme.surface.copy(alpha = RcVehicleProGlass.ACTION_CHIP_ALPHA)
@@ -571,8 +739,34 @@ private fun RcPlotModeChip(
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) accent.copy(alpha = 0.28f) else background)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .then(
+                if (onHold == null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier.tapOrHoldMillis(
+                        holdDurationMs = RC_HUD_PLOT_HOLD_MS,
+                        onTap = onClick,
+                        onHold = onHold,
+                    )
+                },
+            )
+            .padding(horizontal = 7.dp, vertical = 3.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = settingsHint ?: label
+                role = Role.Button
+                onClick {
+                    onClick()
+                    true
+                }
+                if (onHold != null && settingsHint != null) {
+                    customActions = listOf(
+                        CustomAccessibilityAction(settingsHint) {
+                            onHold()
+                            true
+                        },
+                    )
+                }
+            },
     )
 }
 
@@ -635,24 +829,19 @@ private fun RcPlotStatRow(label: String, value: String) {
 private fun RcHudChannelPlot(
     series: List<PlotData>,
     traceStyles: List<RcHudPlotTraceStyle>,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(onOpenSettings) {
-                detectHoldMillis(RC_HUD_PLOT_HOLD_MS, onOpenSettings)
-            },
+        modifier = modifier.fillMaxSize(),
     ) {
         val width = size.width
         val height = size.height
         if (width <= 0f || height <= 0f) return@Canvas
-        val yLabelGutter = 16.dp.toPx()
+        val yLabelGutter = 34.dp.toPx()
         val xLabelGutter = 16.dp.toPx()
         val dataPad = 10.dp.toPx()
         val plotLeft = yLabelGutter
-        val plotRight = width - 4.dp.toPx()
+        val plotRight = width - yLabelGutter
         val plotTop = dataPad
         val plotBottom = height - xLabelGutter
         val plotWidthPx = (plotRight - plotLeft).coerceAtLeast(1f)
@@ -674,6 +863,15 @@ private fun RcHudChannelPlot(
             peak = 1f,
             timeMaxSec = timeMaxSec,
             dataY = ::dataY,
+            drawYAxis = false,
+        )
+        drawHudChannelYScales(
+            traceStyles = traceStyles,
+            plotLeft = plotLeft,
+            plotRight = plotRight,
+            plotTop = plotTop,
+            plotBottom = plotBottom,
+            plotHeight = plotHeightPx,
         )
         val firstVisible = series.indices.firstOrNull { index ->
             traceStyles.getOrElse(index) { RcHudPlotTraceStyle.defaults()[index.coerceAtMost(3)] }.visible &&
@@ -791,6 +989,9 @@ private fun RcTelemetryScopePlot(
     markerHigh: Float? = null,
     markerMid: Float? = null,
     yFloor: Float = 0.1f,
+    color: Color = PlotNeon,
+    dashed: Boolean = false,
+    fill: Boolean = true,
 ) {
     val sampleCount = samples.size
     Canvas(modifier = modifier.fillMaxSize()) {
@@ -846,7 +1047,9 @@ private fun RcTelemetryScopePlot(
         }
 
         val lastIndex = (sampleCount - 1).coerceAtLeast(1)
-        drawFilledTrace(samples, lastIndex, plotBottom, PlotNeon, ::dataX, ::dataY)
+        if (fill) {
+            drawFilledTrace(samples, lastIndex, plotBottom, color, ::dataX, ::dataY)
+        }
         drawAxesAndTicks()
         markerHigh?.let { drawMarkerLine(it, PlotPeak, plotLeft, plotRight, ::dataY) }
         markerMid?.let { drawMarkerLine(it, PlotAvg, plotLeft, plotRight, ::dataY) }
@@ -883,7 +1086,19 @@ private fun RcTelemetryScopePlot(
                 dataY = ::accelY,
             )
         }
-        drawGlowingTrace(samples, lastIndex, PlotNeon, ::dataX, ::dataY)
+        if (dashed) {
+            drawLineTrace(
+                values = samples,
+                lastIndex = lastIndex,
+                color = color,
+                stroke = 2.2f,
+                dashed = true,
+                dataX = ::dataX,
+                dataY = ::dataY,
+            )
+        } else {
+            drawGlowingTrace(samples, lastIndex, color, ::dataX, ::dataY)
+        }
     }
 }
 
@@ -899,22 +1114,29 @@ private fun RcHudRadarPlot(
         settings = settings,
         onSettingsChange = onSettingsChange,
         accent = PlotNeon,
+        showSettingsLauncher = false,
         modifier = modifier.fillMaxSize(),
     )
 }
 
 @Composable
 private fun RcStickEnvelopePlot(
-    steerX: List<Float>,
-    throttleY: List<Float>,
+    leftX: List<Float>,
+    leftY: List<Float>,
+    rightX: List<Float>,
+    rightY: List<Float>,
+    leftNow: Pair<Float, Float>,
+    rightNow: Pair<Float, Float>,
+    style: RcHudStickStyle,
     modifier: Modifier = Modifier,
 ) {
-    val count = minOf(steerX.size, throttleY.size)
     Canvas(modifier = modifier.fillMaxSize()) {
         val width = size.width
         val height = size.height
         if (width <= 0f || height <= 0f) return@Canvas
-        drawPerspectiveGrid(width, height)
+        if (style.showGrid) {
+            drawPerspectiveGrid(width, height)
+        }
         val pad = 18.dp.toPx()
         val left = pad
         val top = pad
@@ -924,32 +1146,111 @@ private fun RcStickEnvelopePlot(
         val plotH = (bottom - top).coerceAtLeast(1f)
         val cx = left + plotW / 2f
         val cy = top + plotH / 2f
-        val axis = PlotNeon.copy(alpha = 0.55f)
-        drawLine(axis, Offset(left, cy), Offset(right, cy), 1.4f)
-        drawLine(axis, Offset(cx, top), Offset(cx, bottom), 1.4f)
-        if (count == 0) return@Canvas
         fun mapX(value: Float) = cx + (value.coerceIn(-1f, 1f) * plotW / 2f)
         fun mapY(value: Float) = cy - (value.coerceIn(-1f, 1f) * plotH / 2f)
+        if (style.showAxes) {
+            val axis = PlotNeon.copy(alpha = 0.55f)
+            drawLine(axis, Offset(left, cy), Offset(right, cy), 1.4f)
+            drawLine(axis, Offset(cx, top), Offset(cx, bottom), 1.4f)
+        }
+        drawStickPoint(
+            xs = leftX,
+            ys = leftY,
+            now = leftNow,
+            style = style.left,
+            mapX = ::mapX,
+            mapY = ::mapY,
+            preferLabelRight = false,
+        )
+        drawStickPoint(
+            xs = rightX,
+            ys = rightY,
+            now = rightNow,
+            style = style.right,
+            mapX = ::mapX,
+            mapY = ::mapY,
+            preferLabelRight = true,
+        )
+    }
+}
+
+private fun DrawScope.drawStickPoint(
+    xs: List<Float>,
+    ys: List<Float>,
+    now: Pair<Float, Float>,
+    style: RcHudStickPointStyle,
+    mapX: (Float) -> Float,
+    mapY: (Float) -> Float,
+    preferLabelRight: Boolean,
+) {
+    if (!style.visible) return
+    val color = Color(style.colorArgb)
+    val count = minOf(xs.size, ys.size)
+    if (style.showTrail && count > 1) {
         val trail = Path()
         for (index in 0 until count) {
-            val x = mapX(steerX[index])
-            val y = mapY(throttleY[index])
+            val x = mapX(xs[index])
+            val y = mapY(ys[index])
             if (index == 0) trail.moveTo(x, y) else trail.lineTo(x, y)
         }
+        val glowWidth = if (style.thickTrail) 12f else 8f
+        val lineWidth = if (style.thickTrail) 3.4f else 2.2f
         drawPath(
             path = trail,
-            color = PlotNeon.copy(alpha = 0.22f),
-            style = Stroke(width = 8f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            color = color.copy(alpha = 0.22f),
+            style = Stroke(width = glowWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
         drawPath(
             path = trail,
-            color = PlotNeon,
-            style = Stroke(width = 2.2f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            color = color,
+            style = Stroke(width = lineWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
-        val lastX = mapX(steerX.last())
-        val lastY = mapY(throttleY.last())
-        drawCircle(color = PlotCommand, radius = 6.5f, center = Offset(lastX, lastY))
-        drawCircle(color = Color.White, radius = 2.6f, center = Offset(lastX, lastY))
+    }
+    val point = Offset(mapX(now.first), mapY(now.second))
+    val outer = if (style.largePoint) 9f else 6.5f
+    val inner = if (style.largePoint) 3.6f else 2.6f
+    drawCircle(color = color, radius = outer, center = point)
+    drawCircle(color = Color.White, radius = inner, center = point)
+    if (style.showLabel) {
+        drawStickXyLabel(
+            text = formatHudStickXy(now.first, now.second),
+            point = point,
+            color = color,
+            preferRight = preferLabelRight,
+        )
+    }
+}
+
+private fun DrawScope.drawStickXyLabel(
+    text: String,
+    point: Offset,
+    color: Color,
+    preferRight: Boolean,
+) {
+    drawIntoCanvas { canvas ->
+        val paint = android.graphics.Paint().apply {
+            this.color = color.toArgb()
+            textSize = 9.dp.toPx()
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
+        val gap = 8.dp.toPx()
+        val labelWidth = paint.measureText(text)
+        var toRight = preferRight
+        if (toRight && point.x + gap + labelWidth > size.width - 4f) toRight = false
+        if (!toRight && point.x - gap - labelWidth < 4f) toRight = true
+        paint.textAlign = if (toRight) {
+            android.graphics.Paint.Align.LEFT
+        } else {
+            android.graphics.Paint.Align.RIGHT
+        }
+        val x = if (toRight) point.x + gap else point.x - gap
+        canvas.nativeCanvas.drawText(
+            text,
+            x,
+            point.y + paint.textSize * 0.35f,
+            paint,
+        )
     }
 }
 
@@ -998,14 +1299,17 @@ private fun DrawScope.drawPlotAxes(
     peak: Float,
     timeMaxSec: Float,
     dataY: (Float) -> Float,
+    drawYAxis: Boolean = true,
 ) {
     val axisColor = PlotNeon.copy(alpha = 0.85f)
     val tickColor = PlotNeon.copy(alpha = 0.70f)
     val axisStroke = 1.5f
     val tickLen = 4.dp.toPx()
-    drawLine(axisColor, Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom), axisStroke)
+    if (drawYAxis) {
+        drawLine(axisColor, Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom), axisStroke)
+    }
     drawLine(axisColor, Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom), axisStroke)
-    val yTicks = axisTicks(peak)
+    val yTicks = if (drawYAxis) axisTicks(peak) else emptyList()
     val xTicks = axisTicks(timeMaxSec)
     yTicks.forEach { value ->
         val y = dataY(value)
@@ -1023,15 +1327,17 @@ private fun DrawScope.drawPlotAxes(
             isAntiAlias = true
             isFakeBoldText = true
         }
-        labelPaint.textAlign = android.graphics.Paint.Align.RIGHT
-        yTicks.forEach { value ->
-            val y = dataY(value)
-            native.drawText(
-                formatAxisTick(value),
-                plotLeft - 2.dp.toPx(),
-                y + labelPaint.textSize * 0.35f,
-                labelPaint,
-            )
+        if (drawYAxis) {
+            labelPaint.textAlign = android.graphics.Paint.Align.RIGHT
+            yTicks.forEach { value ->
+                val y = dataY(value)
+                native.drawText(
+                    formatAxisTick(value),
+                    plotLeft - 2.dp.toPx(),
+                    y + labelPaint.textSize * 0.35f,
+                    labelPaint,
+                )
+            }
         }
         labelPaint.textAlign = android.graphics.Paint.Align.CENTER
         xTicks.forEach { seconds ->
@@ -1042,6 +1348,82 @@ private fun DrawScope.drawPlotAxes(
                 plotBottom + 11.dp.toPx(),
                 labelPaint,
             )
+        }
+    }
+}
+
+private fun DrawScope.drawHudChannelYScales(
+    traceStyles: List<RcHudPlotTraceStyle>,
+    plotLeft: Float,
+    plotRight: Float,
+    plotTop: Float,
+    plotBottom: Float,
+    plotHeight: Float,
+) {
+    val tickLen = 3.5.dp.toPx()
+    val axisOffset = 16.dp.toPx()
+    val textSizePx = 7.dp.toPx()
+    val labelGap = 2.dp.toPx()
+    val slots = listOf(
+        Triple(0, true, true),
+        Triple(1, true, false),
+        Triple(2, false, false),
+        Triple(3, false, true),
+    )
+    slots.forEach { (index, leftSide, outer) ->
+        val style = traceStyles.getOrNull(index) ?: return@forEach
+        if (!style.visible) return@forEach
+        val color = Color(style.colorArgb)
+        val (min, max) = style.resolvedYRange()
+        val span = (max - min).coerceAtLeast(1e-6f)
+        val axisX = when {
+            leftSide && outer -> plotLeft - axisOffset
+            leftSide -> plotLeft
+            outer -> plotRight + axisOffset
+            else -> plotRight
+        }
+        drawLine(
+            color = color.copy(alpha = 0.85f),
+            start = Offset(axisX, plotTop),
+            end = Offset(axisX, plotBottom),
+            strokeWidth = 1.3f,
+        )
+        val ticks = hudPlotScaleTicks(min, max)
+        ticks.forEach { value ->
+            val t = ((value - min) / span).coerceIn(0f, 1f)
+            val y = plotTop + plotHeight * (1f - t)
+            val tickEnd = if (leftSide) axisX + tickLen else axisX - tickLen
+            drawLine(
+                color = color.copy(alpha = 0.75f),
+                start = Offset(axisX, y),
+                end = Offset(tickEnd, y),
+                strokeWidth = 1.1f,
+            )
+        }
+        drawIntoCanvas { canvas ->
+            val native = canvas.nativeCanvas
+            val labelPaint = android.graphics.Paint().apply {
+                this.color = color.toArgb()
+                textSize = textSizePx
+                isAntiAlias = true
+                isFakeBoldText = true
+                textAlign = if (leftSide) {
+                    android.graphics.Paint.Align.RIGHT
+                } else {
+                    android.graphics.Paint.Align.LEFT
+                }
+            }
+            val labelX = if (leftSide) axisX - labelGap else axisX + labelGap
+            ticks.forEach { value ->
+                val t = ((value - min) / span).coerceIn(0f, 1f)
+                val y = plotTop + plotHeight * (1f - t)
+                native.drawText(
+                    formatHudPlotScaleTick(value),
+                    labelX,
+                    y + labelPaint.textSize * 0.35f,
+                    labelPaint,
+                )
+            }
         }
     }
 }
@@ -1160,6 +1542,8 @@ private fun RcTelemetryPlotMode.labelRes(): Int = when (this) {
     RcTelemetryPlotMode.STATS -> R.string.rc_vehicle_plot_mode_stats
 }
 
+private fun RcTelemetryPlotMode.hasSettings(): Boolean = this != RcTelemetryPlotMode.STATS
+
 private fun axisTicks(max: Float, targetCount: Int = 4): List<Float> {
     if (max <= 0f) return listOf(0f)
     val raw = max / targetCount.toFloat()
@@ -1193,49 +1577,128 @@ private fun formatAxisTick(value: Float): String {
     }
 }
 
-private val RcHudPlotTraceStyleListSaver = Saver<List<RcHudPlotTraceStyle>, String>(
-    save = { styles ->
-        styles.joinToString(";") { style ->
-            listOf(
-                if (style.visible) "1" else "0",
-                style.colorArgb.toString(),
-                style.lineStyle.name,
-                if (style.dashed) "1" else "0",
-            ).joinToString(",")
-        }
-    },
-    restore = { encoded ->
-        val parsed = encoded.split(';').mapNotNull { token ->
-            val parts = token.split(',')
-            if (parts.size < 4) return@mapNotNull null
-            RcHudPlotTraceStyle(
-                visible = parts[0] == "1",
-                colorArgb = parts[1].toIntOrNull() ?: RcHudPlotTraceStyle.defaultColorArgb(0),
-                lineStyle = PlotLineStyle.entries.find { it.name == parts[2] } ?: PlotLineStyle.LINE,
-                dashed = parts[3] == "1",
-            )
-        }
-        List(UserSettings.PLOT_LABEL_COUNT) { index ->
-            parsed.getOrElse(index) { RcHudPlotTraceStyle.defaults()[index] }
-        }
-    },
+private const val HUD_PLOT_CHROME_SEPARATOR = "\u001e"
+
+internal fun encodeRcHudPlotTraceStyles(styles: List<RcHudPlotTraceStyle>): String =
+    styles.joinToString(";") { style ->
+        listOf(
+            if (style.visible) "1" else "0",
+            style.colorArgb.toString(),
+            style.lineStyle.name,
+            if (style.dashed) "1" else "0",
+            style.yMin.toString(),
+            style.yMax.toString(),
+        ).joinToString(",")
+    }
+
+internal fun decodeRcHudPlotTraceStyles(encoded: String?): List<RcHudPlotTraceStyle> {
+    val parsed = encoded.orEmpty().split(';').mapNotNull { token ->
+        val parts = token.split(',')
+        if (parts.size < 4) return@mapNotNull null
+        RcHudPlotTraceStyle(
+            visible = parts[0] == "1",
+            colorArgb = parts[1].toIntOrNull() ?: RcHudPlotTraceStyle.defaultColorArgb(0),
+            lineStyle = PlotLineStyle.entries.find { it.name == parts[2] } ?: PlotLineStyle.LINE,
+            dashed = parts[3] == "1",
+            yMin = parts.getOrNull(4)?.toFloatOrNull()?.takeIf { it.isFinite() }
+                ?: HUD_PLOT_Y_MIN_DEFAULT,
+            yMax = parts.getOrNull(5)?.toFloatOrNull()?.takeIf { it.isFinite() }
+                ?: HUD_PLOT_Y_MAX_DEFAULT,
+        )
+    }
+    return List(UserSettings.PLOT_LABEL_COUNT) { index ->
+        parsed.getOrElse(index) { RcHudPlotTraceStyle.defaults()[index] }
+    }
+}
+
+internal fun encodeRcHudPlotChrome(chrome: RcHudPlotChrome): String =
+    hudPlotChromeParts(chrome).joinToString(HUD_PLOT_CHROME_SEPARATOR)
+
+internal fun decodeRcHudPlotChrome(encoded: String?): RcHudPlotChrome =
+    restoreHudPlotChrome(encoded?.split(HUD_PLOT_CHROME_SEPARATOR).orEmpty())
+
+private fun hudPlotChromeParts(chrome: RcHudPlotChrome): List<String> = listOf(
+    chrome.mode.name,
+    if (chrome.modeBarVisible) "1" else "0",
+    if (chrome.legendVisible) "1" else "0",
+    encodeRcHudPlotTraceStyles(chrome.traceStyles),
+    encodeRcHudScopeStyle(chrome.batteryStyle),
+    encodeRcHudScopeStyle(chrome.tempStyle),
+    encodeRcHudStickStyle(chrome.stickStyle),
+    chrome.radarSettings.encode(),
 )
 
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectHoldMillis(
-    durationMs: Long,
+private fun restoreHudPlotChrome(parts: List<String>): RcHudPlotChrome = RcHudPlotChrome(
+    mode = RcTelemetryPlotMode.entries.find { it.name == parts.getOrNull(0) }
+        ?: RcTelemetryPlotMode.SPEED,
+    modeBarVisible = parts.getOrNull(1) != "0",
+    legendVisible = parts.getOrNull(2) != "0",
+    traceStyles = parts.getOrNull(3)
+        ?.let(::decodeRcHudPlotTraceStyles)
+        ?: RcHudPlotTraceStyle.defaults(),
+    batteryStyle = parts.getOrNull(4)
+        ?.let { decodeRcHudScopeStyle(it, RcHudPlotTraceStyle.defaultColorArgb(1)) }
+        ?: RcHudScopeStyle.batteryDefault(),
+    tempStyle = parts.getOrNull(5)
+        ?.let { decodeRcHudScopeStyle(it, RcHudPlotTraceStyle.defaultColorArgb(10)) }
+        ?: RcHudScopeStyle.tempDefault(),
+    stickStyle = parts.getOrNull(6)
+        ?.let(::decodeRcHudStickStyle)
+        ?: RcHudStickStyle.defaults(),
+    radarSettings = RadarDisplaySettings.decode(parts.getOrNull(7)),
+)
+
+internal val RcHudPlotTraceStyleListSaver = Saver<List<RcHudPlotTraceStyle>, String>(
+    save = { encodeRcHudPlotTraceStyles(it) },
+    restore = { decodeRcHudPlotTraceStyles(it) },
+)
+
+internal val RcHudPlotChromeSaver = Saver<RcHudPlotChrome, ArrayList<String>>(
+    save = { ArrayList(hudPlotChromeParts(it)) },
+    restore = { restoreHudPlotChrome(it) },
+)
+
+private fun Modifier.tapOrHoldMillis(
+    holdDurationMs: Long,
+    onTap: () -> Unit,
     onHold: () -> Unit,
-) {
-    awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
-        var cancelled = false
-        val up = withTimeoutOrNull(durationMs) {
-            val event = waitForUpOrCancellation()
-            if (event == null) cancelled = true
-            event
-        }
-        if (up == null && !cancelled) {
-            onHold()
-            waitForUpOrCancellation()
+): Modifier = composed {
+    val onTapState = rememberUpdatedState(onTap)
+    val onHoldState = rememberUpdatedState(onHold)
+    pointerInput(holdDurationMs) {
+        val slop = viewConfiguration.touchSlop
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val pointerId = down.id
+            var stillPressed = true
+            var maxMove = 0f
+            val completed = withTimeoutOrNull(holdDurationMs) {
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == pointerId } ?: run {
+                        stillPressed = false
+                        return@withTimeoutOrNull Unit
+                    }
+                    maxMove = maxOf(maxMove, (change.position - down.position).getDistance())
+                    if (!change.pressed) {
+                        stillPressed = false
+                        return@withTimeoutOrNull Unit
+                    }
+                    if (maxMove >= slop) return@withTimeoutOrNull Unit
+                }
+            }
+            val moved = maxMove >= slop
+            if (completed == null && stillPressed && !moved) {
+                onHoldState.value()
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                    change.consume()
+                    if (!change.pressed) break
+                }
+            } else if (!stillPressed && !moved) {
+                onTapState.value()
+            }
         }
     }
 }

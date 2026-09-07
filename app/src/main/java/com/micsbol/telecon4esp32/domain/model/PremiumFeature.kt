@@ -25,6 +25,12 @@ enum class PremiumFeature {
     CONTROL_PANEL_RADAR,
 
     /**
+     * Control Panel stick XY graph in the center pane.
+     * Independent of camera, radar, session CSV, and [ADVANCED_PROTOCOL].
+     */
+    CONTROL_PANEL_STICK,
+
+    /**
      * Control Panel session CSV recording and export.
      * Independent of camera, radar, and [ADVANCED_PROTOCOL].
      */

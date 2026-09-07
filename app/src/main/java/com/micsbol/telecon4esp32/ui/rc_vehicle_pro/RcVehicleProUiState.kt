@@ -62,13 +62,20 @@ object RcVehicleProLayout {
     val JoystickSize = 320.dp
     val JoystickSizeCompact = 200.dp
     val ControlZoneKnobSize = 92.dp
-    val ControlZoneContentPadding = PaddingValues(start = 4.dp, top = 2.dp, end = 4.dp, bottom = 0.dp)
+    val ControlZoneContentPadding = PaddingValues(2.dp)
     /** Title row + spacers above the stick inside [RcControlZone]. */
     val ControlZoneChromeHeight = 22.dp
     /** Stop / buzzer row below the stick so those buttons never cover the pad. */
     val ControlZoneFooterHeight = 46.dp
     val HudCollapsedPeek = 32.dp
     val HudEdgeChevronWidth = 30.dp
+    val HudSwipeRevealWidth = 96.dp
+    val HudSwipeRevealHeight = 48.dp
+    /**
+     * Compact slot for ACL/DIR chips + action bar. A full third of a wide
+     * landscape (S23) left a large empty gap beside the sticks.
+     */
+    val CenterControlsExpandedWidth = 196.dp
     val TelemetryPlotWidth = 340.dp
     val TelemetryPlotHeight = 250.dp
     /** Card padding and mode-bar slot around the graph. */
@@ -209,7 +216,7 @@ object RcVehicleProLayout {
         val expandedSticks = listOf(leftStickExpanded, rightStickExpanded).count { it }
         val centerW = when {
             !centerExpanded -> HudCollapsedPeek
-            else -> slotWidth / 3f
+            else -> CenterControlsExpandedWidth
         }
         val collapsedSticks = 2 - expandedSticks
         val leftover = (slotWidth - centerW - 8.dp - HudCollapsedPeek * collapsedSticks)
@@ -260,7 +267,7 @@ object RcVehicleProLayout {
         if (!thisStickExpanded) return 0.dp
         val expandedSticks = listOf(leftStickExpanded, rightStickExpanded).count { it }
         if (expandedSticks == 1) return slotWidth / 2f
-        val centerW = if (centerExpanded) slotWidth / 3f else HudCollapsedPeek
+        val centerW = if (centerExpanded) CenterControlsExpandedWidth else HudCollapsedPeek
         return (slotWidth - centerW - 8.dp).coerceAtLeast(1.dp) / 2
     }
 
@@ -337,14 +344,26 @@ object RcVehicleProLayout {
     ): PaddingValues = when {
         leftStickExpanded && !rightStickExpanded -> PaddingValues(end = HudCollapsedPeek)
         rightStickExpanded && !leftStickExpanded -> PaddingValues(start = HudCollapsedPeek)
-        else -> PaddingValues()
+        else -> PaddingValues(horizontal = 4.dp)
     }
 
     /** Same column width for both sticks so they stay equal while chrome changes. */
+    fun centerControlsReservedWidth(
+        slotWidth: Dp,
+        centerExpanded: Boolean,
+        bothSticksExpanded: Boolean,
+    ): Dp {
+        if (!bothSticksExpanded || !centerExpanded) return HudCollapsedPeek
+        return CenterControlsExpandedWidth
+            .coerceAtMost(slotWidth / 3f)
+            .coerceAtLeast(HudCollapsedPeek)
+    }
+
     fun sharedStickContainerWidth(
         slotWidth: Dp,
+        centerReserved: Dp = HudCollapsedPeek,
     ): Dp {
-        return (slotWidth - HudCollapsedPeek - 8.dp).coerceAtLeast(1.dp) / 2
+        return (slotWidth - centerReserved - 8.dp).coerceAtLeast(1.dp) / 2
     }
 
     fun stickContainerBaseHeight(

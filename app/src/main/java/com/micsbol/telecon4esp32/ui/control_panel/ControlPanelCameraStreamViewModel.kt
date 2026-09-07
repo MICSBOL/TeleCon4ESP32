@@ -23,8 +23,11 @@ import com.micsbol.telecon4esp32.domain.camera.resolveSoftApHudPreviewOptions
 import com.micsbol.telecon4esp32.domain.camera.shouldPreferCapturePollingForLowLatency
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.resolveCameraHardwareRole
+import com.micsbol.telecon4esp32.domain.use_case.ApplyCameraHardwareRoleUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ApplySoftApCamConfigUseCase
 import com.micsbol.telecon4esp32.domain.use_case.EnsureSoftApStreamQualityDefaultsUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
@@ -57,6 +60,7 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     getUseSoftApCamera: GetUseSoftApCameraUseCase,
     getControlPanelCenterMode: GetControlPanelCenterModeUseCase,
     private val saveControlPanelCenterMode: SaveControlPanelCenterModeUseCase,
+    private val applyCameraHardwareRole: ApplyCameraHardwareRoleUseCase,
     getSoftApPerformancePreset: GetSoftApPerformancePresetUseCase,
     private val saveSoftApPerformancePreset: SaveSoftApPerformancePresetUseCase,
     getSoftApHudProcessingRate: GetSoftApHudProcessingRateUseCase,
@@ -260,9 +264,32 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     }
 
     fun onCenterModeSelected(mode: ControlPanelCenterMode) {
-        if (mode == centerMode.value) return
         viewModelScope.launch {
-            saveControlPanelCenterMode(mode)
+            val current = centerMode.value
+            val next = if (mode == ControlPanelCenterMode.CAMERA &&
+                current == ControlPanelCenterMode.CAMERA
+            ) {
+                ControlPanelCenterMode.PLOTS
+            } else {
+                mode
+            }
+            if (next != current) {
+                saveControlPanelCenterMode(next)
+            }
+            val enableCamera = next == ControlPanelCenterMode.CAMERA
+            val storedRole = resolveCameraHardwareRole(board.value, useSoftApCamera.value)
+            val nextRole = if (enableCamera) {
+                if (storedRole == CameraHardwareRole.NO_CAM) {
+                    CameraHardwareRole.ONE_CAM
+                } else {
+                    storedRole
+                }
+            } else {
+                CameraHardwareRole.NO_CAM
+            }
+            if (nextRole != storedRole) {
+                applyCameraHardwareRole(applicationId, nextRole)
+            }
         }
     }
 

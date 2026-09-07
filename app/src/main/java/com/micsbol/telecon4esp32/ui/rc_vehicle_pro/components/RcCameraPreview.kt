@@ -57,10 +57,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.camera.CameraJoinMissingLinks
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
+import com.micsbol.telecon4esp32.domain.camera.cameraJoinMissingLinks
 import com.micsbol.telecon4esp32.domain.camera.cameraJoinWarningShowsBluetoothConnect
+import com.micsbol.telecon4esp32.domain.camera.cameraJoinWarningShowsWifiControlConnect
 import com.micsbol.telecon4esp32.domain.camera.cameraJoinWarningStartsExpanded
+import com.micsbol.telecon4esp32.domain.camera.isSoftApControl
 import com.micsbol.telecon4esp32.domain.camera.shouldShowCameraJoinWarning
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.ui.bluetooth.openSystemWifiSettings
@@ -85,6 +89,11 @@ fun RcCameraPreview(
     val cameraRequired = cameraLinkProfile.shouldStartCameraStream
     val liveFrame = cameraState as? CameraStreamState.Frame
     val hasLiveFrame = liveFrame != null && !liveFrame.bitmap.isRecycled
+    val missingLinks = cameraJoinMissingLinks(
+        profile = cameraLinkProfile,
+        hasLiveFrame = hasLiveFrame,
+        isControlConnected = isControlConnected,
+    )
     val showWarning = shouldShowCameraJoinWarning(
         profile = cameraLinkProfile,
         hasLiveFrame = hasLiveFrame,
@@ -127,10 +136,11 @@ fun RcCameraPreview(
         if (showWarning) {
             RcCameraJoinWarning(
                 profile = cameraLinkProfile,
+                missing = missingLinks,
                 isControlConnected = isControlConnected,
                 onConnectControl = onConnectControl,
                 onOpenWifi = { openSystemWifiSettings(context) },
-                showConnectStreamButton = showConnectStreamButton,
+                showConnectStreamButton = showConnectStreamButton && missingLinks.camera,
                 onConnectStreamClick = onConnectStreamClick,
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -144,6 +154,7 @@ fun RcCameraPreview(
 @Composable
 private fun RcCameraJoinWarning(
     profile: CameraLinkProfile,
+    missing: CameraJoinMissingLinks,
     isControlConnected: Boolean,
     onConnectControl: (() -> Unit)?,
     onOpenWifi: () -> Unit,
@@ -161,6 +172,7 @@ private fun RcCameraJoinWarning(
         if (expanded) {
             RcCameraJoinWarningCard(
                 profile = profile,
+                missing = missing,
                 isControlConnected = isControlConnected,
                 onConnectControl = onConnectControl,
                 onOpenWifi = onOpenWifi,
@@ -234,6 +246,7 @@ private fun RcCameraJoinWarningIcon(
 @Composable
 private fun RcCameraJoinWarningCard(
     profile: CameraLinkProfile,
+    missing: CameraJoinMissingLinks,
     isControlConnected: Boolean,
     onConnectControl: (() -> Unit)?,
     onOpenWifi: () -> Unit,
@@ -242,10 +255,33 @@ private fun RcCameraJoinWarningCard(
     onMinimize: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val showBluetoothConnect = cameraJoinWarningShowsBluetoothConnect(
-        profile = profile,
-        isControlConnected = isControlConnected,
-    )
+    val showBluetoothConnect = missing.control &&
+        cameraJoinWarningShowsBluetoothConnect(
+            profile = profile,
+            isControlConnected = isControlConnected,
+        )
+    val showWifiControlConnect = missing.control &&
+        cameraJoinWarningShowsWifiControlConnect(
+            profile = profile,
+            isControlConnected = isControlConnected,
+        )
+    val message = buildString {
+        if (missing.camera) {
+            append(stringResource(R.string.rc_vehicle_link_missing_camera))
+        }
+        if (missing.control) {
+            if (isNotEmpty()) append("\n")
+            append(
+                stringResource(
+                    if (profile.isSoftApControl) {
+                        R.string.rc_vehicle_link_missing_control_wifi
+                    } else {
+                        R.string.rc_vehicle_link_missing_control_bluetooth
+                    },
+                ),
+            )
+        }
+    }
     RcGlassCard(
         modifier = modifier,
         surfaceAlpha = RcVehicleProGlass.MENU_SURFACE_ALPHA,
@@ -265,7 +301,7 @@ private fun RcCameraJoinWarningCard(
                     .size(20.dp),
             )
             Text(
-                text = stringResource(R.string.rc_vehicle_camera_unavailable),
+                text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = Color.White,
@@ -297,12 +333,23 @@ private fun RcCameraJoinWarningCard(
                     )
                 }
             }
-            TextButton(onClick = onOpenWifi) {
-                Text(
-                    text = stringResource(R.string.rc_vehicle_camera_connect_wifi),
-                    color = brandPrimary(),
-                    fontWeight = FontWeight.SemiBold,
-                )
+            if (showWifiControlConnect && onConnectControl != null) {
+                TextButton(onClick = onConnectControl) {
+                    Text(
+                        text = stringResource(R.string.rc_vehicle_control_connect_wifi),
+                        color = brandPrimary(),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            if (missing.camera) {
+                TextButton(onClick = onOpenWifi) {
+                    Text(
+                        text = stringResource(R.string.rc_vehicle_camera_connect_wifi),
+                        color = brandPrimary(),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
             if (showConnectStreamButton && onConnectStreamClick != null) {
                 TextButton(onClick = onConnectStreamClick) {

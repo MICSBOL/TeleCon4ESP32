@@ -34,6 +34,9 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
@@ -128,6 +131,33 @@ private fun RcHudChevronDirection.handlePadding(): Modifier {
     } else {
         Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
     }
+}
+
+/** Invisible swipe/tap target so collapsed top/center chrome can reopen without chevrons. */
+@Composable
+internal fun RcHudSwipeRevealStrip(
+    contentDescription: String,
+    onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
+    hideTowardBottom: Boolean = false,
+) {
+    Box(
+        modifier = modifier
+            .size(
+                width = RcVehicleProLayout.HudSwipeRevealWidth,
+                height = RcVehicleProLayout.HudSwipeRevealHeight,
+            )
+            .hudVerticalSwipe(
+                expanded = false,
+                onExpandedChange = { shown -> if (shown) onExpand() },
+                hideTowardBottom = hideTowardBottom,
+            )
+            .clickable(role = Role.Button, onClick = onExpand)
+            .semantics {
+                this.role = Role.Button
+                this.contentDescription = contentDescription
+            },
+    )
 }
 
 /** Icon-only chevron; no glass container so the camera stays clear. */

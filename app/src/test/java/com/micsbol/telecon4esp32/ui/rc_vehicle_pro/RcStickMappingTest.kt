@@ -1,7 +1,9 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro
 
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
+import kotlin.math.sqrt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -113,5 +115,51 @@ class RcStickMappingTest {
         val mapped = RcStickMapping.mapThrottleStick(0.2f, 0.4f, settings)
         assertEquals(0.25f, mapped.first, 1e-5f)
         assertEquals(0.3f, mapped.second, 1e-5f)
+    }
+
+    @Test
+    fun mapThrottleStick_circleKeepsDiagonalOnDisc() {
+        val diagonal = sqrt(0.5f)
+        val settings = RcVehicleProControlSettings(
+            leftStickMode = JoystickMode.Spring(),
+            leftStickRangeShape = JoystickRangeShape.CIRCLE,
+            deadzone = 0f,
+            throttleExpo = 0f,
+        )
+        val mapped = RcStickMapping.mapThrottleStick(diagonal, diagonal, settings)
+        assertEquals(diagonal, mapped.first, 1e-5f)
+        assertEquals(diagonal, mapped.second, 1e-5f)
+    }
+
+    @Test
+    fun mapThrottleStick_squareMapsDiagonalRimToCorners() {
+        val diagonal = sqrt(0.5f)
+        val settings = RcVehicleProControlSettings(
+            leftStickMode = JoystickMode.Spring(),
+            leftStickRangeShape = JoystickRangeShape.SQUARE,
+            deadzone = 0f,
+            throttleExpo = 0f,
+        )
+        val mapped = RcStickMapping.mapThrottleStick(diagonal, diagonal, settings)
+        assertEquals(1f, mapped.first, 1e-5f)
+        assertEquals(1f, mapped.second, 1e-5f)
+    }
+
+    @Test
+    fun mapSteerStick_squareKeepsAxesAtFullDeflection() {
+        val settings = RcVehicleProControlSettings(
+            rightStickMode = JoystickMode.Hold(),
+            rightStickRangeShape = JoystickRangeShape.SQUARE,
+            deadzone = 0f,
+            steerExpo = 0f,
+            rightTrimX = 0f,
+            rightTrimY = 0f,
+        )
+        val right = RcStickMapping.mapSteerStick(1f, 0f, settings)
+        assertEquals(1f, right.first, 1e-5f)
+        assertEquals(0f, right.second, 1e-5f)
+        val down = RcStickMapping.mapSteerStick(0f, -1f, settings)
+        assertEquals(0f, down.first, 1e-5f)
+        assertEquals(-1f, down.second, 1e-5f)
     }
 }

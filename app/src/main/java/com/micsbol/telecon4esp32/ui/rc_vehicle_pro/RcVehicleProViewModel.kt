@@ -35,6 +35,9 @@ import com.micsbol.telecon4esp32.domain.use_case.GetSoftApPerformancePresetUseCa
 import com.micsbol.telecon4esp32.domain.use_case.GetUseSoftApCameraUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApHudProcessingRateUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApPerformancePresetUseCase
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudPlotChrome
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.decodeRcHudPlotChrome
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.encodeRcHudPlotChrome
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +48,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -169,10 +173,20 @@ class RcVehicleProViewModel @Inject constructor(
                 initialValue = RcVehicleProControlSettings.DEFAULT,
             )
 
+    private val _plotChrome = MutableStateFlow(RcHudPlotChrome())
+    val plotChrome: StateFlow<RcHudPlotChrome> = _plotChrome.asStateFlow()
+
     fun updateControlSettings(transform: (RcVehicleProControlSettings) -> RcVehicleProControlSettings) {
         viewModelScope.launch {
             val next = transform(controlSettings.value)
             settingsRepository.saveRcVehicleProControlSettings(next)
+        }
+    }
+
+    fun updatePlotChrome(chrome: RcHudPlotChrome) {
+        _plotChrome.value = chrome
+        viewModelScope.launch {
+            settingsRepository.saveRcVehicleProHudPlotChrome(encodeRcHudPlotChrome(chrome))
         }
     }
 
@@ -189,6 +203,11 @@ class RcVehicleProViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch {
+            _plotChrome.value = decodeRcHudPlotChrome(
+                settingsRepository.rcVehicleProHudPlotChromeFlow().first(),
+            )
+        }
         viewModelScope.launch {
             cameraLinkProfile.collect { profile ->
                 // SoftAP video auto-arms for Kit A and DevKit Bluetooth + overlay whenever the profile expects a camera.

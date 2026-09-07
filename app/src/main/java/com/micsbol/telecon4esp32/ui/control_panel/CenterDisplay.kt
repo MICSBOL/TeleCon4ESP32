@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -78,7 +77,6 @@ import com.micsbol.telecon4esp32.domain.model.PlotGraphMode
 import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
-import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.model.parseCalibrationFloat
 import com.micsbol.telecon4esp32.domain.model.toCalibrationDraftText
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
@@ -120,9 +118,35 @@ fun CenterDisplay(
     centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
+    leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     topStartOverlay: @Composable () -> Unit = {},
+    displaySettings: ControlPanelPlotDisplaySettings? = null,
+    onDisplaySettingsChange: (ControlPanelPlotDisplaySettings) -> Unit = {},
 ) {
-    var radarSettings by remember { mutableStateOf(RadarDisplaySettings()) }
+    var localDisplay by rememberSaveable(stateSaver = ControlPanelPlotDisplaySettingsSaver) {
+        mutableStateOf(ControlPanelPlotDisplaySettings.DEFAULT)
+    }
+    val plotDisplay = displaySettings ?: localDisplay
+    val radarSettings = plotDisplay.radarSettings
+    val plotVisible = plotDisplay.plotVisible
+    val graphModes = plotDisplay.graphModes
+    val lineStyles = plotDisplay.lineStyles
+    val plotOnTop = plotDisplay.plotOnTop
+    val leftStickLink = plotDisplay.leftStickLink
+    val rightStickLink = plotDisplay.rightStickLink
+    fun updatePlotDisplay(next: ControlPanelPlotDisplaySettings) {
+        if (displaySettings == null) {
+            localDisplay = next
+        }
+        onDisplaySettingsChange(next)
+    }
+    var showStickSettings by remember { mutableStateOf(false) }
+    LaunchedEffect(centerMode, centerModeUnlocked) {
+        if (centerMode != ControlPanelCenterMode.STICK || !centerModeUnlocked) {
+            showStickSettings = false
+        }
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -152,6 +176,12 @@ fun CenterDisplay(
                         .weight(1f)
                         .fillMaxHeight(),
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -185,7 +215,50 @@ fun CenterDisplay(
                                     onPlotLabelChange = onPlotLabelChange,
                                     onPlotChannelChange = onPlotChannelChange,
                                     onPlotCalibrationChange = onPlotCalibrationChange,
+                                    plotVisible = plotVisible,
+                                    graphModes = graphModes,
+                                    lineStyles = lineStyles,
+                                    plotOnTop = plotOnTop,
+                                    onPlotVisibleChange = {
+                                        updatePlotDisplay(plotDisplay.copy(plotVisible = it))
+                                    },
+                                    onGraphModesChange = {
+                                        updatePlotDisplay(plotDisplay.copy(graphModes = it))
+                                    },
+                                    onLineStylesChange = {
+                                        updatePlotDisplay(plotDisplay.copy(lineStyles = it))
+                                    },
+                                    onPlotOnTopChange = {
+                                        updatePlotDisplay(plotDisplay.copy(plotOnTop = it))
+                                    },
                                 )
+                            }
+                            ControlPanelCenterMode.STICK -> {
+                                if (centerModeUnlocked) {
+                                    ControlPanelStickDisplay(
+                                        leftStickXy = leftStickXy,
+                                        rightStickXy = rightStickXy,
+                                        leftLink = leftStickLink,
+                                        rightLink = rightStickLink,
+                                        onLeftLinkChange = {
+                                            updatePlotDisplay(plotDisplay.copy(leftStickLink = it))
+                                        },
+                                        onRightLinkChange = {
+                                            updatePlotDisplay(plotDisplay.copy(rightStickLink = it))
+                                        },
+                                        showSettings = showStickSettings,
+                                        onShowSettingsChange = { showStickSettings = it },
+                                        showSettingsChip = false,
+                                        u8Series = radarSeries.ifEmpty { series },
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                } else {
+                                    ControlPanelCenterLockedPane(
+                                        mode = centerMode,
+                                        onUnlockClick = onUnlockCenterMode,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
                             }
                             ControlPanelCenterMode.CAMERA -> {
                                 if (centerModeUnlocked) {
@@ -212,7 +285,7 @@ fun CenterDisplay(
                                                 .u8Index(),
                                         ),
                                         onSettingsChange = { updated ->
-                                            radarSettings = updated
+                                            updatePlotDisplay(plotDisplay.copy(radarSettings = updated))
                                             val angle = TelemetryChannel.u8At(updated.angleSeriesIndex)
                                             val range = TelemetryChannel.u8At(updated.rangeSeriesIndex)
                                             if (angle != channelRouting.sourceFor(TelemetrySink.RADAR_ANGLE)) {
@@ -234,6 +307,14 @@ fun CenterDisplay(
                             }
                         }
                     }
+                        }
+                        if (centerMode == ControlPanelCenterMode.STICK && centerModeUnlocked) {
+                            StickGraphSettingsChip(
+                                onClick = { showStickSettings = true },
+                                modifier = Modifier.align(Alignment.TopEnd),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -248,38 +329,6 @@ enum class PlotType {
 
 private val CartesianPlotHorizontalPadding = 6.dp
 
-private fun booleanListSaver(default: Boolean) = Saver<List<Boolean>, String>(
-    save = { it.joinToString(",") { bit -> if (bit) "1" else "0" } },
-    restore = { encoded ->
-        val parsed = encoded.split(',').map { token -> token == "1" }
-        List(UserSettings.PLOT_LABEL_COUNT) { index -> parsed.getOrElse(index) { default } }
-    },
-)
-
-private val PlotGraphModeListSaver = Saver<List<PlotGraphMode>, String>(
-    save = { it.joinToString(",") { mode -> mode.name } },
-    restore = { encoded ->
-        val parsed = encoded.split(',').map { token ->
-            PlotGraphMode.entries.find { it.name == token } ?: PlotGraphMode.CONTINUOUS
-        }
-        List(UserSettings.PLOT_LABEL_COUNT) { index ->
-            parsed.getOrElse(index) { PlotGraphMode.CONTINUOUS }
-        }
-    },
-)
-
-private val PlotLineStyleListSaver = Saver<List<PlotLineStyle>, String>(
-    save = { it.joinToString(",") { style -> style.name } },
-    restore = { encoded ->
-        val parsed = encoded.split(',').map { token ->
-            PlotLineStyle.entries.find { it.name == token } ?: PlotLineStyle.LINE
-        }
-        List(UserSettings.PLOT_LABEL_COUNT) { index ->
-            parsed.getOrElse(index) { PlotLineStyle.LINE }
-        }
-    },
-)
-
 @Composable
 fun CartesianPlot(
     modifier: Modifier,
@@ -290,6 +339,14 @@ fun CartesianPlot(
     onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
     onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
+    plotVisible: List<Boolean>,
+    graphModes: List<PlotGraphMode>,
+    lineStyles: List<PlotLineStyle>,
+    plotOnTop: List<Boolean>,
+    onPlotVisibleChange: (List<Boolean>) -> Unit,
+    onGraphModesChange: (List<PlotGraphMode>) -> Unit,
+    onLineStylesChange: (List<PlotLineStyle>) -> Unit,
+    onPlotOnTopChange: (List<Boolean>) -> Unit,
 ) {
     // Four channels: top pane = series 0–1, bottom pane = series 2–3.
     val paddedCalibrations = PlotCalibration.padded(calibrations)
@@ -297,18 +354,6 @@ fun CartesianPlot(
     val bottomSeries = series.drop(2).take(2)
     val topCalibrations = paddedCalibrations.take(2)
     val bottomCalibrations = paddedCalibrations.drop(2).take(2)
-    var plotVisible by rememberSaveable(stateSaver = booleanListSaver(default = true)) {
-        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { true })
-    }
-    var graphModes by rememberSaveable(stateSaver = PlotGraphModeListSaver) {
-        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { PlotGraphMode.CONTINUOUS })
-    }
-    var lineStyles by rememberSaveable(stateSaver = PlotLineStyleListSaver) {
-        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { PlotLineStyle.LINE })
-    }
-    var plotOnTop by rememberSaveable(stateSaver = booleanListSaver(default = false)) {
-        mutableStateOf(List(UserSettings.PLOT_LABEL_COUNT) { false })
-    }
 
     Column(
         modifier = modifier
@@ -332,16 +377,18 @@ fun CartesianPlot(
                 lineStyles = lineStyles.take(2),
                 onTop = plotOnTop.take(2),
                 onVisibleChange = { index, visible ->
-                    plotVisible = plotVisible.toMutableList().also { it[index] = visible }
+                    onPlotVisibleChange(plotVisible.toMutableList().also { it[index] = visible })
                 },
                 onGraphModeChange = { index, mode ->
-                    graphModes = graphModes.toMutableList().also { it[index] = mode }
+                    onGraphModesChange(graphModes.toMutableList().also { it[index] = mode })
                 },
                 onLineStyleChange = { index, style ->
-                    lineStyles = lineStyles.toMutableList().also { it[index] = style }
+                    onLineStylesChange(lineStyles.toMutableList().also { it[index] = style })
                 },
                 onOnTopSelected = { index ->
-                    plotOnTop = exclusivePlotOnTop(plotOnTop, selectedIndex = index, paneStart = 0)
+                    onPlotOnTopChange(
+                        exclusivePlotOnTop(plotOnTop, selectedIndex = index, paneStart = 0),
+                    )
                 },
                 onPlotLabelChange = onPlotLabelChange,
                 onPlotChannelChange = onPlotChannelChange,
@@ -365,16 +412,24 @@ fun CartesianPlot(
                 lineStyles = lineStyles.drop(2).take(2),
                 onTop = plotOnTop.drop(2).take(2),
                 onVisibleChange = { index, visible ->
-                    plotVisible = plotVisible.toMutableList().also { it[index + 2] = visible }
+                    onPlotVisibleChange(
+                        plotVisible.toMutableList().also { it[index + 2] = visible },
+                    )
                 },
                 onGraphModeChange = { index, mode ->
-                    graphModes = graphModes.toMutableList().also { it[index + 2] = mode }
+                    onGraphModesChange(
+                        graphModes.toMutableList().also { it[index + 2] = mode },
+                    )
                 },
                 onLineStyleChange = { index, style ->
-                    lineStyles = lineStyles.toMutableList().also { it[index + 2] = style }
+                    onLineStylesChange(
+                        lineStyles.toMutableList().also { it[index + 2] = style },
+                    )
                 },
                 onOnTopSelected = { index ->
-                    plotOnTop = exclusivePlotOnTop(plotOnTop, selectedIndex = index, paneStart = 2)
+                    onPlotOnTopChange(
+                        exclusivePlotOnTop(plotOnTop, selectedIndex = index, paneStart = 2),
+                    )
                 },
                 onPlotLabelChange = onPlotLabelChange,
                 onPlotChannelChange = onPlotChannelChange,

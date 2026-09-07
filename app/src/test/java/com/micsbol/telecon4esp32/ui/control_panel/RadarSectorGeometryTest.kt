@@ -1,5 +1,7 @@
 package com.micsbol.telecon4esp32.ui.control_panel
 
+import com.micsbol.telecon4esp32.domain.model.JoystickAxis
+import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,16 +42,41 @@ class RadarSectorGeometryTest {
     }
 
     @Test
-    fun `servo 0 and 1 map to the two extremes of the scan path`() {
-        val span180 = 180f
-        assertEquals(-90f, radarBearingFromServoSample(0f, span180), 0.01f)
-        assertEquals(90f, radarBearingFromServoSample(1f, span180), 0.01f)
-        assertEquals(0f, radarBearingFromServoSample(0.5f, span180), 0.01f)
+    fun `servo 0 and 1 sit on the sector rim extremes`() {
+        val view = computeRadarViewProjection(340f, 250f, 270f, 0f)
+        val left = view.project(-135f, 1f)
+        val right = view.project(135f, 1f)
+        val fromSampleLeft = view.project(radarBearingFromServoSample(0f, 270f), 1f)
+        val fromSampleRight = view.project(radarBearingFromServoSample(1f, 270f), 1f)
+        assertEquals(left.x, fromSampleLeft.x, 0.05f)
+        assertEquals(left.y, fromSampleLeft.y, 0.05f)
+        assertEquals(right.x, fromSampleRight.x, 0.05f)
+        assertEquals(right.y, fromSampleRight.y, 0.05f)
 
-        val span270 = 270f
-        assertEquals(-135f, radarBearingFromServoSample(0f, span270), 0.01f)
-        assertEquals(135f, radarBearingFromServoSample(1f, span270), 0.01f)
-        assertEquals(0f, radarBearingFromServoSample(0.5f, span270), 0.01f)
+        val view180 = computeRadarViewProjection(340f, 250f, 180f, 0f)
+        val west = view180.project(-90f, 1f)
+        val east = view180.project(90f, 1f)
+        val from0 = view180.project(radarBearingFromServoSample(0f, 180f), 1f)
+        val from1 = view180.project(radarBearingFromServoSample(1f, 180f), 1f)
+        assertEquals(west.x, from0.x, 0.05f)
+        assertEquals(east.x, from1.x, 0.05f)
+    }
+
+    @Test
+    fun `stick angle progress fills the selected radar span`() {
+        fun bearing(x: Float, y: Float, axis: JoystickAxis, span: Float): Float {
+            val progress = StickChannelLink.angleProgress(x, y, axis, span)
+            return radarBearingFromServoSample(progress, span)
+        }
+        assertEquals(-90f, bearing(-1f, 0f, JoystickAxis.HORIZONTAL, 180f), 0.05f)
+        assertEquals(90f, bearing(1f, 0f, JoystickAxis.HORIZONTAL, 180f), 0.05f)
+        assertEquals(-135f, bearing(-1f, 0f, JoystickAxis.HORIZONTAL, 270f), 0.05f)
+        assertEquals(135f, bearing(1f, 0f, JoystickAxis.HORIZONTAL, 270f), 0.05f)
+        assertEquals(-90f, bearing(-1f, 0f, JoystickAxis.COMBINED, 180f), 0.05f)
+        assertEquals(90f, bearing(1f, 0f, JoystickAxis.COMBINED, 180f), 0.05f)
+        val edge = 0.7071f
+        assertEquals(-135f, bearing(-edge, -edge, JoystickAxis.COMBINED, 270f), 1f)
+        assertEquals(135f, bearing(edge, -edge, JoystickAxis.COMBINED, 270f), 1f)
     }
 
     @Test

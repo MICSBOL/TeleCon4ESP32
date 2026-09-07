@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
@@ -53,6 +54,8 @@ import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.parseCalibrationFloat
+import com.micsbol.telecon4esp32.domain.model.toCalibrationDraftText
 import com.micsbol.telecon4esp32.ui.components.LocalHudGlassDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
@@ -83,6 +86,12 @@ fun RcHudPlotSettingsDialog(
     val selectedChannel = channelRouting.sourceFor(sink)
     val seriesName = series.getOrElse(index) { PlotData() }.name
     var nameDraft by remember(index, seriesName) { mutableStateOf(seriesName) }
+    var yMinDraft by remember(index, style.yMin) {
+        mutableStateOf(style.yMin.toCalibrationDraftText())
+    }
+    var yMaxDraft by remember(index, style.yMax) {
+        mutableStateOf(style.yMax.toCalibrationDraftText())
+    }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -103,10 +112,22 @@ fun RcHudPlotSettingsDialog(
         onTraceStylesChange(next)
     }
 
+    fun commitYRange() {
+        val min = parseCalibrationFloat(yMinDraft, style.yMin)
+        val max = parseCalibrationFloat(yMaxDraft, style.yMax)
+        val (lo, hi) = if (max > min) min to max else min to (min + 1f)
+        yMinDraft = lo.toCalibrationDraftText()
+        yMaxDraft = hi.toCalibrationDraftText()
+        updateStyle(style.copy(yMin = lo, yMax = hi))
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }
+
     CompositionLocalProvider(LocalHudGlassDialog provides true) {
         NeoDialog(
             onDismissRequest = {
                 commitName()
+                commitYRange()
                 onDismiss()
             },
             horizontalMargin = horizontalMargin,
@@ -146,6 +167,7 @@ fun RcHudPlotSettingsDialog(
                             colors = colors,
                             onClick = {
                                 commitName()
+                                commitYRange()
                                 selectedIndex = channelIndex
                             },
                         )
@@ -274,6 +296,72 @@ fun RcHudPlotSettingsDialog(
                     )
                 }
 
+                PlotHudSectionLabel(
+                    text = stringResource(R.string.rc_vehicle_plot_settings_y_scale),
+                    color = colors.sectionLabel,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = yMinDraft,
+                        onValueChange = { yMinDraft = it },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.rc_vehicle_plot_settings_y_min),
+                                color = colors.bodyText,
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = accent.copy(alpha = 0.45f),
+                            cursorColor = accent,
+                            focusedLabelColor = accent,
+                            unfocusedLabelColor = colors.bodyText,
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Next,
+                        ),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = yMaxDraft,
+                        onValueChange = { yMaxDraft = it },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.rc_vehicle_plot_settings_y_max),
+                                color = colors.bodyText,
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = accent.copy(alpha = 0.45f),
+                            cursorColor = accent,
+                            focusedLabelColor = accent,
+                            unfocusedLabelColor = colors.bodyText,
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { commitYRange() }),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.rc_vehicle_plot_settings_y_scale_sides_hint),
+                    modifier = Modifier.fillMaxWidth(),
+                    color = colors.bodyText.copy(alpha = 0.82f),
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -310,6 +398,7 @@ fun RcHudPlotSettingsDialog(
                         TextButton(
                             onClick = {
                                 commitName()
+                                commitYRange()
                                 onDismiss()
                             },
                         ) {
@@ -327,7 +416,7 @@ fun RcHudPlotSettingsDialog(
     }
 }
 
-private data class PlotHudDialogColors(
+internal data class PlotHudDialogColors(
     val accent: Color,
     val dialogSurface: Color = Color(0xFF121A26),
     val bodyText: Color = Color(0xFFD8E2EC),
@@ -341,7 +430,7 @@ private data class PlotHudDialogColors(
 )
 
 @Composable
-private fun PlotHudSectionLabel(
+internal fun PlotHudSectionLabel(
     text: String,
     color: Color,
 ) {
@@ -354,7 +443,7 @@ private fun PlotHudSectionLabel(
 }
 
 @Composable
-private fun RowScope.PlotHudFilterChip(
+internal fun RowScope.PlotHudFilterChip(
     label: String,
     selected: Boolean,
     colors: PlotHudDialogColors,

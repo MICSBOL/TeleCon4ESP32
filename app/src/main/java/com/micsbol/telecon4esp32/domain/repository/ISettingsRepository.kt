@@ -9,6 +9,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
+import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
@@ -57,6 +58,8 @@ interface ISettingsRepository {
     suspend fun ensureSoftApStreamQualityDefaultsForAtRiskDevice(applicationId: ApplicationId)
     suspend fun saveLeftStickMode(mode: JoystickMode)
     suspend fun saveRightStickMode(mode: JoystickMode)
+    suspend fun saveLeftStickRangeShape(shape: JoystickRangeShape)
+    suspend fun saveRightStickRangeShape(shape: JoystickRangeShape)
     suspend fun saveSwitchState(index: Int, isOn: Boolean)
     suspend fun saveLeftKnobValue(value: Float)
     suspend fun saveRightKnobValue(value: Float)
@@ -74,4 +77,10 @@ interface ISettingsRepository {
 
     fun rcVehicleProControlSettingsFlow(): Flow<RcVehicleProControlSettings>
     suspend fun saveRcVehicleProControlSettings(settings: RcVehicleProControlSettings)
+
+    fun rcVehicleProHudPlotChromeFlow(): Flow<String>
+    suspend fun saveRcVehicleProHudPlotChrome(encoded: String)
+
+    fun controlPanelPlotDisplayFlow(): Flow<String>
+    suspend fun saveControlPanelPlotDisplay(encoded: String)
 }

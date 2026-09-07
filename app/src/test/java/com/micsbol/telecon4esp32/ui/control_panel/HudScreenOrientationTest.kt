@@ -19,7 +19,7 @@ class HudScreenOrientationTest {
     }
 
     @Test
-    fun portraitFallbackForcesFixedLandscapeOnAnyBrand() {
+    fun nonLandscapeWindowForcesFixedLandscapeOnAnyBrand() {
         assertEquals(
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             resolveHudLandscapeOrientation(
@@ -28,12 +28,20 @@ class HudScreenOrientationTest {
                 currentlyPortrait = true,
             ),
         )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            resolveHudLandscapeOrientation(
+                manufacturer = "Google",
+                brand = "google",
+                currentlyPortrait = true,
+            ),
+        )
     }
 
     @Test
-    fun samsungAllowsEitherLandscapeDirectionWhenAlreadyLandscape() {
+    fun samsungStaysFixedLandscape() {
         assertEquals(
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             resolveHudLandscapeOrientation(
                 manufacturer = "samsung",
                 brand = "samsung",
@@ -43,9 +51,9 @@ class HudScreenOrientationTest {
     }
 
     @Test
-    fun googlePixelAllowsEitherLandscapeDirection() {
+    fun googlePixelStaysFixedLandscape() {
         assertEquals(
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             resolveHudLandscapeOrientation(manufacturer = "Google", brand = "google"),
         )
     }
