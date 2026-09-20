@@ -26,7 +26,7 @@ data class Esp32SoftApDevice(
          * Portable SoftAP base:
          * - CAM starter → starter SSID
          * - CAM + SoftAP Simple/Binary (or legacy Kit A) → main CAM SoftAP SSID
-         * - DevKit SoftAP → `ESP32-TC-{PREFIX}-WiFi-Simple|Binary`
+         * - DevKit SoftAP → `ESP32-TC-{PREFIX}-WiFi-Binary` (Simple DevKit SoftAP withdrawn)
          */
         fun forConnectionMode(
             connectionMode: BluetoothConnectionMode,

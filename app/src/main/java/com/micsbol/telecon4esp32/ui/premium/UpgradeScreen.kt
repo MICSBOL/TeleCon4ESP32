@@ -31,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.CoinUnlockOption
+import com.micsbol.telecon4esp32.domain.model.PremiumFeature
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.ads.LocalRewardedAdManager
 import com.micsbol.telecon4esp32.ui.components.NeoCard
@@ -162,11 +163,23 @@ fun UpgradeScreen(navController: NavController) {
 
 @Composable
 private fun coinOptionLabel(option: CoinUnlockOption): String = when (option) {
-    CoinUnlockOption.ONE_USE -> stringResource(R.string.coins_option_one_use, option.coinCost)
+    CoinUnlockOption.ONE_USE -> stringResource(
+        R.string.coins_option_one_use,
+        option.coinCost(PremiumFeature.RC_VEHICLE_PRO),
+    )
     CoinUnlockOption.HOURS_4 -> stringResource(R.string.coins_table_4h)
-    CoinUnlockOption.HOURS_24 -> stringResource(R.string.coins_option_24h, option.coinCost)
-    CoinUnlockOption.DAYS_3 -> stringResource(R.string.coins_option_3d, option.coinCost)
-    CoinUnlockOption.WEEK -> stringResource(R.string.coins_option_week, option.coinCost)
+    CoinUnlockOption.HOURS_24 -> stringResource(
+        R.string.coins_option_24h,
+        option.coinCost(PremiumFeature.RC_VEHICLE_PRO),
+    )
+    CoinUnlockOption.DAYS_3 -> stringResource(
+        R.string.coins_option_3d,
+        option.coinCost(PremiumFeature.RC_VEHICLE_PRO),
+    )
+    CoinUnlockOption.WEEK -> stringResource(
+        R.string.coins_option_week,
+        option.coinCost(PremiumFeature.RC_VEHICLE_PRO),
+    )
 }
 
 @Composable

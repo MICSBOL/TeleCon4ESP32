@@ -210,6 +210,26 @@ class BluetoothViewModelTest {
     }
 
     @Test
+    fun `connectToDevice uses passed CLASSIC_SIMPLE even if protocol and transport disagree`() = runTest {
+        fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
+        launch {
+            fakeController.emitMessage(
+                EspMessage(app = "RC", type = ProtocolHandshake.ACK_TYPE, values = mapOf("app" to "RC")),
+            )
+        }
+        viewModel.requestApplicationConnection(
+            applicationId = ApplicationId.CONTROL_PANEL,
+            protocolMode = BluetoothProtocolMode.ADVANCED,
+            transport = BluetoothTransportType.BLE,
+            connectionMode = BluetoothConnectionMode.CLASSIC_SIMPLE,
+        )
+        viewModel.connectToDevice(testDevice)
+        runCurrent()
+        assertEquals(BluetoothTransportType.CLASSIC, fakeController.lastConnectTransport)
+        assertEquals("RC:CONNECT,proto,simple", fakeController.sentLines.first())
+    }
+
+    @Test
     fun `proto_mismatch NAK sets handshakeFailure and does not connect`() = runTest {
         fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
         launch {
@@ -826,7 +846,7 @@ class BluetoothViewModelTest {
     }
 
     @Test
-    fun `DevKit WIFI_SIMPLE CONNECT uses simple proto`() = runTest {
+    fun `legacy DevKit WIFI_SIMPLE CONNECT still uses simple proto`() = runTest {
         fakeController.connectionResults = listOf(ConnectionResult.SocketEstablished)
         launch {
             fakeController.emitMessage(

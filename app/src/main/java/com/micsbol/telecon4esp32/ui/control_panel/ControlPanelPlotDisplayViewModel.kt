@@ -28,9 +28,14 @@ class ControlPanelPlotDisplayViewModel @Inject constructor(
     }
 
     fun save(next: ControlPanelPlotDisplaySettings) {
-        _settings.value = next
+        val exclusive = next.withExclusiveChannels()
+        _settings.value = exclusive
         viewModelScope.launch {
-            settingsRepository.saveControlPanelPlotDisplay(next.encode())
+            settingsRepository.saveControlPanelPlotDisplay(exclusive.encode())
         }
+    }
+
+    fun update(transform: (ControlPanelPlotDisplaySettings) -> ControlPanelPlotDisplaySettings) {
+        save(transform(_settings.value))
     }
 }

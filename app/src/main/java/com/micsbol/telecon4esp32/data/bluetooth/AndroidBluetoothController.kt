@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -406,6 +407,7 @@ class AndroidBluetoothController @Inject constructor(
 
         if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             Log.e("BluetoothController", "Missing BLUETOOTH_SCAN permission")
+            updatePairedDevices()
             return
         }
 
@@ -451,7 +453,12 @@ class AndroidBluetoothController @Inject constructor(
             bluetoothAdapter!!.cancelDiscovery()
         }
 
-        val startDiscoveryResult = bluetoothAdapter?.startDiscovery()
+        val startDiscoveryResult = try {
+            bluetoothAdapter?.startDiscovery()
+        } catch (e: SecurityException) {
+            Log.e("BluetoothController", "startDiscovery blocked: ${e.message}")
+            false
+        }
         Log.d("BluetoothController", "startDiscovery() called, result: $startDiscoveryResult")
     }
 
@@ -465,7 +472,11 @@ class AndroidBluetoothController @Inject constructor(
 
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val name = result.scanRecord?.deviceName ?: result.device.name
+                val name = try {
+                    result.scanRecord?.deviceName ?: result.device.name
+                } catch (_: SecurityException) {
+                    result.scanRecord?.deviceName
+                }
                 _discoveredDevices.update { devices ->
                     val newDevice = com.micsbol.telecon4esp32.domain.bluetooth.BluetoothDevice(
                         name = name,
@@ -481,8 +492,16 @@ class AndroidBluetoothController @Inject constructor(
             }
         }
         bleScanCallback = callback
-        scanner.startScan(callback)
-        Log.d("BluetoothController", "BLE scan started")
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+        try {
+            scanner.startScan(null, settings, callback)
+            Log.d("BluetoothController", "BLE scan started")
+        } catch (e: SecurityException) {
+            bleScanCallback = null
+            Log.e("BluetoothController", "BLE scan blocked: ${e.message}")
+        }
     }
 
     private fun stopBleScan() {
@@ -567,7 +586,7 @@ class AndroidBluetoothController @Inject constructor(
                     softApWifiLock,
                 )
                 if (!wifiService.open()) {
-                    softApWifiSession.release()
+                    // Do not release SoftAP here — overlay camera HTTP may already own the bind.
                     emit(
                         ConnectionResult.Error(
                             "SoftAP TCP $host:$port unreachable. Join Wi-Fi $softApSsid first.",
@@ -640,57 +659,19 @@ class AndroidBluetoothController @Inject constructor(
                 return@flow
             }
 
-            val secureSocket: BluetoothSocket = try {
-                bluetoothDevice.createRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
-            } catch (e: IOException) {
-                emit(ConnectionResult.Error("Failed to create socket: ${e.message}"))
+            val classicSocket = openClassicSppSocket(bluetoothDevice)
+            if (classicSocket == null) {
+                emit(
+                    ConnectionResult.Error(
+                        "Classic SPP (RFCOMM) connection failed. If the ESP32 runs BLE-only firmware, select BLE Binary in app Settings.",
+                    ),
+                )
                 return@flow
             }
-
-            try {
-                secureSocket.connect()
-                synchronized(this@AndroidBluetoothController) {
-                    dataTransferService = BluetoothDataTransferService(secureSocket)
-                    activeTransport = BluetoothTransportType.CLASSIC
-                    _isConnected.update { true }
-                }
-            } catch (secureError: IOException) {
-                Log.w(
-                    "BluetoothController",
-                    "Secure RFCOMM failed, trying insecure fallback: ${secureError.message}"
-                )
-
-                try {
-                    secureSocket.close()
-                } catch (_: IOException) {
-                }
-
-                val insecureSocket = try {
-                    bluetoothDevice.createInsecureRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
-                } catch (e: IOException) {
-                    emit(ConnectionResult.Error("Secure and insecure socket creation failed: ${e.message}"))
-                    return@flow
-                }
-
-                try {
-                    insecureSocket.connect()
-                    synchronized(this@AndroidBluetoothController) {
-                        dataTransferService = BluetoothDataTransferService(insecureSocket)
-                        activeTransport = BluetoothTransportType.CLASSIC
-                        _isConnected.update { true }
-                    }
-                } catch (insecureError: IOException) {
-                    emit(
-                        ConnectionResult.Error(
-                            "Classic SPP (RFCOMM) connection failed. If the ESP32 runs BLE-only firmware, select BLE Binary in app Settings."
-                        )
-                    )
-                    try {
-                        insecureSocket.close()
-                    } catch (_: IOException) {
-                    }
-                    return@flow
-                }
+            synchronized(this@AndroidBluetoothController) {
+                dataTransferService = BluetoothDataTransferService(classicSocket)
+                activeTransport = BluetoothTransportType.CLASSIC
+                _isConnected.update { true }
             }
 
             emit(ConnectionResult.SocketEstablished)
@@ -714,7 +695,59 @@ class AndroidBluetoothController @Inject constructor(
             lastSoftApCtrlLogLine = null
             _isConnected.update { false }
         }
-        softApWifiSession.release()
+        // Keep the app-scoped SoftAP bind. Role A overlay (CAM HTTP + DevKit
+        // Bluetooth) joins TeleCon-RC-CAM-Starter for video; dropping it here
+        // made Classic SPP fail and asked the user for a different link type.
+    }
+
+    /**
+     * Classic SPP: secure UUID, insecure UUID, then RFCOMM channel 1.
+     * ESP32 BluetoothSerial often fails SDP UUID lookup while a SoftAP
+     * [WifiNetworkSpecifier] is held for the video-only camera.
+     */
+    private fun openClassicSppSocket(bluetoothDevice: BluetoothDevice): BluetoothSocket? {
+        val attempts = listOf(
+            "secure SPP UUID" to {
+                bluetoothDevice.createRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
+            },
+            "insecure SPP UUID" to {
+                bluetoothDevice.createInsecureRfcommSocketToServiceRecord(UUID.fromString(SERVICE_UUID))
+            },
+            "RFCOMM channel 1" to {
+                createRfcommSocketOnChannel(bluetoothDevice, 1)
+            },
+        )
+        for ((label, factory) in attempts) {
+            val socket = try {
+                factory()
+            } catch (e: Exception) {
+                Log.w("BluetoothController", "Classic $label create failed: ${e.message}")
+                continue
+            }
+            try {
+                socket.connect()
+                Log.i("BluetoothController", "Classic connected via $label")
+                return socket
+            } catch (e: IOException) {
+                Log.w("BluetoothController", "Classic $label connect failed: ${e.message}")
+                try {
+                    socket.close()
+                } catch (_: IOException) {
+                }
+            }
+        }
+        return null
+    }
+
+    private fun createRfcommSocketOnChannel(
+        device: BluetoothDevice,
+        channel: Int,
+    ): BluetoothSocket {
+        val method = device.javaClass.getMethod(
+            "createRfcommSocket",
+            Int::class.javaPrimitiveType,
+        )
+        return method.invoke(device, channel) as BluetoothSocket
     }
 
     /**
@@ -837,19 +870,37 @@ class AndroidBluetoothController @Inject constructor(
             Log.e("BluetoothController", "Missing BLUETOOTH_CONNECT permission for paired devices")
             return
         }
-        bluetoothAdapter
-            ?.bondedDevices
-            ?.map { it.toBluetoothDeviceDomain() }
-            ?.also { devices ->
-                _savedDevices.update { devices }
-                Log.d("BluetoothController", "Updated paired/saved devices: ${devices.size} devices")
-            }
-            ?: run {
-                Log.w("BluetoothController", "No bonded devices found or bluetooth adapter unavailable")
-            }
+        try {
+            bluetoothAdapter
+                ?.bondedDevices
+                ?.map { it.toBluetoothDeviceDomain() }
+                ?.also { devices ->
+                    _savedDevices.update { devices }
+                    Log.d("BluetoothController", "Updated paired/saved devices: ${devices.size} devices")
+                }
+                ?: run {
+                    Log.w("BluetoothController", "No bonded devices found or bluetooth adapter unavailable")
+                }
+        } catch (e: SecurityException) {
+            Log.e("BluetoothController", "bondedDevices blocked: ${e.message}")
+        }
     }
 
     private fun hasPermission(permission: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            val bluetoothGranted =
+                context.checkSelfPermission(Manifest.permission.BLUETOOTH) ==
+                    PackageManager.PERMISSION_GRANTED
+            return when (permission) {
+                Manifest.permission.BLUETOOTH_SCAN ->
+                    bluetoothGranted &&
+                        context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED
+                Manifest.permission.BLUETOOTH_CONNECT -> bluetoothGranted
+                else ->
+                    context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+            }
+        }
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
     override fun disconnect() { // Rename from closeConnection

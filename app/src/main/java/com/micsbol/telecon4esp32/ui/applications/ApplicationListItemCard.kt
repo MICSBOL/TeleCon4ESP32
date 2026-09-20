@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -65,12 +64,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.annotation.DrawableRes
-import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.ui.components.HoloTurntableFlipbook
 import com.micsbol.telecon4esp32.ui.components.glassSurface
 import com.micsbol.telecon4esp32.ui.components.holoTurntableAssetDir
+import com.micsbol.telecon4esp32.ui.theme.AppGlass
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.wallet.CoinUnlockPillButton
 
@@ -426,8 +425,7 @@ private fun BadgeChip(
 }
 
 /**
- * Tall Home tile: hologram fills remaining height; actions stay compact so two modules
- * can share the screen without a sparse list.
+ * Opaque trading-card layout for Home: gold frame, art window, always-visible description.
  */
 @Composable
 fun HomeModuleHeroCard(
@@ -445,59 +443,106 @@ fun HomeModuleHeroCard(
     onExplorerSparkleClick: () -> Unit = {},
     enabledProHighlight: Boolean = false,
     animateHologram: Boolean = true,
+    isFront: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.985f else 1f, label = "homeHeroScale")
+    val pressScale by animateFloatAsState(if (pressed) 0.985f else 1f, label = "homeHeroScale")
     val isLocked = trailingAction == ApplicationTrailingAction.UNLOCK
-    val showBadge = badge.isNotBlank()
-    var detailsExpanded by remember { mutableStateOf(false) }
-    val cardShape = RoundedCornerShape(22.dp)
-    val enabledBorderPulse = rememberInfiniteTransition(label = "homeHeroBorder")
-    val enabledBorderAlpha by enabledBorderPulse.animateFloat(
-        initialValue = 0.35f,
+    val cardShape = RoundedCornerShape(18.dp)
+    val innerShape = RoundedCornerShape(10.dp)
+    val turntableDir = applicationId.holoTurntableAssetDir()?.takeIf { animateHologram }
+    val moveName = stringResource(
+        when (applicationId) {
+            ApplicationId.CONTROL_PANEL -> R.string.home_module_card_move_control
+            ApplicationId.RC_VEHICLE_PRO -> R.string.home_module_card_move_rc
+        },
+    )
+    val linkLabel = stringResource(
+        when (applicationId) {
+            ApplicationId.CONTROL_PANEL -> R.string.home_module_card_link_control
+            ApplicationId.RC_VEHICLE_PRO -> R.string.home_module_card_link_rc
+        },
+    )
+    val statusLabel = stringResource(
+        if (isLocked) {
+            R.string.home_module_card_status_locked
+        } else {
+            R.string.home_module_card_status_ready
+        },
+    )
+    val highlightAlpha by rememberInfiniteTransition(label = "moduleCardGlow").animateFloat(
+        initialValue = 0.45f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1200),
             repeatMode = RepeatMode.Reverse,
         ),
-        label = "homeHeroBorderAlpha",
+        label = "moduleCardGlowAlpha",
     )
-    val turntableDir = applicationId.holoTurntableAssetDir()?.takeIf { animateHologram }
-    val isLandscape =
-        LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE
-    // Landscape side-by-side tiles are wide/short — Fit keeps the full hologram visible.
-    val hologramContentScale = if (isLandscape) ContentScale.Fit else ContentScale.Crop
-    val hologramInset = if (isLandscape) 10.dp else 0.dp
+    val borderColor = when {
+        isFront && enabledProHighlight -> Neo.Positive.copy(alpha = highlightAlpha)
+        isFront -> Neo.AccentHighlight
+        else -> Neo.TextMuted.copy(alpha = 0.45f)
+    }
+    val titleColor = if (isFront) Neo.TextPrimary else Neo.TextMuted
+    val bodyColor = if (isFront) Neo.TextSecondary else Neo.TextMuted.copy(alpha = 0.7f)
+    val accentLabel = if (isFront) Neo.AccentHighlight else Neo.TextMuted
+    val titleSize = if (isFront) 18.sp else 14.sp
+    val moveSize = if (isFront) 15.sp else 12.sp
+    val bodySize = if (isFront) 13.sp else 11.sp
+    val borderWidth = if (isFront) 3.dp else 1.5.dp
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .glassSurface(cornerRadius = 22.dp)
-            .then(
-                if (enabledProHighlight) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = Neo.Positive.copy(alpha = enabledBorderAlpha),
-                        shape = cardShape,
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .padding(12.dp),
+            .clip(cardShape)
+            .background(if (isFront) AppGlass.BackgroundMid else AppGlass.BackgroundTop)
+            .border(width = borderWidth, color = borderColor, shape = cardShape)
+            .padding(if (isFront) 12.dp else 8.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.home_module_card_stage),
+                color = accentLabel,
+                fontSize = if (isFront) 10.sp else 8.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                color = titleColor,
+                fontSize = titleSize,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).widthIn(min = 0.dp),
+            )
+            if (badge.isNotBlank()) {
+                BadgeChip(
+                    badge = badge,
+                    onClick = if (isFront) onClick else null,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Box(
             modifier = Modifier
                 .weight(1f, fill = true)
                 .fillMaxWidth()
-                .heightIn(min = 96.dp)
-                .scale(scale)
-                .clip(RoundedCornerShape(16.dp))
+                .heightIn(min = 120.dp)
+                .scale(pressScale)
+                .clip(innerShape)
+                .background(AppGlass.BackgroundTop)
                 .border(
                     1.dp,
-                    Neo.AccentHighlight.copy(alpha = 0.28f),
-                    RoundedCornerShape(16.dp),
+                    if (isFront) Neo.Accent.copy(alpha = 0.55f) else Neo.TextMuted.copy(alpha = 0.25f),
+                    innerShape,
                 )
                 .clickable(
                     interactionSource = interaction,
@@ -510,114 +555,88 @@ fun HomeModuleHeroCard(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            val hologramModifier = Modifier
-                .fillMaxSize()
-                .padding(hologramInset)
+            val hologramModifier = Modifier.fillMaxSize()
             if (turntableDir != null) {
                 HoloTurntableFlipbook(
                     assetDir = turntableDir,
                     contentDescription = title,
                     modifier = hologramModifier,
-                    contentScale = hologramContentScale,
+                    contentScale = ContentScale.Crop,
                 )
             } else {
                 Image(
                     painter = painterResource(thumbnailRes),
                     contentDescription = null,
-                    contentScale = hologramContentScale,
+                    contentScale = ContentScale.Crop,
                     modifier = hologramModifier,
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        val expandRotation by animateFloatAsState(
-            targetValue = if (detailsExpanded) 180f else 0f,
-            label = "homeHeroExpandArrow",
-        )
-        val expandDescription = stringResource(
-            if (detailsExpanded) {
-                R.string.applications_collapse_details_content_description
-            } else {
-                R.string.applications_expand_details_content_description
-            },
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(innerShape)
+                .background(AppGlass.BackgroundBottom)
+                .padding(10.dp),
         ) {
             Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .widthIn(min = 0.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { detailsExpanded = !detailsExpanded }
-                    .padding(end = 4.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = expandDescription
-                    },
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = title,
-                    color = Neo.TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = moveName,
+                    color = titleColor,
+                    fontSize = moveSize,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.weight(1f).widthIn(min = 0.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
-                )
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = Neo.TextSecondary,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .rotate(expandRotation),
                 )
             }
-            Spacer(modifier = Modifier.width(6.dp))
-            if (showExplorerSparkle) {
-                ExplorerSparkleButton(onClick = onExplorerSparkleClick)
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            if (showBadge) {
-                BadgeChip(
-                    badge = badge,
-                    onClick = onClick,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            DocumentationIconButton(onClick = onCodesClick)
-        }
-
-        AnimatedVisibility(
-            visible = detailsExpanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = subtitle,
+                color = bodyColor,
+                fontSize = bodySize,
+                lineHeight = if (isFront) 18.sp else 14.sp,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = linkLabel,
+                color = accentLabel,
+                fontSize = if (isFront) 12.sp else 10.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = statusLabel,
+                color = if (isFront) Neo.TextSecondary else Neo.TextMuted.copy(alpha = 0.65f),
+                fontSize = if (isFront) 12.sp else 10.sp,
+            )
+            if (isFront) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = subtitle,
-                    color = Neo.TextSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (isLocked) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    CoinUnlockPillButton(
-                        coinCost = 0,
-                        onClick = onUnlockClick,
-                        compact = true,
-                        fillMaxWidth = true,
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (showExplorerSparkle) {
+                        ExplorerSparkleButton(onClick = onExplorerSparkleClick)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    if (isLocked) {
+                        CoinUnlockPillButton(
+                            coinCost = 0,
+                            onClick = onUnlockClick,
+                            compact = true,
+                            fillMaxWidth = false,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    DocumentationIconButton(onClick = onCodesClick)
                 }
             }
         }

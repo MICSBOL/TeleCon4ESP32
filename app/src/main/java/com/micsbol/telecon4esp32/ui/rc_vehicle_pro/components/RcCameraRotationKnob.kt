@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components
 
+import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -68,6 +69,7 @@ fun RcCameraRotationKnob(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     knobSize: Dp = RcVehicleProLayout.ControlZoneKnobSize,
+    onDoubleTap: (() -> Unit)? = null,
 ) {
     val accent = brandPrimary()
     val secondary = brandSecondary()
@@ -77,6 +79,7 @@ fun RcCameraRotationKnob(
     var panAngle by remember { mutableFloatStateOf(valueToPanAngle(value)) }
 
     val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnDoubleTap by rememberUpdatedState(onDoubleTap)
     val panAngleState = rememberUpdatedState(panAngle)
 
     LaunchedEffect(value) {
@@ -95,12 +98,42 @@ fun RcCameraRotationKnob(
                 .pointerInput(Unit) {
                     // Pan only starts on the white thumb and follows the ring;
                     // other hits pass through so the panel can resize.
+                    var lastTapUptime = 0L
+                    var lastTapPosition = Offset.Zero
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = true)
                         val canvasWidth = size.width.toFloat()
                         val canvasHeight = size.height.toFloat()
                         val center = knobCenter(canvasWidth, canvasHeight)
                         val radius = knobRadius(canvasWidth, canvasHeight)
+                        val now = SystemClock.uptimeMillis()
+                        val slop = viewConfiguration.touchSlop
+                        val doubleTapHandler = currentOnDoubleTap
+                        val onKnob = (down.position - center).getDistance() <= radius * 1.12f
+                        val isDoubleTap = doubleTapHandler != null &&
+                            onKnob &&
+                            now - lastTapUptime in
+                            viewConfiguration.doubleTapMinTimeMillis..
+                            viewConfiguration.doubleTapTimeoutMillis &&
+                            (down.position - lastTapPosition).getDistance() <= slop * 2f
+                        if (isDoubleTap) {
+                            doubleTapHandler.invoke()
+                            lastTapUptime = 0L
+                            down.consume()
+                            val tapPointerId = down.id
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == tapPointerId }
+                                    ?: break
+                                change.consume()
+                                if (!change.pressed) break
+                            }
+                            return@awaitEachGesture
+                        }
+                        if (onKnob) {
+                            lastTapUptime = now
+                            lastTapPosition = down.position
+                        }
                         val grabRadius = maxOf(
                             radius * PAN_THUMB_GRAB_FRACTION,
                             20.dp.toPx(),

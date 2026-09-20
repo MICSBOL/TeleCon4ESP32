@@ -13,7 +13,7 @@ object Esp32DevKitSoftApDefaults {
     const val DEFAULT_CONTROL_PORT = Esp32CameraDefaults.DEFAULT_CONTROL_PORT
     const val SOFTAP_PASSWORD = Esp32CameraDefaults.SOFTAP_PASSWORD
 
-    /** e.g. `ESP32-TC-RC-WiFi-Simple`, `ESP32-TC-RC-WiFi-Binary`. */
+    /** e.g. `ESP32-TC-RC-WiFi-Binary`. Legacy WIFI_SIMPLE still maps to `-WiFi-Simple`. */
     fun softApSsid(appPrefix: String, mode: BluetoothConnectionMode): String {
         val token = appPrefix.trim().uppercase().ifBlank { "RC" }
         val suffix = when (mode) {

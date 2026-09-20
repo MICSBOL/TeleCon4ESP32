@@ -52,6 +52,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.availableConnectionModes
 import com.micsbol.telecon4esp32.domain.model.showSoftApCameraOverlaySetting
+import com.micsbol.telecon4esp32.domain.model.supportsCamVideoControl
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.applications.SettingsMenuOption
 import com.micsbol.telecon4esp32.ui.applications.SettingsOptionDropdown
@@ -459,7 +460,7 @@ private fun CodesFilteredContent(
                 filter.useSoftApCamera &&
                 filter.mode.isBluetoothLink
             )
-    val isRoleBCam = applicationId.usesCamera() && filter.board == Esp32Board.CAM
+    val isRoleBCam = applicationId.supportsCamVideoControl() && filter.board == Esp32Board.CAM
     val boardLabel = stringResource(
         when (filter.board) {
             Esp32Board.DEV_KIT -> R.string.app_settings_device_dev_kit
@@ -523,18 +524,24 @@ private fun CodesFilteredContent(
         if (showDevicePicker) {
             item {
                 SettingsOptionDropdown(
-                    options = listOf(
-                        SettingsMenuOption(
-                            value = Esp32Board.DEV_KIT,
-                            label = stringResource(R.string.app_settings_device_dev_kit),
-                            description = stringResource(R.string.app_settings_device_dev_kit_description),
-                        ),
-                        SettingsMenuOption(
-                            value = Esp32Board.CAM,
-                            label = stringResource(R.string.app_settings_device_cam),
-                            description = stringResource(R.string.app_settings_device_cam_description),
-                        ),
-                    ),
+                    options = buildList {
+                        add(
+                            SettingsMenuOption(
+                                value = Esp32Board.DEV_KIT,
+                                label = stringResource(R.string.app_settings_device_dev_kit),
+                                description = stringResource(R.string.app_settings_device_dev_kit_description),
+                            ),
+                        )
+                        if (applicationId.supportsCamVideoControl()) {
+                            add(
+                                SettingsMenuOption(
+                                    value = Esp32Board.CAM,
+                                    label = stringResource(R.string.app_settings_device_cam),
+                                    description = stringResource(R.string.app_settings_device_cam_description),
+                                ),
+                            )
+                        }
+                    },
                     selected = filter.board.normalizedControlBoard(),
                     onSelected = viewModel::onBoardSelected,
                     label = stringResource(R.string.codes_filter_device_title),

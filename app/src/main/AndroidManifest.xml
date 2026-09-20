@@ -26,9 +26,17 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!--
+        neverForLocation: Android 12+ scans without Location permission or Location on.
+        Android 11 and below still need ACCESS_FINE_LOCATION for startDiscovery().
+    -->
     <uses-permission
         android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
 
     <uses-feature android:name="android.hardware.bluetooth" />
     <!-- BLE transport is optional; Classic-only devices can still install the app. -->

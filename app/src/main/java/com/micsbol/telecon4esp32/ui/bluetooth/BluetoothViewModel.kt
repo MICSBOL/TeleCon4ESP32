@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.flowOn
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.isShipped
+import com.micsbol.telecon4esp32.domain.model.liveControlConnectionMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -43,6 +44,7 @@ import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcCameraPan
 import com.micsbol.telecon4esp32.domain.model.RcState
+import com.micsbol.telecon4esp32.domain.model.StickOutput
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
@@ -122,8 +124,17 @@ open class BluetoothViewModel @Inject constructor(
                 initialValue = BluetoothProtocolMode.defaultFor(ApplicationId.CONTROL_PANEL),
             )
 
+    val controlPanelConnectionMode: StateFlow<BluetoothConnectionMode> =
+        observeLiveConnectionMode(ApplicationId.CONTROL_PANEL)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = BluetoothConnectionMode.CLASSIC_SIMPLE,
+            )
+
     val controlPanelTransportType: StateFlow<BluetoothTransportType> =
-        getApplicationTransportType(ApplicationId.CONTROL_PANEL)
+        controlPanelConnectionMode
+            .map { it.transport }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -140,7 +151,27 @@ open class BluetoothViewModel @Inject constructor(
 
     /** Persisted transport (Classic / BLE / Wi‑Fi) selected for [applicationId]. */
     fun observeTransportType(applicationId: ApplicationId): Flow<BluetoothTransportType> =
-        getApplicationTransportType(applicationId)
+        observeLiveConnectionMode(applicationId).map { it.transport }
+
+    /**
+     * Same Bluetooth vs Wi‑Fi choice as Connection Settings, including withdrawn
+     * DevKit SoftAP Simple → Classic Simple.
+     */
+    fun observeLiveConnectionMode(applicationId: ApplicationId): Flow<BluetoothConnectionMode> =
+        combine(
+            getApplicationConnectionMode(applicationId),
+            getApplicationTransportType(applicationId),
+            getApplicationProtocolMode(applicationId),
+            getApplicationBoard(applicationId),
+        ) { storedMode, transport, protocol, board ->
+            liveControlConnectionMode(
+                applicationId = applicationId,
+                board = board,
+                storedMode = storedMode,
+                transport = transport,
+                protocol = protocol,
+            )
+        }
 
     /** Persisted ESP32 board selected for [applicationId]. */
     fun observeBoard(applicationId: ApplicationId): Flow<Esp32Board> =
@@ -497,7 +528,7 @@ open class BluetoothViewModel @Inject constructor(
     /**
      * Connects control over SoftAP TCP (`192.168.4.1:3333`) without opening the
      * Bluetooth device picker. Requires [requestApplicationConnection] with WIFI transport.
-     * Uses the requested session mode (`WIFI_CAM_STARTER` / `WIFI_SIMPLE` / `WIFI_BINARY`).
+     * Uses the requested session mode (`WIFI_CAM_STARTER` / `WIFI_BINARY`).
      */
     fun connectToWifiSoftAp() {
         val context = requestedSessionContext
@@ -1226,7 +1257,7 @@ open class BluetoothViewModel @Inject constructor(
     }
 
     private fun startSimpleRcSendingOnChange(): Job = viewModelScope.launch {
-        // SIMPLE SoftAP modes (CAM starter/Kit A, DevKit WIFI_SIMPLE) need a CTRL heartbeat.
+        // SIMPLE SoftAP modes (CAM starter) need a CTRL heartbeat.
         val softApSimple = currentRcConnectionMode()?.needsSoftApCtrlHeartbeat == true
         if (softApSimple) {
             // SoftAP firmware fail-safe (~750 ms) needs a CTRL heartbeat.
@@ -1567,10 +1598,10 @@ private val HUD_CONFIG_SINKS = setOf(
 )
 
 private fun RcControlState.toRcState(): RcState = RcState(
-    leftStickX = (leftStickPosition.first * 100).toInt(),
-    leftStickY = (leftStickPosition.second * 100).toInt(),
-    rightStickX = (rightStickPosition.first * 100).toInt(),
-    rightStickY = (rightStickPosition.second * 100).toInt(),
+    leftStickX = StickOutput.normalizedToPercent(leftStickPosition.first),
+    leftStickY = StickOutput.normalizedToPercent(leftStickPosition.second),
+    rightStickX = StickOutput.normalizedToPercent(rightStickPosition.first),
+    rightStickY = StickOutput.normalizedToPercent(rightStickPosition.second),
     switch1 = leftSwitches[0],
     switch2 = leftSwitches[1],
     switch3 = leftSwitches[2],

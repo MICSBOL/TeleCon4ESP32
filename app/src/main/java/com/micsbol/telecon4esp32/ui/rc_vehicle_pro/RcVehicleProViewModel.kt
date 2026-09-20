@@ -24,6 +24,7 @@ import com.micsbol.telecon4esp32.domain.camera.shouldPreferCapturePollingForLowL
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.liveControlConnectionMode
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import com.micsbol.telecon4esp32.domain.use_case.ApplySoftApCamConfigUseCase
@@ -134,7 +135,13 @@ class RcVehicleProViewModel @Inject constructor(
         resolveCameraLinkProfile(
             ApplicationId.RC_VEHICLE_PRO,
             selectedBoard,
-            selectedMode,
+            liveControlConnectionMode(
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                board = selectedBoard,
+                storedMode = selectedMode,
+                transport = selectedMode.transport,
+                protocol = selectedMode.protocolMode,
+            ),
             overlay,
         )
     }.stateIn(
@@ -165,20 +172,18 @@ class RcVehicleProViewModel @Inject constructor(
     )
     val uiState: StateFlow<RcVehicleProUiState> = _uiState.asStateFlow()
 
-    val controlSettings: StateFlow<RcVehicleProControlSettings> =
-        settingsRepository.rcVehicleProControlSettingsFlow()
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = RcVehicleProControlSettings.DEFAULT,
-            )
+    private val _controlSettings = MutableStateFlow(RcVehicleProControlSettings.DEFAULT)
+    val controlSettings: StateFlow<RcVehicleProControlSettings> = _controlSettings.asStateFlow()
+    @Volatile private var controlSettingsWriteEpoch = 0
 
     private val _plotChrome = MutableStateFlow(RcHudPlotChrome())
     val plotChrome: StateFlow<RcHudPlotChrome> = _plotChrome.asStateFlow()
 
     fun updateControlSettings(transform: (RcVehicleProControlSettings) -> RcVehicleProControlSettings) {
+        val next = transform(_controlSettings.value).withExclusiveChannels()
+        controlSettingsWriteEpoch += 1
+        _controlSettings.value = next
         viewModelScope.launch {
-            val next = transform(controlSettings.value)
             settingsRepository.saveRcVehicleProControlSettings(next)
         }
     }
@@ -203,6 +208,15 @@ class RcVehicleProViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch {
+            var ackedEpoch = 0
+            settingsRepository.rcVehicleProControlSettingsFlow().collect { saved ->
+                val writeEpoch = controlSettingsWriteEpoch
+                if (writeEpoch != ackedEpoch && saved != _controlSettings.value) return@collect
+                _controlSettings.value = saved
+                ackedEpoch = writeEpoch
+            }
+        }
         viewModelScope.launch {
             _plotChrome.value = decodeRcHudPlotChrome(
                 settingsRepository.rcVehicleProHudPlotChromeFlow().first(),

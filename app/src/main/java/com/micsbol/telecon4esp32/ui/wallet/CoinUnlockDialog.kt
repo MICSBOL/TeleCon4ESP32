@@ -124,6 +124,7 @@ fun CoinUnlockDialog(
                     CoinUnlockOption.entries.filter { it.isCoinPurchasable }.forEach { option ->
                         CoinUnlockOptionRow(
                             option = option,
+                            feature = feature,
                             balance = wallet.balance,
                             unlockButtonWidth = unlockButtonWidth,
                             onUnlock = { onUnlock(option) },
@@ -234,6 +235,7 @@ fun CoinPricingTableDialog(
     onDismiss: () -> Unit,
     walletBalance: Int? = null,
     onWatchAd: (() -> Unit)? = null,
+    feature: PremiumFeature = PremiumFeature.RC_VEHICLE_PRO,
 ) {
     CoinDialogShell(
         onDismissRequest = onDismiss,
@@ -275,7 +277,7 @@ fun CoinPricingTableDialog(
                 color = Neo.TextSecondary,
                 modifier = Modifier.fillMaxWidth(),
             )
-            CoinPricingTable()
+            CoinPricingTable(feature = feature)
         },
         actions = {
             Column(
@@ -301,6 +303,7 @@ fun CoinPricingTableDialog(
 @Composable
 private fun CoinUnlockOptionRow(
     option: CoinUnlockOption,
+    feature: PremiumFeature,
     balance: Int,
     unlockButtonWidth: Dp?,
     onUnlock: () -> Unit,
@@ -312,6 +315,7 @@ private fun CoinUnlockOptionRow(
         CoinUnlockOption.DAYS_3 -> stringResource(R.string.coins_table_3d)
         CoinUnlockOption.WEEK -> stringResource(R.string.coins_table_week)
     }
+    val cost = option.coinCost(feature)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -329,9 +333,9 @@ private fun CoinUnlockOptionRow(
                 .padding(end = 8.dp),
         )
         CoinUnlockPillButton(
-            coinCost = option.coinCost,
+            coinCost = cost,
             onClick = onUnlock,
-            enabled = balance >= option.coinCost,
+            enabled = balance >= cost,
             compact = true,
             fixedWidth = unlockButtonWidth,
         )

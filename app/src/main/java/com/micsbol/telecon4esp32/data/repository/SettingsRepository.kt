@@ -22,6 +22,7 @@ import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
+import com.micsbol.telecon4esp32.domain.model.KnobChannelLink
 import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
@@ -91,6 +92,7 @@ private object PreferencesKeys {
     val RC_VP_CAMERA_PAN_SCALE = floatPreferencesKey("rc_vehicle_pro_camera_pan_scale")
     val RC_VP_LEFT_STICK_CHANNELS = stringPreferencesKey("rc_vehicle_pro_left_stick_channels")
     val RC_VP_RIGHT_STICK_CHANNELS = stringPreferencesKey("rc_vehicle_pro_right_stick_channels")
+    val RC_VP_CAMERA_KNOB_CHANNEL = stringPreferencesKey("rc_vehicle_pro_camera_knob_channel")
     val RC_VP_HUD_PLOT_CHROME = stringPreferencesKey("rc_vehicle_pro_hud_plot_chrome")
     val CONTROL_PANEL_PLOT_DISPLAY = stringPreferencesKey("control_panel_plot_display")
 }
@@ -564,13 +566,24 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                     ?: defaults.stickGroupScale).coerceIn(0.5f, 8f),
                 cameraPanScale = (preferences[PreferencesKeys.RC_VP_CAMERA_PAN_SCALE]
                     ?: defaults.cameraPanScale).coerceIn(0.5f, 8f),
-                leftStickChannels = StickChannelLink.decode(
-                    preferences[PreferencesKeys.RC_VP_LEFT_STICK_CHANNELS],
+                leftStickChannels = if (preferences.contains(PreferencesKeys.RC_VP_CAMERA_KNOB_CHANNEL)) {
+                    StickChannelLink.decode(
+                        preferences[PreferencesKeys.RC_VP_LEFT_STICK_CHANNELS],
+                    )
+                } else {
+                    StickChannelLink.DEFAULT
+                },
+                rightStickChannels = if (preferences.contains(PreferencesKeys.RC_VP_CAMERA_KNOB_CHANNEL)) {
+                    StickChannelLink.decode(
+                        preferences[PreferencesKeys.RC_VP_RIGHT_STICK_CHANNELS],
+                    )
+                } else {
+                    StickChannelLink.DEFAULT
+                },
+                cameraKnobChannel = KnobChannelLink.decode(
+                    preferences[PreferencesKeys.RC_VP_CAMERA_KNOB_CHANNEL],
                 ),
-                rightStickChannels = StickChannelLink.decode(
-                    preferences[PreferencesKeys.RC_VP_RIGHT_STICK_CHANNELS],
-                ),
-            )
+            ).withExclusiveChannels()
         }
 
     override suspend fun saveRcVehicleProControlSettings(settings: RcVehicleProControlSettings) {
@@ -607,6 +620,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 settings.leftStickChannels.encode()
             preferences[PreferencesKeys.RC_VP_RIGHT_STICK_CHANNELS] =
                 settings.rightStickChannels.encode()
+            preferences[PreferencesKeys.RC_VP_CAMERA_KNOB_CHANNEL] =
+                settings.cameraKnobChannel.encode()
         }
     }
 

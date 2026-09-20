@@ -199,7 +199,7 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            BluetoothConnectionMode.WIFI_CAM_STARTER,
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
             Entitlement.Premium(PremiumSource.PURCHASE).effectiveConnectionMode(
                 ApplicationId.CONTROL_PANEL,
                 BluetoothTransportType.WIFI,
@@ -238,6 +238,12 @@ class ApplicationProtocolSupportTest {
                 BluetoothConnectionMode.BLE_BINARY,
             ),
         )
+        assertFalse(
+            Entitlement.Free.canUseConnectionMode(
+                ApplicationId.RC_VEHICLE_PRO,
+                BluetoothConnectionMode.WIFI_SIMPLE,
+            ),
+        )
     }
 
     @Test
@@ -262,35 +268,36 @@ class ApplicationProtocolSupportTest {
 
     @Test
     fun `cam board offers starter softap and softap binary`() {
-        listOf(
-            ApplicationId.CONTROL_PANEL,
-            ApplicationId.RC_VEHICLE_PRO,
-        ).forEach { app ->
-            assertEquals(
-                app.name,
-                listOf(
-                    BluetoothConnectionMode.WIFI_CAM_STARTER,
-                    BluetoothConnectionMode.WIFI_BINARY,
-                ),
-                app.availableConnectionModes(Esp32Board.CAM),
-            )
-            assertFalse(
-                app.name,
-                app.isConnectionModeAvailable(Esp32Board.CAM, BluetoothConnectionMode.CLASSIC_SIMPLE),
-            )
-            assertFalse(
-                app.name,
-                app.isConnectionModeAvailable(Esp32Board.CAM, BluetoothConnectionMode.CLASSIC_BINARY),
-            )
-        }
+        assertEquals(
+            listOf(
+                BluetoothConnectionMode.WIFI_CAM_STARTER,
+                BluetoothConnectionMode.WIFI_BINARY,
+            ),
+            ApplicationId.RC_VEHICLE_PRO.availableConnectionModes(Esp32Board.CAM),
+        )
+        assertFalse(
+            ApplicationId.RC_VEHICLE_PRO.isConnectionModeAvailable(
+                Esp32Board.CAM,
+                BluetoothConnectionMode.CLASSIC_SIMPLE,
+            ),
+        )
+        assertEquals(
+            ApplicationId.CONTROL_PANEL.availableConnectionModes(Esp32Board.DEV_KIT),
+            ApplicationId.CONTROL_PANEL.availableConnectionModes(Esp32Board.CAM),
+        )
+        assertTrue(
+            ApplicationId.CONTROL_PANEL.isConnectionModeAvailable(
+                Esp32Board.CAM,
+                BluetoothConnectionMode.CLASSIC_SIMPLE,
+            ),
+        )
     }
 
     @Test
-    fun `control panel default user type offers classic and wifi simple not cam starter`() {
+    fun `control panel default user type offers classic simple not wifi simple`() {
         assertEquals(
             listOf(
                 BluetoothConnectionMode.CLASSIC_SIMPLE,
-                BluetoothConnectionMode.WIFI_SIMPLE,
             ),
             ApplicationId.CONTROL_PANEL.availableConnectionModes(
                 Esp32Board.DEV_KIT,
@@ -303,16 +310,21 @@ class ApplicationProtocolSupportTest {
                 BluetoothConnectionMode.WIFI_CAM_STARTER,
             ),
         )
+        assertFalse(
+            ApplicationId.CONTROL_PANEL.isConnectionModeAvailable(
+                Esp32Board.DEV_KIT,
+                BluetoothConnectionMode.WIFI_SIMPLE,
+            ),
+        )
     }
 
     @Test
-    fun `dev kit offers bluetooth and wifi simple binary`() {
+    fun `dev kit offers bluetooth and wifi binary`() {
         assertEquals(
             listOf(
                 BluetoothConnectionMode.CLASSIC_SIMPLE,
                 BluetoothConnectionMode.CLASSIC_BINARY,
                 BluetoothConnectionMode.BLE_BINARY,
-                BluetoothConnectionMode.WIFI_SIMPLE,
                 BluetoothConnectionMode.WIFI_BINARY,
             ),
             ApplicationId.RC_VEHICLE_PRO.availableConnectionModes(Esp32Board.DEV_KIT),
@@ -322,20 +334,9 @@ class ApplicationProtocolSupportTest {
                 BluetoothConnectionMode.CLASSIC_SIMPLE,
                 BluetoothConnectionMode.CLASSIC_BINARY,
                 BluetoothConnectionMode.BLE_BINARY,
-                BluetoothConnectionMode.WIFI_SIMPLE,
                 BluetoothConnectionMode.WIFI_BINARY,
             ),
             ApplicationId.CONTROL_PANEL.availableConnectionModes(Esp32Board.DEV_KIT),
-        )
-        assertEquals(
-            listOf(
-                BluetoothConnectionMode.CLASSIC_SIMPLE,
-                BluetoothConnectionMode.CLASSIC_BINARY,
-                BluetoothConnectionMode.BLE_BINARY,
-                BluetoothConnectionMode.WIFI_SIMPLE,
-                BluetoothConnectionMode.WIFI_BINARY,
-            ),
-            ApplicationId.RC_VEHICLE_PRO.availableConnectionModes(Esp32Board.DEV_KIT),
         )
     }
 
@@ -358,7 +359,7 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            BluetoothConnectionMode.WIFI_CAM_STARTER,
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
             Entitlement.Premium(PremiumSource.PURCHASE).coerceConnectionModeForBoard(
                 ApplicationId.CONTROL_PANEL,
                 Esp32Board.CAM,
@@ -368,7 +369,7 @@ class ApplicationProtocolSupportTest {
     }
 
     @Test
-    fun `coerce to wifi simple when leaving cam softap for dev kit`() {
+    fun `coerce withdrawn wifi simple and cam starter to classic on dev kit`() {
         assertEquals(
             BluetoothConnectionMode.WIFI_BINARY,
             Entitlement.Premium(PremiumSource.PURCHASE).coerceConnectionModeForBoard(
@@ -378,11 +379,19 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            BluetoothConnectionMode.WIFI_SIMPLE,
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
             Entitlement.Free.coerceConnectionModeForBoard(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.DEV_KIT,
                 BluetoothConnectionMode.WIFI_CAM_STARTER,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
+            Entitlement.Free.coerceConnectionModeForBoard(
+                ApplicationId.RC_VEHICLE_PRO,
+                Esp32Board.DEV_KIT,
+                BluetoothConnectionMode.WIFI_SIMPLE,
             ),
         )
         assertEquals(
@@ -396,9 +405,63 @@ class ApplicationProtocolSupportTest {
     }
 
     @Test
+    fun `live control icon follows stored classic simple even if transport is wifi`() {
+        assertEquals(
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
+            liveControlConnectionMode(
+                applicationId = ApplicationId.CONTROL_PANEL,
+                board = Esp32Board.DEV_KIT,
+                storedMode = BluetoothConnectionMode.CLASSIC_SIMPLE,
+                transport = BluetoothTransportType.WIFI,
+                protocol = BluetoothProtocolMode.SIMPLE,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
+            liveControlConnectionMode(
+                applicationId = ApplicationId.CONTROL_PANEL,
+                board = Esp32Board.DEV_KIT,
+                storedMode = BluetoothConnectionMode.WIFI_SIMPLE,
+                transport = BluetoothTransportType.WIFI,
+                protocol = BluetoothProtocolMode.SIMPLE,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.WIFI_BINARY,
+            liveControlConnectionMode(
+                applicationId = ApplicationId.CONTROL_PANEL,
+                board = Esp32Board.DEV_KIT,
+                storedMode = BluetoothConnectionMode.WIFI_BINARY,
+                transport = BluetoothTransportType.WIFI,
+                protocol = BluetoothProtocolMode.ADVANCED,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.WIFI_CAM_STARTER,
+            liveControlConnectionMode(
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                board = Esp32Board.CAM,
+                storedMode = BluetoothConnectionMode.WIFI_CAM_STARTER,
+                transport = BluetoothTransportType.WIFI,
+                protocol = BluetoothProtocolMode.SIMPLE,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.BLE_BINARY,
+            liveControlConnectionMode(
+                applicationId = ApplicationId.RC_VEHICLE_PRO,
+                board = Esp32Board.DEV_KIT,
+                storedMode = BluetoothConnectionMode.BLE_BINARY,
+                transport = BluetoothTransportType.BLE,
+                protocol = BluetoothProtocolMode.ADVANCED,
+            ),
+        )
+    }
+
+    @Test
     fun `dev kit wifi respects protocol and premium`() {
         assertEquals(
-            BluetoothConnectionMode.WIFI_SIMPLE,
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
             Entitlement.Free.effectiveConnectionMode(
                 ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.WIFI,
@@ -407,7 +470,7 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            BluetoothConnectionMode.WIFI_SIMPLE,
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
             Entitlement.Free.effectiveConnectionMode(
                 ApplicationId.RC_VEHICLE_PRO,
                 BluetoothTransportType.WIFI,
@@ -431,7 +494,6 @@ class ApplicationProtocolSupportTest {
         assertEquals(
             listOf(
                 BluetoothConnectionMode.CLASSIC_SIMPLE,
-                BluetoothConnectionMode.WIFI_SIMPLE,
             ),
             ApplicationId.CONTROL_PANEL.availableConnectionModes(
                 Esp32Board.DEV_KIT,
@@ -454,11 +516,20 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            listOf(BluetoothConnectionMode.WIFI_SIMPLE),
+            emptyList<BluetoothConnectionMode>(),
             ApplicationId.RC_VEHICLE_PRO.connectionModesForFamily(
                 Esp32Board.DEV_KIT,
                 ConnectionLinkFamily.WIFI,
                 SettingsUserType.NORMAL,
+            ),
+        )
+        assertEquals(
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
+            ApplicationId.RC_VEHICLE_PRO.preferredConnectionMode(
+                Esp32Board.DEV_KIT,
+                ConnectionLinkFamily.WIFI,
+                SettingsUserType.NORMAL,
+                canUseAdvanced = false,
             ),
         )
     }
@@ -522,7 +593,7 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            BluetoothConnectionMode.WIFI_CAM_STARTER,
+            BluetoothConnectionMode.CLASSIC_SIMPLE,
             ApplicationId.CONTROL_PANEL.preferredConnectionMode(
                 Esp32Board.CAM,
                 ConnectionLinkFamily.WIFI,

@@ -68,6 +68,14 @@ fun CameraHardwareRole.availableForUserType(userType: SettingsUserType): Boolean
 fun CameraHardwareRole.coerceForUserType(userType: SettingsUserType): CameraHardwareRole =
     if (availableForUserType(userType)) this else CameraHardwareRole.NO_CAM
 
+/** Control Panel has no one-CAM video+control; map Role B to Role A overlay. */
+fun CameraHardwareRole.coerceForApplication(applicationId: ApplicationId): CameraHardwareRole =
+    if (this == CameraHardwareRole.ONE_CAM && !applicationId.supportsCamVideoControl()) {
+        CameraHardwareRole.TWO_DEVICES
+    } else {
+        this
+    }
+
 /** Plots / Radar center modes keep hardware on No CAM for every user type. */
 fun CameraHardwareRole.coerceForSettings(
     userType: SettingsUserType,

@@ -31,7 +31,32 @@ data class RcVehicleProControlSettings(
     val leftStickChannels: StickChannelLink = StickChannelLink.DEFAULT_LEFT,
     /** Optional CH1…CH8 link for the right stick axes. */
     val rightStickChannels: StickChannelLink = StickChannelLink.DEFAULT_RIGHT,
+    /** Optional CH1…CH8 link for the camera pan knob. */
+    val cameraKnobChannel: KnobChannelLink = KnobChannelLink.DEFAULT,
 ) {
+    fun occupiedChannels(
+        exceptLeftStick: Boolean = false,
+        exceptRightStick: Boolean = false,
+        exceptCameraKnob: Boolean = false,
+    ): Set<TelemetryChannel> = buildSet {
+        if (!exceptLeftStick) addAll(leftStickChannels.assignedChannels())
+        if (!exceptRightStick) addAll(rightStickChannels.assignedChannels())
+        if (!exceptCameraKnob) addAll(cameraKnobChannel.assignedChannels())
+    }
+
+    fun withExclusiveChannels(): RcVehicleProControlSettings {
+        val exclusive = exclusiveAnalogAssignments(
+            leftStick = leftStickChannels,
+            rightStick = rightStickChannels,
+            knobs = listOf(cameraKnobChannel),
+        )
+        return copy(
+            leftStickChannels = exclusive.leftStick,
+            rightStickChannels = exclusive.rightStick,
+            cameraKnobChannel = exclusive.knobs.getOrElse(0) { KnobChannelLink.DEFAULT },
+        )
+    }
+
     companion object {
         val DEFAULT_LEFT_STICK_MODE = JoystickMode.VerticalHold(JoystickMode.DOWN)
         val DEFAULT_RIGHT_STICK_MODE = JoystickMode.HorizontalSpring(JoystickMode.CENTER)

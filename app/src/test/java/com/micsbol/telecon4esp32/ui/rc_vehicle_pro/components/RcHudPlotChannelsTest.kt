@@ -33,18 +33,18 @@ class RcHudPlotChannelsTest {
     @Test
     fun `resolved y range keeps min below max and ignores non-finite values`() {
         val base = RcHudPlotTraceStyle(colorArgb = 0)
-        assertEquals(0f to 1f, base.resolvedYRange())
+        assertEquals(0f to 4094f, base.resolvedYRange())
         assertEquals(
             -20f to 80f,
             base.copy(yMin = -20f, yMax = 80f).resolvedYRange(),
         )
         assertEquals(5f to 6f, base.copy(yMin = 5f, yMax = 5f).resolvedYRange())
-        assertEquals(0f to 1f, base.copy(yMin = Float.NaN, yMax = Float.NaN).resolvedYRange())
+        assertEquals(0f to 4094f, base.copy(yMin = Float.NaN, yMax = Float.NaN).resolvedYRange())
     }
 
     @Test
     fun `hud plot scale ticks include min mid and max`() {
-        assertEquals(listOf(0f, 0.5f, 1f), hudPlotScaleTicks(0f, 1f))
+        assertEquals(listOf(0f, 2047f, 4094f), hudPlotScaleTicks(0f, 4094f))
         assertEquals(listOf(-10f, 10f, 30f), hudPlotScaleTicks(-10f, 30f))
         assertEquals(listOf(0f, 1f), hudPlotScaleTicks(0f, 1f, count = 2))
         assertEquals("0.5", formatHudPlotScaleTick(0.5f))
@@ -145,6 +145,17 @@ class RcHudPlotChannelsTest {
         assertEquals(listOf(0.55f, 0.66f), radar[0].dataPoints)
         assertEquals(listOf(0.1f, 0.2f), radar[1].dataPoints)
         assertEquals(RcVehicleProLayout.TELEMETRY_PLOT_SAMPLE_COUNT, radar[2].dataPoints.size)
+    }
+
+    @Test
+    fun `hud sample readout remaps 0-1 onto the selected y scale`() {
+        val style = RcHudPlotTraceStyle(colorArgb = 0, yMin = 0f, yMax = 4094f)
+        assertEquals("0", style.formatSample(0f))
+        assertEquals("2047", style.formatSample(0.5f))
+        assertEquals("4094", style.formatSample(1f))
+        val bipolar = style.copy(yMin = -2047f, yMax = 2047f)
+        assertEquals("0", bipolar.formatSample(0.5f))
+        assertEquals("-2047", bipolar.formatSample(0f))
     }
 
     @Test
@@ -255,9 +266,9 @@ class RcHudPlotChannelsTest {
         val legacy = RcHudPlotTraceStyleListSaver.restore(
             "1,34,LINE,0;1,35,LINE,1;1,36,TRIANGLE,0;0,37,STAIR,0",
         )
-        assertEquals(HUD_PLOT_Y_MIN_DEFAULT, legacy?.get(0)?.yMin)
-        assertEquals(HUD_PLOT_Y_MAX_DEFAULT, legacy?.get(0)?.yMax)
-        assertEquals(HUD_PLOT_Y_MIN_DEFAULT, legacy?.get(3)?.yMin)
-        assertEquals(HUD_PLOT_Y_MAX_DEFAULT, legacy?.get(3)?.yMax)
+        assertEquals(0f, legacy?.get(0)?.yMin)
+        assertEquals(1f, legacy?.get(0)?.yMax)
+        assertEquals(0f, legacy?.get(3)?.yMin)
+        assertEquals(1f, legacy?.get(3)?.yMax)
     }
 }

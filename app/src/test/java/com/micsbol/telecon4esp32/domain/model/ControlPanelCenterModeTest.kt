@@ -169,7 +169,7 @@ class ControlPanelCenterModeTest {
             ),
         )
         assertEquals(
-            CameraHardwareRole.ONE_CAM,
+            CameraHardwareRole.TWO_DEVICES,
             ApplicationId.CONTROL_PANEL.effectiveCameraHardwareRole(
                 stored = CameraHardwareRole.ONE_CAM,
                 userType = SettingsUserType.NORMAL,

@@ -2,6 +2,7 @@ package com.micsbol.telecon4esp32.ui.control_panel.components
 
 import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -17,6 +18,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -29,13 +31,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
+import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.PlotDisplayHistories
 import com.micsbol.telecon4esp32.domain.model.PlotGraphMode
 import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
 import com.micsbol.telecon4esp32.domain.model.PlotVertex
+import com.micsbol.telecon4esp32.domain.model.formatEngineeringNumber
 import com.micsbol.telecon4esp32.domain.model.lineVertices
+import com.micsbol.telecon4esp32.domain.model.plotScaleTicks
 import com.micsbol.telecon4esp32.domain.model.stairVertices
 import com.micsbol.telecon4esp32.domain.model.triangleContours
+import com.micsbol.telecon4esp32.domain.model.zeroLineNormalized
 import kotlin.math.sin
 
 private const val MAX_VISIBLE_PLOT_POINTS = 100
@@ -50,6 +56,7 @@ fun RealTimePlot(
     graphModes: List<PlotGraphMode> = emptyList(),
     lineStyles: List<PlotLineStyle> = emptyList(),
     onTop: List<Boolean> = emptyList(),
+    calibrations: List<PlotCalibration> = emptyList(),
 ) {
 
     var canvasSize by remember { mutableStateOf(Size.Zero) }
@@ -100,16 +107,19 @@ fun RealTimePlot(
             end = Offset(x = size.width, y = topY),
             strokeWidth = 1.5.dp.toPx()
         )
+        val gridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 5f), 0f)
+        val gridStroke = 1.dp.toPx()
         val horizontalSubdivisions = 8
         val drawableHeight = size.height - topPadding
         val horizontalSpacing = drawableHeight / horizontalSubdivisions
         for (i in 1..horizontalSubdivisions) {
             val y = topY + (i * horizontalSpacing)
             drawLine(
-                color = if(i == horizontalSubdivisions / 2) Color.Cyan else gridColor,
+                color = gridColor,
                 start = Offset(x = 0f, y = y),
                 end = Offset(x = size.width, y = y),
-                strokeWidth = 1.dp.toPx()
+                strokeWidth = gridStroke,
+                pathEffect = gridDash,
             )
         }
 
@@ -117,10 +127,26 @@ fun RealTimePlot(
         val verticalSpacing = size.width / verticalLineCount
         for (i in 0..verticalLineCount) {
             drawLine(
-                color = if(i == verticalLineCount / 2) Color.Cyan else gridColor,
+                color = gridColor,
                 start = Offset(x = i * verticalSpacing, y = 0f),
                 end = Offset(x = i * verticalSpacing, y = size.height),
-                strokeWidth = 1.dp.toPx()
+                strokeWidth = gridStroke,
+                pathEffect = gridDash,
+            )
+        }
+
+        val zeroYs = linkedSetOf<Int>()
+        calibrations.forEachIndexed { index, calibration ->
+            if (!visible.getOrElse(index) { true }) return@forEachIndexed
+            val fraction = calibration.zeroLineNormalized() ?: return@forEachIndexed
+            val y = size.height * (1f - fraction)
+            val key = y.toInt()
+            if (!zeroYs.add(key)) return@forEachIndexed
+            drawLine(
+                color = Color.Cyan,
+                start = Offset(x = 0f, y = y),
+                end = Offset(x = size.width, y = y),
+                strokeWidth = 1.dp.toPx(),
             )
         }
 
@@ -145,6 +171,73 @@ fun RealTimePlot(
                     coreWidth = 2.dp.toPx(),
                     glowWidth = 6.dp.toPx(),
                     glowBlur = 14f
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PlotYAxisScale(
+    min: Float,
+    max: Float,
+    color: Color,
+    axisOnEnd: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(top = 2.dp),
+    ) {
+        val (lo, hi) = if (max > min) min to max else min to (min + 1f)
+        val span = (hi - lo).coerceAtLeast(1e-6f)
+        val axisX = if (axisOnEnd) size.width - 1.dp.toPx() else 1.dp.toPx()
+        val tickLen = 3.5.dp.toPx()
+        val labelGap = 2.dp.toPx()
+        drawLine(
+            color = color.copy(alpha = 0.85f),
+            start = Offset(axisX, 0f),
+            end = Offset(axisX, size.height),
+            strokeWidth = 1.2f,
+        )
+        val ticks = plotScaleTicks(lo, hi)
+        ticks.forEach { value ->
+            val t = ((value - lo) / span).coerceIn(0f, 1f)
+            val y = size.height * (1f - t)
+            val tickEnd = if (axisOnEnd) axisX - tickLen else axisX + tickLen
+            drawLine(
+                color = color.copy(alpha = 0.75f),
+                start = Offset(axisX, y),
+                end = Offset(tickEnd, y),
+                strokeWidth = 1.1f,
+            )
+        }
+        drawIntoCanvas { canvas ->
+            val native = canvas.nativeCanvas
+            val labelPaint = android.graphics.Paint().apply {
+                this.color = color.toArgb()
+                textSize = 7.dp.toPx()
+                isAntiAlias = true
+                isFakeBoldText = true
+                textAlign = if (axisOnEnd) {
+                    android.graphics.Paint.Align.RIGHT
+                } else {
+                    android.graphics.Paint.Align.LEFT
+                }
+            }
+            val labelX = if (axisOnEnd) axisX - labelGap else axisX + labelGap
+            ticks.forEach { value ->
+                val t = ((value - lo) / span).coerceIn(0f, 1f)
+                val y = size.height * (1f - t)
+                val minBaseline = labelPaint.textSize * 0.85f
+                val maxBaseline = size.height - labelPaint.textSize * 0.15f
+                val baseline = (y + labelPaint.textSize * 0.35f).coerceIn(minBaseline, maxBaseline)
+                native.drawText(
+                    if (value.isFinite()) formatEngineeringNumber(value) else "0",
+                    labelX,
+                    baseline,
+                    labelPaint,
                 )
             }
         }
@@ -272,6 +365,7 @@ private fun RealTimePlotMultiLinePreview() {
         series = listOf(
             PlotData(dataPoints = sampleData1, colorArgb = 0xFF00FFFF.toInt()),
             PlotData(dataPoints = sampleData2, colorArgb = 0xFFFF0000.toInt())
-        )
+        ),
+        calibrations = listOf(PlotCalibration.DEFAULT, PlotCalibration.DEFAULT),
     )
 }

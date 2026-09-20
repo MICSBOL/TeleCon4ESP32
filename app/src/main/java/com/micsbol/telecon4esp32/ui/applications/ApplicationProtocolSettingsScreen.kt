@@ -103,6 +103,20 @@ fun ApplicationProtocolSettingsScreen(
     }
     val storedRole = resolveCameraHardwareRole(selectedBoard, useSoftApCamera)
     val cameraRole = storedRole.coerceForUserType(userType)
+    LaunchedEffect(cameraRole, connectionMode, selectedBoard, userType, canUseAdvanced) {
+        if (cameraRole != CameraHardwareRole.TWO_DEVICES || !connectionMode.isWifiLink) {
+            return@LaunchedEffect
+        }
+        val preferred = applicationId.preferredConnectionMode(
+            board = selectedBoard,
+            family = ConnectionLinkFamily.BLUETOOTH,
+            userType = userType,
+            canUseAdvanced = canUseAdvanced,
+        ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE
+        if (preferred != connectionMode) {
+            viewModel.onConnectionModeChanged(preferred)
+        }
+    }
     val allowTwoDevices = true
     val showCamSoftApHardwareInfo = cameraRole == CameraHardwareRole.ONE_CAM
     val showOverlayCameraCredentials = cameraRole == CameraHardwareRole.TWO_DEVICES

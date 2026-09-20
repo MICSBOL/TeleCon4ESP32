@@ -1,9 +1,25 @@
 package com.micsbol.telecon4esp32.domain.model
 
 /**
- * Coin spend tiers for unlocking a single [PremiumFeature].
+ * Which coin price list a [PremiumFeature] uses.
  *
- * All costs are multiples of 7 — see [coinCost].
+ * [RC_VEHICLE] is the original catalog table (7 / 21 / 49 / 77).
+ * [STANDARD] is the in-app feature table (3 / 7 / 14 / 21), with one-use at one rewarded ad.
+ */
+enum class CoinPriceTable {
+    RC_VEHICLE,
+    STANDARD,
+}
+
+fun PremiumFeature.coinPriceTable(): CoinPriceTable =
+    if (this == PremiumFeature.RC_VEHICLE_PRO) {
+        CoinPriceTable.RC_VEHICLE
+    } else {
+        CoinPriceTable.STANDARD
+    }
+
+/**
+ * Coin spend tiers for unlocking a single [PremiumFeature].
  */
 enum class CoinUnlockOption {
     ONE_USE,
@@ -14,18 +30,28 @@ enum class CoinUnlockOption {
     WEEK,
     ;
 
-    val coinCost: Int
-        get() = when (this) {
+    fun coinCost(feature: PremiumFeature): Int = coinCost(feature.coinPriceTable())
+
+    fun coinCost(table: CoinPriceTable): Int = when (table) {
+        CoinPriceTable.RC_VEHICLE -> when (this) {
             ONE_USE -> 7
             HOURS_4 -> 0
             HOURS_24 -> 21
             DAYS_3 -> 49
             WEEK -> 77
         }
+        CoinPriceTable.STANDARD -> when (this) {
+            ONE_USE -> 3
+            HOURS_4 -> 0
+            HOURS_24 -> 7
+            DAYS_3 -> 14
+            WEEK -> 21
+        }
+    }
 
     /** Options shown in coin unlock / pricing UI. */
     val isCoinPurchasable: Boolean
-        get() = coinCost > 0
+        get() = this != HOURS_4
 
     /** `null` means access lasts until the user leaves the pro application. */
     fun durationMillis(): Long? = when (this) {
@@ -36,8 +62,14 @@ enum class CoinUnlockOption {
         WEEK -> 7L * 24 * 60 * 60 * 1000
     }
 
-    val usesEquivalent: Int
-        get() = if (coinCost == 0) 0 else coinCost / CoinEconomy.COIN_UNIT
+    fun usesEquivalent(feature: PremiumFeature): Int = usesEquivalent(feature.coinPriceTable())
+
+    fun usesEquivalent(table: CoinPriceTable): Int {
+        val cost = coinCost(table)
+        val oneUse = ONE_USE.coinCost(table)
+        if (cost <= 0 || oneUse <= 0) return 0
+        return cost / oneUse
+    }
 
     companion object {
         fun fromStoredName(name: String): CoinUnlockOption? {

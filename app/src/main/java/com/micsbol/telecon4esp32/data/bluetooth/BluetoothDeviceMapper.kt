@@ -6,8 +6,13 @@ import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothDeviceDomain
 
 @SuppressLint("MissingPermission")
 fun BluetoothDevice.toBluetoothDeviceDomain(): BluetoothDeviceDomain {
+    val deviceName = try {
+        name
+    } catch (_: SecurityException) {
+        null
+    }
     return BluetoothDeviceDomain(
-        name = name,
-        address = address
+        name = deviceName,
+        address = address,
     )
 }

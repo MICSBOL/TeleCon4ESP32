@@ -74,7 +74,9 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
+import com.micsbol.telecon4esp32.domain.model.KnobChannelLink
 import com.micsbol.telecon4esp32.domain.model.StickChannelLink
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.brandSecondary
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProGlass
@@ -99,8 +101,10 @@ fun RcControlZone(
     onRangeShapeChange: ((JoystickRangeShape) -> Unit)? = null,
     channelLink: StickChannelLink = StickChannelLink.DEFAULT,
     onChannelLinkChange: ((StickChannelLink) -> Unit)? = null,
+    occupiedChannels: Set<TelemetryChannel> = emptySet(),
     settingsSyncGeneration: Int = 0,
     stickConfigContentDescription: String? = null,
+    visualOffset: Pair<Float, Float> = Pair(0f, 0f),
     trimMode: Boolean = false,
     trimX: Int = 0,
     trimY: Int = 0,
@@ -164,6 +168,7 @@ fun RcControlZone(
                     settingsSyncGeneration = settingsSyncGeneration,
                     onDoubleTap = onStickModeChange?.let { { menuExpanded = true } },
                     contentDescription = stickConfigContentDescription,
+                    visualOffset = visualOffset,
                 )
                 if (onStickModeChange != null) {
                     RcStickOptionsMenu(
@@ -174,6 +179,7 @@ fun RcControlZone(
                         selectedRangeShape = rangeShape,
                         onRangeShapeSelected = { next -> onRangeShapeChange?.invoke(next) },
                         channelLink = channelLink,
+                        occupiedChannels = occupiedChannels,
                         onChannelLinkChange = { next -> onChannelLinkChange?.invoke(next) },
                     )
                 }
@@ -636,6 +642,9 @@ fun RcCameraPanPanel(
     onResizeModeChange: (Boolean) -> Unit = {},
     onPanelScaleChange: (Float) -> Unit = {},
     maxScale: Float = RcVehicleProLayout.STICK_GROUP_SCALE_MAX,
+    channelLink: KnobChannelLink = KnobChannelLink.DEFAULT,
+    onChannelLinkChange: (KnobChannelLink) -> Unit = {},
+    occupiedChannels: Set<TelemetryChannel> = emptySet(),
 ) {
     val scale = RcVehicleProLayout.coerceStickGroupScale(panelScale, maxScale)
     RcHudCollapsibleToEdge(
@@ -685,6 +694,9 @@ fun RcCameraPanPanel(
                     value = value,
                     onValueChange = onValueChange,
                     knobSize = RcVehicleProLayout.ControlZoneKnobSize * scale,
+                    channelLink = channelLink,
+                    onChannelLinkChange = onChannelLinkChange,
+                    occupiedChannels = occupiedChannels,
                 )
                 RcCameraFrontChip(
                     onClick = onFrontClick,
@@ -752,9 +764,16 @@ fun RcCameraKnobControl(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     knobSize: Dp = RcVehicleProLayout.ControlZoneKnobSize,
+    channelLink: KnobChannelLink = KnobChannelLink.DEFAULT,
+    onChannelLinkChange: (KnobChannelLink) -> Unit = {},
+    occupiedChannels: Set<TelemetryChannel> = emptySet(),
 ) {
     val panRaw = RcVehicleProLayout.cameraPanRaw(value)
-    val panDescription = stringResource(R.string.rc_vehicle_camera_pan_value, panRaw)
+    val panDescription = stringResource(
+        R.string.control_panel_widget_config_content_description,
+        stringResource(R.string.rc_vehicle_camera_pan_value, panRaw),
+    )
+    var menuExpanded by remember { mutableStateOf(false) }
     Box(
         modifier = modifier.semantics { contentDescription = panDescription },
         contentAlignment = Alignment.Center,
@@ -763,6 +782,14 @@ fun RcCameraKnobControl(
             value = value,
             onValueChange = onValueChange,
             knobSize = knobSize,
+            onDoubleTap = { menuExpanded = true },
+        )
+        RcKnobOptionsMenu(
+            expanded = menuExpanded,
+            onDismiss = { menuExpanded = false },
+            channelLink = channelLink,
+            onChannelLinkChange = onChannelLinkChange,
+            occupiedChannels = occupiedChannels,
         )
     }
 }

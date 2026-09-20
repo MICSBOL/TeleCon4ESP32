@@ -1,15 +1,5 @@
 package com.micsbol.telecon4esp32.ui.navigation
 
-import android.Manifest
-import android.app.Activity
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -18,8 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -39,6 +27,7 @@ import com.micsbol.telecon4esp32.ui.applications.ApplicationsScreen
 import com.micsbol.telecon4esp32.ui.applications.usesImmersiveHudChrome
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothScreen
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.bluetooth.rememberEnsureBluetoothReady
 import com.micsbol.telecon4esp32.ui.codes.CodesHubScreen
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
 import com.micsbol.telecon4esp32.ui.components.LocalHudGlassDialog
@@ -114,81 +103,7 @@ fun AppNavGraph(
         }
         composable(Screen.Bluetooth.route) {
             val state by bluetoothViewModel.state.collectAsState()
-            val context = LocalContext.current
-            val activity = context as? ComponentActivity
-            val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-            val bluetoothAdapter = bluetoothManager?.adapter
-            var pendingBluetoothAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-
-            fun runPendingBluetoothActionOrScan() {
-                val action = pendingBluetoothAction
-                pendingBluetoothAction = null
-                (action ?: { bluetoothViewModel.startScan() }).invoke()
-            }
-
-            val enableBluetoothLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.StartActivityForResult()
-            ) { result ->
-                val enabled = result.resultCode == Activity.RESULT_OK ||
-                    bluetoothAdapter?.isEnabled == true
-                if (enabled) {
-                    runPendingBluetoothActionOrScan()
-                } else {
-                    pendingBluetoothAction = null
-                }
-            }
-
-            val permissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestMultiplePermissions()
-            ) { perms ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val scanGranted = perms[Manifest.permission.BLUETOOTH_SCAN] == true
-                    val connectGranted = perms[Manifest.permission.BLUETOOTH_CONNECT] == true
-                    if (scanGranted && connectGranted) {
-                        if (bluetoothAdapter?.isEnabled == false && activity != null) {
-                            enableBluetoothLauncher.launch(
-                                Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE),
-                            )
-                        } else {
-                            runPendingBluetoothActionOrScan()
-                        }
-                    } else {
-                        pendingBluetoothAction = null
-                    }
-                }
-            }
-
-            fun ensureBluetoothReadyBeforeAction(onReady: () -> Unit) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val scanGranted = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.BLUETOOTH_SCAN
-                    ) == PackageManager.PERMISSION_GRANTED
-                    val connectGranted = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.BLUETOOTH_CONNECT
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (!scanGranted || !connectGranted) {
-                        pendingBluetoothAction = onReady
-                        permissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.BLUETOOTH_SCAN,
-                                Manifest.permission.BLUETOOTH_CONNECT
-                            )
-                        )
-                        return
-                    }
-                }
-
-                if (bluetoothAdapter?.isEnabled == false && activity != null) {
-                    pendingBluetoothAction = onReady
-                    enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                    return
-                }
-
-                onReady()
-            }
+            val ensureBluetoothReady = rememberEnsureBluetoothReady()
 
             LaunchedEffect(key1 = true) {
                 bluetoothViewModel.navigateToScreen.collect { route ->
@@ -203,7 +118,7 @@ fun AppNavGraph(
             }
 
             LaunchedEffect(Unit) {
-                ensureBluetoothReadyBeforeAction {
+                ensureBluetoothReady {
                     bluetoothViewModel.startScan()
                 }
             }
@@ -221,14 +136,14 @@ fun AppNavGraph(
                     state = state,
                     onNavigateBack = { navController.navigateUp() },
                     onStartScan = {
-                        ensureBluetoothReadyBeforeAction {
+                        ensureBluetoothReady {
                             bluetoothViewModel.startScan()
                         }
                     },
                     onStopScan = bluetoothViewModel::stopScan,
                     onDismissError = bluetoothViewModel::dismissError,
                     onDeviceClick = { device ->
-                        ensureBluetoothReadyBeforeAction {
+                        ensureBluetoothReady {
                             bluetoothViewModel.connectToDevice(device)
                         }
                     }

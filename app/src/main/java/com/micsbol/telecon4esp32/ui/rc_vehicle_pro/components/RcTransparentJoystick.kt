@@ -39,6 +39,7 @@ import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.brandSecondary
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcStickDeadzone
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcStickTrim
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.theme.DarkBackground
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
@@ -82,6 +83,7 @@ fun RcTransparentJoystick(
     settingsSyncGeneration: Int = 0,
     onDoubleTap: (() -> Unit)? = null,
     contentDescription: String? = null,
+    visualOffset: Pair<Float, Float> = Pair(0f, 0f),
 ) {
     val ringColor = brandPrimary().copy(alpha = 0.45f)
     val levelColor = brandPrimary()
@@ -97,6 +99,7 @@ fun RcTransparentJoystick(
     val deadzoneState = rememberUpdatedState(deadzone)
     val modeState = rememberUpdatedState(mode)
     val initialNormalizedState = rememberUpdatedState(initialNormalized)
+    val visualOffsetState = rememberUpdatedState(visualOffset)
     val onDoubleTapState = rememberUpdatedState(onDoubleTap)
     val scope = rememberCoroutineScope()
     val springReturnJob = remember { SpringReturnJobHolder() }
@@ -113,6 +116,9 @@ fun RcTransparentJoystick(
         val mapped = RcStickDeadzone.apply(x, y, deadzoneState.value)
         onMoveState.value(mapped.first, mapped.second)
     }
+
+    fun visualStick(position: Pair<Float, Float> = stickPositionState.value): Pair<Float, Float> =
+        RcStickTrim.add(position, visualOffsetState.value)
 
     fun cancelSpringReturn() {
         springReturnJob.cancel()
@@ -167,15 +173,16 @@ fun RcTransparentJoystick(
                             val center = Offset(pad.width / 2f, pad.height / 2f)
                             val radius = joystickRadius(pad.width.toFloat(), pad.height.toFloat())
                             val vector = constrainVector(padPoint - center, radius, modeState.value)
-                            val normalized = vectorToNormalized(vector, radius)
-                            emitStick(normalized.first, normalized.second)
+                            val visual = vectorToNormalized(vector, radius)
+                            val geometric = RcStickTrim.subtract(visual, visualOffsetState.value)
+                            emitStick(geometric.first, geometric.second)
                         }
 
                         fun thumbCenter(): Offset {
                             val pad = this@pointerInput.size
                             val center = Offset(pad.width / 2f, pad.height / 2f)
                             val radius = joystickRadius(pad.width.toFloat(), pad.height.toFloat())
-                            return center + normalizedToOffset(stickPositionState.value, radius)
+                            return center + normalizedToOffset(visualStick(), radius)
                         }
 
                         fun grabRadius(): Float {
@@ -270,11 +277,12 @@ fun RcTransparentJoystick(
             drawRingLevelTicks(center, radius, levelColor)
             drawAxisLevelLines(center, radius, mode, levelColor)
 
-            val arcSweep = arcSweepDegrees(stickPosition, mode)
+            val visualStick = RcStickTrim.add(stickPosition, visualOffset)
+            val arcSweep = arcSweepDegrees(visualStick, mode)
             if (arcSweep != 0f) {
                 drawArc(
                     brush = arcBrush,
-                    startAngle = arcStartAngle(stickPosition, mode),
+                    startAngle = arcStartAngle(visualStick, mode),
                     sweepAngle = arcSweep,
                     useCenter = false,
                     topLeft = Offset(center.x - radius, center.y - radius),
@@ -283,7 +291,7 @@ fun RcTransparentJoystick(
                 )
             }
 
-            val thumbOffset = normalizedToOffset(stickPosition, radius)
+            val thumbOffset = normalizedToOffset(visualStick, radius)
             drawCircle(
                 color = Color.Black.copy(alpha = 0.22f),
                 radius = radius * 0.30f,

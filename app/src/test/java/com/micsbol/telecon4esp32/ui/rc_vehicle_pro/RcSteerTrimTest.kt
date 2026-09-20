@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.rc_vehicle_pro
 
+import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -27,5 +28,29 @@ class RcSteerTrimTest {
     fun toChannelUnits_matchesWireInts() {
         assertEquals(3, RcSteerTrim.toChannelUnits(0.03f))
         assertEquals(-1, RcSteerTrim.toChannelUnits(-0.01f))
+    }
+
+    @Test
+    fun visualOffset_usesEnabledAxesOnly() {
+        assertEquals(
+            Pair(0.03f, 0.05f),
+            RcStickTrim.visualOffset(JoystickMode.Spring(), trimX = 0.03f, trimY = 0.05f),
+        )
+        assertEquals(
+            Pair(0f, 0.05f),
+            RcStickTrim.visualOffset(JoystickMode.VerticalSpring(), trimX = 0.03f, trimY = 0.05f),
+        )
+        assertEquals(
+            Pair(0.03f, 0f),
+            RcStickTrim.visualOffset(JoystickMode.HorizontalSpring(), trimX = 0.03f, trimY = 0.05f),
+        )
+    }
+
+    @Test
+    fun subtract_convertsVisualRestBackToGeometric() {
+        val offset = Pair(0.03f, 0.06f)
+        val visualRest = RcStickTrim.add(Pair(0f, 0f), offset)
+        assertEquals(Pair(0.03f, 0.06f), visualRest)
+        assertEquals(Pair(0f, 0f), RcStickTrim.subtract(visualRest, offset))
     }
 }

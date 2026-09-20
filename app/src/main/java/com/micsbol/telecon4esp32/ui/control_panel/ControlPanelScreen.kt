@@ -41,6 +41,7 @@ import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelOverlay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,7 +68,6 @@ import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryChannelRouter
@@ -85,8 +86,10 @@ import com.micsbol.telecon4esp32.domain.model.canUseControlPanelSessionCsv
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelStick
 import com.micsbol.telecon4esp32.domain.model.isUnlocked
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
+import com.micsbol.telecon4esp32.ui.bluetooth.ApplicationBluetoothSessionUi
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothConnectionErrorDialog
 import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
+import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.bluetooth.SessionRecordingUiState
 import com.micsbol.telecon4esp32.ui.bluetooth.rememberSoftApConnectAction
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
@@ -96,6 +99,8 @@ import com.micsbol.telecon4esp32.ui.control_panel.components.BatteryStatus
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
+import com.micsbol.telecon4esp32.domain.model.KnobChannelLink
+import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.ui.ads.InterstitialTrigger
 import com.micsbol.telecon4esp32.ui.ads.rememberNavigateWithInterstitial
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
@@ -155,22 +160,16 @@ fun ControlPanelScreen(
         ?: MutableStateFlow(0)).collectAsState()
     val bluetoothConnectionState by (bluetoothViewModel?.state
         ?: MutableStateFlow(BluetoothUiState())).collectAsState()
-    val controlPanelProtocolMode by (bluetoothViewModel?.controlPanelProtocolMode
-        ?: MutableStateFlow(com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode.defaultFor(ApplicationId.CONTROL_PANEL))).collectAsState()
-    val controlPanelTransportType by (bluetoothViewModel?.controlPanelTransportType
-        ?: MutableStateFlow(com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType.CLASSIC)).collectAsState()
+    val controlPanelConnectionMode by (bluetoothViewModel?.controlPanelConnectionMode
+        ?: MutableStateFlow(BluetoothConnectionMode.CLASSIC_SIMPLE)).collectAsState()
+    val controlPanelTransportType = controlPanelConnectionMode.transport
     val isConnectedForControlPanel =
         bluetoothConnectionState.isConnected &&
             bluetoothConnectionState.activeSession?.applicationId == ApplicationId.CONTROL_PANEL
 
     val softApConnect = rememberSoftApConnectAction(
         onConnect = {
-            val wifiMode =
-                if (controlPanelProtocolMode == BluetoothProtocolMode.ADVANCED) {
-                    BluetoothConnectionMode.WIFI_BINARY
-                } else {
-                    BluetoothConnectionMode.WIFI_SIMPLE
-                }
+            val wifiMode = BluetoothConnectionMode.WIFI_BINARY
             actualViewModel?.dismissError()
             actualViewModel?.requestApplicationConnection(
                 applicationId = ApplicationId.CONTROL_PANEL,
@@ -425,6 +424,41 @@ fun ControlPanelScreen(
                 )
             }
 
+            val onOpenBluetooth: () -> Unit = remember(
+                actualViewModel,
+                navController,
+                controlPanelConnectionMode,
+                softApConnect,
+            ) {
+                {
+                    if (controlPanelConnectionMode.isWifiLink) {
+                        // SoftAP: in-app local-only join (API 29+) or system Wi‑Fi settings.
+                        softApConnect()
+                    } else {
+                        // Passes Classic Simple so RC:CONNECT,proto,simple matches ESP32-TC-RC-BT-Simple.
+                        actualViewModel?.dismissError()
+                        actualViewModel?.requestApplicationConnection(
+                            applicationId = ApplicationId.CONTROL_PANEL,
+                            protocolMode = controlPanelConnectionMode.protocolMode,
+                            transport = controlPanelConnectionMode.transport,
+                            connectionMode = controlPanelConnectionMode,
+                        )
+                        actualViewModel?.preparePostConnectPopBack()
+                        if (navController != null) {
+                            navController.navigate(Screen.Bluetooth.route)
+                        }
+                    }
+                }
+            }
+
+            CompositionLocalProvider(
+                LocalApplicationBluetoothSession provides ApplicationBluetoothSessionUi(
+                    isConnected = isConnectedForControlPanel,
+                    isConnecting = bluetoothConnectionState.isConnecting,
+                    transport = controlPanelConnectionMode.transport,
+                    onConnect = onOpenBluetooth,
+                ),
+            ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(
                     painter = painterResource(id = R.drawable.plastic_background),
@@ -432,33 +466,6 @@ fun ControlPanelScreen(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-
-                val onOpenBluetooth: () -> Unit = remember(
-                    actualViewModel,
-                    navController,
-                    controlPanelProtocolMode,
-                    controlPanelTransportType,
-                    softApConnect,
-                ) {
-                    {
-                        if (controlPanelTransportType == BluetoothTransportType.WIFI) {
-                            // SoftAP: in-app local-only join (API 29+) or system Wi‑Fi settings.
-                            softApConnect()
-                        } else {
-                            // Passes Classic Simple/Binary or BLE Binary so RC:CONNECT,proto,… matches Settings.
-                            actualViewModel?.dismissError()
-                            actualViewModel?.requestApplicationConnection(
-                                ApplicationId.CONTROL_PANEL,
-                                controlPanelProtocolMode,
-                                controlPanelTransportType,
-                            )
-                            actualViewModel?.preparePostConnectPopBack()
-                            if (navController != null) {
-                                navController.navigate(Screen.Bluetooth.route)
-                            }
-                        }
-                    }
-                }
 
                 if (navController != null) {
                     LiveControlBluetoothDisconnectedBannerOverlay(
@@ -607,6 +614,8 @@ fun ControlPanelScreen(
                                 onUnlockCenterMode = {
                                     unlockFeature = centerMode.premiumFeature
                                 },
+                                leftStickMode = state.settings.leftStickMode,
+                                rightStickMode = state.settings.rightStickMode,
                                 modifier = Modifier.fillMaxSize(),
                                 topStartOverlay = centerOverlay,
                             )
@@ -632,6 +641,7 @@ fun ControlPanelScreen(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -648,6 +658,8 @@ private fun ControlPanelCenterPlotHost(
     centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
+    leftStickMode: JoystickMode = JoystickMode.Spring(),
+    rightStickMode: JoystickMode = JoystickMode.Spring(),
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
@@ -676,6 +688,10 @@ private fun ControlPanelCenterPlotHost(
             onUnlockCenterMode = onUnlockCenterMode,
             leftStickXy = rcState.leftStickPosition,
             rightStickXy = rcState.rightStickPosition,
+            leftStickMode = leftStickMode,
+            rightStickMode = rightStickMode,
+            leftKnobValue = rcState.leftKnobValue,
+            rightKnobValue = rcState.rightKnobValue,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
@@ -709,6 +725,10 @@ private fun ControlPanelCenterPlotHost(
             onUnlockCenterMode = onUnlockCenterMode,
             leftStickXy = rcState.leftStickPosition,
             rightStickXy = rcState.rightStickPosition,
+            leftStickMode = leftStickMode,
+            rightStickMode = rightStickMode,
+            leftKnobValue = rcState.leftKnobValue,
+            rightKnobValue = rcState.rightKnobValue,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
@@ -744,6 +764,10 @@ private fun ControlPanelCenterPlot(
     onUnlockCenterMode: () -> Unit = {},
     leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    leftStickMode: JoystickMode = JoystickMode.Spring(),
+    rightStickMode: JoystickMode = JoystickMode.Spring(),
+    leftKnobValue: Float = 0.5f,
+    rightKnobValue: Float = 0.5f,
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
     displaySettings: ControlPanelPlotDisplaySettings? = null,
@@ -766,6 +790,10 @@ private fun ControlPanelCenterPlot(
         onUnlockCenterMode = onUnlockCenterMode,
         leftStickXy = leftStickXy,
         rightStickXy = rightStickXy,
+        leftStickMode = leftStickMode,
+        rightStickMode = rightStickMode,
+        leftKnobValue = leftKnobValue,
+        rightKnobValue = rightKnobValue,
         topStartOverlay = topStartOverlay,
         displaySettings = displaySettings,
         onDisplaySettingsChange = onDisplaySettingsChange,
@@ -788,6 +816,10 @@ private fun PersistedControlPanelCenterPlot(
     onUnlockCenterMode: () -> Unit = {},
     leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    leftStickMode: JoystickMode = JoystickMode.Spring(),
+    rightStickMode: JoystickMode = JoystickMode.Spring(),
+    leftKnobValue: Float = 0.5f,
+    rightKnobValue: Float = 0.5f,
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
@@ -808,6 +840,10 @@ private fun PersistedControlPanelCenterPlot(
         onUnlockCenterMode = onUnlockCenterMode,
         leftStickXy = leftStickXy,
         rightStickXy = rightStickXy,
+        leftStickMode = leftStickMode,
+        rightStickMode = rightStickMode,
+        leftKnobValue = leftKnobValue,
+        rightKnobValue = rightKnobValue,
         modifier = modifier,
         topStartOverlay = topStartOverlay,
         displaySettings = displaySettings,
@@ -1135,6 +1171,7 @@ private fun ControlPanelLeftControlsLayer(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = metrics.joystickSize + 6.dp, end = 2.dp),
+            side = ButtonSide.LEFT,
             knobValue = bluetoothViewModel.rcLeftKnobValue,
             onKnobValueChange = onKnobValueChange,
             metrics = metrics,
@@ -1259,6 +1296,7 @@ private fun ControlPanelRightControlsLayer(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(bottom = metrics.joystickSize + 6.dp, start = 2.dp),
+            side = ButtonSide.RIGHT,
             knobValue = bluetoothViewModel.rcRightKnobValue,
             onKnobValueChange = onKnobValueChange,
             metrics = metrics,
@@ -1336,8 +1374,9 @@ private fun BoxScope.ControlPanelStickSlot(
                     stickName,
                 ),
             )
-        StickOptionsMenu(
+        ControlPanelStickOptionsMenuHost(
             expanded = menuExpanded,
+            side = side,
             selectedMode = mode,
             onModeSelected = onStickModeChange,
             selectedRangeShape = rangeShape,
@@ -1345,6 +1384,59 @@ private fun BoxScope.ControlPanelStickSlot(
             onDismiss = { menuExpanded = false },
         )
     }
+}
+
+@Composable
+private fun ControlPanelStickOptionsMenuHost(
+    expanded: Boolean,
+    side: ButtonSide,
+    selectedMode: JoystickMode,
+    onModeSelected: (JoystickMode) -> Unit,
+    selectedRangeShape: JoystickRangeShape,
+    onRangeShapeSelected: (JoystickRangeShape) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (LocalInspectionMode.current) {
+        StickOptionsMenu(
+            expanded = expanded,
+            selectedMode = selectedMode,
+            onModeSelected = onModeSelected,
+            selectedRangeShape = selectedRangeShape,
+            onRangeShapeSelected = onRangeShapeSelected,
+            channelLink = StickChannelLink.DEFAULT,
+            onDismiss = onDismiss,
+        )
+        return
+    }
+    val displayVm: ControlPanelPlotDisplayViewModel = hiltViewModel()
+    val displaySettings by displayVm.settings.collectAsState()
+    val channelLink = if (side == ButtonSide.RIGHT) {
+        displaySettings.rightStickLink
+    } else {
+        displaySettings.leftStickLink
+    }
+    StickOptionsMenu(
+        expanded = expanded,
+        selectedMode = selectedMode,
+        onModeSelected = onModeSelected,
+        selectedRangeShape = selectedRangeShape,
+        onRangeShapeSelected = onRangeShapeSelected,
+        channelLink = channelLink,
+        occupiedChannels = displaySettings.occupiedChannels(
+            exceptLeftStick = side != ButtonSide.RIGHT,
+            exceptRightStick = side == ButtonSide.RIGHT,
+        ),
+        onChannelLinkChange = { next ->
+            displayVm.update { settings ->
+                if (side == ButtonSide.RIGHT) {
+                    settings.copy(rightStickLink = next)
+                } else {
+                    settings.copy(leftStickLink = next)
+                }
+            }
+        },
+        onDismiss = onDismiss,
+    )
 }
 
 @Composable
@@ -1364,17 +1456,79 @@ private fun BoxScope.ControlPanelSwitchesSlot(
 
 @Composable
 private fun ControlPanelKnobSlot(
+    side: ButtonSide,
     knobValue: StateFlow<Float>,
     onKnobValueChange: (Float) -> Unit,
     metrics: ControllerSideLayoutMetrics,
     modifier: Modifier = Modifier,
 ) {
     val value by knobValue.collectAsState()
+    var menuExpanded by remember { mutableStateOf(false) }
+    val knobName = stringResource(
+        if (side == ButtonSide.RIGHT) {
+            R.string.rc_controller_settings_right_knob
+        } else {
+            R.string.rc_controller_settings_left_knob
+        },
+    )
     ControllerSideKnob(
         modifier = modifier,
         knobSize = metrics.knobSize,
         knobValue = value,
         onKnobValueChange = onKnobValueChange,
+        onDoubleTap = { menuExpanded = true },
+        contentDescription = stringResource(
+            R.string.control_panel_widget_config_content_description,
+            knobName,
+        ),
+        menu = {
+            ControlPanelKnobOptionsMenuHost(
+                expanded = menuExpanded,
+                side = side,
+                onDismiss = { menuExpanded = false },
+            )
+        },
+    )
+}
+
+@Composable
+internal fun ControlPanelKnobOptionsMenuHost(
+    expanded: Boolean,
+    side: ButtonSide,
+    onDismiss: () -> Unit,
+) {
+    if (LocalInspectionMode.current) {
+        KnobOptionsMenu(
+            expanded = expanded,
+            channelLink = KnobChannelLink.DEFAULT,
+            onDismiss = onDismiss,
+        )
+        return
+    }
+    val displayVm: ControlPanelPlotDisplayViewModel = hiltViewModel()
+    val displaySettings by displayVm.settings.collectAsState()
+    val channelLink = if (side == ButtonSide.RIGHT) {
+        displaySettings.rightKnobLink
+    } else {
+        displaySettings.leftKnobLink
+    }
+    KnobOptionsMenu(
+        expanded = expanded,
+        channelLink = channelLink,
+        occupiedChannels = displaySettings.occupiedChannels(
+            exceptLeftKnob = side != ButtonSide.RIGHT,
+            exceptRightKnob = side == ButtonSide.RIGHT,
+        ),
+        onChannelLinkChange = { next ->
+            displayVm.update { settings ->
+                if (side == ButtonSide.RIGHT) {
+                    settings.copy(rightKnobLink = next)
+                } else {
+                    settings.copy(leftKnobLink = next)
+                }
+            }
+        },
+        onDismiss = onDismiss,
     )
 }
 

@@ -36,6 +36,36 @@ data class PlotCalibration(
     }
 }
 
+fun PlotCalibration.resolvedYRange(): Pair<Float, Float> {
+    val min = if (offset.isFinite()) offset else PlotCalibration.DEFAULT_OFFSET
+    val rawSpan = if (span.isFinite()) span else PlotCalibration.DEFAULT_SPAN
+    val max = min + rawSpan
+    return if (max > min) min to max else min to (min + 1f)
+}
+
+fun plotScaleTicks(min: Float, max: Float, count: Int = 3): List<Float> {
+    val (lo, hi) = if (min.isFinite() && max.isFinite() && max > min) {
+        min to max
+    } else {
+        0f to 1f
+    }
+    if (count <= 1) return listOf(lo)
+    val last = (count - 1).toFloat()
+    return List(count) { index -> lo + (hi - lo) * index / last }
+}
+
+/**
+ * Normalized plot height of engineering 0: 0 at the bottom (Y min), 1 at the top (Y max).
+ * Null when 0 is outside the visible range.
+ */
+fun PlotCalibration.zeroLineNormalized(): Float? {
+    val (min, max) = resolvedYRange()
+    if (0f < min || 0f > max) return null
+    val span = max - min
+    if (span <= 0f) return null
+    return ((0f - min) / span).coerceIn(0f, 1f)
+}
+
 fun Float.toPlotByte(): Int = (this.coerceIn(0f, 1f) * 255f).toInt().coerceIn(0, 255)
 
 fun formatEngineeringNumber(value: Float): String {

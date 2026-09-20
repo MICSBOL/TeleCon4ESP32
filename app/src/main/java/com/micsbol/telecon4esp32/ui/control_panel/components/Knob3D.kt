@@ -1,7 +1,8 @@
 package com.micsbol.telecon4esp32.ui.control_panel.components
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -28,7 +29,9 @@ import kotlin.math.roundToInt
 fun Knob3D(
     modifier: Modifier = Modifier,
     value: Float,
-    onValueChange: (Float) -> Unit
+    onValueChange: (Float) -> Unit,
+    onDoubleTap: (() -> Unit)? = null,
+    contentDescription: String? = null,
 ) {
     // Remember the list so it is not allocated on every recomposition.
     val frames = remember {
@@ -58,15 +61,14 @@ fun Knob3D(
         }
     }
 
-    // Use rememberUpdatedState so the gesture handler always sees the latest callback
-    // without needing to restart (pointerInput key stays Unit).
     val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnDoubleTap by rememberUpdatedState(onDoubleTap)
 
     val frame = (value * (frames.size - 1)).roundToInt().coerceIn(0, frames.size - 1)
 
     Image(
         painter = painterResource(id = frames[frame]),
-        contentDescription = "3D Knob",
+        contentDescription = contentDescription,
         modifier = modifier
             // fillMaxSize() lets the parent Box (size = knobSize) control the actual size.
             // The previous hardcoded size(200.dp) was overriding the parent constraint.
@@ -74,40 +76,74 @@ fun Knob3D(
             .onSizeChanged { newSize ->
                 center = Offset(newSize.width / 2f, newSize.height / 2f)
             }
-            .pointerInput(Unit) {      // Unit key: never restarts the handler
-                detectDragGestures(
-                    onDragStart = { startPosition ->
+            .pointerInput(Unit) {
+                var lastTapUptime = 0L
+                var lastTapPosition = Offset.Zero
+                awaitPointerEventScope {
+                    while (true) {
+                        val down = awaitFirstDown()
+                        val now = SystemClock.uptimeMillis()
+                        val slop = viewConfiguration.touchSlop
+                        val doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis
+                        val doubleTapMin = viewConfiguration.doubleTapMinTimeMillis
+                        val doubleTapHandler = currentOnDoubleTap
+                        val isDoubleTap = doubleTapHandler != null &&
+                            now - lastTapUptime in doubleTapMin..doubleTapTimeout &&
+                            (down.position - lastTapPosition).getDistance() <= slop * 2f
+                        if (isDoubleTap) {
+                            doubleTapHandler.invoke()
+                            lastTapUptime = 0L
+                            down.consume()
+                            val tapPointerId = down.id
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == tapPointerId }
+                                    ?: break
+                                change.consume()
+                                if (!change.pressed) break
+                            }
+                            continue
+                        }
+                        lastTapUptime = now
+                        lastTapPosition = down.position
                         isDragging = true
-                        val startVector = startPosition - center
+                        val startVector = down.position - center
                         dragStartAngle =
                             atan2(startVector.y, startVector.x) * 180 / Math.PI.toFloat()
-                    },
-                    onDragEnd = { isDragging = false },
-                    onDragCancel = { isDragging = false },
-                    onDrag = { change, _ ->
-                        val dragVector = change.position - center
-                        val currentDragAngle =
-                            atan2(dragVector.y, dragVector.x) * 180 / Math.PI.toFloat()
-
-                        var angleDelta = currentDragAngle - dragStartAngle
-
-                        if (angleDelta > 180) {
-                            angleDelta -= 360
-                        } else if (angleDelta < -180) {
-                            angleDelta += 360
+                        down.consume()
+                        val pointerId = down.id
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointerId }
+                                    ?: break
+                                change.consume()
+                                if (!change.pressed) break
+                                val dragVector = change.position - center
+                                val currentDragAngle =
+                                    atan2(dragVector.y, dragVector.x) * 180 / Math.PI.toFloat()
+                                var angleDelta = currentDragAngle - dragStartAngle
+                                if (angleDelta > 180) {
+                                    angleDelta -= 360
+                                } else if (angleDelta < -180) {
+                                    angleDelta += 360
+                                }
+                                rotationAngle =
+                                    (rotationAngle + angleDelta).coerceIn(minAngle, maxAngle)
+                                val normalizedValue =
+                                    (rotationAngle - minAngle) / (maxAngle - minAngle)
+                                currentOnValueChange(normalizedValue)
+                                dragStartAngle = currentDragAngle
+                            }
+                        } finally {
+                            isDragging = false
                         }
-
-                        rotationAngle = (rotationAngle + angleDelta).coerceIn(minAngle, maxAngle)
-
-                        val normalizedValue = (rotationAngle - minAngle) / (maxAngle - minAngle)
-                        currentOnValueChange(normalizedValue)
-
-                        dragStartAngle = currentDragAngle
                     }
-                )
-            }
+                }
+            },
     )
 }
+
 @Preview(showBackground = true)
 @Composable
 private fun Knob3DPreview() {

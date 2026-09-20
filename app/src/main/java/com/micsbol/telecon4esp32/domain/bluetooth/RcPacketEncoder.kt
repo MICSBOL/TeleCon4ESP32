@@ -1,6 +1,8 @@
 package com.micsbol.telecon4esp32.domain.bluetooth
+
 import com.micsbol.telecon4esp32.domain.model.ButtonEvent
 import com.micsbol.telecon4esp32.domain.model.RcState
+import com.micsbol.telecon4esp32.domain.model.StickOutput
 /**
  * Pure, stateless packet encoder.
  * Keeping all bit-packing logic here makes it easy to unit-test
@@ -9,7 +11,7 @@ import com.micsbol.telecon4esp32.domain.model.RcState
  * Packet layout (18 bytes):
  * [0]     0xAA  – header byte 0
  * [1]     0x55  – header byte 1
- * [2-3]   leftStickX  (12-bit LE, mapped from -100..100 → 0..4095)
+ * [2-3]   leftStickX  (12-bit LE, mapped from -100..100 → 0..4094, center 2047)
  * [4-5]   leftStickY  (12-bit LE)
  * [6-7]   rightStickX (12-bit LE)
  * [8-9]   rightStickY (12-bit LE)
@@ -59,9 +61,8 @@ object RcPacketEncoder {
         event.id,
         event.id
     )
-    /** Maps stick value from [-100, 100] to [0, 4095]. */
-    fun stickTo12Bit(value: Int): Int =
-        (((value + 100) * 4095) / 200).coerceIn(0, 4095)
+    /** Maps stick value from [-100, 100] to [0, 4094] (center 0 → 2047). */
+    fun stickTo12Bit(value: Int): Int = StickOutput.percentToUnsigned(value)
     private fun pack12BitLE(packet: ByteArray, offset: Int, value: Int) {
         packet[offset]     = (value and 0xFF).toByte()
         packet[offset + 1] = ((value shr 8) and 0xFF).toByte()

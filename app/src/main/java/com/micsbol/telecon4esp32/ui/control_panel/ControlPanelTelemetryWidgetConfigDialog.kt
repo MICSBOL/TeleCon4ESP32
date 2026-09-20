@@ -1,12 +1,20 @@
 package com.micsbol.telecon4esp32.ui.control_panel
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -30,19 +38,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.JoystickRangeShape
+import com.micsbol.telecon4esp32.domain.model.KnobChannelLink
+import com.micsbol.telecon4esp32.domain.model.StickAxisRange
+import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
+import com.micsbol.telecon4esp32.domain.model.parseCalibrationFloat
+import com.micsbol.telecon4esp32.domain.model.toCalibrationDraftText
 import com.micsbol.telecon4esp32.ui.rc_settings.labelRes
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
 import com.micsbol.telecon4esp32.ui.theme.Neo
@@ -245,9 +266,16 @@ fun StickOptionsMenu(
     onDismiss: () -> Unit,
     selectedRangeShape: JoystickRangeShape = JoystickRangeShape.CIRCLE,
     onRangeShapeSelected: (JoystickRangeShape) -> Unit = {},
+    channelLink: StickChannelLink = StickChannelLink.DEFAULT,
+    onChannelLinkChange: (StickChannelLink) -> Unit = {},
+    occupiedChannels: Set<TelemetryChannel> = emptySet(),
 ) {
     var draft by remember(expanded) { mutableStateOf(selectedMode) }
     var rangeDraft by remember(expanded) { mutableStateOf(selectedRangeShape) }
+    var channelDraft by remember(expanded) { mutableStateOf(channelLink) }
+    val showVertical = draft.axis != JoystickAxis.HORIZONTAL
+    val showHorizontal = draft.axis != JoystickAxis.VERTICAL
+    val fieldColors = hudMenuOutlinedFieldColors()
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
@@ -256,8 +284,8 @@ fun StickOptionsMenu(
         CompositionLocalProvider(LocalContentColor provides Neo.TextPrimary) {
         Column(
             modifier = Modifier
-                .heightIn(max = 280.dp)
-                .width(240.dp)
+                .heightIn(max = 360.dp)
+                .width(252.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
             TelemetryOptionsMenuItem(
@@ -281,7 +309,7 @@ fun StickOptionsMenu(
             HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
             TelemetryOptionsMenuItem(
                 label = stringResource(R.string.rc_joystick_axis_vertical),
-                selected = draft.axis != JoystickAxis.HORIZONTAL,
+                selected = showVertical,
                 onClick = {
                     val next = draft.togglingAxis(JoystickAxis.VERTICAL)
                     draft = next
@@ -290,7 +318,7 @@ fun StickOptionsMenu(
             )
             TelemetryOptionsMenuItem(
                 label = stringResource(R.string.rc_joystick_axis_horizontal),
-                selected = draft.axis != JoystickAxis.VERTICAL,
+                selected = showHorizontal,
                 onClick = {
                     val next = draft.togglingAxis(JoystickAxis.HORIZONTAL)
                     draft = next
@@ -314,6 +342,54 @@ fun StickOptionsMenu(
                     onRangeShapeSelected(JoystickRangeShape.SQUARE)
                 },
             )
+            if (showVertical) {
+                StickMenuAxisSetup(
+                    axisLabel = stringResource(R.string.rc_joystick_axis_vertical),
+                    range = channelDraft.verticalRange,
+                    selectedChannel = channelDraft.vertical,
+                    occupiedChannels = occupiedChannels +
+                        channelDraft.assignedChannels(JoystickAxis.VERTICAL),
+                    colors = fieldColors,
+                    onRangeChange = { range ->
+                        val next = channelDraft.withRange(JoystickAxis.VERTICAL, range)
+                        channelDraft = next
+                        onChannelLinkChange(next)
+                    },
+                    onChannelSelected = { channel ->
+                        val occupied = occupiedChannels +
+                            channelDraft.assignedChannels(JoystickAxis.VERTICAL)
+                        val next = channelDraft.selecting(JoystickAxis.VERTICAL, channel, occupied)
+                        channelDraft = next
+                        onChannelLinkChange(next)
+                    },
+                )
+            }
+            if (showHorizontal) {
+                StickMenuAxisSetup(
+                    axisLabel = stringResource(R.string.rc_joystick_axis_horizontal),
+                    range = channelDraft.horizontalRange,
+                    selectedChannel = channelDraft.horizontal,
+                    occupiedChannels = occupiedChannels +
+                        channelDraft.assignedChannels(JoystickAxis.HORIZONTAL),
+                    colors = fieldColors,
+                    onRangeChange = { range ->
+                        val next = channelDraft.withRange(JoystickAxis.HORIZONTAL, range)
+                        channelDraft = next
+                        onChannelLinkChange(next)
+                    },
+                    onChannelSelected = { channel ->
+                        val occupied = occupiedChannels +
+                            channelDraft.assignedChannels(JoystickAxis.HORIZONTAL)
+                        val next = channelDraft.selecting(
+                            JoystickAxis.HORIZONTAL,
+                            channel,
+                            occupied,
+                        )
+                        channelDraft = next
+                        onChannelLinkChange(next)
+                    },
+                )
+            }
             HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
             draft.allowedRestPositions().forEach { position ->
                 TelemetryOptionsMenuItem(
@@ -329,6 +405,267 @@ fun StickOptionsMenu(
             }
         }
         }
+    }
+}
+
+@Composable
+fun KnobOptionsMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    channelLink: KnobChannelLink = KnobChannelLink.DEFAULT,
+    onChannelLinkChange: (KnobChannelLink) -> Unit = {},
+    occupiedChannels: Set<TelemetryChannel> = emptySet(),
+) {
+    var channelDraft by remember(expanded) { mutableStateOf(channelLink) }
+    val fieldColors = hudMenuOutlinedFieldColors()
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        containerColor = AppGlass.DialogSurface,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides Neo.TextPrimary) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 360.dp)
+                    .width(252.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = stringResource(R.string.rc_vehicle_knob_options_title),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Neo.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+                StickMenuRangeFields(
+                    range = channelDraft.range,
+                    colors = fieldColors,
+                    onRangeChange = { range ->
+                        val next = channelDraft.withRange(range)
+                        channelDraft = next
+                        onChannelLinkChange(next)
+                    },
+                )
+                HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+                TelemetryOptionsMenuItem(
+                    label = stringResource(R.string.rc_vehicle_stick_use_channel),
+                    selected = channelDraft.enabled,
+                    onClick = {
+                        val next = channelDraft.withEnabled(!channelDraft.enabled, occupiedChannels)
+                        channelDraft = next
+                        onChannelLinkChange(next)
+                    },
+                )
+                if (channelDraft.enabled) {
+                    StickMenuChannelPicker(
+                        selected = channelDraft.channel,
+                        occupiedChannels = occupiedChannels,
+                        onChannelSelected = { channel ->
+                            val next = channelDraft.selecting(channel, occupiedChannels)
+                            channelDraft = next
+                            onChannelLinkChange(next)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StickMenuAxisSetup(
+    axisLabel: String,
+    range: StickAxisRange,
+    selectedChannel: TelemetryChannel?,
+    occupiedChannels: Set<TelemetryChannel>,
+    colors: TextFieldColors,
+    onRangeChange: (StickAxisRange) -> Unit,
+    onChannelSelected: (TelemetryChannel?) -> Unit,
+) {
+    HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
+    Text(
+        text = axisLabel,
+        style = MaterialTheme.typography.labelSmall,
+        color = Neo.TextSecondary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    )
+    StickMenuRangeFields(
+        range = range,
+        colors = colors,
+        onRangeChange = onRangeChange,
+    )
+    StickMenuChannelPicker(
+        selected = selectedChannel,
+        occupiedChannels = occupiedChannels,
+        onChannelSelected = onChannelSelected,
+    )
+}
+
+@Composable
+private fun StickMenuRangeFields(
+    range: StickAxisRange,
+    colors: TextFieldColors,
+    onRangeChange: (StickAxisRange) -> Unit,
+) {
+    var minText by remember(range) { mutableStateOf(range.min.toCalibrationDraftText()) }
+    var maxText by remember(range) { mutableStateOf(range.max.toCalibrationDraftText()) }
+    val commit = {
+        onRangeChange(
+            StickAxisRange(
+                min = parseCalibrationFloat(minText, range.min),
+                max = parseCalibrationFloat(maxText, range.max),
+            ),
+        )
+    }
+    StickMenuRangeField(
+        value = minText,
+        onValueChange = { minText = it },
+        label = stringResource(R.string.rc_plot_settings_y_min),
+        colors = colors,
+        imeAction = ImeAction.Next,
+        onDone = commit,
+    )
+    StickMenuRangeField(
+        value = maxText,
+        onValueChange = { maxText = it },
+        label = stringResource(R.string.rc_plot_settings_y_max),
+        colors = colors,
+        imeAction = ImeAction.Done,
+        onDone = commit,
+    )
+}
+
+@Composable
+private fun StickMenuRangeField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    colors: TextFieldColors,
+    imeAction: ImeAction,
+    onDone: () -> Unit,
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(text = label, color = Neo.TextPrimary) },
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = Neo.TextPrimary),
+        singleLine = true,
+        colors = colors,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Decimal,
+            imeAction = imeAction,
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { onDone() },
+            onDone = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onDone()
+            },
+        ),
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun StickMenuChannelPicker(
+    selected: TelemetryChannel?,
+    occupiedChannels: Set<TelemetryChannel>,
+    onChannelSelected: (TelemetryChannel?) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.rc_vehicle_stick_channel_none_hint),
+        style = MaterialTheme.typography.labelSmall,
+        color = Neo.TextSecondary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        StickMenuChannelChip(
+            label = stringResource(R.string.rc_vehicle_stick_channel_none),
+            selected = selected == null,
+            onClick = { onChannelSelected(null) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+    TelemetryChannel.ANALOG_CHANNELS.chunked(4).forEach { row ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            row.forEach { channel ->
+                StickMenuChannelChip(
+                    label = stringResource(channel.labelRes()),
+                    selected = channel == selected,
+                    available = channel == selected || channel !in occupiedChannels,
+                    onClick = { onChannelSelected(channel) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StickMenuChannelChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    available: Boolean = true,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    val takenLabel = stringResource(R.string.rc_vehicle_stick_channel_taken)
+    val borderColor = when {
+        selected -> Neo.Accent
+        available -> Neo.Accent.copy(alpha = 0.28f)
+        else -> Neo.TextMuted.copy(alpha = 0.28f)
+    }
+    val textColor = when {
+        selected -> Neo.Accent
+        available -> Neo.TextSecondary
+        else -> Neo.TextMuted
+    }
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .alpha(if (available || selected) 1f else 0.42f)
+            .background(if (selected) Neo.Accent.copy(alpha = 0.22f) else Color.Transparent)
+            .border(
+                width = if (selected) 1.5.dp else 1.dp,
+                color = borderColor,
+                shape = shape,
+            )
+            .then(
+                if (available) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier.semantics { disabled() }
+                },
+            )
+            .semantics(mergeDescendants = true) {
+                if (!available) {
+                    contentDescription = "$label, $takenLabel"
+                }
+            }
+            .padding(vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = textColor,
+        )
     }
 }
 

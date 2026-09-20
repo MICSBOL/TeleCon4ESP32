@@ -169,4 +169,43 @@ class SafeWindowInsetsTest {
 
         assertEquals(0, resolved.getBottom(density))
     }
+
+    @Test
+    fun portraitZeroTopInsetGetsStatusBarFallback() {
+        val base = WindowInsets(left = 0, top = 0, right = 0, bottom = 60)
+        val resolved = resolveClampedSafeHudInsets(
+            base = base,
+            density = density,
+            layoutDirection = LayoutDirection.Ltr,
+            screenWidthDp = 360,
+            isLandscape = false,
+            usesThreeButtonNav = false,
+            systemBarsHidden = false,
+            includeTop = true,
+            includeBottom = true,
+            includeHorizontal = true,
+        )
+
+        val expected = with(density) { 32.dp.roundToPx() }
+        assertEquals(expected, resolved.getTop(density))
+    }
+
+    @Test
+    fun hiddenSystemBarsDoNotInventPortraitStatusBarFallback() {
+        val base = WindowInsets(left = 0, top = 0, right = 0, bottom = 0)
+        val resolved = resolveClampedSafeHudInsets(
+            base = base,
+            density = density,
+            layoutDirection = LayoutDirection.Ltr,
+            screenWidthDp = 360,
+            isLandscape = false,
+            usesThreeButtonNav = false,
+            systemBarsHidden = true,
+            includeTop = true,
+            includeBottom = true,
+            includeHorizontal = true,
+        )
+
+        assertEquals(0, resolved.getTop(density))
+    }
 }

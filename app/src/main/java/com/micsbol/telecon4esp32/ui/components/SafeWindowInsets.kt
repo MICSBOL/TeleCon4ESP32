@@ -51,6 +51,9 @@ val LocalHudGlassDialog = compositionLocalOf { false }
 /** When 3-button nav reports 0 bottom inset, pad at least this much. */
 private val BottomNavFallback = 48.dp
 
+/** When portrait status-bar inset is 0 after leaving an immersive HUD, pad at least this much. */
+private val StatusBarFallback = 32.dp
+
 /**
  * Cap for a single horizontal inset in portrait.
  *
@@ -130,6 +133,7 @@ fun rememberClampedSafeHudInsets(
             screenWidthDp = configuration.screenWidthDp,
             isLandscape = isLandscape,
             usesThreeButtonNav = usesThreeButtonNav,
+            systemBarsHidden = systemBarsHidden,
             includeTop = includeTop,
             includeBottom = includeBottom,
             includeHorizontal = includeHorizontal,
@@ -163,6 +167,7 @@ internal fun resolveClampedSafeHudInsets(
     screenWidthDp: Int,
     isLandscape: Boolean,
     usesThreeButtonNav: Boolean,
+    systemBarsHidden: Boolean = false,
     includeTop: Boolean,
     includeBottom: Boolean,
     includeHorizontal: Boolean,
@@ -170,7 +175,7 @@ internal fun resolveClampedSafeHudInsets(
     val rawLeft = if (includeHorizontal) base.getLeft(density, layoutDirection) else 0
     val rawRight = if (includeHorizontal) base.getRight(density, layoutDirection) else 0
     val rawBottom = if (includeBottom) base.getBottom(density) else 0
-    val top = if (includeTop) base.getTop(density) else 0
+    var top = if (includeTop) base.getTop(density) else 0
     var bottom = rawBottom
 
     // Portrait only: some OEMs report 0 for the bottom system bar with 3-button nav.
@@ -178,6 +183,9 @@ internal fun resolveClampedSafeHudInsets(
     // (that empty strip is what Xiaomi landscape Control Panel was showing).
     if (includeBottom && !isLandscape && rawBottom == 0 && usesThreeButtonNav) {
         bottom = with(density) { BottomNavFallback.roundToPx() }
+    }
+    if (includeTop && !isLandscape && !systemBarsHidden && top == 0) {
+        top = with(density) { StatusBarFallback.roundToPx() }
     }
     if (includeBottom && isLandscape && bottom > 0) {
         val maxBottomPx = with(density) { MaxBottomInsetLandscape.roundToPx() }

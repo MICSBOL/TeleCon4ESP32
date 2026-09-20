@@ -1,12 +1,19 @@
 package com.micsbol.telecon4esp32.ui.cyber.screens
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,14 +24,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.GridView
@@ -33,6 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,7 +48,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -54,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.micsbol.telecon4esp32.BuildConfig
@@ -83,6 +98,8 @@ import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
 import com.micsbol.telecon4esp32.ui.components.glassSurface
 import com.micsbol.telecon4esp32.ui.components.safeHudPadding
+import com.micsbol.telecon4esp32.ui.control_panel.EnsureVisibleSystemBars
+import com.micsbol.telecon4esp32.ui.control_panel.LockScreenOrientation
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.home.HomeHelpDialog
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -94,6 +111,8 @@ import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 
 private val ProGold = Color(0xFFFFD54F)
 private val ProGoldDeep = Color(0xFFFFB300)
+private const val HomeModuleCardWidthFraction = 0.78f
+private const val HomeModuleFrontCardScale = 1.06f
 
 /**
  * Home: shipped modules as primary CTAs.
@@ -210,6 +229,8 @@ fun CyberHomeScreenContent(
     onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit = {},
     onItemClick: (ApplicationCatalogItem, String) -> Unit = { _, _ -> },
 ) {
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
+    EnsureVisibleSystemBars()
     val context = LocalContext.current
     val activity = context as? Activity
     var showHelpDialog by remember { mutableStateOf(false) }
@@ -243,7 +264,6 @@ fun CyberHomeScreenContent(
                     includeHorizontal = true,
                 ),
         ) {
-            val isLandscape = maxWidth > maxHeight
             val edgePad = if (maxWidth < 400.dp) 16.dp else 20.dp
 
             Column(
@@ -253,113 +273,42 @@ fun CyberHomeScreenContent(
             ) {
                 MinimalHomeTopBar(
                     isConnected = isSessionConnected,
-                    showProButton = showProButton,
                     showCoinChip = requiresCoinEntry,
                     coinBalance = wallet.balance,
-                    onProClick = onProClick,
                     onCoinClick = onShowPricingTable,
                     onHelpClick = { showHelpDialog = true },
                     onTitleClick = onHelpAbout,
                 )
 
-                Spacer(modifier = Modifier.height(if (isLandscape) 10.dp else 14.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                val useSideBySide = isLandscape && modules.size == 2
-                val useEqualHeroes = modules.size in 1..3
-
-                when {
-                    useSideBySide -> {
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            modules.forEach { item ->
-                                HomeModuleHeroSlot(
-                                    item = item,
-                                    featuredAppId = featuredAppId,
-                                    entitlement = entitlement,
-                                    wallet = wallet,
-                                    requiresCoinEntry = requiresCoinEntry,
-                                    explorerGiftAvailable = explorerGiftAvailable,
-                                    isConnecting = isConnecting,
-                                    onCodesClick = onCodesClick,
-                                    onUnlockClick = onUnlockClick,
-                                    onExplorerSparkleClick = onExplorerSparkleClick,
-                                    onItemClick = onItemClick,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight(),
-                                )
-                            }
-                        }
-                    }
-                    useEqualHeroes -> {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            modules.forEach { item ->
-                                HomeModuleHeroSlot(
-                                    item = item,
-                                    featuredAppId = featuredAppId,
-                                    entitlement = entitlement,
-                                    wallet = wallet,
-                                    requiresCoinEntry = requiresCoinEntry,
-                                    explorerGiftAvailable = explorerGiftAvailable,
-                                    isConnecting = isConnecting,
-                                    onCodesClick = onCodesClick,
-                                    onUnlockClick = onUnlockClick,
-                                    onExplorerSparkleClick = onExplorerSparkleClick,
-                                    onItemClick = onItemClick,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
-                    else -> {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            modules.forEach { item ->
-                                HomeModuleHeroSlot(
-                                    item = item,
-                                    featuredAppId = featuredAppId,
-                                    entitlement = entitlement,
-                                    wallet = wallet,
-                                    requiresCoinEntry = requiresCoinEntry,
-                                    explorerGiftAvailable = explorerGiftAvailable,
-                                    isConnecting = isConnecting,
-                                    onCodesClick = onCodesClick,
-                                    onUnlockClick = onUnlockClick,
-                                    onExplorerSparkleClick = onExplorerSparkleClick,
-                                    onItemClick = onItemClick,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(min = 180.dp),
-                                )
-                            }
-                        }
-                    }
-                }
+                HomeModuleCardDeck(
+                    modules = modules,
+                    featuredAppId = featuredAppId,
+                    entitlement = entitlement,
+                    wallet = wallet,
+                    requiresCoinEntry = requiresCoinEntry,
+                    explorerGiftAvailable = explorerGiftAvailable,
+                    isConnecting = isConnecting,
+                    onCodesClick = onCodesClick,
+                    onUnlockClick = onUnlockClick,
+                    onExplorerSparkleClick = onExplorerSparkleClick,
+                    onItemClick = onItemClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 HomeSecondaryActions(
                     isConnecting = isConnecting,
                     showBrowseCatalog = showBrowseCatalog,
+                    showProButton = showProButton,
                     onOpenApplications = onOpenApplications,
+                    onProClick = onProClick,
                     onOpenAbout = onHelpAbout,
-                    fillButtonWidth = !isLandscape,
+                    fillButtonWidth = true,
                 )
             }
         }
@@ -402,6 +351,209 @@ fun CyberHomeScreenContent(
 }
 
 @Composable
+private fun HomeModuleCardDeck(
+    modules: List<ApplicationCatalogItem>,
+    featuredAppId: ApplicationId,
+    entitlement: Entitlement,
+    wallet: CoinWalletState,
+    requiresCoinEntry: Boolean,
+    explorerGiftAvailable: Boolean,
+    isConnecting: Boolean,
+    onCodesClick: (ApplicationCatalogItem) -> Unit,
+    onUnlockClick: (ApplicationCatalogItem) -> Unit,
+    onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit,
+    onItemClick: (ApplicationCatalogItem, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val moduleIds = remember(modules) { modules.map { it.id } }
+    var deckOrder by remember(moduleIds) {
+        mutableStateOf(initialHomeModuleDeckOrder(moduleIds, featuredAppId))
+    }
+    val byId = remember(modules) { modules.associateBy { it.id } }
+    var dragPx by remember { mutableFloatStateOf(0f) }
+    val localDensity = LocalDensity.current
+    val swipeThresholdPx = with(localDensity) { 64.dp.toPx() }
+    val swipeHint = stringResource(R.string.home_module_card_swipe_content_description)
+    val cardSpring = spring<Float>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+    val offsetSpring = spring<Dp>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+
+    Box(
+        modifier = modifier
+            .pointerInput(moduleIds) {
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    var dragging = false
+                    var accumulated = 0f
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull() ?: break
+                            if (!change.pressed) break
+                            val delta = change.positionChange().x
+                            accumulated += delta
+                            if (!dragging && abs(accumulated) > slop) {
+                                dragging = true
+                            }
+                            if (dragging) {
+                                change.consume()
+                                dragPx += delta
+                            }
+                        }
+                    } finally {
+                        if (dragging) {
+                            val dx = dragPx
+                            dragPx = 0f
+                            deckOrder = when {
+                                dx <= -swipeThresholdPx -> rotateHomeModuleDeckNext(deckOrder)
+                                dx >= swipeThresholdPx -> rotateHomeModuleDeckPrevious(deckOrder)
+                                else -> deckOrder
+                            }
+                        } else {
+                            dragPx = 0f
+                        }
+                    }
+                }
+            }
+            .semantics {
+                contentDescription = swipeHint
+            },
+    ) {
+        deckOrder.asReversed().forEach { id ->
+            val item = byId[id] ?: return@forEach
+            key(id) {
+            val depth = deckOrder.indexOf(id)
+            val isFront = depth == 0
+            val pose = homeModuleFanPose(depth = depth, count = deckOrder.size)
+            val offsetX by animateDpAsState(
+                targetValue = pose.offsetX,
+                animationSpec = offsetSpring,
+                label = "moduleDeckOffsetX",
+            )
+            val offsetY by animateDpAsState(
+                targetValue = pose.offsetY,
+                animationSpec = offsetSpring,
+                label = "moduleDeckOffsetY",
+            )
+            val rotation by animateFloatAsState(
+                targetValue = pose.rotation,
+                animationSpec = cardSpring,
+                label = "moduleDeckRotation",
+            )
+            val scale by animateFloatAsState(
+                targetValue = pose.scale,
+                animationSpec = cardSpring,
+                label = "moduleDeckScale",
+            )
+            val elevation by animateFloatAsState(
+                targetValue = pose.elevation,
+                animationSpec = cardSpring,
+                label = "moduleDeckElevation",
+            )
+            HomeModuleHeroSlot(
+                item = item,
+                featuredAppId = featuredAppId,
+                entitlement = entitlement,
+                wallet = wallet,
+                requiresCoinEntry = requiresCoinEntry,
+                explorerGiftAvailable = explorerGiftAvailable,
+                isConnecting = isConnecting,
+                onCodesClick = onCodesClick,
+                onUnlockClick = onUnlockClick,
+                onExplorerSparkleClick = onExplorerSparkleClick,
+                onItemClick = { clicked, title ->
+                    if (isFront) onItemClick(clicked, title)
+                },
+                isFront = isFront,
+                    modifier = Modifier
+                    .fillMaxWidth(HomeModuleCardWidthFraction)
+                    .fillMaxHeight(0.94f)
+                    .align(Alignment.Center)
+                    .offset(x = offsetX, y = offsetY)
+                    .zIndex((modules.size - depth).toFloat())
+                    .graphicsLayer {
+                        val drag = if (isFront) dragPx else -dragPx * 0.18f
+                        translationX = drag
+                        rotationZ = rotation + if (isFront) dragPx / 28f else 0f
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = if (isFront) 1f else 0.62f
+                        shadowElevation = elevation
+                        cameraDistance = 14f * density
+                    },
+            )
+            }
+        }
+    }
+}
+
+internal data class HomeModuleFanPose(
+    val offsetX: Dp,
+    val offsetY: Dp,
+    val rotation: Float,
+    val scale: Float,
+    val elevation: Float,
+)
+
+internal fun homeModuleFanPose(depth: Int, count: Int): HomeModuleFanPose {
+    val previousIndex = (count - 1).coerceAtLeast(0)
+    return when {
+        depth <= 0 -> HomeModuleFanPose(
+            offsetX = 0.dp,
+            offsetY = 0.dp,
+            rotation = -1.5f,
+            scale = HomeModuleFrontCardScale,
+            elevation = 24f,
+        )
+        depth == 1 -> HomeModuleFanPose(
+            offsetX = 64.dp,
+            offsetY = 28.dp,
+            rotation = 16f,
+            scale = 0.78f,
+            elevation = 6f,
+        )
+        count > 2 && depth == previousIndex -> HomeModuleFanPose(
+            offsetX = (-64).dp,
+            offsetY = 28.dp,
+            rotation = -16f,
+            scale = 0.78f,
+            elevation = 6f,
+        )
+        else -> HomeModuleFanPose(
+            offsetX = 78.dp,
+            offsetY = 40.dp,
+            rotation = 22f,
+            scale = 0.7f,
+            elevation = 3f,
+        )
+    }
+}
+
+internal fun initialHomeModuleDeckOrder(
+    moduleIds: List<ApplicationId>,
+    featuredAppId: ApplicationId,
+): List<ApplicationId> {
+    if (featuredAppId !in moduleIds) return moduleIds
+    return listOf(featuredAppId) + moduleIds.filter { it != featuredAppId }
+}
+
+internal fun <T> rotateHomeModuleDeckNext(order: List<T>): List<T> {
+    if (order.size < 2) return order
+    return order.drop(1) + order.first()
+}
+
+internal fun <T> rotateHomeModuleDeckPrevious(order: List<T>): List<T> {
+    if (order.size < 2) return order
+    return listOf(order.last()) + order.dropLast(1)
+}
+
+@Composable
 private fun HomeModuleHeroSlot(
     item: ApplicationCatalogItem,
     featuredAppId: ApplicationId,
@@ -415,6 +567,7 @@ private fun HomeModuleHeroSlot(
     onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit,
     onItemClick: (ApplicationCatalogItem, String) -> Unit,
     modifier: Modifier = Modifier,
+    isFront: Boolean = true,
 ) {
     val title = stringResource(item.titleRes)
     val isUnlocked = item.id.hasEntryAccess(
@@ -447,6 +600,7 @@ private fun HomeModuleHeroSlot(
         enabledProHighlight = isRecent ||
             (!item.id.isFree() && !item.comingSoon && isUnlocked),
         animateHologram = true,
+        isFront = isFront,
         modifier = modifier,
     )
 }
@@ -455,7 +609,9 @@ private fun HomeModuleHeroSlot(
 private fun HomeSecondaryActions(
     isConnecting: Boolean,
     showBrowseCatalog: Boolean,
+    showProButton: Boolean,
     onOpenApplications: () -> Unit,
+    onProClick: () -> Unit,
     onOpenAbout: () -> Unit,
     fillButtonWidth: Boolean,
 ) {
@@ -465,6 +621,15 @@ private fun HomeSecondaryActions(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (showProButton) {
+            HomeProButton(
+                onClick = onProClick,
+                enabled = !isConnecting,
+                modifier = Modifier.fillMaxWidth(
+                    HomeModuleCardWidthFraction * HomeModuleFrontCardScale,
+                ),
+            )
+        }
         if (showBrowseCatalog) {
             NeoPillButton(
                 text = stringResource(R.string.home_browse_catalog),
@@ -500,10 +665,8 @@ private fun HomeSecondaryActions(
 @Composable
 private fun MinimalHomeTopBar(
     isConnected: Boolean,
-    showProButton: Boolean,
     showCoinChip: Boolean,
     coinBalance: Int,
-    onProClick: () -> Unit,
     onCoinClick: () -> Unit,
     onHelpClick: () -> Unit,
     onTitleClick: () -> Unit,
@@ -567,10 +730,6 @@ private fun MinimalHomeTopBar(
             )
             Spacer(modifier = Modifier.size(6.dp))
         }
-        if (showProButton) {
-            HomeProButton(onClick = onProClick)
-            Spacer(modifier = Modifier.size(8.dp))
-        }
         NeoIconButton(
             icon = Icons.AutoMirrored.Filled.HelpOutline,
             onClick = onHelpClick,
@@ -584,11 +743,12 @@ private fun MinimalHomeTopBar(
 private fun HomeProButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val description = stringResource(R.string.home_pro_button_content_description)
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
@@ -597,19 +757,19 @@ private fun HomeProButton(
                     ),
                 ),
             )
-            .border(1.dp, ProGold.copy(alpha = 0.75f), RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
+            .border(1.dp, ProGold.copy(alpha = 0.75f), RoundedCornerShape(16.dp))
+            .clickable(enabled = enabled, onClick = onClick)
             .semantics {
                 role = Role.Button
                 contentDescription = description
             }
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = stringResource(R.string.home_pro_button),
+            text = stringResource(R.string.home_pro_button_bottom),
             color = ProGold,
-            fontSize = 11.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )

@@ -7,6 +7,7 @@ text-line protocol in [SIMPLE_PROTOCOL_ESP32.md](SIMPLE_PROTOCOL_ESP32.md) inste
 BLE is binary-only. Kit A CAM SoftAP uses SIMPLE text with `proto=wifi`, not these frames.)
 
 Control Panel and RC Vehicle Pro share the same RC wire protocol.
+CAM Role B SoftAP Binary (`TeleCon_CAM_WiFi_Binary`) is **RC Vehicle Pro only**.
 
 RC Control Panel keeps its legacy layouts (`AA 55`, `CC 11/22/33`) — see existing RC firmware.
 Plot packets (`CC 33`) should send **count = 4 or 8** sample bytes (0–255). The phone

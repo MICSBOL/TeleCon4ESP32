@@ -1,14 +1,5 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 
-import android.Manifest
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,16 +10,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
@@ -36,7 +23,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
-import com.micsbol.telecon4esp32.domain.model.usesCamera
+import com.micsbol.telecon4esp32.domain.model.supportsCamVideoControl
 import com.micsbol.telecon4esp32.ui.applications.titleRes
 import com.micsbol.telecon4esp32.ui.components.DisconnectedBannerInsets
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
@@ -62,108 +49,44 @@ fun ApplicationBluetoothSessionHost(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val activity = context as? ComponentActivity
-    val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-    val bluetoothAdapter = bluetoothManager?.adapter
     val state by bluetoothViewModel.state.collectAsState()
-    val transport by remember(applicationId) {
-        bluetoothViewModel.observeTransportType(applicationId)
-    }.collectAsState(initial = BluetoothTransportType.CLASSIC)
+    val connectionMode by remember(applicationId) {
+        bluetoothViewModel.observeLiveConnectionMode(applicationId)
+    }.collectAsState(initial = BluetoothConnectionMode.CLASSIC_SIMPLE)
+    val transport = connectionMode.transport
     val board by remember(applicationId) {
         bluetoothViewModel.observeBoard(applicationId)
     }.collectAsState(initial = Esp32Board.defaultFor(applicationId))
-    var pendingConnect by remember { mutableStateOf(false) }
+    val ensureBluetoothReady = rememberEnsureBluetoothReady()
 
     LaunchedEffect(applicationId) {
         bluetoothViewModel.markRecentApplication(applicationId)
     }
 
-    val enableBluetoothLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) {
-        if (pendingConnect) {
-            pendingConnect = false
-            openApplicationBluetooth(
-                navController = navController,
-                bluetoothViewModel = bluetoothViewModel,
-                applicationId = applicationId,
-                protocolMode = protocolMode,
-                transport = transport,
-            )
-        }
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { perms ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val scanGranted = perms[Manifest.permission.BLUETOOTH_SCAN] == true
-            val connectGranted = perms[Manifest.permission.BLUETOOTH_CONNECT] == true
-            if (scanGranted && connectGranted) {
-                if (bluetoothAdapter?.isEnabled == false && activity != null) {
-                    pendingConnect = true
-                    enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                } else {
-                    openApplicationBluetooth(
-                        navController = navController,
-                        bluetoothViewModel = bluetoothViewModel,
-                        applicationId = applicationId,
-                        protocolMode = protocolMode,
-                        transport = transport,
-                    )
-                }
-            }
-        }
-    }
-
-    fun ensureBluetoothReadyThenConnect() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val scanGranted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH_SCAN,
-            ) == PackageManager.PERMISSION_GRANTED
-            val connectGranted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH_CONNECT,
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!scanGranted || !connectGranted) {
-                permissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.BLUETOOTH_SCAN,
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                    ),
-                )
-                return
-            }
-        }
-        if (bluetoothAdapter?.isEnabled == false && activity != null) {
-            pendingConnect = true
-            enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-            return
-        }
+    val connectOverBluetooth by rememberUpdatedState {
         openApplicationBluetooth(
             navController = navController,
             bluetoothViewModel = bluetoothViewModel,
             applicationId = applicationId,
-            protocolMode = protocolMode,
-            transport = transport,
+            connectionMode = connectionMode,
         )
+    }
+
+    fun ensureBluetoothReadyThenConnect() {
+        ensureBluetoothReady { connectOverBluetooth() }
     }
 
     val softApConnect = rememberSoftApConnectAction(
         onConnect = {
             val connectionMode = when {
-                applicationId.usesCamera() && board == Esp32Board.CAM ->
+                applicationId.supportsCamVideoControl() && board == Esp32Board.CAM ->
                     if (protocolMode == BluetoothProtocolMode.ADVANCED) {
                         BluetoothConnectionMode.WIFI_BINARY
                     } else {
                         BluetoothConnectionMode.WIFI_CAM_STARTER
                     }
-                protocolMode == BluetoothProtocolMode.ADVANCED ->
-                    BluetoothConnectionMode.WIFI_BINARY
                 else ->
-                    BluetoothConnectionMode.WIFI_SIMPLE
+                    BluetoothConnectionMode.WIFI_BINARY
             }
             openApplicationWifiSoftAp(
                 bluetoothViewModel = bluetoothViewModel,
@@ -305,10 +228,14 @@ private fun openApplicationBluetooth(
     navController: NavController?,
     bluetoothViewModel: BluetoothViewModel,
     applicationId: ApplicationId,
-    protocolMode: BluetoothProtocolMode,
-    transport: BluetoothTransportType,
+    connectionMode: BluetoothConnectionMode,
 ) {
-    bluetoothViewModel.requestApplicationConnection(applicationId, protocolMode, transport)
+    bluetoothViewModel.requestApplicationConnection(
+        applicationId = applicationId,
+        protocolMode = connectionMode.protocolMode,
+        transport = connectionMode.transport,
+        connectionMode = connectionMode,
+    )
     bluetoothViewModel.preparePostConnectPopBack()
     navController?.navigate(Screen.Bluetooth.route)
 }

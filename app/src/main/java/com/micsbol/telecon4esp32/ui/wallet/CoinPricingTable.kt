@@ -15,17 +15,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.model.CoinUnlockOption
+import com.micsbol.telecon4esp32.domain.model.PremiumFeature
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
 @Composable
 fun CoinPricingTable(
     modifier: Modifier = Modifier,
+    feature: PremiumFeature = PremiumFeature.RC_VEHICLE_PRO,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         CoinPricingTableHeaderRow()
         HorizontalDivider(color = Neo.TextMuted.copy(alpha = 0.3f))
         CoinUnlockOption.entries.filter { it.isCoinPurchasable }.forEach { option ->
-            CoinPricingTableDataRow(option = option)
+            CoinPricingTableDataRow(option = option, feature = feature)
             HorizontalDivider(color = Neo.TextMuted.copy(alpha = 0.15f))
         }
     }
@@ -73,9 +75,12 @@ private fun CoinPricingTableHeaderCell(
 }
 
 @Composable
-private fun CoinPricingTableDataRow(option: CoinUnlockOption) {
+private fun CoinPricingTableDataRow(
+    option: CoinUnlockOption,
+    feature: PremiumFeature,
+) {
     val optionLabel = optionLabel(option)
-    val perDay = perDayLabel(option)
+    val perDay = perDayLabel(option, feature)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -90,14 +95,14 @@ private fun CoinPricingTableDataRow(option: CoinUnlockOption) {
             modifier = Modifier.weight(1.2f),
         )
         Text(
-            text = option.coinCost.toString(),
+            text = option.coinCost(feature).toString(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = Neo.Accent,
             modifier = Modifier.weight(0.8f),
         )
         Text(
-            text = stringResource(R.string.coins_table_uses_format, option.usesEquivalent),
+            text = stringResource(R.string.coins_table_uses_format, option.usesEquivalent(feature)),
             style = MaterialTheme.typography.bodyMedium,
             color = Neo.TextPrimary,
             modifier = Modifier.weight(0.7f),
@@ -121,10 +126,19 @@ private fun optionLabel(option: CoinUnlockOption): String = when (option) {
 }
 
 @Composable
-private fun perDayLabel(option: CoinUnlockOption): String = when (option) {
-    CoinUnlockOption.ONE_USE -> stringResource(R.string.coins_table_dash)
-    CoinUnlockOption.HOURS_4 -> stringResource(R.string.coins_table_dash)
-    CoinUnlockOption.HOURS_24 -> stringResource(R.string.coins_table_per_day_24h)
-    CoinUnlockOption.DAYS_3 -> stringResource(R.string.coins_table_per_day_3d)
-    CoinUnlockOption.WEEK -> stringResource(R.string.coins_table_per_day_week)
+private fun perDayLabel(option: CoinUnlockOption, feature: PremiumFeature): String {
+    val days = when (option) {
+        CoinUnlockOption.HOURS_24 -> 1.0
+        CoinUnlockOption.DAYS_3 -> 3.0
+        CoinUnlockOption.WEEK -> 7.0
+        CoinUnlockOption.ONE_USE,
+        CoinUnlockOption.HOURS_4 -> return stringResource(R.string.coins_table_dash)
+    }
+    val perDay = option.coinCost(feature) / days
+    val rounded = kotlin.math.round(perDay).toInt()
+    return if (kotlin.math.abs(perDay - rounded) < 0.01) {
+        rounded.toString()
+    } else {
+        "~$rounded"
+    }
 }

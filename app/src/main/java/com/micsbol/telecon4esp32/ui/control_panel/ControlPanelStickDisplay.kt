@@ -18,17 +18,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -42,20 +47,28 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.model.JoystickAxis
+import com.micsbol.telecon4esp32.domain.model.StickAxisRange
 import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.displayHistory
 import com.micsbol.telecon4esp32.domain.model.displayXy
+import com.micsbol.telecon4esp32.domain.model.parseCalibrationFloat
+import com.micsbol.telecon4esp32.domain.model.toCalibrationDraftText
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogTextAction
 import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
@@ -85,6 +98,7 @@ fun ControlPanelStickDisplay(
     onLeftLinkChange: (StickChannelLink) -> Unit,
     onRightLinkChange: (StickChannelLink) -> Unit,
     modifier: Modifier = Modifier,
+    occupiedChannels: Set<TelemetryChannel> = emptySet(),
     u8Series: List<PlotData> = emptyList(),
     showSettings: Boolean = false,
     onShowSettingsChange: (Boolean) -> Unit = {},
@@ -145,6 +159,7 @@ fun ControlPanelStickDisplay(
         ControlPanelStickSettingsDialog(
             leftLink = leftLink,
             rightLink = rightLink,
+            occupiedChannels = occupiedChannels,
             onLeftLinkChange = onLeftLinkChange,
             onRightLinkChange = onRightLinkChange,
             onDismiss = { onShowSettingsChange(false) },
@@ -191,6 +206,7 @@ internal fun StickGraphSettingsChip(
 private fun ControlPanelStickSettingsDialog(
     leftLink: StickChannelLink,
     rightLink: StickChannelLink,
+    occupiedChannels: Set<TelemetryChannel>,
     onLeftLinkChange: (StickChannelLink) -> Unit,
     onRightLinkChange: (StickChannelLink) -> Unit,
     onDismiss: () -> Unit,
@@ -198,6 +214,8 @@ private fun ControlPanelStickSettingsDialog(
     var selectedIndex by remember { mutableIntStateOf(0) }
     val link = if (selectedIndex == 0) leftLink else rightLink
     val onLinkChange = if (selectedIndex == 0) onLeftLinkChange else onRightLinkChange
+    val otherOccupied = occupiedChannels +
+        (if (selectedIndex == 0) rightLink else leftLink).assignedChannels()
     val accent = brandPrimary()
     NeoDialog(
         onDismissRequest = onDismiss,
@@ -236,17 +254,39 @@ private fun ControlPanelStickSettingsDialog(
             StickSettingsAxisPicker(
                 axisLabel = stringResource(R.string.rc_joystick_axis_horizontal),
                 selected = link.horizontal,
+                range = link.horizontalRange,
                 accent = accent,
-                onChannelClick = { channel ->
-                    onLinkChange(link.toggling(JoystickAxis.HORIZONTAL, channel))
+                occupiedChannels = otherOccupied + link.assignedChannels(JoystickAxis.HORIZONTAL),
+                onChannelSelected = { channel ->
+                    onLinkChange(
+                        link.selecting(
+                            JoystickAxis.HORIZONTAL,
+                            channel,
+                            otherOccupied + link.assignedChannels(JoystickAxis.HORIZONTAL),
+                        ),
+                    )
+                },
+                onRangeChange = { range ->
+                    onLinkChange(link.withRange(JoystickAxis.HORIZONTAL, range))
                 },
             )
             StickSettingsAxisPicker(
                 axisLabel = stringResource(R.string.rc_joystick_axis_vertical),
                 selected = link.vertical,
+                range = link.verticalRange,
                 accent = accent,
-                onChannelClick = { channel ->
-                    onLinkChange(link.toggling(JoystickAxis.VERTICAL, channel))
+                occupiedChannels = otherOccupied + link.assignedChannels(JoystickAxis.VERTICAL),
+                onChannelSelected = { channel ->
+                    onLinkChange(
+                        link.selecting(
+                            JoystickAxis.VERTICAL,
+                            channel,
+                            otherOccupied + link.assignedChannels(JoystickAxis.VERTICAL),
+                        ),
+                    )
+                },
+                onRangeChange = { range ->
+                    onLinkChange(link.withRange(JoystickAxis.VERTICAL, range))
                 },
             )
         },
@@ -294,8 +334,11 @@ private fun StickSettingsStickChip(
 private fun StickSettingsAxisPicker(
     axisLabel: String,
     selected: TelemetryChannel?,
+    range: StickAxisRange,
     accent: Color,
-    onChannelClick: (TelemetryChannel) -> Unit,
+    occupiedChannels: Set<TelemetryChannel>,
+    onChannelSelected: (TelemetryChannel?) -> Unit,
+    onRangeChange: (StickAxisRange) -> Unit,
 ) {
     Text(
         text = axisLabel,
@@ -304,6 +347,19 @@ private fun StickSettingsAxisPicker(
         color = Neo.TextSecondary,
         modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
     )
+    StickSettingsRangeFields(range = range, onRangeChange = onRangeChange)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        StickSettingsChannelChip(
+            label = stringResource(R.string.rc_vehicle_stick_channel_none),
+            selected = selected == null,
+            accent = accent,
+            onClick = { onChannelSelected(null) },
+            modifier = Modifier.weight(1f),
+        )
+    }
     TelemetryChannel.ANALOG_CHANNELS.chunked(4).forEach { row ->
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -313,13 +369,84 @@ private fun StickSettingsAxisPicker(
                 StickSettingsChannelChip(
                     label = stringResource(channel.labelRes()),
                     selected = channel == selected,
+                    available = channel == selected || channel !in occupiedChannels,
                     accent = accent,
-                    onClick = { onChannelClick(channel) },
+                    onClick = { onChannelSelected(channel) },
                     modifier = Modifier.weight(1f),
                 )
             }
         }
     }
+}
+
+@Composable
+private fun StickSettingsRangeFields(
+    range: StickAxisRange,
+    onRangeChange: (StickAxisRange) -> Unit,
+) {
+    var minText by remember(range) { mutableStateOf(range.min.toCalibrationDraftText()) }
+    var maxText by remember(range) { mutableStateOf(range.max.toCalibrationDraftText()) }
+    val colors = hudMenuOutlinedFieldColors()
+    val commit = {
+        onRangeChange(
+            StickAxisRange(
+                min = parseCalibrationFloat(minText, range.min),
+                max = parseCalibrationFloat(maxText, range.max),
+            ),
+        )
+    }
+    StickSettingsRangeField(
+        value = minText,
+        onValueChange = { minText = it },
+        label = stringResource(R.string.rc_plot_settings_y_min),
+        colors = colors,
+        imeAction = ImeAction.Next,
+        onDone = commit,
+    )
+    StickSettingsRangeField(
+        value = maxText,
+        onValueChange = { maxText = it },
+        label = stringResource(R.string.rc_plot_settings_y_max),
+        colors = colors,
+        imeAction = ImeAction.Done,
+        onDone = commit,
+    )
+}
+
+@Composable
+private fun StickSettingsRangeField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    colors: androidx.compose.material3.TextFieldColors,
+    imeAction: ImeAction,
+    onDone: () -> Unit,
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(text = label, color = Neo.TextPrimary) },
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = Neo.TextPrimary),
+        singleLine = true,
+        colors = colors,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Decimal,
+            imeAction = imeAction,
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { onDone() },
+            onDone = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onDone()
+            },
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+    )
 }
 
 @Composable
@@ -329,18 +456,42 @@ private fun StickSettingsChannelChip(
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    available: Boolean = true,
 ) {
     val shape = RoundedCornerShape(10.dp)
+    val takenLabel = stringResource(R.string.rc_vehicle_stick_channel_taken)
+    val borderColor = when {
+        selected -> accent
+        available -> accent.copy(alpha = 0.28f)
+        else -> Neo.TextMuted.copy(alpha = 0.28f)
+    }
+    val textColor = when {
+        selected -> accent
+        available -> Neo.TextSecondary
+        else -> Neo.TextMuted
+    }
     Box(
         modifier = modifier
             .clip(shape)
+            .alpha(if (available || selected) 1f else 0.42f)
             .background(if (selected) accent.copy(alpha = 0.22f) else Color.Transparent)
             .border(
                 width = if (selected) 1.5.dp else 1.dp,
-                color = if (selected) accent else accent.copy(alpha = 0.28f),
+                color = borderColor,
                 shape = shape,
             )
-            .clickable(onClick = onClick)
+            .then(
+                if (available) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier.semantics { disabled() }
+                },
+            )
+            .semantics(mergeDescendants = true) {
+                if (!available) {
+                    contentDescription = "$label, $takenLabel"
+                }
+            }
             .padding(vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -348,7 +499,7 @@ private fun StickSettingsChannelChip(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            color = if (selected) accent else Neo.TextSecondary,
+            color = textColor,
         )
     }
 }

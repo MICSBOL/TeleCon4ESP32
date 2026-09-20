@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -69,15 +70,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.bluetooth.ControlAnalogHistory
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
+import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
 import com.micsbol.telecon4esp32.domain.model.PlotGraphMode
 import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
+import com.micsbol.telecon4esp32.domain.model.StickChannelLink
+import com.micsbol.telecon4esp32.domain.model.overlayStickOnPlotSeries
 import com.micsbol.telecon4esp32.domain.model.parseCalibrationFloat
+import com.micsbol.telecon4esp32.domain.model.resolvedYRange
 import com.micsbol.telecon4esp32.domain.model.toCalibrationDraftText
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
@@ -85,6 +91,7 @@ import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelDisplayFrame
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.ui.control_panel.components.HorizontalTextAnimation
+import com.micsbol.telecon4esp32.ui.control_panel.components.PlotYAxisScale
 import com.micsbol.telecon4esp32.ui.control_panel.components.PushButtonSide
 import com.micsbol.telecon4esp32.ui.control_panel.components.RealTimePlot
 import com.micsbol.telecon4esp32.ui.theme.titanOneRegular
@@ -120,6 +127,10 @@ fun CenterDisplay(
     onUnlockCenterMode: () -> Unit = {},
     leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
+    leftStickMode: JoystickMode = JoystickMode.Spring(),
+    rightStickMode: JoystickMode = JoystickMode.Spring(),
+    leftKnobValue: Float = 0.5f,
+    rightKnobValue: Float = 0.5f,
     topStartOverlay: @Composable () -> Unit = {},
     displaySettings: ControlPanelPlotDisplaySettings? = null,
     onDisplaySettingsChange: (ControlPanelPlotDisplaySettings) -> Unit = {},
@@ -135,11 +146,75 @@ fun CenterDisplay(
     val plotOnTop = plotDisplay.plotOnTop
     val leftStickLink = plotDisplay.leftStickLink
     val rightStickLink = plotDisplay.rightStickLink
-    fun updatePlotDisplay(next: ControlPanelPlotDisplaySettings) {
-        if (displaySettings == null) {
-            localDisplay = next
+    val leftKnobLink = plotDisplay.leftKnobLink
+    val rightKnobLink = plotDisplay.rightKnobLink
+    val analogOverlay = remember { ControlAnalogHistory() }
+    var overlayChannels by remember { mutableStateOf<Map<TelemetryChannel, List<Float>>>(emptyMap()) }
+    val latestLeftXy by rememberUpdatedState(leftStickXy)
+    val latestRightXy by rememberUpdatedState(rightStickXy)
+    val latestLeftMode by rememberUpdatedState(leftStickMode)
+    val latestRightMode by rememberUpdatedState(rightStickMode)
+    val latestLeftLink by rememberUpdatedState(leftStickLink)
+    val latestRightLink by rememberUpdatedState(rightStickLink)
+    val latestLeftKnob by rememberUpdatedState(leftKnobValue)
+    val latestRightKnob by rememberUpdatedState(rightKnobValue)
+    val latestLeftKnobLink by rememberUpdatedState(leftKnobLink)
+    val latestRightKnobLink by rememberUpdatedState(rightKnobLink)
+    LaunchedEffect(
+        leftStickLink.enabled,
+        leftStickLink.vertical,
+        leftStickLink.horizontal,
+        rightStickLink.enabled,
+        rightStickLink.vertical,
+        rightStickLink.horizontal,
+        leftKnobLink.enabled,
+        leftKnobLink.channel,
+        rightKnobLink.enabled,
+        rightKnobLink.channel,
+    ) {
+        if (!leftStickLink.enabled &&
+            !rightStickLink.enabled &&
+            !leftKnobLink.enabled &&
+            !rightKnobLink.enabled
+        ) {
+            analogOverlay.ingest(emptyMap())
+            overlayChannels = emptyMap()
+            return@LaunchedEffect
         }
-        onDisplaySettingsChange(next)
+        while (true) {
+            analogOverlay.ingest(
+                StickChannelLink.merge(
+                    latestLeftLink.samples(
+                        x = latestLeftXy.first,
+                        y = latestLeftXy.second,
+                        axis = latestLeftMode.axis,
+                        restX = latestLeftMode.initialPositionNormalized().first,
+                        restY = latestLeftMode.initialPositionNormalized().second,
+                    ),
+                    latestRightLink.samples(
+                        x = latestRightXy.first,
+                        y = latestRightXy.second,
+                        axis = latestRightMode.axis,
+                        restX = latestRightMode.initialPositionNormalized().first,
+                        restY = latestRightMode.initialPositionNormalized().second,
+                    ),
+                    latestLeftKnobLink.sample(latestLeftKnob),
+                    latestRightKnobLink.sample(latestRightKnob),
+                ),
+            )
+            overlayChannels = analogOverlay.snapshot()
+            delay(80)
+        }
+    }
+    val plotSeries = remember(series, channelRouting, overlayChannels) {
+        overlayStickOnPlotSeries(series, channelRouting, overlayChannels)
+    }
+    fun updatePlotDisplay(next: ControlPanelPlotDisplaySettings) {
+        val exclusive = next.withExclusiveChannels()
+        if (displaySettings == null) {
+            localDisplay = exclusive
+        }
+        onDisplaySettingsChange(exclusive)
     }
     var showStickSettings by remember { mutableStateOf(false) }
     LaunchedEffect(centerMode, centerModeUnlocked) {
@@ -208,7 +283,7 @@ fun CenterDisplay(
                             ControlPanelCenterMode.PLOTS -> {
                                 CartesianPlot(
                                     modifier = Modifier.fillMaxSize(),
-                                    series = series,
+                                    series = plotSeries,
                                     plotRevision = plotRevision,
                                     calibrations = plotCalibrations,
                                     channelRouting = channelRouting,
@@ -240,11 +315,15 @@ fun CenterDisplay(
                                         rightStickXy = rightStickXy,
                                         leftLink = leftStickLink,
                                         rightLink = rightStickLink,
-                                        onLeftLinkChange = {
-                                            updatePlotDisplay(plotDisplay.copy(leftStickLink = it))
+                                        occupiedChannels = plotDisplay.occupiedChannels(
+                                            exceptLeftStick = true,
+                                            exceptRightStick = true,
+                                        ),
+                                        onLeftLinkChange = { next ->
+                                            updatePlotDisplay(plotDisplay.copy(leftStickLink = next))
                                         },
-                                        onRightLinkChange = {
-                                            updatePlotDisplay(plotDisplay.copy(rightStickLink = it))
+                                        onRightLinkChange = { next ->
+                                            updatePlotDisplay(plotDisplay.copy(rightStickLink = next))
                                         },
                                         showSettings = showStickSettings,
                                         onShowSettingsChange = { showStickSettings = it },
@@ -327,7 +406,9 @@ enum class PlotType {
     BAR_GRAPH
 }
 
-private val CartesianPlotHorizontalPadding = 6.dp
+private val CartesianPlotHorizontalPadding = 0.dp
+private val CartesianPlotPaneGap = 12.dp
+private val CartesianPlotYAxisWidth = 22.dp
 
 @Composable
 fun CartesianPlot(
@@ -397,9 +478,16 @@ fun CartesianPlot(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color.White.copy(alpha = 0.18f)),
-            )
+                    .height(CartesianPlotPaneGap),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Color.White.copy(alpha = 0.18f)),
+                )
+            }
             CartesianPlotPane(
                 modifier = Modifier.weight(1f),
                 series = bottomSeries,
@@ -491,16 +579,17 @@ private fun PlotLegendItem(
     val lastNormalized = plotData.dataPoints.lastOrNull()
     val valueText = lastNormalized?.let { calibration.formatEngineering(it) }
     var menuExpanded by remember { mutableStateOf(false) }
-    var offsetText by remember(menuExpanded) {
-        mutableStateOf(calibration.offset.toCalibrationDraftText())
+    val (yMin, yMax) = calibration.resolvedYRange()
+    var yMinText by remember(menuExpanded) {
+        mutableStateOf(yMin.toCalibrationDraftText())
     }
-    var spanText by remember(menuExpanded) {
-        mutableStateOf(calibration.span.toCalibrationDraftText())
+    var yMaxText by remember(menuExpanded) {
+        mutableStateOf(yMax.toCalibrationDraftText())
     }
     var unitText by remember(menuExpanded) { mutableStateOf(calibration.unit) }
     val focusManager = LocalFocusManager.current
     val commitCalibration = {
-        onCalibrationChange(calibrationFromDraft(offsetText, spanText, unitText))
+        onCalibrationChange(calibrationFromRangeDraft(yMinText, yMaxText, unitText, calibration))
     }
     val modeLabel = stringResource(
         if (graphMode == PlotGraphMode.CONTINUOUS) {
@@ -571,17 +660,17 @@ private fun PlotLegendItem(
         ) { closeMenu ->
             HorizontalDivider(color = Neo.TextSecondary.copy(alpha = 0.3f))
             PlotHudTextField(
-                value = offsetText,
-                onValueChange = { offsetText = it },
-                label = stringResource(R.string.rc_controller_settings_plot_offset),
+                value = yMinText,
+                onValueChange = { yMinText = it },
+                label = stringResource(R.string.rc_plot_settings_y_min),
                 keyboardType = KeyboardType.Decimal,
                 imeAction = ImeAction.Next,
                 colors = fieldColors,
             )
             PlotHudTextField(
-                value = spanText,
-                onValueChange = { spanText = it },
-                label = stringResource(R.string.rc_controller_settings_plot_span),
+                value = yMaxText,
+                onValueChange = { yMaxText = it },
+                label = stringResource(R.string.rc_plot_settings_y_max),
                 keyboardType = KeyboardType.Decimal,
                 imeAction = ImeAction.Next,
                 colors = fieldColors,
@@ -730,16 +819,17 @@ private fun PlotHudTextField(
     )
 }
 
-private fun calibrationFromDraft(
-    offsetText: String,
-    spanText: String,
+private fun calibrationFromRangeDraft(
+    minText: String,
+    maxText: String,
     unitText: String,
+    current: PlotCalibration,
 ): PlotCalibration {
-    val span = parseCalibrationFloat(spanText, PlotCalibration.DEFAULT_SPAN).let { parsed ->
-        if (parsed == 0f) PlotCalibration.DEFAULT_SPAN else parsed
-    }
+    val min = parseCalibrationFloat(minText, current.offset)
+    val max = parseCalibrationFloat(maxText, current.offset + current.span)
+    val span = if (max > min) max - min else 1f
     return PlotCalibration(
-        offset = parseCalibrationFloat(offsetText, PlotCalibration.DEFAULT_OFFSET),
+        offset = min,
         span = span,
         unit = unitText.trim(),
     )
@@ -766,6 +856,28 @@ private fun CartesianPlotPane(
     onPlotCalibrationChange: (Int, PlotCalibration) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val paneMaxHeight = maxHeight
+        val paneMaxWidth = maxWidth
+        val leftVisible = visible.getOrElse(0) { true } && series.isNotEmpty()
+        val rightVisible = visible.getOrElse(1) { true } && series.size > 1
+        Row(modifier = Modifier.fillMaxSize()) {
+            if (leftVisible) {
+                val (min, max) = calibrations.getOrElse(0) { PlotCalibration.DEFAULT }.resolvedYRange()
+                PlotYAxisScale(
+                    min = min,
+                    max = max,
+                    color = Color(series[0].colorArgb),
+                    axisOnEnd = true,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(CartesianPlotYAxisWidth),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            ) {
         RealTimePlot(
             modifier = Modifier.fillMaxSize(),
             series = series,
@@ -774,16 +886,17 @@ private fun CartesianPlotPane(
             graphModes = graphModes,
             lineStyles = lineStyles,
             onTop = onTop,
+            calibrations = calibrations,
         )
         // Scale legend so two labels never stack-overflow on short landscape panes.
-        val compact = maxHeight < 72.dp
+        val compact = paneMaxHeight < 72.dp
         val legendStyle = MaterialTheme.typography.labelSmall.copy(
             fontSize = if (compact) 8.sp else 10.sp,
             lineHeight = if (compact) 10.sp else 12.sp,
         )
         val characterThreshold = when {
-            maxWidth < 100.dp -> 5
-            maxWidth < 160.dp -> 7
+            paneMaxWidth < 100.dp -> 5
+            paneMaxWidth < 160.dp -> 7
             else -> 10
         }
         val legendSpacing = if (compact) 0.dp else 2.dp
@@ -816,6 +929,20 @@ private fun CartesianPlotPane(
                     onLabelChange = { onPlotLabelChange(plotIndex, it) },
                     onChannelSelected = { onPlotChannelChange(plotIndex, it) },
                     onCalibrationChange = { onPlotCalibrationChange(plotIndex, it) },
+                )
+            }
+        }
+            }
+            if (rightVisible) {
+                val (min, max) = calibrations.getOrElse(1) { PlotCalibration.DEFAULT }.resolvedYRange()
+                PlotYAxisScale(
+                    min = min,
+                    max = max,
+                    color = Color(series[1].colorArgb),
+                    axisOnEnd = false,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(CartesianPlotYAxisWidth),
                 )
             }
         }

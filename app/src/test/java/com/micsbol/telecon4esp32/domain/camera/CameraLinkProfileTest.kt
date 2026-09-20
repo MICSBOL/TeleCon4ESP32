@@ -135,7 +135,7 @@ class CameraLinkProfileTest {
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.DEV_KIT,
-                BluetoothConnectionMode.WIFI_SIMPLE,
+                BluetoothConnectionMode.WIFI_BINARY,
                 useSoftApCamera = true,
             ),
         )

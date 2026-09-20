@@ -42,6 +42,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.autoConnectSoftApControlWhenCameraOnline
+import com.micsbol.telecon4esp32.domain.camera.isSoftApControl
 import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryChannelRouter
@@ -115,8 +116,7 @@ fun RcVehicleProScreen(
     val bluetoothSession = LocalApplicationBluetoothSession.current
     val onBluetoothConnect by rememberUpdatedState(bluetoothSession?.onConnect)
     val linkProfile = uiState.cameraLinkProfile
-    val isWifiSoftApMode = linkProfile == CameraLinkProfile.WIFI_SOFTAP
-    val usesWifiLink = isWifiSoftApMode || bluetoothSession?.usesWifiLink == true
+    val usesWifiLink = linkProfile.isSoftApControl
 
     // SoftAP-only (Kit A): once video works, SoftAP is reachable — open TCP control.
     // Overlay (SoftAP video + DevKit Bluetooth): SoftAP HTTP video only; never SoftAP TCP.
@@ -363,17 +363,20 @@ fun RcVehicleProContent(
         fromTelemetry = uiState.speedFromTelemetry,
         controlValues = StickChannelLink.merge(
             controlSettings.leftStickChannels.samples(
-                x = rawThrottle.first,
-                y = rawThrottle.second,
+                x = leftStickXy.first,
+                y = leftStickXy.second,
                 axis = controlSettings.leftStickMode.axis,
-                radarSpanDegrees = radarScanSpan.degrees,
+                restX = controlSettings.leftStickMode.initialPositionNormalized().first,
+                restY = controlSettings.leftStickMode.initialPositionNormalized().second,
             ),
             controlSettings.rightStickChannels.samples(
-                x = rawSteer.first,
-                y = rawSteer.second,
+                x = rightStickXy.first,
+                y = rightStickXy.second,
                 axis = controlSettings.rightStickMode.axis,
-                radarSpanDegrees = radarScanSpan.degrees,
+                restX = controlSettings.rightStickMode.initialPositionNormalized().first,
+                restY = controlSettings.rightStickMode.initialPositionNormalized().second,
             ),
+            controlSettings.cameraKnobChannel.sample(cameraKnobValue),
         ),
     )
     val disconnectedBannerInsets = LocalDisconnectedBannerInsets.current
@@ -382,15 +385,17 @@ fun RcVehicleProContent(
         onDispose { disconnectedBannerInsets.suppressHostOverlay = false }
     }
 
+    val latestControlSettings = rememberUpdatedState(controlSettings)
+
     fun publishThrottle(x: Float = rawThrottle.first, y: Float = rawThrottle.second) {
         rawThrottle = Pair(x, y)
-        val mapped = RcStickMapping.mapThrottleStick(x, y, controlSettings)
+        val mapped = RcStickMapping.mapThrottleStick(x, y, latestControlSettings.value)
         onThrottleMove(mapped.first, mapped.second)
     }
 
     fun publishSteer(x: Float = rawSteer.first, y: Float = rawSteer.second) {
         rawSteer = Pair(x, y)
-        val mapped = RcStickMapping.mapSteerStick(x, y, controlSettings)
+        val mapped = RcStickMapping.mapSteerStick(x, y, latestControlSettings.value)
         onSteeringMove(mapped.first, mapped.second)
     }
 
@@ -403,14 +408,14 @@ fun RcVehicleProContent(
     val leftStickMode = controlSettings.leftStickMode
     val rightStickMode = controlSettings.rightStickMode
 
-    fun publishLeftAtRest(settings: RcVehicleProControlSettings = controlSettings) {
+    fun publishLeftAtRest(settings: RcVehicleProControlSettings = latestControlSettings.value) {
         val rest = settings.leftStickMode.initialPositionNormalized()
         rawThrottle = rest
         val mapped = RcStickMapping.mapThrottleStick(rest.first, rest.second, settings)
         onThrottleMove(mapped.first, mapped.second)
     }
 
-    fun publishRightAtRest(settings: RcVehicleProControlSettings = controlSettings) {
+    fun publishRightAtRest(settings: RcVehicleProControlSettings = latestControlSettings.value) {
         val rest = settings.rightStickMode.initialPositionNormalized()
         rawSteer = rest
         val mapped = RcStickMapping.mapSteerStick(rest.first, rest.second, settings)
@@ -418,28 +423,33 @@ fun RcVehicleProContent(
     }
 
     fun nudgeStickTrim(isLeft: Boolean, axis: JoystickAxis, steps: Int) {
-        val next = if (isLeft) {
-            if (axis == JoystickAxis.HORIZONTAL) {
-                controlSettings.copy(leftTrimX = RcStickTrim.nudge(controlSettings.leftTrimX, steps))
+        stickSettingsGeneration += 1
+        var next = controlSettings
+        onControlSettingsChange { current ->
+            next = if (isLeft) {
+                if (axis == JoystickAxis.HORIZONTAL) {
+                    current.copy(leftTrimX = RcStickTrim.nudge(current.leftTrimX, steps))
+                } else {
+                    current.copy(leftTrimY = RcStickTrim.nudge(current.leftTrimY, steps))
+                }
             } else {
-                controlSettings.copy(leftTrimY = RcStickTrim.nudge(controlSettings.leftTrimY, steps))
+                if (axis == JoystickAxis.HORIZONTAL) {
+                    current.copy(rightTrimX = RcStickTrim.nudge(current.rightTrimX, steps))
+                } else {
+                    current.copy(rightTrimY = RcStickTrim.nudge(current.rightTrimY, steps))
+                }
             }
-        } else {
-            if (axis == JoystickAxis.HORIZONTAL) {
-                controlSettings.copy(rightTrimX = RcStickTrim.nudge(controlSettings.rightTrimX, steps))
-            } else {
-                controlSettings.copy(rightTrimY = RcStickTrim.nudge(controlSettings.rightTrimY, steps))
-            }
+            next
         }
-        onControlSettingsChange { next }
         if (isLeft) publishLeftAtRest(next) else publishRightAtRest(next)
     }
 
     // Re-emit mapped channels when dual-rate / expo / reverse / trim change while held.
     LaunchedEffect(controlSettings) {
-        val throttle = RcStickMapping.mapThrottleStick(rawThrottle.first, rawThrottle.second, controlSettings)
+        val settings = latestControlSettings.value
+        val throttle = RcStickMapping.mapThrottleStick(rawThrottle.first, rawThrottle.second, settings)
         onThrottleMove(throttle.first, throttle.second)
-        val steer = RcStickMapping.mapSteerStick(rawSteer.first, rawSteer.second, controlSettings)
+        val steer = RcStickMapping.mapSteerStick(rawSteer.first, rawSteer.second, settings)
         onSteeringMove(steer.first, steer.second)
     }
 
@@ -496,6 +506,11 @@ fun RcVehicleProContent(
                         value = cameraKnobValue,
                         onValueChange = onCameraKnobChange,
                         onFrontClick = onCameraFrontClick,
+                        channelLink = controlSettings.cameraKnobChannel,
+                        occupiedChannels = controlSettings.occupiedChannels(exceptCameraKnob = true),
+                        onChannelLinkChange = { next ->
+                            onControlSettingsChange { it.copy(cameraKnobChannel = next) }
+                        },
                     )
                 }
             },
@@ -630,11 +645,7 @@ fun RcVehicleProContent(
                         collapsibleToNearestEdge = true,
                         chromeExpanded = leftStickExpanded,
                         onChromeExpandedChange = { leftStickExpanded = it },
-                        stickPosition = if (leftTrimMode) {
-                            leftStickMode.initialPositionNormalized()
-                        } else {
-                            rawThrottle
-                        },
+                        stickPosition = rawThrottle,
                         mode = leftStickMode,
                         accentEdge = RcGlassAccentEdge.START,
                         joystickSize = joystickSize,
@@ -670,6 +681,7 @@ fun RcVehicleProContent(
                             onControlSettingsChange { it.copy(leftStickRangeShape = next) }
                         },
                         channelLink = controlSettings.leftStickChannels,
+                        occupiedChannels = controlSettings.occupiedChannels(exceptLeftStick = true),
                         onChannelLinkChange = { next ->
                             onControlSettingsChange { it.copy(leftStickChannels = next) }
                         },
@@ -677,6 +689,11 @@ fun RcVehicleProContent(
                         stickConfigContentDescription = stringResource(
                             R.string.control_panel_widget_config_content_description,
                             stringResource(R.string.rc_vehicle_control_throttle),
+                        ),
+                        visualOffset = RcStickTrim.visualOffset(
+                            leftStickMode,
+                            controlSettings.leftTrimX,
+                            controlSettings.leftTrimY,
                         ),
                         trimMode = leftTrimMode,
                         trimX = RcStickTrim.toChannelUnits(controlSettings.leftTrimX),
@@ -702,11 +719,7 @@ fun RcVehicleProContent(
                         collapsibleToNearestEdge = true,
                         chromeExpanded = rightStickExpanded,
                         onChromeExpandedChange = { rightStickExpanded = it },
-                        stickPosition = if (rightTrimMode) {
-                            rightStickMode.initialPositionNormalized()
-                        } else {
-                            rawSteer
-                        },
+                        stickPosition = rawSteer,
                         mode = rightStickMode,
                         accentEdge = RcGlassAccentEdge.END,
                         joystickSize = joystickSize,
@@ -736,6 +749,7 @@ fun RcVehicleProContent(
                             onControlSettingsChange { it.copy(rightStickRangeShape = next) }
                         },
                         channelLink = controlSettings.rightStickChannels,
+                        occupiedChannels = controlSettings.occupiedChannels(exceptRightStick = true),
                         onChannelLinkChange = { next ->
                             onControlSettingsChange { it.copy(rightStickChannels = next) }
                         },
@@ -743,6 +757,11 @@ fun RcVehicleProContent(
                         stickConfigContentDescription = stringResource(
                             R.string.control_panel_widget_config_content_description,
                             stringResource(R.string.rc_vehicle_control_steering),
+                        ),
+                        visualOffset = RcStickTrim.visualOffset(
+                            rightStickMode,
+                            controlSettings.rightTrimX,
+                            controlSettings.rightTrimY,
                         ),
                         trimMode = rightTrimMode,
                         trimX = RcStickTrim.toChannelUnits(controlSettings.rightTrimX),
@@ -857,6 +876,11 @@ fun RcVehicleProContent(
                             onControlSettingsChange { it.copy(cameraPanScale = next) }
                         },
                         maxScale = cameraPanMaxScale,
+                        channelLink = controlSettings.cameraKnobChannel,
+                        occupiedChannels = controlSettings.occupiedChannels(exceptCameraKnob = true),
+                        onChannelLinkChange = { next ->
+                            onControlSettingsChange { it.copy(cameraKnobChannel = next) }
+                        },
                     )
                     }
                 }

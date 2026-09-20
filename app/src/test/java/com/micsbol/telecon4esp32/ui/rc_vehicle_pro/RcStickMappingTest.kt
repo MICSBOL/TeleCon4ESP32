@@ -118,6 +118,34 @@ class RcStickMappingTest {
     }
 
     @Test
+    fun mapThrottleStick_springRestKeepsTrimThroughDeadzone() {
+        val settings = RcVehicleProControlSettings(
+            leftStickMode = JoystickMode.Spring(),
+            deadzone = 0.08f,
+            throttleExpo = 0.15f,
+            leftTrimX = 0.03f,
+            leftTrimY = 0.06f,
+        )
+        val mapped = RcStickMapping.mapThrottleStick(0f, 0f, settings)
+        assertEquals(0.03f, mapped.first, 1e-5f)
+        assertEquals(0.06f, mapped.second, 1e-5f)
+    }
+
+    @Test
+    fun mapSteerStick_springRestKeepsTrimThroughDeadzone() {
+        val settings = RcVehicleProControlSettings(
+            rightStickMode = JoystickMode.Spring(),
+            deadzone = 0.08f,
+            steerExpo = 0.35f,
+            rightTrimX = 0.03f,
+            rightTrimY = 0.05f,
+        )
+        val mapped = RcStickMapping.mapSteerStick(0f, 0f, settings)
+        assertEquals(0.03f, mapped.first, 1e-5f)
+        assertEquals(0.05f, mapped.second, 1e-5f)
+    }
+
+    @Test
     fun mapThrottleStick_circleKeepsDiagonalOnDisc() {
         val diagonal = sqrt(0.5f)
         val settings = RcVehicleProControlSettings(

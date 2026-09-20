@@ -91,7 +91,7 @@ class DataStoreWalletRepository @Inject constructor(
 
         require(option.isCoinPurchasable) { "Option $option is not coin-purchasable" }
 
-        val cost = option.coinCost
+        val cost = option.coinCost(feature)
         if (current.balance < cost) {
             return WalletUnlockResult.InsufficientBalance
         }

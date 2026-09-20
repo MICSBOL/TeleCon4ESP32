@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
+import android.view.View
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -98,10 +99,54 @@ fun HideHudSystemBars() {
             }
             if (hudSystemBarsHideCount.decrementAndGet() <= 0) {
                 hudSystemBarsHideCount.set(0)
-                WindowCompat.getInsetsController(window, view)
-                    .show(WindowInsetsCompat.Type.systemBars())
+                restoreVisibleSystemBars(activity, view)
             }
         }
+    }
+}
+
+/**
+ * Shows status and navigation bars in the default (non-overlay) mode so
+ * portrait screens can pad below them after leaving an immersive HUD.
+ */
+@Composable
+fun EnsureVisibleSystemBars() {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val activity = remember(context) { context.findActivity() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(activity, view, lifecycleOwner) {
+        if (activity == null) return@DisposableEffect onDispose {}
+        fun restore() {
+            if (hudSystemBarsHideCount.get() > 0) return
+            restoreVisibleSystemBars(activity, view)
+        }
+        restore()
+        val lifecycleObserver = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
+                restore()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
+        }
+    }
+
+    SideEffect {
+        if (activity != null && hudSystemBarsHideCount.get() <= 0) {
+            restoreVisibleSystemBars(activity, view)
+        }
+    }
+}
+
+private fun restoreVisibleSystemBars(activity: Activity, view: View) {
+    val window = activity.window
+    (activity as? ComponentActivity)?.enableEdgeToEdge()
+    WindowCompat.getInsetsController(window, view).apply {
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        show(WindowInsetsCompat.Type.systemBars())
     }
 }
 

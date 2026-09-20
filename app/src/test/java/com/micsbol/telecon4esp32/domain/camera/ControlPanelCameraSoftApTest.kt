@@ -47,7 +47,7 @@ class ControlPanelCameraSoftApTest {
         assertTrue(
             cameraVideoSoftApConflictsWithControlLink(
                 Esp32Board.DEV_KIT,
-                BluetoothConnectionMode.WIFI_SIMPLE,
+                BluetoothConnectionMode.WIFI_BINARY,
             ),
         )
         assertFalse(

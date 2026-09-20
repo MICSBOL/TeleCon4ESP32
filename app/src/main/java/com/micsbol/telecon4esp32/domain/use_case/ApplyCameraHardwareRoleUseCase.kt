@@ -11,6 +11,7 @@ import com.micsbol.telecon4esp32.domain.model.coerceConnectionModeForBoard
 import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.settingsUserType
+import com.micsbol.telecon4esp32.domain.model.coerceForApplication
 import com.micsbol.telecon4esp32.domain.model.toSelection
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import kotlinx.coroutines.flow.first
@@ -27,7 +28,8 @@ class ApplyCameraHardwareRoleUseCase @Inject constructor(
     private val observeWallet: ObserveWalletUseCase,
 ) {
     suspend operator fun invoke(applicationId: ApplicationId, role: CameraHardwareRole) {
-        val selection = role.toSelection()
+        val resolved = role.coerceForApplication(applicationId)
+        val selection = resolved.toSelection()
         saveApplicationBoard(applicationId, selection.board)
         saveUseSoftApCamera(applicationId, selection.useSoftApCamera)
         val access = observeEntitlement().value
@@ -45,7 +47,7 @@ class ApplyCameraHardwareRoleUseCase @Inject constructor(
             )
         val family = when {
             selection.bluetoothControlOnly -> ConnectionLinkFamily.BLUETOOTH
-            role == CameraHardwareRole.ONE_CAM -> ConnectionLinkFamily.WIFI
+            resolved == CameraHardwareRole.ONE_CAM -> ConnectionLinkFamily.WIFI
             else -> current.linkFamily
         }
         val canUseAdvanced = access.canUseAdvancedProtocol(

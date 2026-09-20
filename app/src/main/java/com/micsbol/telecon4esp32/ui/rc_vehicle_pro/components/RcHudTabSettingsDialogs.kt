@@ -402,6 +402,9 @@ fun RcHudStickSettingsDialog(
                     onChannelClick = { channel ->
                         updatePoint(point.togglingChannel(JoystickAxis.HORIZONTAL, channel))
                     },
+                    onNoneClick = {
+                        updatePoint(point.copy(horizontal = null))
+                    },
                 )
                 RcHudStickAxisChannelPicker(
                     axisLabel = stringResource(R.string.rc_joystick_axis_vertical),
@@ -409,6 +412,9 @@ fun RcHudStickSettingsDialog(
                     colors = colors,
                     onChannelClick = { channel ->
                         updatePoint(point.togglingChannel(JoystickAxis.VERTICAL, channel))
+                    },
+                    onNoneClick = {
+                        updatePoint(point.copy(vertical = null))
                     },
                 )
             },
@@ -423,8 +429,20 @@ private fun RcHudStickAxisChannelPicker(
     selected: TelemetryChannel?,
     colors: PlotHudDialogColors,
     onChannelClick: (TelemetryChannel) -> Unit,
+    onNoneClick: () -> Unit,
 ) {
     PlotHudSectionLabel(text = axisLabel, color = colors.sectionLabel)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        PlotHudFilterChip(
+            label = stringResource(R.string.rc_vehicle_stick_channel_none),
+            selected = selected == null,
+            colors = colors,
+            onClick = onNoneClick,
+        )
+    }
     TelemetryChannel.ANALOG_CHANNELS.chunked(4).forEach { row ->
         Row(
             modifier = Modifier.fillMaxWidth(),

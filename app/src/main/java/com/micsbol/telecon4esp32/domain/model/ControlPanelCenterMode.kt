@@ -73,5 +73,5 @@ fun ApplicationId.effectiveCameraHardwareRole(
     return stored.coerceForSettings(
         userType = userType,
         centerCameraEnabled = centerCameraEnabled,
-    )
+    ).coerceForApplication(this)
 }

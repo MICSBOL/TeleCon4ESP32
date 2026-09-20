@@ -9,14 +9,15 @@ import com.micsbol.telecon4esp32.domain.model.usesCamera
 /**
  * How an application pairs SoftAP HTTP video with the control link.
  *
- * Portable SoftAP model (Control Panel, RC Vehicle):
- * - Role B — [Esp32Board.CAM] SoftAP TCP+video ([WIFI_SOFTAP]) for
- *   [BluetoothConnectionMode.WIFI_CAM_STARTER], [BluetoothConnectionMode.WIFI_SIMPLE],
- *   [BluetoothConnectionMode.WIFI_BINARY], and legacy [BluetoothConnectionMode.WIFI_SOFTAP]
- * - Role A — DevKit Bluetooth (Classic Simple / Classic Binary / BLE Binary) plus
+ * Portable SoftAP model:
+ * - Role B (RC Vehicle Pro only) — [Esp32Board.CAM] SoftAP TCP+video ([WIFI_SOFTAP]) for
+ *   [BluetoothConnectionMode.WIFI_CAM_STARTER], [BluetoothConnectionMode.WIFI_BINARY],
+ *   and legacy [BluetoothConnectionMode.WIFI_SOFTAP]
+ * - Role A (Control Panel and RC Vehicle) — DevKit Bluetooth (Classic Simple / Classic Binary / BLE Binary) plus
  *   optional video-only SoftAP camera overlay → [WIFI_CAMERA_DEVKIT_BT]
  *
  * DevKit without the overlay stays [CONTROL_ONLY] (no SoftAP HTTP).
+ * DevKit SoftAP Simple ([BluetoothConnectionMode.WIFI_SIMPLE]) is withdrawn.
  *
  * Single-board SoftAP+Bluetooth on one ESP32-CAM is not a supported product mode.
  */
@@ -25,14 +26,14 @@ enum class CameraLinkProfile {
     CONTROL_ONLY,
 
     /**
-     * Role B: SoftAP HTTP video + SoftAP TCP control on one CAM board
-     * (`TeleCon_ControlPanel_CAM_WiFi_Simple` / Advanced SoftAP Binary).
+     * Role B (RC Vehicle Pro only): SoftAP HTTP video + SoftAP TCP control on one CAM
+     * (`TeleCon_CAM_WiFi_Simple` / `TeleCon_CAM_WiFi_Binary`).
      * Wire protocol is selected by the connection mode (`simple` / `binary`), not this profile.
      */
     WIFI_SOFTAP,
 
     /**
-     * Role A: SoftAP HTTP video on a separate ESP32-CAM (`TeleCon_ControlPanel_CAM_SoftAP_Video`)
+     * Role A: SoftAP HTTP video on a separate ESP32-CAM (`TeleCon_CAM_SoftAP_Video`)
      * + Bluetooth control on DevKit (Classic Simple, Classic Binary, or BLE Binary).
      * Never opens SoftAP TCP `:3333`.
      */
@@ -64,9 +65,9 @@ fun resolveCameraLinkProfile(
     transport: BluetoothTransportType,
     useSoftApCamera: Boolean = false,
 ): CameraLinkProfile {
-    // Portable default SoftAP TCP mode; Advanced apps pick WIFI_BINARY via stored mode.
+    // CAM Simple is WIFI_CAM_STARTER via stored mode; DevKit SoftAP is Binary only.
     val mode = when (transport) {
-        BluetoothTransportType.WIFI -> BluetoothConnectionMode.WIFI_SIMPLE
+        BluetoothTransportType.WIFI -> BluetoothConnectionMode.WIFI_BINARY
         BluetoothTransportType.BLE -> BluetoothConnectionMode.BLE_BINARY
         BluetoothTransportType.CLASSIC -> BluetoothConnectionMode.CLASSIC_SIMPLE
     }

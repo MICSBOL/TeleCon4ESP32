@@ -6,6 +6,7 @@ import com.micsbol.telecon4esp32.domain.model.PlotLineStyle
 import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
 import com.micsbol.telecon4esp32.domain.model.TelemetrySink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.StickOutput
 import com.micsbol.telecon4esp32.domain.model.formatEngineeringNumber
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import java.util.Locale
@@ -14,7 +15,7 @@ import kotlin.math.sin
 const val RC_HUD_PLOT_HOLD_MS = 2_000L
 
 const val HUD_PLOT_Y_MIN_DEFAULT = 0f
-const val HUD_PLOT_Y_MAX_DEFAULT = 1f
+const val HUD_PLOT_Y_MAX_DEFAULT = 4094f
 
 data class RcHudPlotTraceStyle(
     val visible: Boolean = true,
@@ -101,6 +102,11 @@ fun rcHudRadarDisplaySeries(
 
 fun rcHudPlotChannelLabel(name: String, fallback: String): String =
     name.trim().ifBlank { fallback }
+
+fun RcHudPlotTraceStyle.formatSample(normalized: Float): String =
+    formatEngineeringNumber(
+        StickOutput.engineeringFromUnit(normalized, yMin, yMax),
+    )
 
 fun formatHudStickXy(x: Float, y: Float): String =
     "(%.2f,%.2f)".format(

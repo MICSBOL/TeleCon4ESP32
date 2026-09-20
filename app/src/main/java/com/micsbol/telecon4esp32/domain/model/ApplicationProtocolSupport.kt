@@ -74,7 +74,10 @@ fun Entitlement.effectiveConnectionMode(
 ): BluetoothConnectionMode {
     if (transport == BluetoothTransportType.WIFI) {
         // CAM SoftAP: Default / Simple stays starter. Advanced protocol may pick SoftAP Binary.
-        if (applicationId.usesCamera() && board == Esp32Board.CAM) {
+        if (
+            applicationId.supportsCamVideoControl() &&
+            board == Esp32Board.CAM
+        ) {
             return if (
                 storedProtocol == BluetoothProtocolMode.ADVANCED &&
                 canUseConnectionMode(
@@ -98,7 +101,8 @@ fun Entitlement.effectiveConnectionMode(
         return if (protocol == BluetoothProtocolMode.ADVANCED) {
             BluetoothConnectionMode.WIFI_BINARY
         } else {
-            BluetoothConnectionMode.WIFI_SIMPLE
+            // DevKit SoftAP Simple is withdrawn; Default Wi‑Fi falls back to Classic Simple.
+            BluetoothConnectionMode.CLASSIC_SIMPLE
         }
     }
     val protocol = effectiveProtocolMode(
@@ -133,8 +137,9 @@ fun Entitlement.canUseConnectionMode(
 ): Boolean = when (mode) {
     BluetoothConnectionMode.CLASSIC_SIMPLE,
     BluetoothConnectionMode.WIFI_CAM_STARTER,
-    BluetoothConnectionMode.WIFI_SIMPLE,
     -> true
+    BluetoothConnectionMode.WIFI_SIMPLE,
+    -> false
     BluetoothConnectionMode.WIFI_SOFTAP,
     BluetoothConnectionMode.CLASSIC_BINARY,
     BluetoothConnectionMode.BLE_BINARY,
@@ -145,9 +150,10 @@ fun Entitlement.canUseConnectionMode(
 /**
  * Connection modes offered in app settings for the selected board.
  *
- * Role B — one ESP32-CAM ([Esp32Board.CAM]):
+ * Role B — one ESP32-CAM ([Esp32Board.CAM]), [RC_VEHICLE_PRO] only:
  * - [WIFI_CAM_STARTER] — SoftAP Simple (video + TCP `:3333`)
  * - [WIFI_BINARY] — Advanced SoftAP Binary (video + TCP)
+ * Control Panel has no Role B (DevKit ± Role A video overlay only).
  *
  * Role A — DevKit Bluetooth + optional SoftAP camera overlay:
  * Default: Classic Simple (ESP32-TC-RC-BT-Simple) with video-only CAM.
@@ -157,8 +163,12 @@ fun Entitlement.canUseConnectionMode(
  * [Esp32Board.CAM_AND_DEV_KIT] (legacy dual-board storage): same three Bluetooth
  * modes as Role A. SoftAP video is an overlay, never BLE-only.
  *
- * DevKit / non-camera apps: Classic Simple/Binary, BLE Binary, Wi‑Fi Simple/Binary.
+ * DevKit / non-camera apps: Classic Simple/Binary, BLE Binary, and Advanced
+ * Wi‑Fi SoftAP Binary (no camera). DevKit Wi‑Fi Simple is withdrawn.
  */
+/** One-CAM video + SoftAP TCP (Role B). RC Vehicle only. */
+fun ApplicationId.supportsCamVideoControl(): Boolean = this == ApplicationId.RC_VEHICLE_PRO
+
 fun ApplicationId.availableConnectionModes(board: Esp32Board): List<BluetoothConnectionMode> {
     if (usesCamera() && board.isKitBDual) {
         return listOf(
@@ -167,7 +177,7 @@ fun ApplicationId.availableConnectionModes(board: Esp32Board): List<BluetoothCon
             BluetoothConnectionMode.BLE_BINARY,
         )
     }
-    if (usesCamera() && board == Esp32Board.CAM) {
+    if (supportsCamVideoControl() && board == Esp32Board.CAM) {
         return listOf(
             BluetoothConnectionMode.WIFI_CAM_STARTER,
             BluetoothConnectionMode.WIFI_BINARY,
@@ -177,7 +187,6 @@ fun ApplicationId.availableConnectionModes(board: Esp32Board): List<BluetoothCon
         BluetoothConnectionMode.CLASSIC_SIMPLE,
         BluetoothConnectionMode.CLASSIC_BINARY,
         BluetoothConnectionMode.BLE_BINARY,
-        BluetoothConnectionMode.WIFI_SIMPLE,
         BluetoothConnectionMode.WIFI_BINARY,
     )
 }
@@ -192,6 +201,41 @@ fun ApplicationId.isConnectionModeAvailable(
     board: Esp32Board,
     mode: BluetoothConnectionMode,
 ): Boolean = mode in availableConnectionModes(board)
+
+/**
+ * Connection mode for live connect buttons (Bluetooth vs Wi‑Fi).
+ *
+ * Settings already coerce withdrawn DevKit SoftAP Simple to Classic Simple.
+ * Live screens must use the same rule: a stored Classic Simple pick wins even if
+ * an older transport key is still WIFI.
+ */
+fun liveControlConnectionMode(
+    applicationId: ApplicationId,
+    board: Esp32Board,
+    storedMode: BluetoothConnectionMode?,
+    transport: BluetoothTransportType,
+    protocol: BluetoothProtocolMode,
+): BluetoothConnectionMode {
+    val candidate = storedMode ?: BluetoothConnectionMode.from(transport, protocol)
+    if (board == Esp32Board.CAM && applicationId.supportsCamVideoControl()) {
+        return when (candidate) {
+            BluetoothConnectionMode.WIFI_SIMPLE,
+            BluetoothConnectionMode.WIFI_SOFTAP,
+            -> if (protocol == BluetoothProtocolMode.ADVANCED) {
+                BluetoothConnectionMode.WIFI_BINARY
+            } else {
+                BluetoothConnectionMode.WIFI_CAM_STARTER
+            }
+            else -> candidate
+        }
+    }
+    return when (candidate) {
+        BluetoothConnectionMode.WIFI_SIMPLE,
+        BluetoothConnectionMode.WIFI_CAM_STARTER,
+        -> BluetoothConnectionMode.CLASSIC_SIMPLE
+        else -> candidate
+    }
+}
 
 /**
  * Maps a stored mode onto one valid for [board], preferring SoftAP on CAM and
@@ -212,7 +256,7 @@ fun Entitlement.coerceConnectionModeForBoard(
 
     // Legacy Kit A text SoftAP / stale BLE on CAM → SoftAP Binary or Starter.
     if (
-        applicationId.usesCamera() &&
+        applicationId.supportsCamVideoControl() &&
         board == Esp32Board.CAM &&
         (
             mode.transport == BluetoothTransportType.WIFI ||
@@ -239,7 +283,15 @@ fun Entitlement.coerceConnectionModeForBoard(
         }
     }
 
-    // SoftAP kit / starter mode while on DevKit → DevKit Wi‑Fi Simple / Binary.
+    // Stored DevKit Wi‑Fi Simple (withdrawn) → Classic Simple.
+    if (board == Esp32Board.DEV_KIT && mode == BluetoothConnectionMode.WIFI_SIMPLE) {
+        val classic = BluetoothConnectionMode.CLASSIC_SIMPLE
+        if (classic in visible && allowed(classic)) {
+            return classic
+        }
+    }
+
+    // SoftAP kit / starter mode while on DevKit → Binary SoftAP if Advanced, else Classic Simple.
     if (
         board == Esp32Board.DEV_KIT &&
         (
@@ -252,7 +304,7 @@ fun Entitlement.coerceConnectionModeForBoard(
         ) {
             BluetoothConnectionMode.WIFI_BINARY
         } else {
-            BluetoothConnectionMode.WIFI_SIMPLE
+            BluetoothConnectionMode.CLASSIC_SIMPLE
         }
         if (wifi in visible && allowed(wifi)) {
             return wifi
@@ -260,7 +312,7 @@ fun Entitlement.coerceConnectionModeForBoard(
     }
 
     // On CAM, keep Default on SoftAP starter; only Advanced modes pick SoftAP Binary.
-    if (applicationId.usesCamera() && board == Esp32Board.CAM) {
+    if (applicationId.supportsCamVideoControl() && board == Esp32Board.CAM) {
         if (mode.settingsUserType == SettingsUserType.NORMAL) {
             val starter = BluetoothConnectionMode.WIFI_CAM_STARTER
             if (starter in visible && allowed(starter)) {

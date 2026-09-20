@@ -57,7 +57,7 @@ class ProtocolHandshakeTest {
     }
 
     @Test
-    fun buildConnectLine_devKitWifiSimpleUsesSimpleWireValue() {
+    fun buildConnectLine_legacyDevKitWifiSimpleEnumStillUsesSimpleWireValue() {
         assertEquals(
             "RC:CONNECT,proto,simple",
             ProtocolHandshake.buildConnectLine(
@@ -80,7 +80,7 @@ class ProtocolHandshakeTest {
 
     @Test
     fun buildConnectLine_wifiTransportPlusSimpleDefaultsToDevKitSimpleNotCamWifi() {
-        // Ambiguous transport+mode maps to WIFI_SIMPLE (DevKit); CAM SoftAP Binary uses WIFI_BINARY.
+        // Ambiguous transport+mode maps to the withdrawn WIFI_SIMPLE enum; CAM Simple is WIFI_CAM_STARTER.
         assertEquals(
             "RC:CONNECT,proto,simple",
             ProtocolHandshake.buildConnectLine(

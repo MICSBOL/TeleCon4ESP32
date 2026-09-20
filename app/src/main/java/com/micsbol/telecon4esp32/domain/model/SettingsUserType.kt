@@ -6,8 +6,8 @@ import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
 /**
  * Settings experience level for connection options.
  *
- * [NORMAL] (UI: Default) shows starter Simple links (DevKit Simple, CAM SoftAP starter,
- * or Role A two-device: video-only CAM + DevKit Bluetooth Simple).
+ * [NORMAL] (UI: Default) shows starter Simple links (DevKit Classic Simple, CAM SoftAP
+ * starter, or Role A two-device: video-only CAM + DevKit Bluetooth Simple).
  * [ADVANCED] shows binary / BLE / Kit A SoftAP options (Pro or coins).
  */
 enum class SettingsUserType {

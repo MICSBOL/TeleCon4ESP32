@@ -16,15 +16,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.ui.control_panel.components.ButtonSide
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
@@ -313,6 +318,7 @@ internal fun ControllerSideControls(
     val joystickSize = metrics.joystickSize
     // Knob sits just above the stick (same size); bottom padding clears the gimbal rim.
     val knobClearanceAboveStick = 6.dp
+    var knobMenuExpanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
         ControllerSideKnob(
             modifier = Modifier
@@ -325,6 +331,24 @@ internal fun ControllerSideControls(
             knobSize = metrics.knobSize,
             knobValue = knobValue,
             onKnobValueChange = onKnobValueChange,
+            onDoubleTap = { knobMenuExpanded = true },
+            contentDescription = stringResource(
+                R.string.control_panel_widget_config_content_description,
+                stringResource(
+                    if (side == ButtonSide.RIGHT) {
+                        R.string.rc_controller_settings_right_knob
+                    } else {
+                        R.string.rc_controller_settings_left_knob
+                    },
+                ),
+            ),
+            menu = {
+                ControlPanelKnobOptionsMenuHost(
+                    expanded = knobMenuExpanded,
+                    side = side,
+                    onDismiss = { knobMenuExpanded = false },
+                )
+            },
         )
         Box(
             modifier = Modifier
@@ -439,9 +463,18 @@ internal fun ControllerSideKnob(
     knobValue: Float,
     onKnobValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    onDoubleTap: (() -> Unit)? = null,
+    contentDescription: String? = null,
+    menu: @Composable () -> Unit = {},
 ) {
     Box(modifier = modifier.size(knobSize)) {
-        Knob3D(value = knobValue, onValueChange = onKnobValueChange)
+        Knob3D(
+            value = knobValue,
+            onValueChange = onKnobValueChange,
+            onDoubleTap = onDoubleTap,
+            contentDescription = contentDescription,
+        )
+        menu()
     }
 }
 

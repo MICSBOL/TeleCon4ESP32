@@ -1,8 +1,29 @@
 package com.micsbol.telecon4esp32.domain.model
 
+import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
+
+/**
+ * Analog span for one stick axis. [min] is down / left; [max] is up / right.
+ * Rest is either [min] (range start) or [max] (range end).
+ */
+data class StickAxisRange(
+    val min: Float = 0f,
+    val max: Float = StickOutput.FULL_SCALE.toFloat(),
+) {
+    fun sanitized(): StickAxisRange {
+        val lo = if (min.isFinite()) min else 0f
+        val hi = if (max.isFinite()) max else StickOutput.FULL_SCALE.toFloat()
+        return if (hi > lo) StickAxisRange(lo, hi) else StickAxisRange(lo, lo + 1f)
+    }
+
+    companion object {
+        val DEFAULT = StickAxisRange()
+    }
+}
 
 /**
  * Optional analog-channel binding for one stick.
@@ -13,64 +34,106 @@ data class StickChannelLink(
     val enabled: Boolean = false,
     val vertical: TelemetryChannel? = null,
     val horizontal: TelemetryChannel? = null,
+    val verticalRange: StickAxisRange = StickAxisRange.DEFAULT,
+    val horizontalRange: StickAxisRange = StickAxisRange.DEFAULT,
 ) {
-    fun withEnabled(on: Boolean, axis: JoystickAxis): StickChannelLink {
-        if (!on) return copy(enabled = false)
-        return copy(
-            enabled = true,
-            vertical = if (axis != JoystickAxis.HORIZONTAL) {
-                vertical ?: DEFAULT_VERTICAL
-            } else {
-                vertical
-            },
-            horizontal = if (axis != JoystickAxis.VERTICAL) {
-                horizontal ?: DEFAULT_HORIZONTAL
-            } else {
-                horizontal
-            },
-        )
+    val hasChannel: Boolean get() = vertical != null || horizontal != null
+
+    fun assignedChannels(exceptAxis: JoystickAxis? = null): Set<TelemetryChannel> {
+        if (!enabled) return emptySet()
+        return buildSet {
+            if (exceptAxis != JoystickAxis.VERTICAL) vertical?.let(::add)
+            if (exceptAxis != JoystickAxis.HORIZONTAL) horizontal?.let(::add)
+        }
     }
 
-    fun toggling(axis: JoystickAxis, channel: TelemetryChannel): StickChannelLink =
-        when (axis) {
+    fun withEnabled(
+        on: Boolean,
+        axis: JoystickAxis,
+        occupied: Set<TelemetryChannel> = emptySet(),
+    ): StickChannelLink {
+        if (!on) return copy(enabled = false)
+        val vertical = vertical?.takeUnless { it in occupied }
+        val horizontal = horizontal?.takeUnless { it in occupied }
+        return copy(enabled = true, vertical = vertical, horizontal = horizontal)
+    }
+
+    fun selecting(
+        axis: JoystickAxis,
+        channel: TelemetryChannel?,
+        occupied: Set<TelemetryChannel> = emptySet(),
+    ): StickChannelLink {
+        val analog = analogOrNull(channel)
+        if (analog != null && analog in occupied) return this
+        val next = when (axis) {
             JoystickAxis.VERTICAL -> copy(
-                vertical = if (vertical == channel) null else analogOrNull(channel),
+                vertical = analog,
+                horizontal = if (horizontal == analog) null else horizontal,
             )
             JoystickAxis.HORIZONTAL -> copy(
-                horizontal = if (horizontal == channel) null else analogOrNull(channel),
+                horizontal = analog,
+                vertical = if (vertical == analog) null else vertical,
             )
             JoystickAxis.COMBINED -> this
         }
+        return next.copy(enabled = next.vertical != null || next.horizontal != null)
+    }
+
+    fun toggling(
+        axis: JoystickAxis,
+        channel: TelemetryChannel,
+        occupied: Set<TelemetryChannel> = emptySet(),
+    ): StickChannelLink {
+        val current = when (axis) {
+            JoystickAxis.VERTICAL -> vertical
+            JoystickAxis.HORIZONTAL -> horizontal
+            JoystickAxis.COMBINED -> return this
+        }
+        return selecting(axis, if (current == channel) null else channel, occupied)
+    }
+
+    fun withRange(axis: JoystickAxis, range: StickAxisRange): StickChannelLink {
+        val sanitized = range.sanitized()
+        return when (axis) {
+            JoystickAxis.VERTICAL -> copy(verticalRange = sanitized)
+            JoystickAxis.HORIZONTAL -> copy(horizontalRange = sanitized)
+            JoystickAxis.COMBINED -> copy(
+                verticalRange = sanitized,
+                horizontalRange = sanitized,
+            )
+        }
+    }
 
     /**
-     * Analog-bus samples for enabled axes.
-     * One-axis sticks map −1…1 onto 0…1 so the value fills the current radar span.
-     * Combined sticks map polar angle onto [span] (180° or 270°) and magnitude onto range.
+     * Analog-bus samples when a channel is selected.
+     * Down / left is range start (0); up / right is range end (1).
      */
     fun samples(
         x: Float,
         y: Float,
         axis: JoystickAxis,
-        radarSpanDegrees: Float = 180f,
+        restX: Float = 0f,
+        restY: Float = 0f,
     ): Map<TelemetryChannel, Float> {
         if (!enabled) return emptyMap()
-        val span = radarSpanDegrees
         val out = linkedMapOf<TelemetryChannel, Float>()
+        val xUnit = StickOutput.normalizedToUnit(x)
+        val yUnit = StickOutput.normalizedToUnit(y)
         when (axis) {
             JoystickAxis.HORIZONTAL ->
-                horizontal?.let { out[it] = angleProgress(x, 0f, JoystickAxis.HORIZONTAL, span) }
+                horizontal?.let { out[it] = xUnit }
             JoystickAxis.VERTICAL ->
-                vertical?.let { out[it] = normalizedAxis(y) }
+                vertical?.let { out[it] = yUnit }
             JoystickAxis.COMBINED -> {
-                val polar = angleProgress(x, y, JoystickAxis.COMBINED, span)
-                val range = rangeProgress(x, y)
                 val h = horizontal
                 val v = vertical
                 when {
-                    h != null && v != null && h == v -> out[h] = polar
+                    h != null && v != null && h == v -> {
+                        out[h] = if (abs(y) >= abs(x)) yUnit else xUnit
+                    }
                     else -> {
-                        if (h != null) out[h] = polar
-                        if (v != null) out[v] = range
+                        if (h != null) out[h] = xUnit
+                        if (v != null) out[v] = yUnit
                     }
                 }
             }
@@ -82,14 +145,16 @@ data class StickChannelLink(
         if (enabled) "1" else "0",
         vertical?.name.orEmpty(),
         horizontal?.name.orEmpty(),
+        formatRangeValue(verticalRange.min),
+        formatRangeValue(verticalRange.max),
+        formatRangeValue(horizontalRange.min),
+        formatRangeValue(horizontalRange.max),
     ).joinToString(",")
 
     companion object {
         val DEFAULT = StickChannelLink()
         val DEFAULT_LEFT = StickChannelLink()
         val DEFAULT_RIGHT = StickChannelLink()
-        val DEFAULT_VERTICAL = TelemetryChannel.CH_1
-        val DEFAULT_HORIZONTAL = TelemetryChannel.CH_2
 
         fun decode(raw: String?): StickChannelLink {
             if (raw.isNullOrBlank()) return DEFAULT
@@ -99,8 +164,19 @@ data class StickChannelLink(
                 enabled = enabled,
                 vertical = analogOrNull(TelemetryChannel.fromStored(parts.getOrNull(1)?.trim())),
                 horizontal = analogOrNull(TelemetryChannel.fromStored(parts.getOrNull(2)?.trim())),
+                verticalRange = decodeAxisRange(parts.getOrNull(3), parts.getOrNull(4)),
+                horizontalRange = decodeAxisRange(parts.getOrNull(5), parts.getOrNull(6)),
             )
         }
+
+        fun decodeAxisRange(minRaw: String?, maxRaw: String?): StickAxisRange {
+            val min = minRaw?.trim()?.toFloatOrNull()?.takeIf { it.isFinite() } ?: 0f
+            val max = maxRaw?.trim()?.toFloatOrNull()?.takeIf { it.isFinite() }
+                ?: StickOutput.FULL_SCALE.toFloat()
+            return StickAxisRange(min, max).sanitized()
+        }
+
+        fun formatRangeValue(value: Float): String = formatEngineeringNumber(value)
 
         fun analogOrNull(channel: TelemetryChannel?): TelemetryChannel? =
             channel?.takeIf { it in TelemetryChannel.ANALOG_CHANNELS }
@@ -148,6 +224,113 @@ data class StickChannelLink(
     }
 }
 
+data class ExclusiveAnalogAssignments(
+    val leftStick: StickChannelLink,
+    val rightStick: StickChannelLink,
+    val knobs: List<KnobChannelLink>,
+)
+
+fun exclusiveAnalogAssignments(
+    leftStick: StickChannelLink,
+    rightStick: StickChannelLink,
+    knobs: List<KnobChannelLink>,
+): ExclusiveAnalogAssignments {
+    val taken = mutableSetOf<TelemetryChannel>()
+    fun claimStick(link: StickChannelLink): StickChannelLink {
+        if (!link.enabled) return link
+        var vertical = link.vertical
+        var horizontal = link.horizontal
+        if (vertical != null) {
+            if (vertical in taken) vertical = null else taken += vertical
+        }
+        if (horizontal != null) {
+            if (horizontal in taken) horizontal = null else taken += horizontal
+        }
+        return link.copy(
+            vertical = vertical,
+            horizontal = horizontal,
+        )
+    }
+    fun claimKnob(link: KnobChannelLink): KnobChannelLink {
+        if (!link.enabled) return link
+        val channel = link.channel
+        if (channel == null) return link
+        if (channel in taken) return link.copy(channel = null)
+        taken += channel
+        return link
+    }
+    return ExclusiveAnalogAssignments(
+        leftStick = claimStick(leftStick),
+        rightStick = claimStick(rightStick),
+        knobs = knobs.map(::claimKnob),
+    )
+}
+
+/**
+ * Optional analog-channel binding for one knob. No channel is bound by default.
+ */
+data class KnobChannelLink(
+    val enabled: Boolean = false,
+    val channel: TelemetryChannel? = null,
+    val range: StickAxisRange = StickAxisRange.DEFAULT,
+) {
+    fun assignedChannels(): Set<TelemetryChannel> =
+        if (enabled) setOfNotNull(channel) else emptySet()
+
+    fun withEnabled(
+        on: Boolean,
+        occupied: Set<TelemetryChannel> = emptySet(),
+    ): KnobChannelLink {
+        if (!on) return copy(enabled = false)
+        return copy(enabled = true, channel = channel?.takeUnless { it in occupied })
+    }
+
+    fun selecting(
+        channel: TelemetryChannel?,
+        occupied: Set<TelemetryChannel> = emptySet(),
+    ): KnobChannelLink {
+        val next = StickChannelLink.analogOrNull(channel)
+        if (next != null && next in occupied) return this
+        return copy(channel = next, enabled = next != null)
+    }
+
+    fun toggling(
+        channel: TelemetryChannel,
+        occupied: Set<TelemetryChannel> = emptySet(),
+    ): KnobChannelLink = selecting(if (this.channel == channel) null else channel, occupied)
+
+    fun withRange(range: StickAxisRange): KnobChannelLink = copy(range = range.sanitized())
+
+    fun sample(value01: Float): Map<TelemetryChannel, Float> {
+        if (!enabled || channel == null) return emptyMap()
+        return mapOf(channel to value01.coerceIn(0f, 1f))
+    }
+
+    fun encode(): String = listOf(
+        if (enabled) "1" else "0",
+        channel?.name.orEmpty(),
+        StickChannelLink.formatRangeValue(range.min),
+        StickChannelLink.formatRangeValue(range.max),
+    ).joinToString(",")
+
+    companion object {
+        val DEFAULT = KnobChannelLink()
+
+        fun decode(raw: String?): KnobChannelLink {
+            if (raw.isNullOrBlank()) return DEFAULT
+            val parts = raw.split(',')
+            val channel = StickChannelLink.analogOrNull(
+                TelemetryChannel.fromStored(parts.getOrNull(1)?.trim()),
+            )
+            return KnobChannelLink(
+                enabled = parts.getOrNull(0)?.trim() == "1" && channel != null,
+                channel = channel,
+                range = StickChannelLink.decodeAxisRange(parts.getOrNull(2), parts.getOrNull(3)),
+            )
+        }
+    }
+}
+
 /**
  * XY for the stick graph: a bound analog channel (0…1) maps onto −1…1.
  * Unbound axes keep the live joystick value.
@@ -156,19 +339,44 @@ fun StickChannelLink.displayXy(
     stickX: Float,
     stickY: Float,
     lastNormalized01: (TelemetryChannel) -> Float?,
-): Pair<Float, Float> = Pair(
-    displayAxis(horizontal, stickX, lastNormalized01),
-    displayAxis(vertical, stickY, lastNormalized01),
-)
+): Pair<Float, Float> {
+    if (!enabled) {
+        return Pair(stickX.coerceIn(-1f, 1f), stickY.coerceIn(-1f, 1f))
+    }
+    return Pair(
+        displayAxis(horizontal, stickX, lastNormalized01),
+        displayAxis(vertical, stickY, lastNormalized01),
+    )
+}
+
+/**
+ * Replaces plot traces whose routed analog channel is driven by a stick overlay.
+ * Overlay samples are 0…1 (native 0…4094); plot calibration / HUD Y scale remap them.
+ */
+fun overlayStickOnPlotSeries(
+    series: List<PlotData>,
+    routing: ChannelRouting,
+    overlay: Map<TelemetryChannel, List<Float>>,
+): List<PlotData> {
+    if (overlay.isEmpty()) return series
+    return series.mapIndexed { index, plot ->
+        val channel = routing.sourceFor(TelemetrySink.plotAt(index))
+        val points = overlay[channel]
+        if (points.isNullOrEmpty()) plot else plot.copy(dataPoints = points)
+    }
+}
 
 fun StickChannelLink.displayHistory(
     stickX: List<Float>,
     stickY: List<Float>,
     history01: (TelemetryChannel) -> List<Float>?,
-): Pair<List<Float>, List<Float>> = Pair(
-    displayAxisHistory(horizontal, stickX, history01),
-    displayAxisHistory(vertical, stickY, history01),
-)
+): Pair<List<Float>, List<Float>> {
+    if (!enabled) return Pair(stickX, stickY)
+    return Pair(
+        displayAxisHistory(horizontal, stickX, history01),
+        displayAxisHistory(vertical, stickY, history01),
+    )
+}
 
 private fun displayAxis(
     channel: TelemetryChannel?,

@@ -4,10 +4,11 @@ package com.micsbol.telecon4esp32.domain.bluetooth
  * User-facing link choice for an application.
  *
  * SoftAP TCP modes are shared by Control Panel and RC Vehicle:
- * - [WIFI_SIMPLE] / [WIFI_BINARY] — SoftAP TCP with `proto=simple` / `proto=binary`
- * - On [com.micsbol.telecon4esp32.domain.model.Esp32Board.CAM] + camera apps, those modes
- *   also attach SoftAP HTTP video (same SoftAP, different sketch SSID).
+ * - [WIFI_BINARY] — SoftAP TCP with `proto=binary` (DevKit no-camera Advanced, or CAM video+TCP)
+ * - On [com.micsbol.telecon4esp32.domain.model.Esp32Board.CAM] + camera apps, SoftAP TCP
+ *   also attaches HTTP video (same SoftAP, different sketch SSID).
  * - [WIFI_CAM_STARTER] — Normal-user CAM SoftAP with starter SSID + `proto=simple`
+ * - [WIFI_SIMPLE] — withdrawn DevKit SoftAP Simple; coerce to [CLASSIC_SIMPLE]
  * - [WIFI_SOFTAP] — legacy RC Kit A text SoftAP (`proto=wifi`); coerce to [WIFI_BINARY]
  *
  * Classic offers text and binary; BLE always uses binary (NUS).
@@ -34,7 +35,10 @@ enum class BluetoothConnectionMode {
      */
     WIFI_SOFTAP,
 
-    /** SoftAP TCP + SIMPLE text (`proto=simple`). DevKit or CAM (board selects SSID / camera). */
+    /**
+     * Withdrawn DevKit SoftAP Simple (`proto=simple`, SSID `ESP32-TC-RC-WiFi-Simple`).
+     * Stored values coerce to [CLASSIC_SIMPLE]. CAM Simple is [WIFI_CAM_STARTER].
+     */
     WIFI_SIMPLE,
 
     /** SoftAP TCP + ADVANCED binary (`proto=binary`). DevKit or CAM (board selects SSID / camera). */

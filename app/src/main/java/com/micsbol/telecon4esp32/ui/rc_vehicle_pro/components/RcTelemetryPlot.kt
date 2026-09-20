@@ -680,7 +680,13 @@ private fun RcHudPlotLegendRow(
                             .background(color, RoundedCornerShape(1.dp)),
                     )
                     Text(
-                        text = label,
+                        text = buildString {
+                            append(label)
+                            plotData.dataPoints.lastOrNull()?.let { sample ->
+                                append("  ")
+                                append(style.formatSample(sample))
+                            }
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = color,
@@ -1601,9 +1607,9 @@ internal fun decodeRcHudPlotTraceStyles(encoded: String?): List<RcHudPlotTraceSt
             lineStyle = PlotLineStyle.entries.find { it.name == parts[2] } ?: PlotLineStyle.LINE,
             dashed = parts[3] == "1",
             yMin = parts.getOrNull(4)?.toFloatOrNull()?.takeIf { it.isFinite() }
-                ?: HUD_PLOT_Y_MIN_DEFAULT,
+                ?: 0f,
             yMax = parts.getOrNull(5)?.toFloatOrNull()?.takeIf { it.isFinite() }
-                ?: HUD_PLOT_Y_MAX_DEFAULT,
+                ?: 1f,
         )
     }
     return List(UserSettings.PLOT_LABEL_COUNT) { index ->

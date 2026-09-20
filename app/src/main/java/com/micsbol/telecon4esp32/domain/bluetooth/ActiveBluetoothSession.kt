@@ -9,7 +9,7 @@ data class BluetoothSessionContext(
     val transport: BluetoothTransportType = BluetoothTransportType.CLASSIC,
     /**
      * Full Settings mode. Distinguishes CAM SoftAP (`WIFI_SOFTAP` → `proto=wifi`) from
-     * DevKit SoftAP (`WIFI_SIMPLE` / `WIFI_BINARY` → `simple` / `binary`).
+     * DevKit SoftAP (`WIFI_BINARY` → `binary`). Legacy `WIFI_SIMPLE` is withdrawn.
      */
     val connectionMode: BluetoothConnectionMode =
         BluetoothConnectionMode.from(transport, protocolMode),

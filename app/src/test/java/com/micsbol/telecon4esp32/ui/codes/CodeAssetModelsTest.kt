@@ -2,7 +2,6 @@ package com.micsbol.telecon4esp32.ui.codes
 
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -58,13 +57,13 @@ class CodeAssetModelsTest {
     }
 
     @Test
-    fun `role B cam starter lists wifi simple only`() {
+    fun `role B is not a control panel code package`() {
         val ids = controlPanelCodePackageIds(
             Esp32Board.CAM,
             BluetoothConnectionMode.WIFI_CAM_STARTER,
         )
-        assertEquals(listOf(ControlPanelCodePackageId.CAM_WIFI_SIMPLE), ids)
+        assertFalse(ControlPanelCodePackageId.CAM_WIFI_SIMPLE in ids)
+        assertFalse(ControlPanelCodePackageId.CAM_WIFI_BINARY in ids)
         assertFalse(ControlPanelCodePackageId.CAM_SOFTAP_VIDEO in ids)
-        assertFalse(ControlPanelCodePackageId.DEVKIT_CLASSIC in ids)
     }
 }

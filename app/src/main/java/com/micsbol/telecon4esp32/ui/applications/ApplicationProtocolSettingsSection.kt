@@ -60,6 +60,7 @@ import com.micsbol.telecon4esp32.domain.model.coerceForSettings
 import com.micsbol.telecon4esp32.domain.model.connectionModesForFamily
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
+import com.micsbol.telecon4esp32.domain.model.supportsCamVideoControl
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.domain.model.usesSoftApCamera
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
@@ -126,6 +127,7 @@ fun CameraHardwareRoleSettingsSection(
     selected: CameraHardwareRole,
     onRoleSelected: (CameraHardwareRole) -> Unit,
     allowTwoDevices: Boolean = false,
+    allowOneCam: Boolean = true,
     allowCameraRoles: Boolean = true,
     userType: SettingsUserType = SettingsUserType.NORMAL,
 ) {
@@ -139,25 +141,27 @@ fun CameraHardwareRoleSettingsSection(
     val useAdvancedCamLabels = userType == SettingsUserType.ADVANCED
     val options = buildList {
         if (allowCameraRoles) {
-            add(
-                SettingsMenuOption(
-                    value = CameraHardwareRole.ONE_CAM,
-                    label = stringResource(
-                        if (useAdvancedCamLabels) {
-                            R.string.app_settings_cam_role_one_device_advanced
-                        } else {
-                            R.string.app_settings_cam_role_one_device
-                        },
+            if (allowOneCam) {
+                add(
+                    SettingsMenuOption(
+                        value = CameraHardwareRole.ONE_CAM,
+                        label = stringResource(
+                            if (useAdvancedCamLabels) {
+                                R.string.app_settings_cam_role_one_device_advanced
+                            } else {
+                                R.string.app_settings_cam_role_one_device
+                            },
+                        ),
+                        description = stringResource(
+                            if (useAdvancedCamLabels) {
+                                R.string.app_settings_cam_role_one_device_advanced_description
+                            } else {
+                                R.string.app_settings_cam_role_one_device_description
+                            },
+                        ),
                     ),
-                    description = stringResource(
-                        if (useAdvancedCamLabels) {
-                            R.string.app_settings_cam_role_one_device_advanced_description
-                        } else {
-                            R.string.app_settings_cam_role_one_device_description
-                        },
-                    ),
-                ),
-            )
+                )
+            }
             if (allowTwoDevices) {
                 add(
                     SettingsMenuOption(
@@ -399,7 +403,8 @@ fun ApplicationProtocolSettingsSection(
     belowConnectionTypeContent: (@Composable () -> Unit)? = null,
 ) {
     val availableModes = applicationId.availableConnectionModes(selectedBoard, userType)
-    val camModesOnly = applicationId.usesCamera() && selectedBoard == Esp32Board.CAM
+    val camModesOnly =
+        applicationId.supportsCamVideoControl() && selectedBoard == Esp32Board.CAM
     val useDevKitLinkPicker = !camModesOnly
     val connectionSectionInfo = stringResource(
         when {

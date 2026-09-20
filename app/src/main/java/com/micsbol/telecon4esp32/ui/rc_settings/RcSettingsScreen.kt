@@ -52,6 +52,7 @@ import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.resolveCameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.settingsUserType
 import com.micsbol.telecon4esp32.domain.model.showsCameraHardwareRolePicker
+import com.micsbol.telecon4esp32.domain.model.supportsCamVideoControl
 import com.micsbol.telecon4esp32.domain.model.toSelection
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.applications.AdvancedSettingsInfoDialog
@@ -306,6 +307,16 @@ private fun SettingsContent(
             ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE
         }
     }
+    LaunchedEffect(cameraRole, connectionMode, settingsConnectionMode) {
+        val stored = connectionMode ?: return@LaunchedEffect
+        val next = settingsConnectionMode ?: return@LaunchedEffect
+        if (cameraRole != CameraHardwareRole.TWO_DEVICES || !stored.isWifiLink) {
+            return@LaunchedEffect
+        }
+        if (next != stored) {
+            onConnectionModeChanged?.invoke(next)
+        }
+    }
     val allowTwoDevices = centerCameraEnabled
     // Do not persist coerced CAM roles when opening settings. A load flicker
     // (Plots placeholder vs live Camera) used to write No CAM and tear down
@@ -335,6 +346,7 @@ private fun SettingsContent(
                         selected = storedRole,
                         onRoleSelected = onCameraHardwareRoleSelected,
                         allowTwoDevices = allowTwoDevices,
+                        allowOneCam = applicationId.supportsCamVideoControl(),
                         allowCameraRoles = centerCameraEnabled,
                         userType = userType,
                     )

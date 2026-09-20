@@ -44,20 +44,20 @@ class RcPacketEncoderTest {
     // ── Stick mapping ─────────────────────────────────────────────────────────
     @Test
     fun `center stick (0) maps to 12-bit value 2047`() {
-        // (0 + 100) * 4095 / 200 = 2047
+        // (0 + 100) * 4094 / 200 = 2047
         assertEquals(2047, RcPacketEncoder.stickTo12Bit(0))
     }
     @Test
-    fun `max stick (+100) maps to 12-bit value 4095`() {
-        assertEquals(4095, RcPacketEncoder.stickTo12Bit(100))
+    fun `max stick (+100) maps to 12-bit value 4094`() {
+        assertEquals(4094, RcPacketEncoder.stickTo12Bit(100))
     }
     @Test
     fun `min stick (-100) maps to 12-bit value 0`() {
         assertEquals(0, RcPacketEncoder.stickTo12Bit(-100))
     }
     @Test
-    fun `stick value above 100 is clamped to 4095`() {
-        assertEquals(4095, RcPacketEncoder.stickTo12Bit(200))
+    fun `stick value above 100 is clamped to 4094`() {
+        assertEquals(4094, RcPacketEncoder.stickTo12Bit(200))
     }
     @Test
     fun `stick value below -100 is clamped to 0`() {
@@ -70,10 +70,10 @@ class RcPacketEncoderTest {
         assertEquals(2047, encoded)
     }
     @Test
-    fun `max position encodes 4095 in packet bytes 2-3`() {
+    fun `max position encodes 4094 in packet bytes 2-3`() {
         val packet = RcPacketEncoder.buildRcPacket(RcState(leftStickX = 100))
         val encoded = (packet[2].toInt() and 0xFF) or ((packet[3].toInt() and 0xFF) shl 8)
-        assertEquals(4095, encoded)
+        assertEquals(4094, encoded)
     }
     // ── Knob encoding ─────────────────────────────────────────────────────────
     @Test

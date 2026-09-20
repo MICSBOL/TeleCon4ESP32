@@ -175,29 +175,6 @@ private fun controlPanelCodeAssets(language: String): List<CodeAssetInfo> {
             id = ControlPanelCodePackageId.CAM_SOFTAP_VIDEO,
             roleAVideoOnly = true,
         ),
-        CodeAssetInfo(
-            titleRes = R.string.codes_esp32_cam_wifi_simple,
-            icon = Icons.Default.Code,
-            type = CodeAssetType.Zip,
-            boards = setOf(Esp32Board.CAM),
-            modes = setOf(BluetoothConnectionMode.WIFI_CAM_STARTER),
-            targetDeviceLabelRes = R.string.app_settings_device_cam,
-            id = ControlPanelCodePackageId.CAM_WIFI_SIMPLE,
-            roleBCamTcpOnly = true,
-        ),
-        CodeAssetInfo(
-            titleRes = R.string.codes_esp32_cam_wifi_binary,
-            icon = Icons.Default.Code,
-            type = CodeAssetType.Zip,
-            boards = setOf(Esp32Board.CAM),
-            modes = setOf(
-                BluetoothConnectionMode.WIFI_BINARY,
-                BluetoothConnectionMode.WIFI_SOFTAP,
-            ),
-            targetDeviceLabelRes = R.string.app_settings_device_cam,
-            id = ControlPanelCodePackageId.CAM_WIFI_BINARY,
-            roleBCamTcpOnly = true,
-        ),
     )
 }
 

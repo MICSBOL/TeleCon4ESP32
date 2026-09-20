@@ -39,8 +39,8 @@ RC:CONNECT,proto,binary
 
 depending on **RC Settings → connection mode** (Classic Simple vs Classic/BLE Binary).
 
-**DevKit SoftAP (Wi‑Fi Simple):** same text handshake over TCP `192.168.4.1:3333`
-after joining SoftAP `ESP32-TC-RC-WiFi-Simple` / `telecon1234`:
+**Role B CAM SoftAP (Wi‑Fi Simple, RC Vehicle Pro only):** same text handshake over TCP `192.168.4.1:3333`
+after joining SoftAP `TeleCon-RC-CAM-Starter` / `telecon1234`:
 
 ```
 RC:CONNECT,proto,simple
@@ -49,8 +49,11 @@ RC:CONNECT,proto,simple
 Wire lines (`RC:CTRL`, `RC:BTN`, `RC:DATA`, `RC:PLOT`) are identical to Classic Simple;
 only the link is SoftAP TCP. Firmware may also ACK `proto,wifi` during transition.
 
-**Kit A CAM SoftAP** (RC Vehicle Pro only) uses `RC:CONNECT,proto,wifi` on the same
-TCP port with SoftAP SSID `TeleCon-RC-CAM` — do not mix with DevKit SoftAP SSIDs.
+DevKit SoftAP Simple is withdrawn. No-camera DevKit Wi‑Fi is **Binary only**
+(`ESP32-TC-RC-WiFi-Binary` — see [BINARY_PROTOCOL_APPS.md](BINARY_PROTOCOL_APPS.md)).
+
+**Legacy Kit A CAM SoftAP** uses `RC:CONNECT,proto,wifi` on the same TCP port with
+SoftAP SSID `TeleCon-RC-CAM` — do not mix with DevKit SoftAP SSIDs.
 
 | ESP32 reply | Meaning |
 |-------------|---------|

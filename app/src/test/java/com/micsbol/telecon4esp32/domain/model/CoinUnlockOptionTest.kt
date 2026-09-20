@@ -7,19 +7,29 @@ import org.junit.Test
 class CoinUnlockOptionTest {
 
     @Test
-    fun allPurchasableOptions_areMultiplesOfSeven() {
+    fun rcVehicleTable_purchasableOptions_areMultiplesOfSeven() {
         CoinUnlockOption.entries.filter { it.isCoinPurchasable }.forEach { option ->
-            assertEquals(0, option.coinCost % CoinEconomy.COIN_UNIT)
+            assertEquals(0, option.coinCost(CoinPriceTable.RC_VEHICLE) % CoinEconomy.COIN_UNIT)
         }
     }
 
     @Test
-    fun pricing_matchesEconomyTable() {
-        assertEquals(7, CoinUnlockOption.ONE_USE.coinCost)
-        assertEquals(0, CoinUnlockOption.HOURS_4.coinCost)
-        assertEquals(21, CoinUnlockOption.HOURS_24.coinCost)
-        assertEquals(49, CoinUnlockOption.DAYS_3.coinCost)
-        assertEquals(77, CoinUnlockOption.WEEK.coinCost)
+    fun rcVehicleTable_usesOriginalPricing() {
+        assertEquals(7, CoinUnlockOption.ONE_USE.coinCost(PremiumFeature.RC_VEHICLE_PRO))
+        assertEquals(0, CoinUnlockOption.HOURS_4.coinCost(PremiumFeature.RC_VEHICLE_PRO))
+        assertEquals(21, CoinUnlockOption.HOURS_24.coinCost(PremiumFeature.RC_VEHICLE_PRO))
+        assertEquals(49, CoinUnlockOption.DAYS_3.coinCost(PremiumFeature.RC_VEHICLE_PRO))
+        assertEquals(77, CoinUnlockOption.WEEK.coinCost(PremiumFeature.RC_VEHICLE_PRO))
+    }
+
+    @Test
+    fun standardTable_oneUseIsThreeCoins() {
+        assertEquals(3, CoinUnlockOption.ONE_USE.coinCost(PremiumFeature.CONTROL_PANEL_STICK))
+        assertEquals(3, CoinUnlockOption.ONE_USE.coinCost(PremiumFeature.CONTROL_PANEL_SESSION_CSV))
+        assertEquals(3, CoinUnlockOption.ONE_USE.coinCost(PremiumFeature.CONTROL_PANEL_CENTER_EXTRAS))
+        assertEquals(7, CoinUnlockOption.HOURS_24.coinCost(PremiumFeature.CONTROL_PANEL_STICK))
+        assertEquals(14, CoinUnlockOption.DAYS_3.coinCost(PremiumFeature.CONTROL_PANEL_STICK))
+        assertEquals(21, CoinUnlockOption.WEEK.coinCost(PremiumFeature.CONTROL_PANEL_STICK))
     }
 
     @Test

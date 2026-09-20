@@ -26,6 +26,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.domain.model.coerceForApplication
 import com.micsbol.telecon4esp32.domain.model.resolveCameraHardwareRole
 import com.micsbol.telecon4esp32.domain.use_case.ApplyCameraHardwareRoleUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ApplySoftApCamConfigUseCase
@@ -280,9 +281,9 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             val storedRole = resolveCameraHardwareRole(board.value, useSoftApCamera.value)
             val nextRole = if (enableCamera) {
                 if (storedRole == CameraHardwareRole.NO_CAM) {
-                    CameraHardwareRole.ONE_CAM
+                    CameraHardwareRole.TWO_DEVICES
                 } else {
-                    storedRole
+                    storedRole.coerceForApplication(applicationId)
                 }
             } else {
                 CameraHardwareRole.NO_CAM
