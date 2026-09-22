@@ -68,11 +68,6 @@ fun CodesHubScreen(navController: NavController) {
             contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                CodesSettingsFirstBanner(
-                    message = stringResource(R.string.codes_settings_first_banner_hub),
-                )
-            }
             items(catalog, key = { it.id.name }) { item ->
                 val documentCount = remember(item.id, language) {
                     codeAssetsFor(item.id, language).size

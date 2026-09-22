@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stacked checklist document — Fast guide (card-art style) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="200dp"
+    android:viewportWidth="160"
+    android:viewportHeight="200">
+    <!-- Back folder -->
+    <path
+        android:fillColor="#F9A825"
+        android:pathData="M28,48h40l10,10h54c5,0 9,4 9,9v98c0,5 -4,9 -9,9H28c-5,0 -9,-4 -9,-9V57c0,-5 4,-9 9,-9z" />
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M28,48h40l10,10H28z" />
+    <!-- Back paper -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M42,40h86c6,0 10,4 10,10v118c0,6 -4,10 -10,10H42c-6,0 -10,-4 -10,-10V50c0,-6 4,-10 10,-10z" />
+    <!-- Front paper -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,28h86c6,0 10,4 10,10v118c0,6 -4,10 -10,10H34c-6,0 -10,-4 -10,-10V38c0,-6 4,-10 10,-10z" />
+    <!-- Header bar -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M52,42h50c3,0 5,2 5,5v6H47v-6c0,-3 2,-5 5,-5z" />
+    <!-- Checklist rows -->
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M58,68h52v4H58zM58,86h48v4H58zM58,104h50v4H58zM58,122h44v4H58z" />
+    <path
+        android:fillColor="#BBDEFB"
+        android:pathData="M42,66h10v10H42zM42,84h10v10H42zM42,102h10v10H42zM42,120h10v10H42z" />
+    <path
+        android:fillColor="#43A047"
+        android:pathData="M44,69.5l2.4,2.4 4.6,-4.6 1.8,1.8 -6.4,6.4 -4.2,-4.2z" />
+    <path
+        android:fillColor="#43A047"
+        android:pathData="M44,87.5l2.4,2.4 4.6,-4.6 1.8,1.8 -6.4,6.4 -4.2,-4.2z" />
+</vector>

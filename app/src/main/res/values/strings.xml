@@ -50,7 +50,7 @@
     <string name="applications_explorer_gift_claimed">Explorer gift claimed — enjoy 4 hours of access.</string>
     <string name="applications_explorer_gift_already_unlocked">This module is already unlocked.</string>
     <string name="application_codes_empty_title">No documents yet</string>
-    <string name="application_codes_empty_message">Code packages and documentation for this module will appear here soon.</string>
+    <string name="application_codes_empty_message">User guide and fast guide for this module will appear here soon.</string>
     <string name="applications_badge_coins_unlocked">UNLOCKED</string>
     <string name="applications_badge_coming_soon">SOON</string>
     <string name="applications_coming_soon_title">Coming soon</string>
@@ -65,6 +65,7 @@
     <string name="control_panel_connection_settings_title">Connection settings</string>
     <string name="control_panel_panel_settings_title">Panel initial values</string>
     <string name="control_panel_back_to_modules_content_description">Back to modules</string>
+    <string name="control_panel_overlay_tool_swipe_content_description">Swipe up or down to switch Record, Plots, Stick, Camera, and Radar</string>
     <string name="control_panel_center_mode_plots">Plots</string>
     <string name="control_panel_center_mode_stick">Stick</string>
     <string name="control_panel_center_mode_camera">Camera</string>
@@ -178,7 +179,7 @@
     <string name="app_settings_connection_wifi_binary_cam">Kit A — CAM SoftAP + Binary</string>
     <string name="app_settings_connection_wifi_binary_cam_description">Advanced Kit A — one ESP32-CAM. Join SoftAP TeleCon-RC-CAM / telecon1234 (no internet while connected). Control uses TCP 192.168.4.1:3333 with RC:CONNECT,proto,binary and AA 55 / BB 66. Video prefers GET /stream (MJPEG); /camconfig tunes SoftAP load.</string>
     <string name="app_settings_open_wifi_settings_failed">Could not open Wi‑Fi settings</string>
-    <string name="app_settings_selection_guide_section_title">Matching firmware &amp; docs</string>
+    <string name="app_settings_selection_guide_section_title">Matching firmware</string>
     <string name="app_settings_selection_guide_title_format">%1$s · %2$s</string>
     <string name="app_settings_selection_guide_code_link">Matching code</string>
     <string name="app_settings_selection_guide_code_devkit">Matching code — ESP32 DevKit</string>
@@ -191,8 +192,8 @@
     <string name="app_settings_selection_guide_code_cam_video">Matching code — TeleCon_CAM_SoftAP_Video (HTTP /stream only)</string>
     <string name="app_settings_selection_guide_code_devkit_wifi">Matching code — TeleCon_WiFi_Binary (ESP32-TC-RC-WiFi-Binary)</string>
     <string name="app_settings_selection_guide_docs_link">Documentation</string>
-    <string name="app_settings_selection_guide_links_placeholder_note">Links will open the matching sketch and setup guide when they are published.</string>
-    <string name="app_settings_selection_guide_links_coming_soon">Matching code and docs are coming soon for this option.</string>
+    <string name="app_settings_selection_guide_links_placeholder_note">Tap a link to share or save the matching sketch ZIP when it is published.</string>
+    <string name="app_settings_selection_guide_links_coming_soon">Matching code is coming soon for this option.</string>
     <string name="app_settings_connection_classic_simple">Classic + Simple (text lines)</string>
     <string name="app_settings_connection_classic_simple_description">Bluetooth Classic SPP with human-readable lines such as RC:DATA,batt,82. Easiest for Arduino sketches.</string>
     <string name="app_settings_connection_classic_binary">Classic + Binary</string>
@@ -564,9 +565,6 @@
     <string name="home_session_continue_subtitle">Resume %1$s</string>
     <string name="codes_and_documents_title">Codes and Documents</string>
     <string name="codes_hub_subtitle">All guides and ESP32 code are free — no unlock required.</string>
-    <string name="codes_settings_first_banner">These documents are recommended for reading only. To flash the ESP32, get the matching code from this app’s Settings (board and connection mode).</string>
-    <string name="codes_settings_first_banner_hub">Documents here are recommended for reading only. To flash the ESP32, open each app’s Settings and get the code that matches your board and connection.</string>
-    <string name="codes_open_settings">Open settings</string>
     <string name="codes_filter_device_title">ESP32 device</string>
     <string name="codes_filter_device_description">DevKit is Role A control (optional SoftAP video). One ESP32-CAM is Role B (video + TCP). SoftAP + Bluetooth on one CAM is not supported.</string>
     <string name="codes_filter_mode_title">Connection / kit</string>
@@ -590,7 +588,16 @@
     <string name="codes_document_kotlin_notes">Kotlin Notes</string>
     <string name="codes_document_esp32_en">ESP32_EN</string>
     <string name="codes_document_esp32_es">ESP32_ES</string>
-    <string name="codes_document_fast_guide">Fast guide.</string>
+    <string name="codes_document_fast_guide">Fast guide</string>
+    <string name="codes_document_fast_guide_hint">Quick checklist to get connected</string>
+    <string name="codes_document_general">User guide</string>
+    <string name="codes_document_general_hint">Full setup and module reference</string>
+    <string name="codes_document_protocol">Control protocol</string>
+    <string name="codes_document_protocol_hint">Wire format for your own ESP32 firmware</string>
+    <string name="codes_documents_desk_title">Documentation</string>
+    <string name="codes_documents_swipe_hint">Swipe left or right to switch guides · tap the front card to open</string>
+    <string name="codes_documents_swipe_content_description">Swipe left or right to switch documentation cards</string>
+    <string name="codes_documents_open_pdf">Open PDF</string>
     <string name="codes_esp32_bt_controller_zip">ESP32 BT Controller</string>
     <string name="codes_zip_card_hint">Tap to share %1$s by email or messaging, or save a copy to Downloads.</string>
     <string name="codes_zip_share_chooser_title">Send ZIP</string>
@@ -777,7 +784,6 @@
     <string name="splash_tagline">Telemetry and control for ESP32 over Bluetooth</string>
     <string name="splash_tap_hint">Tap anywhere to continue</string>
     <string name="splash_brand_credit">by MICSBOL</string>
-    <string name="codes_document_general">General Documentation.</string>
     <!-- About & Privacy (hosted on MICSBOL/BT_ESP32_USER_DOCUMENTATION GitHub Pages) -->
     <string name="documentation_base_url" translatable="false">https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/</string>
     <string name="documentation_repository_url" translatable="false">https://github.com/MICSBOL/BT_ESP32_USER_DOCUMENTATION</string>

@@ -227,12 +227,19 @@ internal fun PlotYAxisScale(
                 }
             }
             val labelX = if (axisOnEnd) axisX - labelGap else axisX + labelGap
+            // Skip labels when the axis is shorter than one text line (coerceIn empty range).
+            if (size.height < labelPaint.textSize) return@drawIntoCanvas
             ticks.forEach { value ->
                 val t = ((value - lo) / span).coerceIn(0f, 1f)
                 val y = size.height * (1f - t)
                 val minBaseline = labelPaint.textSize * 0.85f
                 val maxBaseline = size.height - labelPaint.textSize * 0.15f
-                val baseline = (y + labelPaint.textSize * 0.35f).coerceIn(minBaseline, maxBaseline)
+                val rawBaseline = y + labelPaint.textSize * 0.35f
+                val baseline = if (maxBaseline >= minBaseline) {
+                    rawBaseline.coerceIn(minBaseline, maxBaseline)
+                } else {
+                    size.height * 0.5f
+                }
                 native.drawText(
                     if (value.isFinite()) formatEngineeringNumber(value) else "0",
                     labelX,

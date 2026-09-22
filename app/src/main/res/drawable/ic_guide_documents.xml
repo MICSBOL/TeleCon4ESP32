@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sealed document + yellow folders — User guide (matches desk-card reference) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="200dp"
+    android:viewportWidth="160"
+    android:viewportHeight="200">
+    <!-- Soft shadow blob -->
+    <path
+        android:fillColor="#90CAF9"
+        android:fillAlpha="0.35"
+        android:pathData="M30,56c0,0 8,118 50,118s50,-118 50,-118H30z" />
+    <!-- Bottom tilted folder -->
+    <path
+        android:fillColor="#F9A825"
+        android:pathData="M22,78l96,18c4.5,0.8 7.5,5.2 6.6,9.7L113,178c-0.8,4.5 -5.2,7.5 -9.7,6.6L18,170c-4.5,-0.8 -7.5,-5.2 -6.6,-9.7L23,84c0.8,-4.5 5.2,-7.5 9.7,-6.6z" />
+    <!-- Mid back paper -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M58,42h78c6,0 10,4 10,10v116c0,6 -4,10 -10,10H58c-6,0 -10,-4 -10,-10V52c0,-6 4,-10 10,-10z" />
+    <!-- Yellow folder behind front doc -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M28,52h42l12,12h56c5,0 9,4 9,9v108c0,5 -4,9 -9,9H28c-5,0 -9,-4 -9,-9V61c0,-5 4,-9 9,-9z" />
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M28,52h42l12,12H28z" />
+    <!-- Front white document -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,36h78c6,0 10,4 10,10v120c0,6 -4,10 -10,10H38c-6,0 -10,-4 -10,-10V46c0,-6 4,-10 10,-10z" />
+    <!-- Header bar -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M58,48h38c3,0 5,2 5,5v7H53v-7c0,-3 2,-5 5,-5z" />
+    <!-- Text lines -->
+    <path
+        android:fillColor="#64B5F6"
+        android:pathData="M50,72h54v3.5H50zM50,80h48v3.5H50zM50,88h52v3.5H50z
+M50,102h54v3.5H50zM50,110h50v3.5H50zM50,118h52v3.5H50zM50,126h46v3.5H50z
+M50,144h36v3H50zM50,152h30v3H50z" />
+    <!-- Official seal -->
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M98,134c7.7,0 14,6.3 14,14s-6.3,14 -14,14 -14,-6.3 -14,-14 6.3,-14 14,-14z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.35"
+        android:pathData="M98,139c5,0 9,4 9,9s-4,9 -9,9 -9,-4 -9,-9 4,-9 9,-9z" />
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M98,143.5c2.5,0 4.5,2 4.5,4.5s-2,4.5 -4.5,4.5 -4.5,-2 -4.5,-4.5 2,-4.5 4.5,-4.5z" />
+</vector>

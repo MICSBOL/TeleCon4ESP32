@@ -228,28 +228,29 @@ fun CenterDisplay(
             .background(Color.Transparent),
         contentAlignment = Alignment.Center,
     ) {
-        ControlPanelDisplayFrame(
+        Row(
             modifier = Modifier.fillMaxSize(),
-            bezelWidth = CenterDisplayBezelWidth,
-            outerCornerRadius = CenterDisplayOuterCornerRadius,
-            innerCornerRadius = CenterDisplayInnerCornerRadius,
-            chinHeight = CenterDisplayChinHeight,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(end = 4.dp),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(start = 1.dp, top = 2.dp, bottom = 2.dp),
-                    contentAlignment = Alignment.TopStart,
-                ) {
-                    topStartOverlay()
-                }
+                topStartOverlay()
+            }
+            ControlPanelDisplayFrame(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                bezelWidth = CenterDisplayBezelWidth,
+                outerCornerRadius = CenterDisplayOuterCornerRadius,
+                innerCornerRadius = CenterDisplayInnerCornerRadius,
+                chinHeight = CenterDisplayChinHeight,
+            ) {
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     Box(
                         modifier = Modifier
@@ -409,6 +410,8 @@ enum class PlotType {
 private val CartesianPlotHorizontalPadding = 0.dp
 private val CartesianPlotPaneGap = 12.dp
 private val CartesianPlotYAxisWidth = 22.dp
+/** Keeps grid edges off the bezel when a pane has no Y-axis (hidden traces). */
+private val CartesianPlotHiddenEdgePadding = 10.dp
 
 @Composable
 fun CartesianPlot(
@@ -860,7 +863,13 @@ private fun CartesianPlotPane(
         val paneMaxWidth = maxWidth
         val leftVisible = visible.getOrElse(0) { true } && series.isNotEmpty()
         val rightVisible = visible.getOrElse(1) { true } && series.size > 1
-        Row(modifier = Modifier.fillMaxSize()) {
+        val edgeStart = if (leftVisible) 0.dp else CartesianPlotHiddenEdgePadding
+        val edgeEnd = if (rightVisible) 0.dp else CartesianPlotHiddenEdgePadding
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = edgeStart, end = edgeEnd),
+        ) {
             if (leftVisible) {
                 val (min, max) = calibrations.getOrElse(0) { PlotCalibration.DEFAULT }.resolvedYRange()
                 PlotYAxisScale(

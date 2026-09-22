@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.codes
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
@@ -53,6 +54,9 @@ data class CodeAssetInfo(
     val roleAVideoOnly: Boolean = false,
     /** Role B one-CAM TCP sketch — hidden for Role A overlay. */
     val roleBCamTcpOnly: Boolean = false,
+    /** Optional flat illustration for the docs screen (not NeoIconBadge). */
+    @DrawableRes val illustrationRes: Int? = null,
+    @StringRes val subtitleRes: Int? = null,
 ) {
     fun matches(
         board: Esp32Board,
@@ -71,11 +75,59 @@ data class CodeAssetInfo(
         get() = assetFileName != null || remoteUrlRes != null
 }
 
+/** Fast guide, user guide, and control protocol for the module docs button. */
+fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
+    val isSpanish = language == "es"
+    return listOf(
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_fast_guide,
+            icon = Icons.Default.Dock,
+            assetFileName = if (isSpanish) "fast_guide_esp.pdf" else "fast_guide_eng.pdf",
+            type = CodeAssetType.Pdf,
+            illustrationRes = R.drawable.ic_guide_clipboard,
+            subtitleRes = R.string.codes_document_fast_guide_hint,
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_general,
+            icon = Icons.Default.DocumentScanner,
+            assetFileName = if (isSpanish) {
+                "telecon_user_guide_esp.pdf"
+            } else {
+                "telecon_user_guide_eng.pdf"
+            },
+            type = CodeAssetType.Pdf,
+            illustrationRes = R.drawable.ic_guide_documents,
+            subtitleRes = R.string.codes_document_general_hint,
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_protocol,
+            icon = Icons.Default.Code,
+            assetFileName = if (isSpanish) {
+                "telecon_control_protocol_esp.pdf"
+            } else {
+                "telecon_control_protocol_eng.pdf"
+            },
+            type = CodeAssetType.Pdf,
+            illustrationRes = R.drawable.ic_guide_protocol,
+            subtitleRes = R.string.codes_document_protocol_hint,
+        ),
+    )
+}
+
+/** Documents shown on the module docs screen (guides only; no sketch ZIPs). */
 fun codeAssetsFor(applicationId: ApplicationId, language: String): List<CodeAssetInfo> =
-    when (applicationId) {
-        ApplicationId.CONTROL_PANEL -> controlPanelCodeAssets(language)
-        else -> emptyList()
-    }
+    documentationAssetsFor(language)
+
+/** Sketch packages for the current board + connection (settings only). */
+fun codePackageAssetsMatching(
+    applicationId: ApplicationId,
+    board: Esp32Board,
+    mode: BluetoothConnectionMode,
+    useSoftApCamera: Boolean = false,
+): List<CodeAssetInfo> {
+    val profile = resolveCameraLinkProfile(applicationId, board, mode, useSoftApCamera)
+    return codePackagesFor(applicationId).filter { it.matches(board, mode, profile) }
+}
 
 fun codeAssetsMatching(
     applicationId: ApplicationId,
@@ -83,56 +135,31 @@ fun codeAssetsMatching(
     board: Esp32Board,
     mode: BluetoothConnectionMode,
     useSoftApCamera: Boolean = false,
-): List<CodeAssetInfo> {
-    val profile = resolveCameraLinkProfile(applicationId, board, mode, useSoftApCamera)
-    return codeAssetsFor(applicationId, language).filter { it.matches(board, mode, profile) }
-}
+): List<CodeAssetInfo> = codePackageAssetsMatching(
+    applicationId = applicationId,
+    board = board,
+    mode = mode,
+    useSoftApCamera = useSoftApCamera,
+)
 
 fun controlPanelCodePackageIds(
     board: Esp32Board,
     mode: BluetoothConnectionMode,
     useSoftApCamera: Boolean = false,
-): List<String> = codeAssetsMatching(
+): List<String> = codePackageAssetsMatching(
     ApplicationId.CONTROL_PANEL,
-    language = "en",
     board = board,
     mode = mode,
     useSoftApCamera = useSoftApCamera,
 ).mapNotNull { it.id }
 
-private fun controlPanelCodeAssets(language: String): List<CodeAssetInfo> {
-    val fastGuide = if (language == "es") {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_fast_guide,
-            icon = Icons.Default.Dock,
-            assetFileName = "fast_guide_esp.pdf",
-            type = CodeAssetType.Pdf,
-        )
-    } else {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_fast_guide,
-            icon = Icons.Default.Dock,
-            assetFileName = "fast_guide_eng.pdf",
-            type = CodeAssetType.Pdf,
-        )
+private fun codePackagesFor(applicationId: ApplicationId): List<CodeAssetInfo> =
+    when (applicationId) {
+        ApplicationId.CONTROL_PANEL -> controlPanelCodePackages()
+        ApplicationId.RC_VEHICLE_PRO -> emptyList()
     }
 
-    val generalDocumentation = if (language == "es") {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_general,
-            icon = Icons.Default.DocumentScanner,
-            type = CodeAssetType.Pdf,
-            remoteUrlRes = R.string.documentation_pdf_es_url,
-        )
-    } else {
-        CodeAssetInfo(
-            titleRes = R.string.codes_document_general,
-            icon = Icons.Default.DocumentScanner,
-            type = CodeAssetType.Pdf,
-            remoteUrlRes = R.string.documentation_pdf_en_url,
-        )
-    }
-
+private fun controlPanelCodePackages(): List<CodeAssetInfo> {
     val bluetoothModes = setOf(
         BluetoothConnectionMode.CLASSIC_SIMPLE,
         BluetoothConnectionMode.CLASSIC_BINARY,
@@ -141,8 +168,6 @@ private fun controlPanelCodeAssets(language: String): List<CodeAssetInfo> {
     val dualBoards = setOf(Esp32Board.DEV_KIT, Esp32Board.CAM_AND_DEV_KIT)
 
     return listOf(
-        generalDocumentation,
-        fastGuide,
         CodeAssetInfo(
             titleRes = R.string.codes_esp32_bt_controller_zip,
             icon = Icons.Default.Code,
