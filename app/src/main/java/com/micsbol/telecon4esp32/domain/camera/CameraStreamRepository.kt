@@ -42,4 +42,10 @@ interface CameraStreamRepository {
      * Null when no frame has been received yet.
      */
     fun captureStillBitmap(): Bitmap? = null
+
+    /** Copy of the latest camera JPEG, for video recording. Null when none yet. */
+    fun copyLastJpeg(): ByteArray? = null
+
+    /** Changes whenever [copyLastJpeg] would return a new frame. */
+    fun lastJpegEpoch(): Long = 0L
 }

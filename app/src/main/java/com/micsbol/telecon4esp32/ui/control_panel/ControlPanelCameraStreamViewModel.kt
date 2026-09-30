@@ -1,8 +1,11 @@
 package com.micsbol.telecon4esp32.ui.control_panel
 
+import android.content.Context
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.micsbol.telecon4esp32.data.camera.CameraJpegVideoRecorder
+import com.micsbol.telecon4esp32.data.camera.saveCameraStillJpeg
 import com.micsbol.telecon4esp32.data.camera.SoftApNetworkResolver
 import com.micsbol.telecon4esp32.data.wifi.SoftApWifiSession
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
@@ -41,7 +44,11 @@ import com.micsbol.telecon4esp32.domain.use_case.SaveControlPanelCenterModeUseCa
 import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApHudProcessingRateUseCase
 import com.micsbol.telecon4esp32.domain.use_case.SaveSoftApPerformancePresetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -70,6 +77,7 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     private val applySoftApCamConfig: ApplySoftApCamConfigUseCase,
     private val softApWifiSession: SoftApWifiSession,
     private val softApNetworkResolver: SoftApNetworkResolver,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val applicationId = ApplicationId.CONTROL_PANEL
@@ -85,6 +93,17 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     private var connectJob: Job? = null
 
     val cameraConnectUi: StateFlow<ControlPanelCameraConnectUi> = _cameraConnectUi.asStateFlow()
+
+    private val _isVideoRecording = MutableStateFlow(false)
+    val isVideoRecording: StateFlow<Boolean> = _isVideoRecording.asStateFlow()
+
+    private val _videoExport = MutableStateFlow<CameraVideoExport?>(null)
+    val videoExport: StateFlow<CameraVideoExport?> = _videoExport.asStateFlow()
+
+    private val _stillResult = MutableStateFlow<CameraStillResult?>(null)
+    val stillResult: StateFlow<CameraStillResult?> = _stillResult.asStateFlow()
+
+    private var videoJob: Job? = null
 
     val centerMode: StateFlow<ControlPanelCenterMode> = getControlPanelCenterMode()
         .stateIn(
@@ -264,10 +283,16 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
         }
     }
 
-    fun onCenterModeSelected(mode: ControlPanelCenterMode) {
+    fun onCenterModeSelected(
+        mode: ControlPanelCenterMode,
+        engageCameraHardware: Boolean = true,
+        toggleCamera: Boolean = true,
+    ) {
         viewModelScope.launch {
             val current = centerMode.value
-            val next = if (mode == ControlPanelCenterMode.CAMERA &&
+            val next = if (
+                toggleCamera &&
+                mode == ControlPanelCenterMode.CAMERA &&
                 current == ControlPanelCenterMode.CAMERA
             ) {
                 ControlPanelCenterMode.PLOTS
@@ -277,7 +302,7 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             if (next != current) {
                 saveControlPanelCenterMode(next)
             }
-            val enableCamera = next == ControlPanelCenterMode.CAMERA
+            val enableCamera = engageCameraHardware && next == ControlPanelCenterMode.CAMERA
             val storedRole = resolveCameraHardwareRole(board.value, useSoftApCamera.value)
             val nextRole = if (enableCamera) {
                 if (storedRole == CameraHardwareRole.NO_CAM) {
@@ -297,6 +322,7 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     fun onCameraPaneVisible(visible: Boolean) {
         cameraPaneVisible.value = visible
         if (!visible) {
+            stopVideoRecording()
             connectJob?.cancel()
             connectJob = null
             sessionArmed.value = false
@@ -312,6 +338,70 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
                 ensureSoftApStreamQualityDefaults(applicationId)
             }
         }
+    }
+
+    fun toggleVideoRecording() {
+        if (_isVideoRecording.value) {
+            stopVideoRecording()
+            return
+        }
+        if (videoJob?.isActive == true) return
+        _videoExport.value = null
+        _isVideoRecording.value = true
+        videoJob = viewModelScope.launch(Dispatchers.IO) {
+            val recorder = CameraJpegVideoRecorder(appContext)
+            var epoch = -1L
+            var saved: String? = null
+            try {
+                while (isActive && _isVideoRecording.value) {
+                    val now = cameraStreamRepository.lastJpegEpoch()
+                    if (now != epoch) {
+                        cameraStreamRepository.copyLastJpeg()?.let(recorder::appendJpeg)
+                        epoch = now
+                    }
+                    delay(100)
+                }
+            } finally {
+                saved = runCatching { recorder.finish() }.getOrNull()
+                videoJob = null
+                _isVideoRecording.value = false
+                _videoExport.value = saved?.let { location ->
+                    CameraVideoExport.Saved(
+                        fileName = location.substringAfterLast('/'),
+                        location = location,
+                    )
+                } ?: CameraVideoExport.Failed
+            }
+        }
+    }
+
+    fun stopVideoRecording() {
+        _isVideoRecording.value = false
+    }
+
+    fun dismissVideoExport() {
+        _videoExport.value = null
+    }
+
+    fun capturePhoto() {
+        val jpeg = cameraStreamRepository.copyLastJpeg()
+        if (jpeg == null) {
+            _stillResult.value = CameraStillResult.NoFrame
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val saved = runCatching { saveCameraStillJpeg(appContext, jpeg) }.getOrNull()
+            _stillResult.value = saved?.let { location ->
+                CameraStillResult.Saved(
+                    fileName = location.substringAfterLast('/'),
+                    location = location,
+                )
+            } ?: CameraStillResult.Failed
+        }
+    }
+
+    fun dismissStillResult() {
+        _stillResult.value = null
     }
 
     fun retryCameraWifi() {
@@ -457,6 +547,7 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        stopVideoRecording()
         connectJob?.cancel()
         cameraPaneVisible.value = false
         sessionArmed.value = false
@@ -464,6 +555,17 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
         cameraSession.stop()
         super.onCleared()
     }
+
+sealed interface CameraVideoExport {
+    data class Saved(val fileName: String, val location: String) : CameraVideoExport
+    data object Failed : CameraVideoExport
+}
+
+sealed interface CameraStillResult {
+    data class Saved(val fileName: String, val location: String) : CameraStillResult
+    data object NoFrame : CameraStillResult
+    data object Failed : CameraStillResult
+}
 
     private companion object {
         fun isLikelyEmulator(): Boolean {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,9 @@ import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
+import com.micsbol.telecon4esp32.ui.home.LocalFirstConnectionTutorial
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import com.micsbol.telecon4esp32.ui.theme.Neo
 
 private enum class ZipShareErrorDialog {
@@ -121,6 +125,15 @@ fun ApplicationSettingsSelectionGuideSection(
 
     var pendingZipExport by remember { mutableStateOf<CodeAssetInfo?>(null) }
     var zipShareError by remember { mutableStateOf<ZipShareErrorDialog?>(null) }
+    val tutorial = LocalFirstConnectionTutorial.current
+    LaunchedEffect(pendingZipExport) {
+        tutorial?.onCodeExportDialogChanged(pendingZipExport != null)
+    }
+    LaunchedEffect(exportState.savedZipLocation) {
+        if (exportState.savedZipLocation != null) {
+            tutorial?.onMatchingCodeSaved()
+        }
+    }
 
     pendingZipExport?.let { asset ->
         val zipFileName = checkNotNull(asset.assetFileName)
@@ -144,7 +157,7 @@ fun ApplicationSettingsSelectionGuideSection(
                                     asset.outputFileName,
                                 )
                             ) {
-                                ZipSharePrepareResult.Success -> Unit
+                                ZipSharePrepareResult.Success -> tutorial?.onMatchingCodeSaved()
                                 ZipSharePrepareResult.NoActivity ->
                                     zipShareError = ZipShareErrorDialog.NoApp
 
@@ -284,7 +297,9 @@ fun ApplicationSettingsSelectionGuideSection(
             }
             Spacer(modifier = Modifier.height(14.dp))
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .reportTutorialAnchor(TutorialAnchor.SETTINGS_MATCHING_CODE),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 matchedPackages.forEach { asset ->

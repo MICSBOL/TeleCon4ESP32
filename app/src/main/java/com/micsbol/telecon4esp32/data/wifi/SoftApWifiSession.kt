@@ -38,6 +38,7 @@ class SoftApWifiSession @Inject constructor(
     /**
      * Requests SoftAP association for [ssid]. Shows the system Wi‑Fi panel on API 29+.
      * Reuses an existing bind when the SSID matches.
+     * The system “searching for device” panel is dismissed when [timeoutMs] elapses.
      */
     suspend fun join(
         ssid: String,
@@ -173,6 +174,7 @@ class SoftApWifiSession @Inject constructor(
 
     private companion object {
         private const val TAG = "SoftApWifiSession"
-        private const val JOIN_TIMEOUT_MS = 60_000L
+        /** Long enough for ESP32 SoftAP boot plus one Android scan, then give up. */
+        private const val JOIN_TIMEOUT_MS = 20_000L
     }
 }

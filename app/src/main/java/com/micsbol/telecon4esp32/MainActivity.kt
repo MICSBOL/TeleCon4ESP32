@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,6 +31,9 @@ class MainActivity : ComponentActivity() {
     private var keepSystemSplash = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The system splash uses the activity orientation. Keep it portrait
+        // before the splash window is installed; the Compose splash releases it.
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { keepSystemSplash }
         super.onCreate(savedInstanceState)

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +27,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.flow.first
 import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
@@ -62,6 +65,8 @@ import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelCenterFeatureUnlockDialogs
+import com.micsbol.telecon4esp32.ui.home.FirstConnectionTutorialStep
+import com.micsbol.telecon4esp32.ui.home.LocalFirstConnectionTutorial
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.theme.HudCyan
 import com.micsbol.telecon4esp32.ui.theme.Neo
@@ -145,6 +150,19 @@ fun ApplicationProtocolSettingsScreen(
         )
     }
 
+    val tutorial = LocalFirstConnectionTutorial.current
+    val tutorialStep = if (tutorial != null) {
+        tutorial.step.collectAsStateWithLifecycle().value
+    } else {
+        null
+    }
+    val settingsListState = rememberLazyListState()
+    LaunchedEffect(tutorialStep) {
+        if (tutorialStep != FirstConnectionTutorialStep.CONFIRM_CLASSIC_SIMPLE) return@LaunchedEffect
+        val count = snapshotFlow { settingsListState.layoutInfo.totalItemsCount }.first { it > 0 }
+        settingsListState.animateScrollToItem(count - 1)
+    }
+
     NeoScaffold(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.app_settings_communication_subtitle),
@@ -169,6 +187,7 @@ fun ApplicationProtocolSettingsScreen(
     ) { paddingValues ->
         key(configurationResetEpoch) {
             LazyColumn(
+                state = settingsListState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),

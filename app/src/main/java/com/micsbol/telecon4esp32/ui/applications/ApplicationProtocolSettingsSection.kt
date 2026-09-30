@@ -69,6 +69,8 @@ import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import com.micsbol.telecon4esp32.ui.components.NeoToggle
 import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
@@ -416,7 +418,11 @@ fun ApplicationProtocolSettingsSection(
 
     val connectionTitle = stringResource(R.string.app_settings_connection_section_title_general)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .reportTutorialAnchor(TutorialAnchor.SETTINGS_CONNECTION),
+    ) {
         Text(
             text = stringResource(
                 R.string.app_settings_protocol_prefix_label,

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,7 +66,10 @@ private val helpTopics = listOf(
 )
 
 @Composable
-fun HomeHelpDialog(onDismissRequest: () -> Unit) {
+fun HomeHelpDialog(
+    onDismissRequest: () -> Unit,
+    onPlayTutorial: () -> Unit,
+) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val listMaxHeight = when {
@@ -116,8 +120,16 @@ fun HomeHelpDialog(onDismissRequest: () -> Unit) {
         actions = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                NeoPillButton(
+                    text = stringResource(R.string.home_help_play_tutorial),
+                    onClick = onPlayTutorial,
+                    compact = true,
+                    icon = Icons.Filled.PlayArrow,
+                    modifier = Modifier.weight(1f),
+                )
                 NeoPillButton(
                     text = stringResource(R.string.codes_dialog_ok),
                     onClick = onDismissRequest,

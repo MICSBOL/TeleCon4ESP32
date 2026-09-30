@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,8 +24,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,6 +43,10 @@ import com.micsbol.telecon4esp32.ui.components.AdBanner
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoIconBadge
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
+import com.micsbol.telecon4esp32.ui.home.FirstConnectionTutorialStep
+import com.micsbol.telecon4esp32.ui.home.LocalFirstConnectionTutorial
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import com.micsbol.telecon4esp32.ui.components.NeoSectionTitle
 import com.micsbol.telecon4esp32.ui.components.settingsChromeAccent
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -64,6 +72,19 @@ fun BluetoothScreen(
     )
 
     val showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route, entitlement)
+    val tutorial = LocalFirstConnectionTutorial.current
+    val tutorialStep = if (tutorial != null) {
+        val step by tutorial.step.collectAsState()
+        step
+    } else {
+        null
+    }
+    val listBottomReserve = if (tutorialStep == FirstConnectionTutorialStep.SCAN_AND_CONNECT) {
+        val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+        (screenHeight * 0.42f).coerceIn(150.dp, 280.dp) + 36.dp
+    } else {
+        0.dp
+    }
 
     NeoScaffold(
         title = stringResource(R.string.home_title),
@@ -78,7 +99,10 @@ fun BluetoothScreen(
                     color = settingsChromeAccent(),
                     strokeWidth = 3.dp
                 )
-                IconButton(onClick = onStopScan) {
+                IconButton(
+                    onClick = onStopScan,
+                    modifier = Modifier.reportTutorialAnchor(TutorialAnchor.BLUETOOTH_REFRESH),
+                ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(R.string.bluetooth_stop_scan),
@@ -86,7 +110,10 @@ fun BluetoothScreen(
                     )
                 }
             } else {
-                IconButton(onClick = onStartScan) {
+                IconButton(
+                    onClick = onStartScan,
+                    modifier = Modifier.reportTutorialAnchor(TutorialAnchor.BLUETOOTH_REFRESH),
+                ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = stringResource(R.string.bluetooth_start_scan),
@@ -108,9 +135,11 @@ fun BluetoothScreen(
                     pairedDevices = state.pairedDevices,
                     scannedDevices = state.scannedDevices,
                     onClick = onDeviceClick,
+                    contentPadding = PaddingValues(bottom = listBottomReserve),
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .reportTutorialAnchor(TutorialAnchor.BLUETOOTH_LIST)
                 )
                 if (showAdBanner) {
                     AdBanner(modifier = Modifier.fillMaxWidth())
@@ -154,10 +183,12 @@ fun BluetoothDeviceList(
     pairedDevices: List<RemoteDevice>,
     scannedDevices: List<RemoteDevice>,
     onClick: (RemoteDevice) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     LazyColumn(
         modifier = modifier,
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {

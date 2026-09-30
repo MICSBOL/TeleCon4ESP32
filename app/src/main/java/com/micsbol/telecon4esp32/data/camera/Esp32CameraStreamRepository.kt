@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -60,6 +61,7 @@ class Esp32CameraStreamRepository @Inject constructor(
     private val hudPreviewOptions = AtomicReference(HudPreviewOptions.FULL_QUALITY)
     /** Last JPEG for full-quality stills (photo) while HUD may use downsampled decode. */
     private val lastJpegBytes = AtomicReference<ByteArray?>(null)
+    private val jpegEpoch = AtomicLong(0L)
     private var loggedDecodeOptions = false
     private var wifiLockHeld = false
 
@@ -99,6 +101,15 @@ class Esp32CameraStreamRepository @Inject constructor(
     override fun captureStillBitmap(): Bitmap? {
         val jpeg = lastJpegBytes.get() ?: return null
         return BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+    }
+
+    override fun copyLastJpeg(): ByteArray? = lastJpegBytes.get()?.copyOf()
+
+    override fun lastJpegEpoch(): Long = jpegEpoch.get()
+
+    private fun publishJpeg(jpeg: ByteArray?) {
+        lastJpegBytes.set(jpeg)
+        jpegEpoch.incrementAndGet()
     }
 
     override fun startStream(baseUrl: String) {
@@ -154,7 +165,7 @@ class Esp32CameraStreamRepository @Inject constructor(
         if (clearPrefer) {
             preferCaptureOnly.set(false)
         }
-        lastJpegBytes.set(null)
+        publishJpeg(null)
         releaseWifiLockIfHeld()
         // Publish Idle before recycle so Compose drops the Image. Recycle is always
         // deferred — Huawei display lists can draw a frame after we replace it.
@@ -223,7 +234,7 @@ class Esp32CameraStreamRepository @Inject constructor(
                     }
                     val jpeg = readNextJpeg(input) ?: break
                     // Always retain JPEG for photo; may skip decode/publish under FPS cap.
-                    lastJpegBytes.set(jpeg)
+                    publishJpeg(jpeg)
                     val now = System.currentTimeMillis()
                     val minGap = hudPreviewOptions.get().minPublishGapMs(MIN_PUBLISH_GAP_MS)
                     if (lastPublishMs > 0L && now - lastPublishMs < minGap) {
@@ -278,7 +289,7 @@ class Esp32CameraStreamRepository @Inject constructor(
                 }
                 connection.inputStream.use { input ->
                     val bytes = input.readBytes()
-                    lastJpegBytes.set(bytes)
+                    publishJpeg(bytes)
                     val now = System.currentTimeMillis()
                     val minGap = hudPreviewOptions.get().minPublishGapMs(MIN_PUBLISH_GAP_MS)
                     if (lastPublishMs > 0L && now - lastPublishMs < minGap) {

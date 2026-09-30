@@ -4,10 +4,15 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -102,6 +107,8 @@ import com.micsbol.telecon4esp32.ui.control_panel.EnsureVisibleSystemBars
 import com.micsbol.telecon4esp32.ui.control_panel.LockScreenOrientation
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.home.HomeHelpDialog
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
@@ -111,6 +118,8 @@ import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 
 private val ProGold = Color(0xFFFFD54F)
 private val ProGoldDeep = Color(0xFFFFB300)
+private val QuickUseGreen = Color(0xFF5EE87A)
+private val QuickUseGreenDeep = Color(0xFF1B8F3A)
 private const val HomeModuleCardWidthFraction = 0.78f
 private const val HomeModuleFrontCardScale = 1.06f
 
@@ -129,6 +138,7 @@ fun CyberHomeScreen(
     handshakeFailure: com.micsbol.telecon4esp32.domain.bluetooth.HandshakeFailure? = null,
     onOpenApplications: () -> Unit = {},
     onDismissError: () -> Unit = {},
+    onPlayFirstConnectionTutorial: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -178,6 +188,7 @@ fun CyberHomeScreen(
                 onRequestUpgrade = { navController.navigate(Screen.Upgrade.route) },
             )
         },
+        onPlayFirstConnectionTutorial = onPlayFirstConnectionTutorial,
     )
 
     ApplicationEntryDialogs(
@@ -228,6 +239,7 @@ fun CyberHomeScreenContent(
     onUnlockClick: (ApplicationCatalogItem) -> Unit = {},
     onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit = {},
     onItemClick: (ApplicationCatalogItem, String) -> Unit = { _, _ -> },
+    onPlayFirstConnectionTutorial: () -> Unit = {},
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
     EnsureVisibleSystemBars()
@@ -306,6 +318,7 @@ fun CyberHomeScreenContent(
                     showBrowseCatalog = showBrowseCatalog,
                     showProButton = showProButton,
                     onOpenApplications = onOpenApplications,
+                    onQuickUseClick = onPlayFirstConnectionTutorial,
                     onProClick = onProClick,
                     onOpenAbout = onHelpAbout,
                     fillButtonWidth = true,
@@ -314,7 +327,13 @@ fun CyberHomeScreenContent(
         }
 
         if (showHelpDialog) {
-            HomeHelpDialog(onDismissRequest = { showHelpDialog = false })
+            HomeHelpDialog(
+                onDismissRequest = { showHelpDialog = false },
+                onPlayTutorial = {
+                    showHelpDialog = false
+                    onPlayFirstConnectionTutorial()
+                },
+            )
         }
 
         BluetoothConnectionErrorDialog(
@@ -601,7 +620,13 @@ private fun HomeModuleHeroSlot(
             (!item.id.isFree() && !item.comingSoon && isUnlocked),
         animateHologram = true,
         isFront = isFront,
-        modifier = modifier,
+        modifier = modifier.then(
+            if (item.id == ApplicationId.CONTROL_PANEL) {
+                Modifier.reportTutorialAnchor(TutorialAnchor.HOME_CONTROL_PANEL)
+            } else {
+                Modifier
+            },
+        ),
     )
 }
 
@@ -611,6 +636,7 @@ private fun HomeSecondaryActions(
     showBrowseCatalog: Boolean,
     showProButton: Boolean,
     onOpenApplications: () -> Unit,
+    onQuickUseClick: () -> Unit,
     onProClick: () -> Unit,
     onOpenAbout: () -> Unit,
     fillButtonWidth: Boolean,
@@ -621,6 +647,13 @@ private fun HomeSecondaryActions(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        HomeQuickUseButton(
+            onClick = onQuickUseClick,
+            enabled = !isConnecting,
+            modifier = Modifier.fillMaxWidth(
+                HomeModuleCardWidthFraction * HomeModuleFrontCardScale,
+            ),
+        )
         if (showProButton) {
             HomeProButton(
                 onClick = onProClick,
@@ -735,6 +768,54 @@ private fun MinimalHomeTopBar(
             onClick = onHelpClick,
             contentDescription = stringResource(R.string.home_help),
             size = 40.dp,
+        )
+    }
+}
+
+@Composable
+private fun HomeQuickUseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val label = stringResource(R.string.home_help_play_tutorial)
+    val pulse = rememberInfiniteTransition(label = "quickUseBlink")
+    val blink by pulse.animateFloat(
+        initialValue = 0.38f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 720),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "quickUseBlinkAlpha",
+    )
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        QuickUseGreen.copy(alpha = 0.16f + 0.22f * blink),
+                        QuickUseGreenDeep.copy(alpha = 0.10f + 0.20f * blink),
+                    ),
+                ),
+            )
+            .border(1.5.dp, QuickUseGreen.copy(alpha = 0.35f + 0.65f * blink), shape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = QuickUseGreen.copy(alpha = 0.62f + 0.38f * blink),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
         )
     }
 }

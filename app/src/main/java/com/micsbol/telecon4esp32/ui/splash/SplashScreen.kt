@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.splash
 
+import android.content.pm.ActivityInfo
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -26,7 +27,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -43,12 +47,34 @@ import com.micsbol.telecon4esp32.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.ui.components.EmitterBrandLogo
+import com.micsbol.telecon4esp32.ui.control_panel.findActivity
 import com.micsbol.telecon4esp32.ui.components.NeumorphicBackground
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** Portrait for the splash only. Later screens install their own orientation lock. */
+@Composable
+private fun LockSplashPortrait() {
+    val activity = LocalContext.current.findActivity()
+    DisposableEffect(activity) {
+        if (activity == null) return@DisposableEffect onDispose {}
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+        onDispose {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+    SideEffect {
+        if (
+            activity != null &&
+            activity.requestedOrientation != ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+        ) {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+        }
+    }
+}
 
 private const val SPLASH_DISPLAY_MS = 2_000L
 private const val LOGO_ANIM_DURATION_MS = 1_050
@@ -63,6 +89,8 @@ fun SplashScreen(
     navController: NavHostController,
     onComposeSplashReady: () -> Unit = {},
 ) {
+    LockSplashPortrait()
+
     LaunchedEffect(Unit) {
         onComposeSplashReady()
     }

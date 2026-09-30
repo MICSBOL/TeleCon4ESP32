@@ -519,7 +519,7 @@ private fun stickGraphTrail(
     return List(count) { index -> Pair(xs[index], ys[index]) }
 }
 
-private fun DrawScope.drawStickGraph(
+internal fun DrawScope.drawStickGraph(
     leftNow: Pair<Float, Float>,
     rightNow: Pair<Float, Float>,
     leftTrail: List<Pair<Float, Float>>,
@@ -528,6 +528,7 @@ private fun DrawScope.drawStickGraph(
     rightColor: Color,
     gridColor: Color,
     axisColor: Color,
+    showLabels: Boolean = true,
 ) {
     val pad = 10.dp.toPx()
     val side = min(size.width, size.height) - pad * 2f
@@ -574,6 +575,7 @@ private fun DrawScope.drawStickGraph(
         mapY = ::mapY,
         preferLabelRight = false,
         verticalBias = if (pointsClose) -1f else 0f,
+        showLabel = showLabels,
     )
     drawStickTrailAndPoint(
         trail = rightTrail,
@@ -583,6 +585,7 @@ private fun DrawScope.drawStickGraph(
         mapY = ::mapY,
         preferLabelRight = true,
         verticalBias = if (pointsClose) 1f else 0f,
+        showLabel = showLabels,
     )
 }
 
@@ -594,6 +597,7 @@ private fun DrawScope.drawStickTrailAndPoint(
     mapY: (Float) -> Float,
     preferLabelRight: Boolean,
     verticalBias: Float,
+    showLabel: Boolean = true,
 ) {
     if (trail.size > 1) {
         val path = Path()
@@ -616,6 +620,7 @@ private fun DrawScope.drawStickTrailAndPoint(
     val point = Offset(mapX(now.first), mapY(now.second))
     drawCircle(color = color, radius = 6.5f, center = point)
     drawCircle(color = Color.White, radius = 2.6f, center = point)
+    if (!showLabel) return
     drawStickXyLabel(
         text = formatControlPanelStickXy(now.first, now.second),
         point = point,

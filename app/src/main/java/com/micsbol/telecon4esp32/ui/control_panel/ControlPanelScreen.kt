@@ -38,6 +38,9 @@ import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.ui.control_panel.components.ControlPanelOverlayControls
+import com.micsbol.telecon4esp32.ui.home.LocalFirstConnectionTutorial
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -210,6 +213,20 @@ fun ControlPanelScreen(
                 ?: MutableStateFlow(state.settings.channelRouting)).collectAsState()
             val sessionRecording by (bluetoothViewModel?.sessionRecording
                 ?: MutableStateFlow(SessionRecordingUiState())).collectAsState()
+            val isVideoRecording by (cameraStreamViewModel?.isVideoRecording
+                ?: remember { MutableStateFlow(false) }).collectAsState()
+            val videoExport by (
+                cameraStreamViewModel?.videoExport
+                    ?: remember {
+                        MutableStateFlow<ControlPanelCameraStreamViewModel.CameraVideoExport?>(null)
+                    }
+                ).collectAsState()
+            val stillResult by (
+                cameraStreamViewModel?.stillResult
+                    ?: remember {
+                        MutableStateFlow<ControlPanelCameraStreamViewModel.CameraStillResult?>(null)
+                    }
+                ).collectAsState()
             var csvShareFailed by remember { mutableStateOf(false) }
             var csvSaveFailed by remember { mutableStateOf(false) }
             val entitlement = LocalEntitlement.current
@@ -257,9 +274,21 @@ fun ControlPanelScreen(
                         )
                     }
                 }
-            LaunchedEffect(cameraUnlocked, radarUnlocked, stickUnlocked, centerMode) {
-                if (!isCenterModeUnlocked(centerMode)) {
-                    onCenterModeSelected(ControlPanelCenterMode.PLOTS)
+            LaunchedEffect(centerMode, cameraUnlocked) {
+                if (centerMode == ControlPanelCenterMode.CAMERA && !cameraUnlocked) {
+                    cameraStreamViewModel?.onCenterModeSelected(
+                        mode = centerMode,
+                        engageCameraHardware = false,
+                        toggleCamera = false,
+                    )
+                }
+                val plotsShown = centerMode == ControlPanelCenterMode.PLOTS
+                val cameraShown = centerMode == ControlPanelCenterMode.CAMERA && cameraUnlocked
+                if (!plotsShown && sessionRecording.isRecording) {
+                    actualViewModel?.toggleSessionRecording()
+                }
+                if (!cameraShown && isVideoRecording) {
+                    cameraStreamViewModel?.stopVideoRecording()
                 }
             }
 
@@ -306,10 +335,104 @@ fun ControlPanelScreen(
                             mode.premiumFeature == unlockFeature
                         }
                         if (unlockedMode != null) {
-                            onCenterModeSelected(unlockedMode)
+                            cameraStreamViewModel?.onCenterModeSelected(
+                                mode = unlockedMode,
+                                toggleCamera = false,
+                            ) ?: onCenterModeSelected(unlockedMode)
                         }
                     },
                 )
+            }
+
+            when (val export = videoExport) {
+                is ControlPanelCameraStreamViewModel.CameraVideoExport.Saved -> NeoDialog(
+                    onDismissRequest = { cameraStreamViewModel?.dismissVideoExport() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_video_saved))
+                    },
+                    subtitle = {
+                        NeoDialogBody(
+                            text = stringResource(
+                                R.string.control_panel_video_saved_message,
+                                export.fileName,
+                                export.location,
+                            ),
+                        )
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { cameraStreamViewModel?.dismissVideoExport() },
+                        )
+                    },
+                )
+                ControlPanelCameraStreamViewModel.CameraVideoExport.Failed -> NeoDialog(
+                    onDismissRequest = { cameraStreamViewModel?.dismissVideoExport() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_video_save_failed_title))
+                    },
+                    subtitle = {
+                        NeoDialogBody(
+                            text = stringResource(R.string.control_panel_video_save_failed_message),
+                        )
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { cameraStreamViewModel?.dismissVideoExport() },
+                        )
+                    },
+                )
+                null -> Unit
+            }
+
+            when (val still = stillResult) {
+                is ControlPanelCameraStreamViewModel.CameraStillResult.Saved -> NeoDialog(
+                    onDismissRequest = { cameraStreamViewModel?.dismissStillResult() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_photo_saved))
+                    },
+                    subtitle = {
+                        NeoDialogBody(
+                            text = stringResource(
+                                R.string.control_panel_photo_saved_message,
+                                still.fileName,
+                                still.location,
+                            ),
+                        )
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { cameraStreamViewModel?.dismissStillResult() },
+                        )
+                    },
+                )
+                ControlPanelCameraStreamViewModel.CameraStillResult.NoFrame -> NeoDialog(
+                    onDismissRequest = { cameraStreamViewModel?.dismissStillResult() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_photo_no_frame))
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { cameraStreamViewModel?.dismissStillResult() },
+                        )
+                    },
+                )
+                ControlPanelCameraStreamViewModel.CameraStillResult.Failed -> NeoDialog(
+                    onDismissRequest = { cameraStreamViewModel?.dismissStillResult() },
+                    title = {
+                        NeoDialogTitle(text = stringResource(R.string.control_panel_photo_failed))
+                    },
+                    actions = {
+                        NeoPillButton(
+                            text = stringResource(R.string.codes_dialog_ok),
+                            onClick = { cameraStreamViewModel?.dismissStillResult() },
+                        )
+                    },
+                )
+                null -> Unit
             }
 
             if (sessionRecording.savedLocation.isNotBlank()) {
@@ -589,6 +712,13 @@ fun ControlPanelScreen(
                                                 unlockFeature = mode.premiumFeature
                                             }
                                         },
+                                        onCenterModeScroll = { mode ->
+                                            cameraStreamViewModel?.onCenterModeSelected(
+                                                mode = mode,
+                                                engageCameraHardware = isCenterModeUnlocked(mode),
+                                                toggleCamera = false,
+                                            ) ?: run { onCenterModeSelected(mode) }
+                                        },
                                         isSessionRecording = sessionRecording.isRecording,
                                         isSessionRecordingUnlocked = sessionCsvUnlocked,
                                         onToggleSessionRecording = {
@@ -597,6 +727,13 @@ fun ControlPanelScreen(
                                             } else {
                                                 unlockFeature = PremiumFeature.CONTROL_PANEL_SESSION_CSV
                                             }
+                                        },
+                                        isVideoRecording = isVideoRecording,
+                                        onToggleVideoRecording = {
+                                            cameraStreamViewModel?.toggleVideoRecording()
+                                        },
+                                        onTakePicture = {
+                                            cameraStreamViewModel?.capturePhoto()
                                         },
                                     )
                                 }
@@ -1166,7 +1303,11 @@ private fun ControlPanelLeftControlsLayer(
     rangeShape: JoystickRangeShape,
     onRangeShapeChange: (JoystickRangeShape) -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .reportTutorialAnchor(TutorialAnchor.PANEL_LEFT_CONTROLS),
+    ) {
         ControlPanelKnobSlot(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -1179,7 +1320,8 @@ private fun ControlPanelLeftControlsLayer(
         Box(
             modifier = Modifier
                 .size(metrics.joystickSize)
-                .align(Alignment.BottomCenter),
+                .align(Alignment.BottomCenter)
+                .reportTutorialAnchor(TutorialAnchor.PANEL_LEFT_STICK),
             contentAlignment = Alignment.BottomEnd,
         ) {
             ControllerSideButtons(
@@ -1304,7 +1446,8 @@ private fun ControlPanelRightControlsLayer(
         Box(
             modifier = Modifier
                 .size(metrics.joystickSize)
-                .align(Alignment.BottomCenter),
+                .align(Alignment.BottomCenter)
+                .reportTutorialAnchor(TutorialAnchor.PANEL_RIGHT_STICK),
             contentAlignment = Alignment.BottomEnd,
         ) {
             ControllerSideButtons(
@@ -1348,6 +1491,10 @@ private fun BoxScope.ControlPanelStickSlot(
     val position by stickPosition.collectAsState()
     val joystickSize = metrics.joystickSize
     var menuExpanded by remember { mutableStateOf(false) }
+    val tutorial = LocalFirstConnectionTutorial.current
+    LaunchedEffect(menuExpanded) {
+        if (menuExpanded) tutorial?.onStickOptionsOpened()
+    }
     val stickName = stringResource(
         if (side == ButtonSide.RIGHT) {
             R.string.rc_controller_settings_right_stick

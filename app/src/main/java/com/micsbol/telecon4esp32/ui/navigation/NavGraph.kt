@@ -1,5 +1,7 @@
 package com.micsbol.telecon4esp32.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -8,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -38,6 +41,11 @@ import com.micsbol.telecon4esp32.ui.control_panel.HideHudSystemBars
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.cyber.screens.CyberHomeScreen
+import com.micsbol.telecon4esp32.ui.home.FirstConnectionTutorialOverlay
+import com.micsbol.telecon4esp32.ui.home.FirstConnectionTutorialViewModel
+import com.micsbol.telecon4esp32.ui.home.LocalFirstConnectionTutorial
+import com.micsbol.telecon4esp32.ui.home.LocalTutorialAnchors
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchorRegistry
 import com.micsbol.telecon4esp32.ui.premium.UpgradeScreen
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsViewModel
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProScreen
@@ -56,6 +64,10 @@ fun AppNavGraph(
     val settingsViewModel = hiltViewModel<SettingsViewModel>()
     val entitlementViewModel = hiltViewModel<EntitlementViewModel>()
     val walletViewModel = hiltViewModel<WalletViewModel>()
+    val tutorialAnchors = remember { TutorialAnchorRegistry() }
+    val tutorialViewModel = hiltViewModel<FirstConnectionTutorialViewModel>()
+    val tutorialActive by tutorialViewModel.active.collectAsState()
+    val tutorialStep by tutorialViewModel.step.collectAsState()
     val entitlement by entitlementViewModel.entitlement.collectAsState()
     val wallet by walletViewModel.wallet.collectAsState()
     var activeProFeature by remember { mutableStateOf<com.micsbol.telecon4esp32.domain.model.PremiumFeature?>(null) }
@@ -74,10 +86,14 @@ fun AppNavGraph(
     CompositionLocalProvider(
         LocalEntitlement provides entitlement,
         LocalWallet provides wallet,
+        LocalTutorialAnchors provides tutorialAnchors,
+        LocalFirstConnectionTutorial provides tutorialViewModel,
     ) {
+    Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route
+        startDestination = Screen.Splash.route,
+        modifier = Modifier.fillMaxSize(),
     ) {
         composable(Screen.Splash.route) {
             SplashScreen(
@@ -99,6 +115,7 @@ fun AppNavGraph(
                 handshakeFailure = state.handshakeFailure,
                 onDismissError = bluetoothViewModel::dismissError,
                 onOpenApplications = { navController.navigate(Screen.Applications.route) },
+                onPlayFirstConnectionTutorial = tutorialViewModel::start,
             )
         }
         composable(Screen.Bluetooth.route) {
@@ -240,6 +257,15 @@ fun AppNavGraph(
         }
         composable(Screen.PrivacyPolicy.route) {
             PrivacyPolicyScreen(navController = navController)
+        }
+    }
+        if (tutorialActive) {
+            FirstConnectionTutorialOverlay(
+                step = tutorialStep,
+                navController = navController,
+                bluetoothViewModel = bluetoothViewModel,
+                tutorialViewModel = tutorialViewModel,
+            )
         }
     }
     }

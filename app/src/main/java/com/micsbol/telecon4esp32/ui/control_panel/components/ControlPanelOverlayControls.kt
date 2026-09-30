@@ -31,9 +31,13 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +75,8 @@ import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.control_panel.icon
 import com.micsbol.telecon4esp32.ui.control_panel.titleRes
 import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckNext
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckPrevious
 import com.micsbol.telecon4esp32.ui.theme.Neo
 import com.micsbol.telecon4esp32.ui.theme.StatusConnected
@@ -84,18 +90,16 @@ private val ControlPanelOverlayRailWidth = ControlPanelOverlayIconSize + 12.dp
 private val ProGold = Color(0xFFFFD54F)
 private val ProGoldDeep = Color(0xFFFFB300)
 
-/** Swappable tools below the fixed Back / Cable / Bluetooth trio. */
+/** Swappable center views below the fixed Back / Cable / Bluetooth / Record column. */
 private enum class ControlPanelOverlayTool {
-    RECORD,
     PLOTS,
     STICK,
     CAMERA,
     RADAR,
     ;
 
-    val centerMode: ControlPanelCenterMode?
+    val centerMode: ControlPanelCenterMode
         get() = when (this) {
-            RECORD -> null
             PLOTS -> ControlPanelCenterMode.PLOTS
             STICK -> ControlPanelCenterMode.STICK
             CAMERA -> ControlPanelCenterMode.CAMERA
@@ -359,12 +363,25 @@ fun ControlPanelOverlayControls(
     centerMode: ControlPanelCenterMode,
     isModeUnlocked: (ControlPanelCenterMode) -> Boolean,
     onCenterModeClick: (ControlPanelCenterMode) -> Unit,
+    onCenterModeScroll: (ControlPanelCenterMode) -> Unit = {},
     modifier: Modifier = Modifier,
     usesWifiLink: Boolean = false,
     isSessionRecording: Boolean = false,
     isSessionRecordingUnlocked: Boolean = true,
     onToggleSessionRecording: () -> Unit = {},
+    isVideoRecording: Boolean = false,
+    onToggleVideoRecording: () -> Unit = {},
+    onTakePicture: () -> Unit = {},
 ) {
+    var cameraCaptureMenu by remember { mutableStateOf(false) }
+    val plotsShown = centerMode == ControlPanelCenterMode.PLOTS
+    val cameraShown = centerMode == ControlPanelCenterMode.CAMERA && isModeUnlocked(centerMode)
+    LaunchedEffect(cameraShown) {
+        if (!cameraShown) cameraCaptureMenu = false
+    }
+    val recordAvailable = plotsShown || cameraShown
+    val recordActive = if (cameraShown) isVideoRecording else isSessionRecording && plotsShown
+    val recordLocked = plotsShown && !isSessionRecordingUnlocked && !isSessionRecording
     Column(
         modifier = modifier
             .width(ControlPanelOverlayRailWidth)
@@ -390,27 +407,98 @@ fun ControlPanelOverlayControls(
                     stringResource(R.string.control_panel_connection_settings_title),
                 ),
                 icon = Icons.Filled.Cable,
+                modifier = Modifier.reportTutorialAnchor(TutorialAnchor.PANEL_CABLE),
                 size = ControlPanelOverlayIconSize,
             )
             ControlPanelBluetoothStatusButton(
                 isConnected = isBluetoothConnected,
                 isConnecting = isBluetoothConnecting,
                 onDisconnectedClick = onBluetoothDisconnectedClick,
+                modifier = Modifier.reportTutorialAnchor(TutorialAnchor.PANEL_BLUETOOTH),
                 size = ControlPanelOverlayIconSize,
                 usesWifiLink = usesWifiLink,
             )
+            Box {
+            ControlPanelRecordSessionButton(
+                isRecording = recordActive,
+                unlocked = !recordLocked,
+                enabled = recordAvailable,
+                contentDescription = stringResource(
+                    when {
+                        cameraShown -> R.string.control_panel_camera_capture_content_description
+                        plotsShown && isSessionRecording ->
+                            R.string.control_panel_stop_recording_content_description
+                        plotsShown && recordLocked ->
+                            R.string.control_panel_record_session_locked_content_description
+                        plotsShown -> R.string.control_panel_record_session_content_description
+                        else -> R.string.control_panel_record_unavailable_content_description
+                    },
+                ),
+                onClick = {
+                    when {
+                        cameraShown -> cameraCaptureMenu = true
+                        plotsShown -> onToggleSessionRecording()
+                    }
+                },
+            )
+            if (cameraShown) {
+                DropdownMenu(
+                    expanded = cameraCaptureMenu,
+                    onDismissRequest = { cameraCaptureMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (isVideoRecording) {
+                                        R.string.control_panel_camera_stop_video
+                                    } else {
+                                        R.string.control_panel_camera_save_video
+                                    },
+                                ),
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.FiberManualRecord,
+                                contentDescription = null,
+                                tint = if (isVideoRecording) Neo.Negative else Color(0xFFD8D8D8),
+                            )
+                        },
+                        onClick = {
+                            cameraCaptureMenu = false
+                            onToggleVideoRecording()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(R.string.control_panel_camera_take_picture))
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.PhotoCamera,
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            cameraCaptureMenu = false
+                            onTakePicture()
+                        },
+                    )
+                }
+            }
+            }
         }
         Spacer(modifier = Modifier.height(ControlPanelOverlayIconSpacing * 2))
         ControlPanelOverlayToolDeck(
             centerMode = centerMode,
             isModeUnlocked = isModeUnlocked,
             onCenterModeClick = onCenterModeClick,
-            isSessionRecording = isSessionRecording,
-            isSessionRecordingUnlocked = isSessionRecordingUnlocked,
-            onToggleSessionRecording = onToggleSessionRecording,
+            onCenterModeScroll = onCenterModeScroll,
             modifier = Modifier
                 .weight(1f)
-                .width(ControlPanelOverlayRailWidth),
+                .width(ControlPanelOverlayRailWidth)
+                .reportTutorialAnchor(TutorialAnchor.PANEL_TOOL_DECK),
         )
     }
 }
@@ -420,9 +508,7 @@ private fun ControlPanelOverlayToolDeck(
     centerMode: ControlPanelCenterMode,
     isModeUnlocked: (ControlPanelCenterMode) -> Boolean,
     onCenterModeClick: (ControlPanelCenterMode) -> Unit,
-    isSessionRecording: Boolean,
-    isSessionRecordingUnlocked: Boolean,
-    onToggleSessionRecording: () -> Unit,
+    onCenterModeScroll: (ControlPanelCenterMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tools = ControlPanelOverlayTool.DefaultOrder
@@ -481,12 +567,16 @@ private fun ControlPanelOverlayToolDeck(
                         if (dragging) {
                             val dy = dragPx
                             dragPx = 0f
-                            deckOrder = when {
+                            val nextOrder = when {
                                 // Swipe up → next tool to front
                                 dy <= -swipeThresholdPx -> rotateHomeModuleDeckNext(deckOrder)
                                 // Swipe down → previous tool to front
                                 dy >= swipeThresholdPx -> rotateHomeModuleDeckPrevious(deckOrder)
                                 else -> deckOrder
+                            }
+                            if (nextOrder != deckOrder) {
+                                deckOrder = nextOrder
+                                nextOrder.firstOrNull()?.centerMode?.let(onCenterModeScroll)
                             }
                         } else {
                             dragPx = 0f
@@ -547,21 +637,12 @@ private fun ControlPanelOverlayToolDeck(
                         },
                 ) {
                     when (tool) {
-                        ControlPanelOverlayTool.RECORD -> {
-                            ControlPanelRecordSessionButton(
-                                isRecording = isSessionRecording,
-                                unlocked = isSessionRecordingUnlocked,
-                                onClick = {
-                                    if (isFront) onToggleSessionRecording()
-                                },
-                            )
-                        }
                         ControlPanelOverlayTool.PLOTS,
                         ControlPanelOverlayTool.STICK,
                         ControlPanelOverlayTool.CAMERA,
                         ControlPanelOverlayTool.RADAR,
                         -> {
-                            val mode = checkNotNull(tool.centerMode)
+                            val mode = tool.centerMode
                             ControlPanelCenterModeButton(
                                 mode = mode,
                                 selected = centerMode == mode,
@@ -590,21 +671,18 @@ private fun bringOverlayToolToFront(
 private fun ControlPanelRecordSessionButton(
     isRecording: Boolean,
     unlocked: Boolean,
+    enabled: Boolean,
+    contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = ControlPanelOverlayIconSize,
 ) {
-    val showLock = !unlocked && !isRecording
+    val showLock = enabled && !unlocked && !isRecording
     val shape = RoundedCornerShape(size * 0.26f)
-    val contentDescription = when {
-        isRecording -> stringResource(R.string.control_panel_stop_recording_content_description)
-        showLock -> stringResource(R.string.control_panel_record_session_locked_content_description)
-        else -> stringResource(R.string.control_panel_record_session_content_description)
-    }
     Box(
         modifier = modifier
             .size(size)
-            .alpha(if (showLock) 0.55f else 1f)
+            .alpha(if (!enabled || showLock) 0.4f else 1f)
             .then(
                 if (showLock) {
                     Modifier.border(
@@ -618,11 +696,12 @@ private fun ControlPanelRecordSessionButton(
             ),
     ) {
         ControlPanelPlasticIconButton(
-            onClick = onClick,
+            onClick = { if (enabled) onClick() },
             contentDescription = contentDescription,
             icon = Icons.Filled.FiberManualRecord,
             size = size,
             iconTint = when {
+                !enabled -> Color(0xFF6A6A6A)
                 isRecording -> Neo.Negative
                 showLock -> ProGold
                 else -> Color(0xFFD8D8D8)
