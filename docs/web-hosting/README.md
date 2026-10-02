@@ -1,36 +1,34 @@
 # Web-hosted documents (GitHub Pages)
 
-Published from [MICSBOL/BT_ESP32_USER_DOCUMENTATION](https://github.com/MICSBOL/BT_ESP32_USER_DOCUMENTATION).
+Published from [MICSBOL/TeleCon_ESP32](https://github.com/MICSBOL/TeleCon_ESP32).
 
-**Base URL:** `https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/`
+**Base URL:** `https://micsbol.github.io/TeleCon_ESP32/`
 
 | Page | URL |
 |------|-----|
-| Home | https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/ |
-| Privacy policy (EN) | https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/privacy-policy.html |
-| Privacy policy (ES) | https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/privacy-policy-es.html |
-| User docs PDF (EN) | https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/main_en.pdf |
-| User docs PDF (ES) | https://micsbol.github.io/BT_ESP32_USER_DOCUMENTATION/main.pdf |
+| Home | https://micsbol.github.io/TeleCon_ESP32/ |
+| Privacy policy (EN) | https://micsbol.github.io/TeleCon_ESP32/privacy-policy.html |
+| Privacy policy (ES) | https://micsbol.github.io/TeleCon_ESP32/privacy-policy-es.html |
+| User docs PDF (EN) | https://micsbol.github.io/TeleCon_ESP32/General_Documentation/en/build/telecon_user_guide.pdf |
+| User docs PDF (ES) | https://micsbol.github.io/TeleCon_ESP32/General_Documentation/es/build/telecon_user_guide.pdf |
 
-Spanish documentation is **`main.pdf`** (not `main_en.pdf`). Update and push both PDFs in **BT_ESP32_USER_DOCUMENTATION** when rebranding.
+The user-guide PDFs are the files already in `General_Documentation`. Privacy HTML is committed at the root of **TeleCon_ESP32** so GitHub Pages can serve it from `/`.
 
 ## Enable GitHub Pages (one-time)
 
-1. Open the repo **Settings → Pages**.
+1. Open **MICSBOL/TeleCon_ESP32** → **Settings → Pages**.
 2. **Build and deployment:** Deploy from branch `main`, folder `/ (root)`.
 3. Wait a few minutes, then open the base URL above.
 
-## Sync privacy HTML from the app
+## Sync privacy HTML
 
-When you change in-app policy text, copy assets to the documentation repo:
+When the policy text changes, copy the files from this folder to the firmware repository root and push `main`:
 
 ```bash
-cp app/src/main/assets/privacy_policy_en.html /path/to/BT_ESP32_USER_DOCUMENTATION/privacy-policy.html
-cp app/src/main/assets/privacy_policy_es.html /path/to/BT_ESP32_USER_DOCUMENTATION/privacy-policy-es.html
+cp docs/web-hosting/privacy-policy.html /path/to/TeleCon_ESP32/privacy-policy.html
+cp docs/web-hosting/privacy-policy-es.html /path/to/TeleCon_ESP32/privacy-policy-es.html
 ```
 
-Commit and push the documentation repository.
+## User guide PDFs
 
-## General Documentation PDF (Codes screen)
-
-**General Documentation** in the app opens the hosted PDFs above (`main_en.pdf` / `main.pdf`), not the copies under `app/src/main/assets/general_documentation_*.pdf`. After updating the PDF in **BT_ESP32_USER_DOCUMENTATION**, push and wait for GitHub Pages; the app will show the new version on next open (browser/PDF viewer may cache — clear cache if needed).
+About opens the hosted user-guide PDFs listed above. Those files live in `TeleCon_ESP32` under `General_Documentation`. After replacing a PDF there, push and wait for GitHub Pages. A PDF viewer may cache the previous file.
