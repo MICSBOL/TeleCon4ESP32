@@ -15,11 +15,14 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import java.util.Locale
 
-private const val ESP32_BT_CONTROLLER_ZIP = "ESP32_BT_Controller-main.zip"
+private const val FIRMWARE_ZIP_BASE =
+    "https://raw.githubusercontent.com/MICSBOL/TeleCon_ESP32/main/zips/"
 
 object ControlPanelCodePackageId {
     const val DEVKIT_CLASSIC = "DEVKIT_CLASSIC"
+    const val DEVKIT_CLASSIC_BINARY = "DEVKIT_CLASSIC_BINARY"
     const val DEVKIT_BLE = "DEVKIT_BLE"
+    const val DEVKIT_WIFI_BINARY = "DEVKIT_WIFI_BINARY"
     /** Role A video-only CAM. Never list [CAM_WIFI_SIMPLE] for this role. */
     const val CAM_SOFTAP_VIDEO = "CAM_SOFTAP_VIDEO"
     /** Role B one-CAM SoftAP Simple (video + TCP). */
@@ -44,6 +47,8 @@ data class CodeAssetInfo(
     val type: CodeAssetType,
     val assetFileName: String? = null,
     @StringRes val remoteUrlRes: Int? = null,
+    /** Direct download of a sketch ZIP hosted in MICSBOL/TeleCon_ESP32 `zips/`. */
+    val remoteZipUrl: String? = null,
     val outputFileName: String = assetFileName ?: "document.pdf",
     val boards: Set<Esp32Board>? = null,
     val modes: Set<BluetoothConnectionMode>? = null,
@@ -72,7 +77,7 @@ data class CodeAssetInfo(
     }
 
     val isPublished: Boolean
-        get() = assetFileName != null || remoteUrlRes != null
+        get() = assetFileName != null || remoteUrlRes != null || !remoteZipUrl.isNullOrBlank()
 }
 
 /** Fast guide, user guide, and control protocol for the module docs button. */
@@ -155,52 +160,117 @@ fun controlPanelCodePackageIds(
 
 private fun codePackagesFor(applicationId: ApplicationId): List<CodeAssetInfo> =
     when (applicationId) {
-        ApplicationId.CONTROL_PANEL -> controlPanelCodePackages()
-        ApplicationId.RC_VEHICLE_PRO -> emptyList()
+        ApplicationId.CONTROL_PANEL,
+        ApplicationId.RC_VEHICLE_PRO,
+        -> firmwareCodePackages()
     }
 
-private fun controlPanelCodePackages(): List<CodeAssetInfo> {
+private fun firmwareCodePackages(): List<CodeAssetInfo> {
     val bluetoothModes = setOf(
         BluetoothConnectionMode.CLASSIC_SIMPLE,
         BluetoothConnectionMode.CLASSIC_BINARY,
         BluetoothConnectionMode.BLE_BINARY,
     )
-    val dualBoards = setOf(Esp32Board.DEV_KIT, Esp32Board.CAM_AND_DEV_KIT)
+    val devKitBoards = setOf(Esp32Board.DEV_KIT, Esp32Board.CAM_AND_DEV_KIT)
+    val camBoards = setOf(Esp32Board.CAM)
 
     return listOf(
-        CodeAssetInfo(
-            titleRes = R.string.codes_esp32_bt_controller_zip,
-            icon = Icons.Default.Code,
-            assetFileName = ESP32_BT_CONTROLLER_ZIP,
-            type = CodeAssetType.Zip,
-            boards = dualBoards,
-            modes = setOf(
-                BluetoothConnectionMode.CLASSIC_SIMPLE,
-                BluetoothConnectionMode.CLASSIC_BINARY,
-            ),
-            targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
+        sketchZip(
+            titleRes = R.string.codes_esp32_classic_simple,
+            fileName = "TeleCon_Classic_Simple.zip",
+            boards = devKitBoards,
+            modes = setOf(BluetoothConnectionMode.CLASSIC_SIMPLE),
             id = ControlPanelCodePackageId.DEVKIT_CLASSIC,
-        ),
-        CodeAssetInfo(
-            titleRes = R.string.codes_esp32_ble_binary,
-            icon = Icons.Default.Code,
-            type = CodeAssetType.Zip,
-            boards = dualBoards,
-            modes = setOf(BluetoothConnectionMode.BLE_BINARY),
             targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
-            id = ControlPanelCodePackageId.DEVKIT_BLE,
         ),
-        CodeAssetInfo(
+        sketchZip(
+            titleRes = R.string.codes_esp32_classic_binary,
+            fileName = "TeleCon_Classic_Binary.zip",
+            boards = devKitBoards,
+            modes = setOf(BluetoothConnectionMode.CLASSIC_BINARY),
+            id = ControlPanelCodePackageId.DEVKIT_CLASSIC_BINARY,
+            targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
+        ),
+        sketchZip(
+            titleRes = R.string.codes_esp32_ble_binary,
+            fileName = "TeleCon_BLE_Binary.zip",
+            boards = devKitBoards,
+            modes = setOf(BluetoothConnectionMode.BLE_BINARY),
+            id = ControlPanelCodePackageId.DEVKIT_BLE,
+            targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
+        ),
+        sketchZip(
+            titleRes = R.string.codes_esp32_wifi_binary,
+            fileName = "TeleCon_WiFi_Binary.zip",
+            boards = devKitBoards,
+            modes = setOf(BluetoothConnectionMode.WIFI_BINARY),
+            id = ControlPanelCodePackageId.DEVKIT_WIFI_BINARY,
+            targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
+        ),
+        sketchZip(
             titleRes = R.string.codes_esp32_cam_softap_video,
-            icon = Icons.Default.Code,
-            type = CodeAssetType.Zip,
-            boards = dualBoards,
+            fileName = "TeleCon_CAM_SoftAP_Video.zip",
+            boards = devKitBoards,
             modes = bluetoothModes,
-            targetDeviceLabelRes = R.string.app_settings_device_cam,
             id = ControlPanelCodePackageId.CAM_SOFTAP_VIDEO,
+            targetDeviceLabelRes = R.string.app_settings_device_cam,
             roleAVideoOnly = true,
+        ),
+        sketchZip(
+            titleRes = R.string.codes_esp32_cam_wifi_simple,
+            fileName = "TeleCon_CAM_WiFi_Simple.zip",
+            boards = camBoards,
+            modes = setOf(
+                BluetoothConnectionMode.WIFI_CAM_STARTER,
+                BluetoothConnectionMode.WIFI_SOFTAP,
+            ),
+            id = ControlPanelCodePackageId.CAM_WIFI_SIMPLE,
+            targetDeviceLabelRes = R.string.app_settings_device_cam,
+            roleBCamTcpOnly = true,
+        ),
+        sketchZip(
+            titleRes = R.string.codes_esp32_cam_wifi_binary,
+            fileName = "TeleCon_CAM_WiFi_Binary.zip",
+            boards = camBoards,
+            modes = setOf(BluetoothConnectionMode.WIFI_BINARY),
+            id = ControlPanelCodePackageId.CAM_WIFI_BINARY,
+            targetDeviceLabelRes = R.string.app_settings_device_cam,
+            roleBCamTcpOnly = true,
         ),
     )
 }
 
+private fun sketchZip(
+    @StringRes titleRes: Int,
+    fileName: String,
+    boards: Set<Esp32Board>,
+    modes: Set<BluetoothConnectionMode>,
+    id: String,
+    @StringRes targetDeviceLabelRes: Int,
+    roleAVideoOnly: Boolean = false,
+    roleBCamTcpOnly: Boolean = false,
+): CodeAssetInfo = CodeAssetInfo(
+    titleRes = titleRes,
+    icon = Icons.Default.Code,
+    type = CodeAssetType.Zip,
+    remoteZipUrl = FIRMWARE_ZIP_BASE + fileName,
+    outputFileName = fileName,
+    boards = boards,
+    modes = modes,
+    targetDeviceLabelRes = targetDeviceLabelRes,
+    id = id,
+    roleAVideoOnly = roleAVideoOnly,
+    roleBCamTcpOnly = roleBCamTcpOnly,
+)
+
 fun currentCodeAssetLanguage(): String = Locale.getDefault().language
+
+/** Role A video-only CAM sketch. Works with every DevKit Bluetooth control mode. */
+fun controlPanelSoftApVideoCodeAsset(): CodeAssetInfo =
+    firmwareCodePackages().first { it.id == ControlPanelCodePackageId.CAM_SOFTAP_VIDEO }
+
+/**
+ * Role B one-CAM sketch: video and control on the same board over Wi‑Fi.
+ */
+fun controlPanelOneCamCodeAsset(): CodeAssetInfo =
+    firmwareCodePackages().first { it.id == ControlPanelCodePackageId.CAM_WIFI_SIMPLE }

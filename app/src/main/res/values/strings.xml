@@ -148,6 +148,11 @@
     <string name="control_panel_camera_join_wifi">Connect to camera Wi‑Fi</string>
     <string name="control_panel_camera_retry">Try again</string>
     <string name="control_panel_camera_open_wifi">Wi‑Fi settings</string>
+    <string name="control_panel_camera_code_section">Camera code</string>
+    <string name="control_panel_camera_softap_video_title">Video only + Bluetooth</string>
+    <string name="control_panel_camera_softap_video_link_body">Video only. Works with every Bluetooth control.</string>
+    <string name="control_panel_camera_one_cam_title">One ESP32-CAM</string>
+    <string name="control_panel_camera_one_cam_link_body">Video and control on one ESP32-CAM. Configure the Wi‑Fi settings for that device. Do not use Bluetooth.</string>
     <string name="control_panel_camera_wifi_conflict">Camera video uses a different Wi‑Fi than DevKit SoftAP control. Switch Control Panel to Bluetooth, then join %1$s.</string>
     <string name="control_panel_camera_unavailable">No camera stream. Join the ESP32-CAM Wi‑Fi first (%1$s, password %2$s), then try again.</string>
     <string name="control_panel_camera_disabled">No camera is configured. Choose One device or Two devices under CAM feature in settings to stream video.</string>
@@ -609,7 +614,10 @@
     <string name="codes_filter_kit_b_note">Role A needs two sketches: TeleCon_CAM_SoftAP_Video on the ESP32-CAM (HTTP /stream only) and the selected Bluetooth mode on the ESP32 DevKit (Classic Simple, Classic Binary, or BLE Binary). Do not flash TeleCon_CAM_WiFi_Simple as the video half — it still opens TCP :3333.</string>
     <string name="codes_filter_role_a_note">Role A needs two sketches: TeleCon_CAM_SoftAP_Video on the ESP32-CAM (HTTP /stream only) and the selected Bluetooth mode on the ESP32 DevKit (Classic Simple, Classic Binary, or BLE Binary). Do not flash TeleCon_CAM_WiFi_Simple as the video half — it still opens TCP :3333.</string>
     <string name="codes_filter_role_b_note">RC Vehicle Role B uses one CAM: TeleCon_CAM_WiFi_Simple (Default, HTTP /stream and TCP :3333) or TeleCon_CAM_WiFi_Binary (Advanced). No DevKit and no Bluetooth. Control Panel has no Role B.</string>
+    <string name="codes_esp32_classic_simple">TeleCon_Classic_Simple</string>
+    <string name="codes_esp32_classic_binary">TeleCon_Classic_Binary</string>
     <string name="codes_esp32_ble_binary">TeleCon_BLE_Binary</string>
+    <string name="codes_esp32_wifi_binary">TeleCon_WiFi_Binary</string>
     <string name="codes_esp32_cam_softap_video">TeleCon_CAM_SoftAP_Video</string>
     <string name="codes_esp32_cam_wifi_simple">TeleCon_CAM_WiFi_Simple</string>
     <string name="codes_esp32_cam_wifi_binary">TeleCon_CAM_WiFi_Binary</string>
@@ -638,7 +646,7 @@
     <string name="codes_esp32_bt_controller_zip">ESP32 BT Controller</string>
     <string name="codes_zip_card_hint">Tap to share %1$s by email or messaging, or save a copy to Downloads.</string>
     <string name="codes_zip_share_chooser_title">Send ZIP</string>
-    <string name="codes_zip_export_title">ESP32 BT Controller ZIP</string>
+    <string name="codes_zip_export_title">Sketch ZIP</string>
     <string name="codes_zip_export_message">Share the file with another app (email, WhatsApp, Drive, and more), or save it to your Downloads folder.</string>
     <string name="codes_zip_export_share">Share or send</string>
     <string name="codes_zip_export_save">Save to Downloads</string>
@@ -646,6 +654,7 @@
     <string name="codes_zip_share_no_app_message">No app on this device can receive the file. Try Save to Downloads, or install an email or messaging app.</string>
     <string name="codes_zip_share_prepare_failed_title">Could not prepare ZIP</string>
     <string name="codes_zip_share_prepare_failed_message">The file could not be copied for sharing. Please try again.</string>
+    <string name="codes_zip_downloading_message">Downloading sketch…</string>
     <string name="codes_zip_saving_message">Saving %1$s...</string>
     <string name="codes_zip_saved_message">%1$s is available at: %2$s</string>
     <string name="codes_zip_save_error_title">ZIP save error</string>

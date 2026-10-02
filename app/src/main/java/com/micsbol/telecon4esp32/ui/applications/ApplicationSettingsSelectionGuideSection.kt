@@ -34,9 +34,8 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.ui.codes.CodeAssetInfo
 import com.micsbol.telecon4esp32.ui.codes.CodePackageExportViewModel
-import com.micsbol.telecon4esp32.ui.codes.ZipSharePrepareResult
+import com.micsbol.telecon4esp32.ui.codes.ZipExportEvent
 import com.micsbol.telecon4esp32.ui.codes.codePackageAssetsMatching
-import com.micsbol.telecon4esp32.ui.codes.shareZipAssetExternally
 import com.micsbol.telecon4esp32.ui.components.NeoCard
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
@@ -134,9 +133,17 @@ fun ApplicationSettingsSelectionGuideSection(
             tutorial?.onMatchingCodeSaved()
         }
     }
+    LaunchedEffect(exportViewModel) {
+        exportViewModel.events.collect { event ->
+            when (event) {
+                ZipExportEvent.Shared -> tutorial?.onMatchingCodeSaved()
+                ZipExportEvent.NoShareApp -> zipShareError = ZipShareErrorDialog.NoApp
+                ZipExportEvent.Failed -> zipShareError = ZipShareErrorDialog.CopyFailed
+            }
+        }
+    }
 
     pendingZipExport?.let { asset ->
-        val zipFileName = checkNotNull(asset.assetFileName)
         NeoDialog(
             onDismissRequest = { pendingZipExport = null },
             title = { NeoDialogTitle(text = stringResource(R.string.codes_zip_export_title)) },
@@ -150,20 +157,7 @@ fun ApplicationSettingsSelectionGuideSection(
                         text = stringResource(R.string.codes_zip_export_share),
                         onClick = {
                             pendingZipExport = null
-                            when (
-                                shareZipAssetExternally(
-                                    context,
-                                    zipFileName,
-                                    asset.outputFileName,
-                                )
-                            ) {
-                                ZipSharePrepareResult.Success -> tutorial?.onMatchingCodeSaved()
-                                ZipSharePrepareResult.NoActivity ->
-                                    zipShareError = ZipShareErrorDialog.NoApp
-
-                                ZipSharePrepareResult.CopyFailed ->
-                                    zipShareError = ZipShareErrorDialog.CopyFailed
-                            }
+                            exportViewModel.shareZip(asset)
                         },
                         fillMaxWidth = true,
                     )
@@ -171,10 +165,7 @@ fun ApplicationSettingsSelectionGuideSection(
                         text = stringResource(R.string.codes_zip_export_save),
                         onClick = {
                             pendingZipExport = null
-                            exportViewModel.saveZipAsset(
-                                assetFileName = zipFileName,
-                                outputFileName = asset.outputFileName,
-                            )
+                            exportViewModel.saveZip(asset)
                         },
                         fillMaxWidth = true,
                     )
@@ -279,7 +270,7 @@ fun ApplicationSettingsSelectionGuideSection(
             if (exportState.isSavingZip) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.codes_zip_saving_message, "ZIP"),
+                    text = stringResource(R.string.codes_zip_downloading_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = bodyColor,
                 )
@@ -307,7 +298,9 @@ fun ApplicationSettingsSelectionGuideSection(
                         label = stringResource(asset.titleRes),
                         color = linkColor,
                         onClick = {
-                            if (asset.isPublished && asset.assetFileName != null) {
+                            if (asset.isPublished &&
+                                (asset.assetFileName != null || !asset.remoteZipUrl.isNullOrBlank())
+                            ) {
                                 pendingZipExport = asset
                             } else {
                                 Toast.makeText(context, comingSoonToast, Toast.LENGTH_SHORT).show()

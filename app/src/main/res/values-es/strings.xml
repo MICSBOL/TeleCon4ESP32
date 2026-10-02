@@ -149,6 +149,11 @@
     <string name="control_panel_camera_join_wifi">Conectar al Wi‑Fi de la cámara</string>
     <string name="control_panel_camera_retry">Reintentar</string>
     <string name="control_panel_camera_open_wifi">Ajustes Wi‑Fi</string>
+    <string name="control_panel_camera_code_section">Código de cámara</string>
+    <string name="control_panel_camera_softap_video_title">Solo vídeo + Bluetooth</string>
+    <string name="control_panel_camera_softap_video_link_body">Solo vídeo. Funciona con cualquier control Bluetooth.</string>
+    <string name="control_panel_camera_one_cam_title">Un ESP32-CAM</string>
+    <string name="control_panel_camera_one_cam_link_body">Vídeo y control en un solo ESP32-CAM. Configura el Wi‑Fi de ese dispositivo. No uses Bluetooth.</string>
     <string name="control_panel_camera_wifi_conflict">El vídeo de la cámara usa un Wi‑Fi distinto al SoftAP de control del DevKit. Cambia el panel a Bluetooth y luego únete a %1$s.</string>
     <string name="control_panel_camera_unavailable">Sin transmisión. Conéctate primero al Wi‑Fi de la ESP32-CAM (%1$s, contraseña %2$s) e inténtalo de nuevo.</string>
     <string name="control_panel_camera_disabled">No hay cámara configurada. Elige Un dispositivo o Dos dispositivos en Función CAM de los ajustes para ver vídeo.</string>
@@ -610,7 +615,10 @@
     <string name="codes_filter_kit_b_note">El Rol A necesita dos sketches: TeleCon_CAM_SoftAP_Video en el ESP32-CAM (solo HTTP /stream) y el modo Bluetooth elegido en el ESP32 DevKit (Classic Simple, Classic Binary o BLE Binary). No grabes TeleCon_CAM_WiFi_Simple como mitad de vídeo: sigue abriendo TCP :3333.</string>
     <string name="codes_filter_role_a_note">El Rol A necesita dos sketches: TeleCon_CAM_SoftAP_Video en el ESP32-CAM (solo HTTP /stream) y el modo Bluetooth elegido en el ESP32 DevKit (Classic Simple, Classic Binary o BLE Binary). No grabes TeleCon_CAM_WiFi_Simple como mitad de vídeo: sigue abriendo TCP :3333.</string>
     <string name="codes_filter_role_b_note">El Rol B de RC Vehicle usa un CAM: TeleCon_CAM_WiFi_Simple (predeterminado, HTTP /stream y TCP :3333) o TeleCon_CAM_WiFi_Binary (avanzado). Sin DevKit y sin Bluetooth. El Panel de control no tiene Rol B.</string>
+    <string name="codes_esp32_classic_simple">TeleCon_Classic_Simple</string>
+    <string name="codes_esp32_classic_binary">TeleCon_Classic_Binary</string>
     <string name="codes_esp32_ble_binary">TeleCon_BLE_Binary</string>
+    <string name="codes_esp32_wifi_binary">TeleCon_WiFi_Binary</string>
     <string name="codes_esp32_cam_softap_video">TeleCon_CAM_SoftAP_Video</string>
     <string name="codes_esp32_cam_wifi_simple">TeleCon_CAM_WiFi_Simple</string>
     <string name="codes_esp32_cam_wifi_binary">TeleCon_CAM_WiFi_Binary</string>
@@ -639,7 +647,7 @@
     <string name="codes_esp32_bt_controller_zip">Controlador ESP32 BT</string>
     <string name="codes_zip_card_hint">Toca para compartir %1$s por correo o mensajería, o guardar una copia en Descargas.</string>
     <string name="codes_zip_share_chooser_title">Enviar ZIP</string>
-    <string name="codes_zip_export_title">ZIP del controlador ESP32 BT</string>
+    <string name="codes_zip_export_title">ZIP del sketch</string>
     <string name="codes_zip_export_message">Comparte el archivo con otra app (correo, WhatsApp, Drive y más), o guárdalo en la carpeta Descargas.</string>
     <string name="codes_zip_export_share">Compartir o enviar</string>
     <string name="codes_zip_export_save">Guardar en Descargas</string>
@@ -647,6 +655,7 @@
     <string name="codes_zip_share_no_app_message">Ninguna app de este dispositivo puede recibir el archivo. Prueba Guardar en Descargas o instala una app de correo o mensajería.</string>
     <string name="codes_zip_share_prepare_failed_title">No se pudo preparar el ZIP</string>
     <string name="codes_zip_share_prepare_failed_message">No se pudo copiar el archivo para compartirlo. Inténtalo de nuevo.</string>
+    <string name="codes_zip_downloading_message">Descargando el sketch…</string>
     <string name="codes_zip_saving_message">Guardando %1$s...</string>
     <string name="codes_zip_saved_message">%1$s está disponible en: %2$s</string>
     <string name="codes_zip_save_error_title">Error al guardar ZIP</string>

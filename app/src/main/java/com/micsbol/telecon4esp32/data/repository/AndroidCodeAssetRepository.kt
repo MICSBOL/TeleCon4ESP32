@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,16 +31,31 @@ class AndroidCodeAssetRepository @Inject constructor(
         assetFileName: String,
         outputFileName: String
     ): SavedCodeAsset = withContext(Dispatchers.IO) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveToPublicDownloads(assetFileName, outputFileName)
+        context.assets.open(assetFileName).use { inputStream ->
+            writeDownload(inputStream, outputFileName)
+        }
+    }
+
+    override suspend fun saveFileToDownloads(
+        source: File,
+        outputFileName: String,
+    ): SavedCodeAsset = withContext(Dispatchers.IO) {
+        source.inputStream().use { inputStream ->
+            writeDownload(inputStream, outputFileName)
+        }
+    }
+
+    private fun writeDownload(inputStream: InputStream, outputFileName: String): SavedCodeAsset {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            saveToPublicDownloads(inputStream, outputFileName)
         } else {
-            saveToAppDownloads(assetFileName, outputFileName)
+            saveToAppDownloads(inputStream, outputFileName)
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveToPublicDownloads(
-        assetFileName: String,
+        inputStream: InputStream,
         outputFileName: String
     ): SavedCodeAsset {
         val resolver = context.contentResolver
@@ -57,11 +73,9 @@ class AndroidCodeAssetRepository @Inject constructor(
         ) ?: error("Could not create $outputFileName in Downloads")
 
         try {
-            context.assets.open(assetFileName).use { inputStream ->
-                resolver.openOutputStream(outputUri, "wt").use { outputStream ->
-                    requireNotNull(outputStream) { "Could not open $outputFileName for writing" }
-                    inputStream.copyTo(outputStream)
-                }
+            resolver.openOutputStream(outputUri, "wt").use { outputStream ->
+                requireNotNull(outputStream) { "Could not open $outputFileName for writing" }
+                inputStream.copyTo(outputStream)
             }
 
             if (isNewFile) {
@@ -112,7 +126,7 @@ class AndroidCodeAssetRepository @Inject constructor(
     }
 
     private fun saveToAppDownloads(
-        assetFileName: String,
+        inputStream: InputStream,
         outputFileName: String
     ): SavedCodeAsset {
         val directory = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
@@ -123,10 +137,8 @@ class AndroidCodeAssetRepository @Inject constructor(
         }
 
         val outputFile = File(directory, outputFileName)
-        context.assets.open(assetFileName).use { inputStream ->
-            FileOutputStream(outputFile, false).use { outputStream ->
-                inputStream.copyTo(outputStream)
-            }
+        FileOutputStream(outputFile, false).use { outputStream ->
+            inputStream.copyTo(outputStream)
         }
 
         return SavedCodeAsset(

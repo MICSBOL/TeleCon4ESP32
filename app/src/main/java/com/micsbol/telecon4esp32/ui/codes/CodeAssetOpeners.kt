@@ -8,9 +8,13 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.util.hostedPdfUrl
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 enum class PdfOpenResult {
     Success,
@@ -36,10 +40,39 @@ fun shareZipAssetExternally(
                 inputStream.copyTo(outputStream)
             }
         }
+        shareZipFile(context, tempFile)
+    } catch (_: IOException) {
+        ZipSharePrepareResult.CopyFailed
+    }
+}
+
+/**
+ * Copies a bundled sketch or downloads the hosted ZIP into the cache.
+ */
+suspend fun materializeZip(context: Context, asset: CodeAssetInfo): File = withContext(Dispatchers.IO) {
+    val outputFileName = asset.outputFileName
+    val remoteUrl = asset.remoteZipUrl
+    if (!remoteUrl.isNullOrBlank()) {
+        downloadZipToCache(context, remoteUrl, outputFileName)
+    } else {
+        val assetFileName = asset.assetFileName
+            ?: throw IOException("Sketch ZIP is not published")
+        val tempFile = File(context.cacheDir, outputFileName)
+        context.assets.open(assetFileName).use { inputStream ->
+            FileOutputStream(tempFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+        tempFile
+    }
+}
+
+fun shareZipFile(context: Context, zipFile: File): ZipSharePrepareResult {
+    return try {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
-            tempFile,
+            zipFile,
         )
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "application/zip"
@@ -62,6 +95,30 @@ fun shareZipAssetExternally(
     } catch (_: IOException) {
         ZipSharePrepareResult.CopyFailed
     }
+}
+
+private fun downloadZipToCache(context: Context, url: String, outputFileName: String): File {
+    val tempFile = File(context.cacheDir, outputFileName)
+    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+        instanceFollowRedirects = true
+        connectTimeout = 15_000
+        readTimeout = 60_000
+        setRequestProperty("User-Agent", "TeleCon4ESP32")
+    }
+    try {
+        val code = connection.responseCode
+        if (code !in 200..299) {
+            throw IOException("Sketch download failed ($code)")
+        }
+        connection.inputStream.use { inputStream ->
+            FileOutputStream(tempFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+    } finally {
+        connection.disconnect()
+    }
+    return tempFile
 }
 
 fun openPdfUrlExternally(context: Context, url: String): PdfOpenResult {
