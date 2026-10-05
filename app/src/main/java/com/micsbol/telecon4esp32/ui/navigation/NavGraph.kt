@@ -48,7 +48,10 @@ import com.micsbol.telecon4esp32.ui.home.LocalTutorialAnchors
 import com.micsbol.telecon4esp32.ui.home.TutorialAnchorRegistry
 import com.micsbol.telecon4esp32.ui.premium.UpgradeScreen
 import com.micsbol.telecon4esp32.ui.rc_settings.SettingsViewModel
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.LocalRcVehicleProTutorial
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProScreen
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProTutorialOverlay
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProTutorialViewModel
 import com.micsbol.telecon4esp32.ui.splash.SplashScreen
 import com.micsbol.telecon4esp32.ui.tutorial.TutorialScreen
 import com.micsbol.telecon4esp32.ui.wallet.LocalWallet
@@ -68,6 +71,16 @@ fun AppNavGraph(
     val tutorialViewModel = hiltViewModel<FirstConnectionTutorialViewModel>()
     val tutorialActive by tutorialViewModel.active.collectAsState()
     val tutorialStep by tutorialViewModel.step.collectAsState()
+    val rcTutorialViewModel = hiltViewModel<RcVehicleProTutorialViewModel>()
+    val rcTutorialActive by rcTutorialViewModel.active.collectAsState()
+    val rcTutorialStep by rcTutorialViewModel.step.collectAsState()
+
+    LaunchedEffect(tutorialActive) {
+        if (tutorialActive) rcTutorialViewModel.dismiss()
+    }
+    LaunchedEffect(rcTutorialActive) {
+        if (rcTutorialActive) tutorialViewModel.dismiss()
+    }
     val entitlement by entitlementViewModel.entitlement.collectAsState()
     val wallet by walletViewModel.wallet.collectAsState()
     var activeProFeature by remember { mutableStateOf<com.micsbol.telecon4esp32.domain.model.PremiumFeature?>(null) }
@@ -88,6 +101,7 @@ fun AppNavGraph(
         LocalWallet provides wallet,
         LocalTutorialAnchors provides tutorialAnchors,
         LocalFirstConnectionTutorial provides tutorialViewModel,
+        LocalRcVehicleProTutorial provides rcTutorialViewModel,
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
@@ -116,6 +130,7 @@ fun AppNavGraph(
                 onDismissError = bluetoothViewModel::dismissError,
                 onOpenApplications = { navController.navigate(Screen.Applications.route) },
                 onPlayFirstConnectionTutorial = tutorialViewModel::start,
+                onPlayRcVehicleTutorial = rcTutorialViewModel::start,
             )
         }
         composable(Screen.Bluetooth.route) {
@@ -265,6 +280,14 @@ fun AppNavGraph(
                 navController = navController,
                 bluetoothViewModel = bluetoothViewModel,
                 tutorialViewModel = tutorialViewModel,
+            )
+        }
+        if (rcTutorialActive) {
+            RcVehicleProTutorialOverlay(
+                step = rcTutorialStep,
+                navController = navController,
+                bluetoothViewModel = bluetoothViewModel,
+                tutorialViewModel = rcTutorialViewModel,
             )
         }
     }

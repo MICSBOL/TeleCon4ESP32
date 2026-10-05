@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.codes
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
@@ -85,6 +86,9 @@ fun shareZipFile(context: Context, zipFile: File): ZipSharePrepareResult {
             context.getString(R.string.codes_zip_share_chooser_title),
         ).apply {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (context !is Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
         }
         try {
             context.startActivity(chooser)

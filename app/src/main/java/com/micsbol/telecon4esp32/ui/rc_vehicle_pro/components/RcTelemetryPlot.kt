@@ -294,6 +294,7 @@ fun RcTelemetryPlotPanel(
 ) {
     RcHudCollapsibleToEdge(
         towardEnd = false,
+        icon = Icons.AutoMirrored.Filled.ShowChart,
         showContentDescription = stringResource(R.string.rc_vehicle_hud_show_telemetry_plot),
         hideContentDescription = stringResource(R.string.rc_vehicle_hud_hide_telemetry_plot),
         expanded = expanded,
@@ -301,7 +302,6 @@ fun RcTelemetryPlotPanel(
         modifier = modifier,
         fillWidth = false,
         swipeEntireContent = true,
-        collapsedIcon = Icons.AutoMirrored.Filled.ShowChart,
     ) {
         RcGlassCard(
             surfaceAlpha = RcVehicleProGlass.PLOT_BACKGROUND_ALPHA,

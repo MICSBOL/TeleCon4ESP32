@@ -1,5 +1,7 @@
 package com.micsbol.telecon4esp32.domain.model
 
+import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
+
 /**
  * How the user wires camera hardware for Control Panel / RC Vehicle settings.
  *
@@ -68,12 +70,31 @@ fun CameraHardwareRole.availableForUserType(userType: SettingsUserType): Boolean
 fun CameraHardwareRole.coerceForUserType(userType: SettingsUserType): CameraHardwareRole =
     if (availableForUserType(userType)) this else CameraHardwareRole.NO_CAM
 
-/** Control Panel has no one-CAM video+control; map Role B to Role A overlay. */
+/** Apps without one-CAM video+control keep that role on the two-device overlay. */
 fun CameraHardwareRole.coerceForApplication(applicationId: ApplicationId): CameraHardwareRole =
     if (this == CameraHardwareRole.ONE_CAM && !applicationId.supportsCamVideoControl()) {
         CameraHardwareRole.TWO_DEVICES
     } else {
         this
+    }
+
+/** Wi‑Fi link on the connection screen: one CAM for control and video, or control only. */
+enum class WifiLinkChoice {
+    /** One ESP32-CAM carries SoftAP control and the camera. */
+    ONE_CAM,
+
+    /** SoftAP is used for control only, so the camera cannot use Wi‑Fi. */
+    CONTROL_ONLY,
+}
+
+fun wifiLinkChoice(
+    board: Esp32Board,
+    mode: BluetoothConnectionMode,
+): WifiLinkChoice =
+    if (board == Esp32Board.CAM && mode.isWifiLink) {
+        WifiLinkChoice.ONE_CAM
+    } else {
+        WifiLinkChoice.CONTROL_ONLY
     }
 
 /** Plots / Radar center modes keep hardware on No CAM for every user type. */

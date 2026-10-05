@@ -4,10 +4,15 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
@@ -46,6 +51,7 @@ internal fun ControlPanelCameraPreviewShell(
     onPrimaryAction: (() -> Unit)? = null,
     secondaryActionLabel: String? = null,
     onSecondaryAction: (() -> Unit)? = null,
+    belowActions: (@Composable () -> Unit)? = null,
 ) {
     var scanline by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(grayedOut) {
@@ -109,10 +115,15 @@ internal fun ControlPanelCameraPreviewShell(
             drawLine(c, Offset(size.width - m, size.height - m), Offset(size.width - m, size.height - m - len), stroke)
         }
 
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = maxHeight)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             Icon(
                 imageVector = if (grayedOut) Icons.Filled.VideocamOff else Icons.Filled.Videocam,
@@ -160,6 +171,10 @@ internal fun ControlPanelCameraPreviewShell(
                     )
                 }
             }
+            if (!grayedOut && belowActions != null) {
+                belowActions()
+            }
+        }
         }
     }
 }

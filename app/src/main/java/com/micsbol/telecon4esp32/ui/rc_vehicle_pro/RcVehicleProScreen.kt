@@ -15,8 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -59,9 +60,12 @@ import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.camera.SoftApRuntimeStreamQualityControl
 import com.micsbol.telecon4esp32.ui.camera.StreamQualityLauncherStyle
+import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.components.LocalDisconnectedBannerInsets
 import com.micsbol.telecon4esp32.ui.components.LocalHudSystemBarsHidden
 import com.micsbol.telecon4esp32.ui.components.safeHudPadding
+import com.micsbol.telecon4esp32.ui.home.TutorialAnchor
+import com.micsbol.telecon4esp32.ui.home.reportTutorialAnchor
 import com.micsbol.telecon4esp32.ui.control_panel.HideHudSystemBars
 import com.micsbol.telecon4esp32.ui.control_panel.LockHudLandscape
 import com.micsbol.telecon4esp32.ui.control_panel.RadarScanSpan
@@ -113,6 +117,7 @@ fun RcVehicleProScreen(
     val plotLabels by bluetoothViewModel.rcPlotDisplayLabels.collectAsStateWithLifecycle()
     val controlSettings by viewModel.controlSettings.collectAsStateWithLifecycle()
     val plotChrome by viewModel.plotChrome.collectAsStateWithLifecycle()
+    val rcTutorial = LocalRcVehicleProTutorial.current
     val bluetoothSession = LocalApplicationBluetoothSession.current
     val onBluetoothConnect by rememberUpdatedState(bluetoothSession?.onConnect)
     val linkProfile = uiState.cameraLinkProfile
@@ -226,6 +231,13 @@ fun RcVehicleProScreen(
             onBluetoothDisconnectedClick = { onBluetoothConnect?.invoke() },
             settingsAction = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { rcTutorial?.start() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                            contentDescription = stringResource(R.string.rc_vehicle_tutorial_open),
+                            tint = brandPrimary(),
+                        )
+                    }
                     RcHudLinkStatusIcons(
                         profile = linkProfile,
                         isControlConnected = uiState.isBluetoothConnected,
@@ -353,6 +365,23 @@ fun RcVehicleProContent(
     var rightStickExpanded by remember { mutableStateOf(true) }
     var stickResizeMode by remember { mutableStateOf(false) }
     var panResizeMode by remember { mutableStateOf(false) }
+    val rcTutorial = LocalRcVehicleProTutorial.current
+    if (rcTutorial != null) {
+        val tutorialActive by rcTutorial.active.collectAsStateWithLifecycle()
+        val tutorialStep by rcTutorial.step.collectAsStateWithLifecycle()
+        LaunchedEffect(tutorialActive, tutorialStep) {
+            if (!tutorialActive) return@LaunchedEffect
+            topBarExpanded = true
+            leftStickExpanded = true
+            rightStickExpanded = true
+            when (tutorialStep) {
+                RcVehicleProTutorialStep.CENTER_ACTIONS -> centerExpanded = true
+                RcVehicleProTutorialStep.TELEMETRY -> plotExpanded = true
+                RcVehicleProTutorialStep.CAMERA_PAN -> panExpanded = true
+                else -> Unit
+            }
+        }
+    }
     val radarScanSpan = plotChrome.radarSettings.scanSpan
     val telemetryPlotSession = rememberTelemetryPlotSession(
         speedKmh = uiState.speedKmh,
@@ -464,6 +493,7 @@ fun RcVehicleProContent(
     Box(modifier = modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         RcVehicleHudTopBar(
+            modifier = Modifier.reportTutorialAnchor(TutorialAnchor.RC_TOP_BAR),
             title = stringResource(R.string.app_rc_vehicle_title),
             onNavigateBack = onNavigateBack,
             expanded = topBarExpanded,
@@ -485,7 +515,9 @@ fun RcVehicleProContent(
                         onRadarSourceChange = onRadarSourceChange,
                         onPlotLabelChange = onPlotLabelChange,
                         onPlotChannelChange = onPlotChannelChange,
-                        modifier = Modifier.wrapContentWidth(),
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .reportTutorialAnchor(TutorialAnchor.RC_PLOT),
                         expanded = false,
                         onExpandedChange = { plotExpanded = it },
                         scanSpan = radarScanSpan,
@@ -500,7 +532,9 @@ fun RcVehicleProContent(
             hideRowEndContent = {
                 if (!panExpanded) {
                     RcCameraPanPanel(
-                        modifier = Modifier.wrapContentWidth(),
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .reportTutorialAnchor(TutorialAnchor.RC_CAMERA_PAN),
                         expanded = false,
                         onExpandedChange = { panExpanded = it },
                         value = cameraKnobValue,
@@ -611,7 +645,8 @@ fun RcVehicleProContent(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .wrapContentWidth()
-                            .zIndex(1.5f),
+                            .zIndex(1.5f)
+                            .reportTutorialAnchor(TutorialAnchor.RC_PLOT),
                         expanded = plotExpanded,
                         onExpandedChange = { plotExpanded = it },
                         plotWidth = fittedPlotWidth,
@@ -640,7 +675,8 @@ fun RcVehicleProContent(
                         else -> Modifier.width(stickWidth).height(stickHeight)
                     }
                     RcControlZone(
-                        modifier = leftSlotModifier,
+                        modifier = leftSlotModifier
+                            .reportTutorialAnchor(TutorialAnchor.RC_THROTTLE),
                         title = stringResource(R.string.rc_vehicle_control_throttle),
                         collapsibleToNearestEdge = true,
                         chromeExpanded = leftStickExpanded,
@@ -710,11 +746,12 @@ fun RcVehicleProContent(
                             leftTrimMode = false
                             publishLeftAtRest()
                         },
-                        collapsedIcon = Icons.Filled.SwapVert,
+                        onOptionsMenuOpened = { rcTutorial?.onStickOptionsOpened() },
                     )
 
                     RcControlZone(
-                        modifier = rightSlotModifier,
+                        modifier = rightSlotModifier
+                            .reportTutorialAnchor(TutorialAnchor.RC_STEERING),
                         title = stringResource(R.string.rc_vehicle_control_steering),
                         collapsibleToNearestEdge = true,
                         chromeExpanded = rightStickExpanded,
@@ -781,7 +818,7 @@ fun RcVehicleProContent(
                             rightTrimMode = false
                             publishRightAtRest()
                         },
-                        collapsedIcon = Icons.Filled.SwapHoriz,
+                        onOptionsMenuOpened = { rcTutorial?.onStickOptionsOpened() },
                     )
                     }
                     RcCenterControls(
@@ -800,7 +837,8 @@ fun RcVehicleProContent(
                             )
                             .widthIn(max = centerOverlayMaxWidth)
                             .wrapContentWidth()
-                            .zIndex(2f),
+                            .zIndex(2f)
+                            .reportTutorialAnchor(TutorialAnchor.RC_CENTER),
                         fillWidth = false,
                         expanded = centerExpanded,
                         onExpandedChange = { centerExpanded = it },
@@ -836,7 +874,8 @@ fun RcVehicleProContent(
                         modifier = Modifier
                             .align(plotAlignment)
                             .wrapContentWidth()
-                            .zIndex(1f),
+                            .zIndex(1f)
+                            .reportTutorialAnchor(TutorialAnchor.RC_PLOT),
                         expanded = plotExpanded,
                         onExpandedChange = { plotExpanded = it },
                         plotWidth = fittedPlotWidth,
@@ -863,7 +902,8 @@ fun RcVehicleProContent(
                             .align(Alignment.TopEnd)
                             .wrapContentWidth()
                             .zIndex(1f)
-                            .offset(x = if (panExpanded) -panTowardCenterPadding else 0.dp),
+                            .offset(x = if (panExpanded) -panTowardCenterPadding else 0.dp)
+                            .reportTutorialAnchor(TutorialAnchor.RC_CAMERA_PAN),
                         expanded = panExpanded,
                         onExpandedChange = { panExpanded = it },
                         value = cameraKnobValue,

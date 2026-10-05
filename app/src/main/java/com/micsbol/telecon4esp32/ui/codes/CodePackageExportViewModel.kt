@@ -35,13 +35,13 @@ class CodePackageExportViewModel @Inject constructor(
     private val _events = MutableSharedFlow<ZipExportEvent>(extraBufferCapacity = 1)
     val events = _events.asSharedFlow()
 
-    fun shareZip(asset: CodeAssetInfo) {
+    fun shareZip(asset: CodeAssetInfo, shareContext: Context) {
         if (_uiState.value.isSavingZip) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingZip = true, saveError = null) }
             val event = try {
                 val file = materializeZip(context, asset)
-                when (shareZipFile(context, file)) {
+                when (shareZipFile(shareContext, file)) {
                     ZipSharePrepareResult.Success -> ZipExportEvent.Shared
                     ZipSharePrepareResult.NoActivity -> ZipExportEvent.NoShareApp
                     ZipSharePrepareResult.CopyFailed -> ZipExportEvent.Failed

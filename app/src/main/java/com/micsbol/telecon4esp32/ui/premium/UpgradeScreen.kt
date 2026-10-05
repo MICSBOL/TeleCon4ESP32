@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.domain.billing.PremiumBillingStatus
 import com.micsbol.telecon4esp32.domain.model.CoinUnlockOption
 import com.micsbol.telecon4esp32.domain.model.PremiumFeature
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
@@ -48,6 +49,9 @@ import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 @Composable
 fun UpgradeScreen(navController: NavController) {
     val entitlement = LocalEntitlement.current
+    val upgradeViewModel = hiltViewModel<UpgradeViewModel>()
+    val billingStatus by upgradeViewModel.billingStatus.collectAsState()
+    val premiumProductAvailable by upgradeViewModel.premiumProductAvailable.collectAsState()
     val walletViewModel = hiltViewModel<WalletViewModel>()
     val wallet by walletViewModel.wallet.collectAsState()
     val rewardedAdManager = LocalRewardedAdManager.current
@@ -131,20 +135,24 @@ fun UpgradeScreen(navController: NavController) {
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = stringResource(R.string.upgrade_billing_unavailable),
+                text = stringResource(billingStatusMessage(entitlement.usesCoinEconomy(), billingStatus)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Neo.TextSecondary,
                 textAlign = TextAlign.Center,
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            NeoPillButton(
-                text = stringResource(R.string.upgrade_purchase_button),
-                onClick = { /* Play Billing — next implementation step */ },
-                modifier = Modifier.fillMaxWidth(0.92f),
-                enabled = false,
-            )
+            if (entitlement.usesCoinEconomy()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                NeoPillButton(
+                    text = stringResource(R.string.upgrade_purchase_button),
+                    onClick = { activity?.let(upgradeViewModel::purchase) },
+                    modifier = Modifier.fillMaxWidth(0.92f),
+                    enabled = premiumProductAvailable &&
+                        billingStatus != PremiumBillingStatus.Pending &&
+                        billingStatus != PremiumBillingStatus.Connecting,
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = { /* restore purchases — next step */ }) {
+            TextButton(onClick = upgradeViewModel::restore) {
                 Text(
                     text = stringResource(R.string.upgrade_restore_button),
                     color = Neo.Accent,
@@ -180,6 +188,29 @@ private fun coinOptionLabel(option: CoinUnlockOption): String = when (option) {
         R.string.coins_option_week,
         option.coinCost(PremiumFeature.RC_VEHICLE_PRO),
     )
+}
+
+private fun billingStatusMessage(
+    freeTier: Boolean,
+    status: PremiumBillingStatus,
+): Int {
+    if (!freeTier) {
+        return if (status == PremiumBillingStatus.Restored) {
+            R.string.upgrade_restore_done
+        } else {
+            R.string.upgrade_already_active
+        }
+    }
+    return when (status) {
+        PremiumBillingStatus.Connecting -> R.string.upgrade_billing_connecting
+        PremiumBillingStatus.Unavailable -> R.string.upgrade_billing_unavailable
+        PremiumBillingStatus.ProductUnavailable -> R.string.upgrade_product_unavailable
+        PremiumBillingStatus.Pending -> R.string.upgrade_purchase_pending
+        PremiumBillingStatus.Restored -> R.string.upgrade_restore_done
+        PremiumBillingStatus.NoPurchaseFound -> R.string.upgrade_restore_none
+        PremiumBillingStatus.Failed -> R.string.upgrade_purchase_failed
+        PremiumBillingStatus.Ready -> R.string.upgrade_purchase_hint
+    }
 }
 
 @Composable

@@ -157,7 +157,7 @@ fun ApplicationSettingsSelectionGuideSection(
                         text = stringResource(R.string.codes_zip_export_share),
                         onClick = {
                             pendingZipExport = null
-                            exportViewModel.shareZip(asset)
+                            exportViewModel.shareZip(asset, context)
                         },
                         fillMaxWidth = true,
                     )

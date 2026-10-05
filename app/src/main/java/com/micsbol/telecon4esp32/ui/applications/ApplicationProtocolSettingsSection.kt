@@ -63,6 +63,8 @@ import com.micsbol.telecon4esp32.domain.model.protocolPrefix
 import com.micsbol.telecon4esp32.domain.model.supportsCamVideoControl
 import com.micsbol.telecon4esp32.domain.model.usesCamera
 import com.micsbol.telecon4esp32.domain.model.usesSoftApCamera
+import com.micsbol.telecon4esp32.domain.model.wifiLinkChoice
+import com.micsbol.telecon4esp32.domain.model.WifiLinkChoice
 import com.micsbol.telecon4esp32.ui.components.NeoDialog
 import com.micsbol.telecon4esp32.ui.components.NeoDialogBody
 import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
@@ -402,16 +404,20 @@ fun ApplicationProtocolSettingsSection(
     canUseAdvanced: Boolean = true,
     selectedBoard: Esp32Board = Esp32Board.DEV_KIT,
     allowWifiControl: Boolean = true,
+    onWifiChoiceSelected: ((WifiLinkChoice) -> Unit)? = null,
+    onBluetoothFamilySelected: (() -> Unit)? = null,
     belowConnectionTypeContent: (@Composable () -> Unit)? = null,
 ) {
     val availableModes = applicationId.availableConnectionModes(selectedBoard, userType)
     val camModesOnly =
         applicationId.supportsCamVideoControl() && selectedBoard == Esp32Board.CAM
-    val useDevKitLinkPicker = !camModesOnly
+    // Wi‑Fi choices stay on this picker after one-CAM is saved. Otherwise a CAM
+    // board would replace Bluetooth / Wi‑Fi with the raw SoftAP mode list.
+    val useDevKitLinkPicker = onWifiChoiceSelected != null || !camModesOnly
     val connectionSectionInfo = stringResource(
         when {
-            camModesOnly -> R.string.app_settings_connection_section_description_cam
             useDevKitLinkPicker -> R.string.app_settings_connection_section_description_devkit
+            camModesOnly -> R.string.app_settings_connection_section_description_cam
             else -> R.string.app_settings_connection_section_description
         },
     )
@@ -444,6 +450,8 @@ fun ApplicationProtocolSettingsSection(
                 connectionLabel = connectionTitle,
                 connectionSectionInfo = connectionSectionInfo,
                 allowWifiControl = allowWifiControl,
+                onWifiChoiceSelected = onWifiChoiceSelected,
+                onBluetoothFamilySelected = onBluetoothFamilySelected,
                 belowConnectionTypeContent = belowConnectionTypeContent,
             )
         } else {
@@ -573,13 +581,18 @@ private fun DevKitConnectionSettings(
     connectionLabel: String,
     connectionSectionInfo: String,
     allowWifiControl: Boolean = true,
+    onWifiChoiceSelected: ((WifiLinkChoice) -> Unit)? = null,
+    onBluetoothFamilySelected: (() -> Unit)? = null,
     belowConnectionTypeContent: (@Composable () -> Unit)? = null,
 ) {
-    val selectedFamily = if (allowWifiControl) {
+    val selectedFamily = if (allowWifiControl || onWifiChoiceSelected != null) {
         selectedMode.linkFamily
     } else {
         ConnectionLinkFamily.BLUETOOTH
     }
+    val offerAdvancedWifiVersions = onWifiChoiceSelected != null &&
+        userType == SettingsUserType.ADVANCED &&
+        canUseAdvanced
     val familyOptions = buildList {
         add(
             SettingsMenuOption(
@@ -614,24 +627,73 @@ private fun DevKitConnectionSettings(
         },
     )
 
-    SettingsOptionDropdown(
-        options = familyOptions,
-        selected = selectedFamily,
-        onSelected = { family ->
-            if (family == selectedFamily) return@SettingsOptionDropdown
-            val preferred = applicationId.preferredConnectionMode(
-                board = selectedBoard,
-                family = family,
-                userType = userType,
-                canUseAdvanced = canUseAdvanced,
-            )
-            if (preferred != null) onModeSelected(preferred)
-        },
-        label = connectionLabel,
-        sectionInfo = connectionSectionInfo,
-    )
-    // Normal (and any single-protocol link) has nothing to choose; skip the section.
-    if (detailOptions.size > 1) {
+    if (offerAdvancedWifiVersions) {
+        val selectedChoice = when {
+            selectedFamily != ConnectionLinkFamily.WIFI -> AdvancedConnectionChoice.BLUETOOTH
+            wifiLinkChoice(selectedBoard, selectedMode) == WifiLinkChoice.CONTROL_ONLY ->
+                AdvancedConnectionChoice.WIFI_CONTROL_ONLY
+            else -> AdvancedConnectionChoice.WIFI_ONE_CAM
+        }
+        SettingsOptionDropdown(
+            options = advancedConnectionOptions(),
+            selected = selectedChoice,
+            onSelected = { choice ->
+                if (choice == selectedChoice) return@SettingsOptionDropdown
+                when (choice) {
+                    AdvancedConnectionChoice.BLUETOOTH ->
+                        onBluetoothFamilySelected?.invoke()
+                    AdvancedConnectionChoice.WIFI_ONE_CAM ->
+                        onWifiChoiceSelected?.invoke(WifiLinkChoice.ONE_CAM)
+                    AdvancedConnectionChoice.WIFI_CONTROL_ONLY ->
+                        onWifiChoiceSelected?.invoke(WifiLinkChoice.CONTROL_ONLY)
+                }
+            },
+            label = connectionLabel,
+            sectionInfo = connectionSectionInfo,
+        )
+    } else {
+        SettingsOptionDropdown(
+            options = familyOptions,
+            selected = selectedFamily,
+            onSelected = { family ->
+                if (family == selectedFamily) return@SettingsOptionDropdown
+                if (family == ConnectionLinkFamily.WIFI && onWifiChoiceSelected != null) {
+                    onWifiChoiceSelected(WifiLinkChoice.ONE_CAM)
+                    return@SettingsOptionDropdown
+                }
+                if (family == ConnectionLinkFamily.BLUETOOTH && onBluetoothFamilySelected != null) {
+                    onBluetoothFamilySelected()
+                    return@SettingsOptionDropdown
+                }
+                val preferred = applicationId.preferredConnectionMode(
+                    board = selectedBoard,
+                    family = family,
+                    userType = userType,
+                    canUseAdvanced = canUseAdvanced,
+                )
+                if (preferred != null) onModeSelected(preferred)
+            },
+            label = connectionLabel,
+            sectionInfo = connectionSectionInfo,
+        )
+    }
+    if (!offerAdvancedWifiVersions &&
+        selectedFamily == ConnectionLinkFamily.WIFI &&
+        onWifiChoiceSelected != null
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+        val wifiChoice = wifiLinkChoice(selectedBoard, selectedMode)
+        SettingsOptionDropdown(
+            options = wifiChoiceOptions(canUseAdvanced),
+            selected = wifiChoice,
+            onSelected = onWifiChoiceSelected,
+            label = stringResource(R.string.app_settings_connection_wifi_protocol_title),
+            sectionInfo = stringResource(R.string.app_settings_connection_wifi_protocol_description),
+        )
+    } else if (
+        detailOptions.size > 1 &&
+        (selectedFamily == ConnectionLinkFamily.BLUETOOTH || !offerAdvancedWifiVersions)
+    ) {
         Spacer(modifier = Modifier.height(16.dp))
         SettingsOptionDropdown(
             options = detailOptions,
@@ -652,6 +714,31 @@ private fun DevKitConnectionSettings(
         belowConnectionTypeContent()
     }
 }
+
+private enum class AdvancedConnectionChoice {
+    BLUETOOTH,
+    WIFI_ONE_CAM,
+    WIFI_CONTROL_ONLY,
+}
+
+@Composable
+private fun advancedConnectionOptions(): List<SettingsMenuOption<AdvancedConnectionChoice>> = listOf(
+    SettingsMenuOption(
+        value = AdvancedConnectionChoice.BLUETOOTH,
+        label = stringResource(R.string.app_settings_connection_link_bluetooth),
+        description = stringResource(R.string.app_settings_connection_link_bluetooth_description),
+    ),
+    SettingsMenuOption(
+        value = AdvancedConnectionChoice.WIFI_ONE_CAM,
+        label = stringResource(R.string.app_settings_wifi_choice_one_cam),
+        description = stringResource(R.string.app_settings_wifi_choice_one_cam_description),
+    ),
+    SettingsMenuOption(
+        value = AdvancedConnectionChoice.WIFI_CONTROL_ONLY,
+        label = stringResource(R.string.app_settings_wifi_choice_control_only),
+        description = stringResource(R.string.app_settings_wifi_choice_control_only_description),
+    ),
+)
 
 @Composable
 fun SoftApPerformanceSettingsSection(
@@ -697,6 +784,27 @@ fun SoftApPerformanceSettingsSection(
         )
     }
 }
+
+@Composable
+private fun wifiChoiceOptions(
+    canUseAdvanced: Boolean,
+): List<SettingsMenuOption<WifiLinkChoice>> = listOf(
+    SettingsMenuOption(
+        value = WifiLinkChoice.ONE_CAM,
+        label = stringResource(R.string.app_settings_wifi_choice_one_cam),
+        description = stringResource(R.string.app_settings_wifi_choice_one_cam_description),
+    ),
+    SettingsMenuOption(
+        value = WifiLinkChoice.CONTROL_ONLY,
+        label = stringResource(R.string.app_settings_wifi_choice_control_only),
+        description = if (canUseAdvanced) {
+            stringResource(R.string.app_settings_wifi_choice_control_only_description)
+        } else {
+            stringResource(R.string.app_settings_protocol_advanced_premium_required)
+        },
+        enabled = canUseAdvanced,
+    ),
+)
 
 @Composable
 fun connectionModeMenuOption(

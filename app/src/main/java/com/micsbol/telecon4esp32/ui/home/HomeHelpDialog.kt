@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,6 +70,7 @@ private val helpTopics = listOf(
 fun HomeHelpDialog(
     onDismissRequest: () -> Unit,
     onPlayTutorial: () -> Unit,
+    onPlayRcVehicleTutorial: () -> Unit,
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -118,23 +120,40 @@ fun HomeHelpDialog(
             }
         },
         actions = {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                NeoPillButton(
-                    text = stringResource(R.string.home_help_play_tutorial),
-                    onClick = onPlayTutorial,
-                    compact = true,
-                    icon = Icons.Filled.PlayArrow,
-                    modifier = Modifier.weight(1f),
-                )
-                NeoPillButton(
-                    text = stringResource(R.string.codes_dialog_ok),
-                    onClick = onDismissRequest,
-                    compact = true,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NeoPillButton(
+                        text = stringResource(R.string.home_help_play_tutorial),
+                        onClick = onPlayTutorial,
+                        compact = true,
+                        icon = Icons.Filled.PlayArrow,
+                        modifier = Modifier.weight(1f),
+                    )
+                    NeoPillButton(
+                        text = stringResource(R.string.home_help_play_rc_tutorial),
+                        onClick = onPlayRcVehicleTutorial,
+                        compact = true,
+                        icon = Icons.Filled.SportsEsports,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    NeoPillButton(
+                        text = stringResource(R.string.codes_dialog_ok),
+                        onClick = onDismissRequest,
+                        compact = true,
+                    )
+                }
             }
         },
     )

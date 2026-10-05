@@ -30,7 +30,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
@@ -51,9 +50,7 @@ import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.resolveCameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.settingsUserType
-import com.micsbol.telecon4esp32.domain.model.showsCameraHardwareRolePicker
-import com.micsbol.telecon4esp32.domain.model.supportsCamVideoControl
-import com.micsbol.telecon4esp32.domain.model.toSelection
+import com.micsbol.telecon4esp32.domain.model.WifiLinkChoice
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.ui.applications.AdvancedSettingsInfoDialog
 import com.micsbol.telecon4esp32.ui.applications.AdvancedSettingsTitleLockAction
@@ -61,7 +58,6 @@ import com.micsbol.telecon4esp32.ui.applications.ApplicationProtocolSettingsSect
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSelectionGuideSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsViewModel
-import com.micsbol.telecon4esp32.ui.applications.CameraHardwareRoleSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.DevKitWifiSoftApSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.RcVehicleCameraWifiSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ResetDefaultConfigurationTitleAction
@@ -126,7 +122,7 @@ fun RcSettingsScreen(
         .collectAsStateWithLifecycle()
     val entitlement = LocalEntitlement.current
     val wallet = LocalWallet.current
-    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+    val requiresCoinEntry = entitlement.usesCoinEconomy()
     val centerExtrasUnlocked = entitlement.canUseControlPanelCenterExtras(
         wallet = wallet,
         requiresCoinEntry = requiresCoinEntry,
@@ -232,8 +228,13 @@ fun RcSettingsScreen(
                         onConnectionModeChanged = applicationSettingsViewModel?.let { vm ->
                             { mode -> vm.onConnectionModeChanged(mode) }
                         },
-                        onCameraHardwareRoleSelected = applicationSettingsViewModel?.let { vm ->
-                            { role -> vm.onCameraHardwareRoleSelected(role) }
+                        onWifiChoiceSelected = applicationSettingsViewModel?.let { vm ->
+                            { choice, type, advanced ->
+                                vm.onWifiLinkChoiceSelected(choice, type, advanced)
+                            }
+                        },
+                        onBluetoothFamilySelected = applicationSettingsViewModel?.let { vm ->
+                            { type, advanced -> vm.onBluetoothLinkSelected(type, advanced) }
                         },
                         userTypeOverride = userTypeOverride,
                         onSettingsUserTypeSelected = applicationSettingsViewModel?.let { vm ->
@@ -261,7 +262,8 @@ private fun SettingsContent(
     showAdvancedUi: Boolean = true,
     onRequestAdvancedUnlock: (() -> Unit)? = null,
     onConnectionModeChanged: ((BluetoothConnectionMode) -> Unit)? = null,
-    onCameraHardwareRoleSelected: ((CameraHardwareRole) -> Unit)? = null,
+    onWifiChoiceSelected: ((WifiLinkChoice, SettingsUserType, Boolean) -> Unit)? = null,
+    onBluetoothFamilySelected: ((SettingsUserType, Boolean) -> Unit)? = null,
     userTypeOverride: SettingsUserType? = null,
     onSettingsUserTypeSelected: ((SettingsUserType) -> Unit)? = null,
 ) {
@@ -285,19 +287,16 @@ private fun SettingsContent(
         centerExtrasUnlocked = centerExtrasUnlocked,
         centerCameraEnabled = centerCameraEnabled,
     )
-    val cameraSelection = cameraRole.toSelection()
-    val settingsBoard = cameraSelection.board
-    val settingsUseSoftApCamera = cameraSelection.useSoftApCamera
     val settingsConnectionMode = connectionMode?.let { mode ->
         if (
-            applicationId.isConnectionModeAvailable(settingsBoard, mode) &&
+            applicationId.isConnectionModeAvailable(selectedBoard, mode) &&
             mode.settingsUserType == userType
         ) {
             mode
         } else {
             applicationId.preferredConnectionMode(
-                board = settingsBoard,
-                family = if (cameraRole == CameraHardwareRole.TWO_DEVICES) {
+                board = selectedBoard,
+                family = if (storedRole == CameraHardwareRole.TWO_DEVICES) {
                     ConnectionLinkFamily.BLUETOOTH
                 } else {
                     mode.linkFamily
@@ -317,7 +316,6 @@ private fun SettingsContent(
             onConnectionModeChanged?.invoke(next)
         }
     }
-    val allowTwoDevices = centerCameraEnabled
     // Do not persist coerced CAM roles when opening settings. A load flicker
     // (Plots placeholder vs live Camera) used to write No CAM and tear down
     // the SoftAP stream under a displayed frame.
@@ -334,24 +332,6 @@ private fun SettingsContent(
             settingsConnectionMode != null &&
             onConnectionModeChanged != null
         ) {
-            if (
-                applicationId.showsCameraHardwareRolePicker(
-                    centerExtrasUnlocked = centerExtrasUnlocked,
-                    centerCameraEnabled = centerCameraEnabled,
-                ) &&
-                onCameraHardwareRoleSelected != null
-            ) {
-                item {
-                    CameraHardwareRoleSettingsSection(
-                        selected = storedRole,
-                        onRoleSelected = onCameraHardwareRoleSelected,
-                        allowTwoDevices = allowTwoDevices,
-                        allowOneCam = applicationId.supportsCamVideoControl(),
-                        allowCameraRoles = centerCameraEnabled,
-                        userType = userType,
-                    )
-                }
-            }
             if (showAdvancedUi) {
                 item {
                     SettingsUserTypeSection(
@@ -367,7 +347,7 @@ private fun SettingsContent(
                                 settingsConnectionMode.linkFamily
                             }
                             val preferred = applicationId.preferredConnectionMode(
-                                board = settingsBoard,
+                                board = selectedBoard,
                                 family = family,
                                 userType = type,
                                 canUseAdvanced = canUseAdvanced,
@@ -386,20 +366,26 @@ private fun SettingsContent(
                     onModeSelected = onConnectionModeChanged,
                     userType = userType,
                     canUseAdvanced = canUseAdvanced,
-                    selectedBoard = settingsBoard,
-                    allowWifiControl = cameraRole != CameraHardwareRole.TWO_DEVICES,
+                    selectedBoard = selectedBoard,
+                    allowWifiControl = true,
+                    onWifiChoiceSelected = onWifiChoiceSelected?.let { select ->
+                        { choice -> select(choice, userType, canUseAdvanced) }
+                    },
+                    onBluetoothFamilySelected = onBluetoothFamilySelected?.let { select ->
+                        { select(userType, canUseAdvanced) }
+                    },
                 )
             }
             when {
-                cameraRole == CameraHardwareRole.ONE_CAM -> item {
+                storedRole == CameraHardwareRole.ONE_CAM -> item {
                     RcVehicleCameraWifiSettingsSection(
                         connectionMode = settingsConnectionMode,
                     )
                 }
-                cameraRole == CameraHardwareRole.TWO_DEVICES -> item {
+                storedRole == CameraHardwareRole.TWO_DEVICES -> item {
                     SoftApCameraOverlayWifiSettingsSection()
                 }
-                cameraRole == CameraHardwareRole.NO_CAM &&
+                storedRole == CameraHardwareRole.NO_CAM &&
                     (
                         settingsConnectionMode == BluetoothConnectionMode.WIFI_SIMPLE ||
                             settingsConnectionMode == BluetoothConnectionMode.WIFI_BINARY
@@ -413,9 +399,9 @@ private fun SettingsContent(
             item {
                 ApplicationSettingsSelectionGuideSection(
                     applicationId = applicationId,
-                    selectedBoard = settingsBoard,
+                    selectedBoard = selectedBoard,
                     selectedMode = settingsConnectionMode,
-                    useSoftApCamera = settingsUseSoftApCamera,
+                    useSoftApCamera = storedRole == CameraHardwareRole.TWO_DEVICES,
                 )
             }
         }

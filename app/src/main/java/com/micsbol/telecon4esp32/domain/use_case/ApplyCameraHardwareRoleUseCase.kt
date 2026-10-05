@@ -1,6 +1,5 @@
 package com.micsbol.telecon4esp32.domain.use_case
 
-import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
 import com.micsbol.telecon4esp32.domain.bluetooth.linkFamily
@@ -34,7 +33,7 @@ class ApplyCameraHardwareRoleUseCase @Inject constructor(
         saveUseSoftApCamera(applicationId, selection.useSoftApCamera)
         val access = observeEntitlement().value
         val coinWallet = observeWallet().value
-        val coinEntry = access.usesCoinEconomy() || BuildConfig.DEBUG
+        val coinEntry = access.usesCoinEconomy()
         val storedMode = getApplicationConnectionMode(applicationId).first()
         val current = storedMode
             ?: access.effectiveConnectionMode(

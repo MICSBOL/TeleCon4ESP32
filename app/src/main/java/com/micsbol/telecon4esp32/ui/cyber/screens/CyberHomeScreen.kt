@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -82,7 +83,6 @@ import com.micsbol.telecon4esp32.domain.bluetooth.ActiveBluetoothSession
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.Entitlement
-import com.micsbol.telecon4esp32.domain.model.PremiumSource
 import com.micsbol.telecon4esp32.domain.model.hasEntryAccess
 import com.micsbol.telecon4esp32.domain.model.isApplicationCatalogVisible
 import com.micsbol.telecon4esp32.domain.model.isFree
@@ -139,6 +139,7 @@ fun CyberHomeScreen(
     onOpenApplications: () -> Unit = {},
     onDismissError: () -> Unit = {},
     onPlayFirstConnectionTutorial: () -> Unit = {},
+    onPlayRcVehicleTutorial: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -147,7 +148,7 @@ fun CyberHomeScreen(
     val wallet by walletViewModel.wallet.collectAsState()
     val explorerGiftAvailable by walletViewModel.explorerGiftAvailable.collectAsState()
     val rewardedAdManager = LocalRewardedAdManager.current
-    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+    val requiresCoinEntry = entitlement.usesCoinEconomy()
 
     var comingSoonAppName by remember { mutableStateOf<String?>(null) }
     var unlockTarget by remember { mutableStateOf<ApplicationCatalogItem?>(null) }
@@ -189,6 +190,22 @@ fun CyberHomeScreen(
             )
         },
         onPlayFirstConnectionTutorial = onPlayFirstConnectionTutorial,
+        onPlayRcVehicleTutorial = {
+            val item = defaultApplicationCatalog()
+                .first { it.id == ApplicationId.RC_VEHICLE_PRO }
+            val canEnter = item.id.hasEntryAccess(entitlement, wallet, requiresCoinEntry)
+            handleApplicationClick(
+                item = item,
+                entitlement = entitlement,
+                wallet = wallet,
+                requiresCoinEntry = requiresCoinEntry,
+                navController = navController,
+                onComingSoon = {},
+                onRequestUnlock = { unlockTarget = item },
+                onRequestUpgrade = { navController.navigate(Screen.Upgrade.route) },
+            )
+            if (canEnter) onPlayRcVehicleTutorial()
+        },
     )
 
     ApplicationEntryDialogs(
@@ -240,6 +257,7 @@ fun CyberHomeScreenContent(
     onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit = {},
     onItemClick: (ApplicationCatalogItem, String) -> Unit = { _, _ -> },
     onPlayFirstConnectionTutorial: () -> Unit = {},
+    onPlayRcVehicleTutorial: () -> Unit = {},
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
     EnsureVisibleSystemBars()
@@ -250,10 +268,7 @@ fun CyberHomeScreenContent(
     BackHandler { activity?.finish() }
 
     val isSessionConnected = activeSession != null
-    val showProButton = when (entitlement) {
-        is Entitlement.Free -> true
-        is Entitlement.Premium -> entitlement.source == PremiumSource.DEBUG_OVERRIDE
-    }
+    val showProButton = entitlement.usesCoinEconomy()
     val featuredAppId = resolveHomeFeaturedApplication(
         activeSessionApplicationId = activeSession?.applicationId,
         lastApplicationId = lastApplicationId,
@@ -263,6 +278,13 @@ fun CyberHomeScreenContent(
     )
     val defaultModules = remember { defaultApplicationCatalog() }
     val modules = catalog ?: defaultModules
+    var frontApplicationId by remember(modules, featuredAppId) {
+        mutableStateOf(
+            initialHomeModuleDeckOrder(modules.map { it.id }, featuredAppId)
+                .firstOrNull()
+                ?: featuredAppId,
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NeumorphicBackground()
@@ -306,6 +328,7 @@ fun CyberHomeScreenContent(
                     onUnlockClick = onUnlockClick,
                     onExplorerSparkleClick = onExplorerSparkleClick,
                     onItemClick = onItemClick,
+                    onFrontApplicationChange = { frontApplicationId = it },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
@@ -318,7 +341,13 @@ fun CyberHomeScreenContent(
                     showBrowseCatalog = showBrowseCatalog,
                     showProButton = showProButton,
                     onOpenApplications = onOpenApplications,
-                    onQuickUseClick = onPlayFirstConnectionTutorial,
+                    onQuickUseClick = {
+                        if (frontApplicationId == ApplicationId.RC_VEHICLE_PRO) {
+                            onPlayRcVehicleTutorial()
+                        } else {
+                            onPlayFirstConnectionTutorial()
+                        }
+                    },
                     onProClick = onProClick,
                     onOpenAbout = onHelpAbout,
                     fillButtonWidth = true,
@@ -332,6 +361,10 @@ fun CyberHomeScreenContent(
                 onPlayTutorial = {
                     showHelpDialog = false
                     onPlayFirstConnectionTutorial()
+                },
+                onPlayRcVehicleTutorial = {
+                    showHelpDialog = false
+                    onPlayRcVehicleTutorial()
                 },
             )
         }
@@ -382,6 +415,7 @@ private fun HomeModuleCardDeck(
     onUnlockClick: (ApplicationCatalogItem) -> Unit,
     onExplorerSparkleClick: (ApplicationCatalogItem) -> Unit,
     onItemClick: (ApplicationCatalogItem, String) -> Unit,
+    onFrontApplicationChange: (ApplicationId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val moduleIds = remember(modules) { modules.map { it.id } }
@@ -389,6 +423,10 @@ private fun HomeModuleCardDeck(
         mutableStateOf(initialHomeModuleDeckOrder(moduleIds, featuredAppId))
     }
     val byId = remember(modules) { modules.associateBy { it.id } }
+    val frontApplicationId = deckOrder.firstOrNull()
+    LaunchedEffect(frontApplicationId) {
+        if (frontApplicationId != null) onFrontApplicationChange(frontApplicationId)
+    }
     var dragPx by remember { mutableFloatStateOf(0f) }
     val localDensity = LocalDensity.current
     val swipeThresholdPx = with(localDensity) { 64.dp.toPx() }

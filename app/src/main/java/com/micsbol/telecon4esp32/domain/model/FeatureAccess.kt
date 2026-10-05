@@ -17,9 +17,8 @@ fun hasPremiumAccess(
 /**
  * Feature gate that matches Catalog / Home coin mode.
  *
- * When [requiresCoinEntry] is true (free tier or debug coin testing), only an active
- * wallet grant unlocks the feature — Premium DEBUG_OVERRIDE does not auto-enable it.
- * Otherwise a real Premium entitlement is enough.
+ * When [requiresCoinEntry] is true (free tier), only an active wallet grant unlocks
+ * the feature. A Play Premium entitlement unlocks it when [requiresCoinEntry] is false.
  */
 fun hasFeatureAccess(
     entitlement: Entitlement,

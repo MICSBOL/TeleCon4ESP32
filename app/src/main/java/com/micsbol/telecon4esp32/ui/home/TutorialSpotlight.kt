@@ -49,6 +49,12 @@ enum class TutorialAnchor {
     SETTINGS_MATCHING_CODE,
     BLUETOOTH_REFRESH,
     BLUETOOTH_LIST,
+    RC_TOP_BAR,
+    RC_THROTTLE,
+    RC_STEERING,
+    RC_CENTER,
+    RC_PLOT,
+    RC_CAMERA_PAN,
 }
 
 class TutorialAnchorRegistry {

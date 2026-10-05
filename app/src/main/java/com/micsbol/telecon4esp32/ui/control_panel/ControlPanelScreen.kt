@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import com.micsbol.telecon4esp32.domain.camera.cameraVideoSoftApConflictsWithControlLink
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
+import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.navigateToApplicationSettings
 import com.micsbol.telecon4esp32.ui.components.LiveControlBluetoothDisconnectedBannerOverlay
@@ -67,7 +69,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
@@ -238,8 +239,24 @@ fun ControlPanelScreen(
                     ?: run { localCenterMode.value = mode }
             }
             var unlockFeature by remember { mutableStateOf<PremiumFeature?>(null) }
-            // Match Home/Catalog: debug Premium does not auto-enable Pro center extras.
-            val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+            val requiresCoinEntry = entitlement.usesCoinEconomy()
+            val cameraBoard by (
+                cameraStreamViewModel?.board
+                    ?: MutableStateFlow(Esp32Board.DEV_KIT)
+                ).collectAsState()
+            val cameraConnectionMode by (
+                cameraStreamViewModel?.connectionMode
+                    ?: MutableStateFlow(controlPanelConnectionMode)
+                ).collectAsState()
+            val controlLinkReady by (
+                cameraStreamViewModel?.controlLinkReady
+                    ?: MutableStateFlow(true)
+            ).collectAsState()
+            val cameraBlockedByWifiControl = controlLinkReady &&
+                cameraVideoSoftApConflictsWithControlLink(
+                    cameraBoard,
+                    cameraConnectionMode,
+                )
             val cameraUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
                 entitlement.canUseControlPanelCenterExtras(
                     wallet = wallet,
@@ -274,8 +291,17 @@ fun ControlPanelScreen(
                         )
                     }
                 }
-            LaunchedEffect(centerMode, cameraUnlocked) {
-                if (centerMode == ControlPanelCenterMode.CAMERA && !cameraUnlocked) {
+            LaunchedEffect(centerMode, cameraUnlocked, cameraBlockedByWifiControl) {
+                if (centerMode == ControlPanelCenterMode.CAMERA && cameraBlockedByWifiControl) {
+                    cameraStreamViewModel?.onCenterModeSelected(
+                        mode = ControlPanelCenterMode.PLOTS,
+                        engageCameraHardware = false,
+                        toggleCamera = false,
+                    ) ?: onCenterModeSelected(ControlPanelCenterMode.PLOTS)
+                } else if (
+                    centerMode == ControlPanelCenterMode.CAMERA &&
+                    !cameraUnlocked
+                ) {
                     cameraStreamViewModel?.onCenterModeSelected(
                         mode = centerMode,
                         engageCameraHardware = false,
@@ -283,7 +309,9 @@ fun ControlPanelScreen(
                     )
                 }
                 val plotsShown = centerMode == ControlPanelCenterMode.PLOTS
-                val cameraShown = centerMode == ControlPanelCenterMode.CAMERA && cameraUnlocked
+                val cameraShown = centerMode == ControlPanelCenterMode.CAMERA &&
+                    cameraUnlocked &&
+                    !cameraBlockedByWifiControl
                 if (!plotsShown && sessionRecording.isRecording) {
                     actualViewModel?.toggleSessionRecording()
                 }
@@ -705,19 +733,33 @@ fun ControlPanelScreen(
                                         onBluetoothDisconnectedClick = onOpenBluetooth,
                                         centerMode = centerMode,
                                         isModeUnlocked = isCenterModeUnlocked,
+                                        isModeAvailable = { mode ->
+                                            mode != ControlPanelCenterMode.CAMERA ||
+                                                !cameraBlockedByWifiControl
+                                        },
                                         onCenterModeClick = { mode ->
-                                            if (isCenterModeUnlocked(mode)) {
+                                            val cameraUnavailable = mode == ControlPanelCenterMode.CAMERA &&
+                                                cameraBlockedByWifiControl
+                                            if (!cameraUnavailable && isCenterModeUnlocked(mode)) {
                                                 onCenterModeSelected(mode)
-                                            } else {
+                                            } else if (!cameraUnavailable) {
                                                 unlockFeature = mode.premiumFeature
                                             }
                                         },
                                         onCenterModeScroll = { mode ->
+                                            val target = if (
+                                                mode == ControlPanelCenterMode.CAMERA &&
+                                                cameraBlockedByWifiControl
+                                            ) {
+                                                ControlPanelCenterMode.PLOTS
+                                            } else {
+                                                mode
+                                            }
                                             cameraStreamViewModel?.onCenterModeSelected(
-                                                mode = mode,
-                                                engageCameraHardware = isCenterModeUnlocked(mode),
+                                                mode = target,
+                                                engageCameraHardware = isCenterModeUnlocked(target),
                                                 toggleCamera = false,
-                                            ) ?: run { onCenterModeSelected(mode) }
+                                            ) ?: run { onCenterModeSelected(target) }
                                         },
                                         isSessionRecording = sessionRecording.isRecording,
                                         isSessionRecordingUnlocked = sessionCsvUnlocked,

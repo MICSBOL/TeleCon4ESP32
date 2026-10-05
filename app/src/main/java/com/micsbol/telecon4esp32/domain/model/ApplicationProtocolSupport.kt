@@ -150,10 +150,10 @@ fun Entitlement.canUseConnectionMode(
 /**
  * Connection modes offered in app settings for the selected board.
  *
- * Role B — one ESP32-CAM ([Esp32Board.CAM]), [RC_VEHICLE_PRO] only:
+ * Role B — one ESP32-CAM ([Esp32Board.CAM]):
  * - [WIFI_CAM_STARTER] — SoftAP Simple (video + TCP `:3333`)
  * - [WIFI_BINARY] — Advanced SoftAP Binary (video + TCP)
- * Control Panel has no Role B (DevKit ± Role A video overlay only).
+ * Wi‑Fi control-only ([WIFI_BINARY] on a DevKit) does not enable the camera.
  *
  * Role A — DevKit Bluetooth + optional SoftAP camera overlay:
  * Default: Classic Simple (ESP32-TC-RC-BT-Simple) with video-only CAM.
@@ -166,8 +166,8 @@ fun Entitlement.canUseConnectionMode(
  * DevKit / non-camera apps: Classic Simple/Binary, BLE Binary, and Advanced
  * Wi‑Fi SoftAP Binary (no camera). DevKit Wi‑Fi Simple is withdrawn.
  */
-/** One-CAM video + SoftAP TCP (Role B). RC Vehicle only. */
-fun ApplicationId.supportsCamVideoControl(): Boolean = this == ApplicationId.RC_VEHICLE_PRO
+/** One-CAM video + SoftAP TCP. Both modules can use one ESP32-CAM for control and camera. */
+fun ApplicationId.supportsCamVideoControl(): Boolean = true
 
 fun ApplicationId.availableConnectionModes(board: Esp32Board): List<BluetoothConnectionMode> {
     if (usesCamera() && board.isKitBDual) {

@@ -31,10 +31,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
@@ -47,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,10 +122,14 @@ fun RcControlZone(
     onResizeModeChange: (Boolean) -> Unit = {},
     onStickGroupScaleChange: (Float) -> Unit = {},
     maxScale: Float = RcVehicleProLayout.STICK_GROUP_SCALE_MAX,
-    collapsedIcon: ImageVector? = null,
+    onOptionsMenuOpened: () -> Unit = {},
 ) {
     val showTrim = onTrimModeToggle != null
     var menuExpanded by remember { mutableStateOf(false) }
+    val onOptionsMenuOpenedState = rememberUpdatedState(onOptionsMenuOpened)
+    LaunchedEffect(menuExpanded) {
+        if (menuExpanded) onOptionsMenuOpenedState.value()
+    }
     val trimHint = trimHintForMode(mode, trimX, trimY)
     val trimIsLeftStick = accentEdge == RcGlassAccentEdge.START
 
@@ -296,13 +302,13 @@ fun RcControlZone(
     if (collapsibleToNearestEdge) {
         RcHudCollapsibleToEdge(
             towardEnd = accentEdge == RcGlassAccentEdge.END,
+            icon = if (trimIsLeftStick) Icons.Filled.SwapVert else Icons.Filled.SwapHoriz,
             showContentDescription = stringResource(R.string.rc_vehicle_hud_show_stick),
             hideContentDescription = stringResource(R.string.rc_vehicle_hud_hide_stick),
             expanded = chromeExpanded,
             onExpandedChange = onChromeExpandedChange,
             modifier = modifier,
             fillHeight = fillHeight,
-            collapsedIcon = collapsedIcon,
             content = {
                 zoneCard(
                     Modifier
@@ -540,6 +546,7 @@ fun RcCenterControls(
             exit = chromeExit,
         ) {
             RcHudSwipeRevealStrip(
+                icon = Icons.Filled.CameraAlt,
                 contentDescription = stringResource(R.string.rc_vehicle_hud_show_center_controls),
                 onExpand = { onExpandedChange(true) },
                 hideTowardBottom = true,
@@ -649,13 +656,13 @@ fun RcCameraPanPanel(
     val scale = RcVehicleProLayout.coerceStickGroupScale(panelScale, maxScale)
     RcHudCollapsibleToEdge(
         towardEnd = true,
+        icon = Icons.Filled.CenterFocusStrong,
         showContentDescription = stringResource(R.string.rc_vehicle_hud_show_camera_pan),
         hideContentDescription = stringResource(R.string.rc_vehicle_hud_hide_camera_pan),
         expanded = expanded,
         onExpandedChange = onExpandedChange,
         modifier = modifier,
         fillWidth = false,
-        collapsedIcon = Icons.Filled.Videocam,
     ) {
         RcGlassCard(
             modifier = Modifier.stickGroupResizeGesture(

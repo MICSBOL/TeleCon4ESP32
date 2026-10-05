@@ -114,7 +114,7 @@ private fun CameraCodeLink(
     val copyFailed = stringResource(R.string.codes_zip_share_prepare_failed_message)
     val sketchName = stringResource(sketchRes).breakAfterUnderscores()
     val blinkAlpha = rememberLinkBlinkAlpha(blinkDelayMs)
-    val openCode = {
+    val openCode: () -> Unit = {
         val published = asset.isPublished &&
             (asset.assetFileName != null || !asset.remoteZipUrl.isNullOrBlank())
         if (!published) {
@@ -137,6 +137,7 @@ private fun CameraCodeLink(
                 }
             }
         }
+        Unit
     }
     Column(
         modifier = Modifier

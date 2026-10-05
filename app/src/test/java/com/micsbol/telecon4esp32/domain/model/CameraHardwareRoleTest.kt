@@ -107,9 +107,9 @@ class CameraHardwareRoleTest {
     }
 
     @Test
-    fun `control panel one cam coerces to two device overlay`() {
+    fun `one cam stays one cam for control panel and rc vehicle`() {
         assertEquals(
-            CameraHardwareRole.TWO_DEVICES,
+            CameraHardwareRole.ONE_CAM,
             CameraHardwareRole.ONE_CAM.coerceForApplication(ApplicationId.CONTROL_PANEL),
         )
         assertEquals(

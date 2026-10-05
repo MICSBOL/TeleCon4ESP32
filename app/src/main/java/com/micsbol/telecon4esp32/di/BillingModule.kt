@@ -1,6 +1,6 @@
 package com.micsbol.telecon4esp32.di
 
-import com.micsbol.telecon4esp32.data.repository.InMemoryEntitlementRepository
+import com.micsbol.telecon4esp32.data.billing.PlayBillingEntitlementRepository
 import com.micsbol.telecon4esp32.domain.repository.IEntitlementRepository
 import dagger.Binds
 import dagger.Module
@@ -15,6 +15,6 @@ abstract class BillingModule {
     @Binds
     @Singleton
     abstract fun bindEntitlementRepository(
-        impl: InMemoryEntitlementRepository,
+        impl: PlayBillingEntitlementRepository,
     ): IEntitlementRepository
 }

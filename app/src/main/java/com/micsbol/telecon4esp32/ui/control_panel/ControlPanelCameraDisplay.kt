@@ -150,6 +150,7 @@ private fun ControlPanelCameraConnectContent(
                     onPrimaryAction = onRetry,
                     secondaryActionLabel = stringResource(R.string.control_panel_camera_open_wifi),
                     onSecondaryAction = onOpenWifiSettings,
+                    belowActions = { CameraFirmwareCodeLinks() },
                 )
             }
         }
@@ -164,6 +165,7 @@ private fun ControlPanelCameraConnectContent(
             onPrimaryAction = onJoinCameraWifi,
             secondaryActionLabel = stringResource(R.string.control_panel_camera_open_wifi),
             onSecondaryAction = onOpenWifiSettings,
+            belowActions = { CameraFirmwareCodeLinks() },
         )
         is ControlPanelCameraConnectUi.ControlWifiConflict -> ControlPanelCameraPreviewShell(
             modifier = modifier,

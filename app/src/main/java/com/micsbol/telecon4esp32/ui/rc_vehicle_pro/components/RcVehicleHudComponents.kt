@@ -163,6 +163,7 @@ fun RcVehicleHudTopBar(
                     hideRowStartContent()
                 }
                 RcHudSwipeRevealStrip(
+                    icon = Icons.Filled.Speed,
                     contentDescription = stringResource(R.string.rc_vehicle_hud_show_top_bar),
                     onExpand = { onExpandedChange(true) },
                     modifier = Modifier.align(Alignment.TopCenter),

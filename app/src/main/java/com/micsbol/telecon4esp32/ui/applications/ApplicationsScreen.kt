@@ -2,7 +2,6 @@ package com.micsbol.telecon4esp32.ui.applications
 
 import android.app.Activity
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import com.micsbol.telecon4esp32.BuildConfig
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -54,7 +53,7 @@ fun ApplicationsScreen(navController: NavController) {
     var explorerGiftTarget by remember { mutableStateOf<ApplicationCatalogItem?>(null) }
     var unlockMessage by remember { mutableStateOf<String?>(null) }
     var showPricingTable by remember { mutableStateOf(false) }
-    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+    val requiresCoinEntry = entitlement.usesCoinEconomy()
 
     ApplicationsScreenContent(
         catalog = catalog,

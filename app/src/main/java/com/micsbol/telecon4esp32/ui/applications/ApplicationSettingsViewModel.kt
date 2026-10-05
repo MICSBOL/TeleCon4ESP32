@@ -3,10 +3,10 @@ package com.micsbol.telecon4esp32.ui.applications
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
+import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
@@ -22,7 +22,9 @@ import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
 import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
 import com.micsbol.telecon4esp32.domain.model.originalDefaultConnectionMode
+import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
+import com.micsbol.telecon4esp32.domain.model.WifiLinkChoice
 import com.micsbol.telecon4esp32.domain.use_case.ApplyCameraHardwareRoleUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetAdvancedSettingsRevealedUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
@@ -111,7 +113,7 @@ class ApplicationSettingsViewModel @Inject constructor(
         )
 
     private fun requiresCoinEntry(access: Entitlement): Boolean =
-        access.usesCoinEconomy() || BuildConfig.DEBUG
+        access.usesCoinEconomy()
 
     val protocolMode: StateFlow<BluetoothProtocolMode> = combine(
         storedProtocolMode,
@@ -262,6 +264,46 @@ class ApplicationSettingsViewModel @Inject constructor(
             BluetoothProtocolMode.defaultFor(applicationId),
         ),
     )
+
+    fun onWifiLinkChoiceSelected(
+        choice: WifiLinkChoice,
+        userType: SettingsUserType,
+        canUseAdvanced: Boolean,
+    ) {
+        viewModelScope.launch {
+            when (choice) {
+                WifiLinkChoice.ONE_CAM -> {
+                    applyCameraHardwareRole(applicationId, CameraHardwareRole.ONE_CAM)
+                    val mode = if (userType == SettingsUserType.ADVANCED && canUseAdvanced) {
+                        BluetoothConnectionMode.WIFI_BINARY
+                    } else {
+                        BluetoothConnectionMode.WIFI_CAM_STARTER
+                    }
+                    saveApplicationConnectionMode(applicationId, mode)
+                }
+                WifiLinkChoice.CONTROL_ONLY -> {
+                    if (!canUseAdvanced) return@launch
+                    applyCameraHardwareRole(applicationId, CameraHardwareRole.NO_CAM)
+                    saveApplicationConnectionMode(applicationId, BluetoothConnectionMode.WIFI_BINARY)
+                }
+            }
+        }
+    }
+
+    fun onBluetoothLinkSelected(userType: SettingsUserType, canUseAdvanced: Boolean) {
+        viewModelScope.launch {
+            if (board.value == Esp32Board.CAM || board.value == Esp32Board.CAM_AND_DEV_KIT) {
+                applyCameraHardwareRole(applicationId, CameraHardwareRole.NO_CAM)
+            }
+            val preferred = applicationId.preferredConnectionMode(
+                board = Esp32Board.DEV_KIT,
+                family = ConnectionLinkFamily.BLUETOOTH,
+                userType = userType,
+                canUseAdvanced = canUseAdvanced,
+            ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE
+            saveApplicationConnectionMode(applicationId, preferred)
+        }
+    }
 
     fun onConnectionModeChanged(mode: BluetoothConnectionMode) {
         val access = entitlement.value

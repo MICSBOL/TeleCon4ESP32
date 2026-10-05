@@ -246,6 +246,7 @@ fun ControlPanelCenterModeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = ControlPanelOverlayIconSize,
+    available: Boolean = true,
 ) {
     val shape = RoundedCornerShape(size * 0.26f)
     val cornerPx = size * 0.26f
@@ -291,15 +292,21 @@ fun ControlPanelCenterModeButton(
     Box(
         modifier = modifier
             .size(size)
-            .alpha(if (unlocked) 1f else 0.55f)
+            .alpha(
+                when {
+                    !available -> 0.35f
+                    unlocked -> 1f
+                    else -> 0.55f
+                },
+            )
             .then(
                 when {
-                    unlocked && selected -> Modifier.border(
+                    unlocked && selected && available -> Modifier.border(
                         width = 1.dp,
                         color = Neo.Positive.copy(alpha = selectedBorderAlpha),
                         shape = shape,
                     )
-                    !unlocked -> Modifier.border(
+                    !unlocked && available -> Modifier.border(
                         width = 1.5.dp,
                         color = ProGold.copy(alpha = 0.7f),
                         shape = shape,
@@ -314,7 +321,7 @@ fun ControlPanelCenterModeButton(
                     size = Size(size.toPx(), size.toPx()),
                     cornerRadius = CornerRadius(cornerPx.toPx()),
                 )
-                if (!unlocked) {
+                if (!unlocked && available) {
                     drawRoundRect(
                         color = ProGoldDeep.copy(alpha = 0.18f),
                         topLeft = Offset.Zero,
@@ -336,10 +343,10 @@ fun ControlPanelCenterModeButton(
                 else -> mode.icon
             },
             contentDescription = null,
-            tint = if (unlocked) brandPrimary() else ProGold,
+            tint = if (unlocked || !available) brandPrimary() else ProGold,
             modifier = Modifier.size(size * 0.5f),
         )
-        if (!unlocked) {
+        if (!unlocked && available) {
             Icon(
                 imageVector = Icons.Filled.Lock,
                 contentDescription = null,
@@ -364,6 +371,7 @@ fun ControlPanelOverlayControls(
     isModeUnlocked: (ControlPanelCenterMode) -> Boolean,
     onCenterModeClick: (ControlPanelCenterMode) -> Unit,
     onCenterModeScroll: (ControlPanelCenterMode) -> Unit = {},
+    isModeAvailable: (ControlPanelCenterMode) -> Boolean = { true },
     modifier: Modifier = Modifier,
     usesWifiLink: Boolean = false,
     isSessionRecording: Boolean = false,
@@ -493,6 +501,7 @@ fun ControlPanelOverlayControls(
         ControlPanelOverlayToolDeck(
             centerMode = centerMode,
             isModeUnlocked = isModeUnlocked,
+            isModeAvailable = isModeAvailable,
             onCenterModeClick = onCenterModeClick,
             onCenterModeScroll = onCenterModeScroll,
             modifier = Modifier
@@ -507,6 +516,7 @@ fun ControlPanelOverlayControls(
 private fun ControlPanelOverlayToolDeck(
     centerMode: ControlPanelCenterMode,
     isModeUnlocked: (ControlPanelCenterMode) -> Boolean,
+    isModeAvailable: (ControlPanelCenterMode) -> Boolean,
     onCenterModeClick: (ControlPanelCenterMode) -> Unit,
     onCenterModeScroll: (ControlPanelCenterMode) -> Unit,
     modifier: Modifier = Modifier,
@@ -647,8 +657,9 @@ private fun ControlPanelOverlayToolDeck(
                                 mode = mode,
                                 selected = centerMode == mode,
                                 unlocked = isModeUnlocked(mode),
+                                available = isModeAvailable(mode),
                                 onClick = {
-                                    if (isFront) onCenterModeClick(mode)
+                                    if (isFront && isModeAvailable(mode)) onCenterModeClick(mode)
                                 },
                             )
                         }

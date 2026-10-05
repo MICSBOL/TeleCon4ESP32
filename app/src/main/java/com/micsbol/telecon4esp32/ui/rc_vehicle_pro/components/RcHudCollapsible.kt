@@ -10,10 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,10 +27,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -40,6 +49,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.ui.components.brandPrimary
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 internal enum class RcHudChevronDirection {
     Up,
@@ -133,9 +145,123 @@ private fun RcHudChevronDirection.handlePadding(): Modifier {
     }
 }
 
-/** Invisible swipe/tap target so collapsed top/center chrome can reopen without chevrons. */
+/**
+ * Representative icon for a hidden HUD feature. It fades in and out on its own
+ * draw node so the rest of the HUD does not recompose.
+ */
+@Composable
+internal fun RcHudRevealIcon(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    appearDelayMs: Long = 0L,
+) {
+    val painter = rememberVectorPainter(icon)
+    val themeColor = brandPrimary()
+    Spacer(
+        modifier = modifier
+            .size(RcHudRevealIconSize)
+            .revealIcon(painter, themeColor, appearDelayMs),
+    )
+}
+
+private fun Modifier.revealIcon(painter: Painter, color: Color, appearDelayMs: Long): Modifier =
+    this.then(RevealIconElement(painter, color, appearDelayMs))
+
+private data class RevealIconElement(
+    val painter: Painter,
+    val color: Color,
+    val appearDelayMs: Long,
+) : ModifierNodeElement<RevealIconNode>() {
+    override fun create(): RevealIconNode = RevealIconNode(painter, color, appearDelayMs)
+
+    override fun update(node: RevealIconNode) {
+        node.painter = painter
+        node.color = color
+        node.appearDelayMs = appearDelayMs
+        node.invalidateDraw()
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "rcHudRevealIcon"
+    }
+}
+
+private class RevealIconNode(
+    var painter: Painter,
+    var color: Color,
+    var appearDelayMs: Long,
+) : Modifier.Node(), DrawModifierNode {
+    private var reveal = 0f
+
+    override fun onAttach() {
+        coroutineScope.launch {
+            while (isActive) {
+                val elapsedMs = withFrameNanos { it } / 1_000_000L
+                val phase = elapsedMs % GRID_APPEAR_PERIOD_MS
+                val nextReveal = gridReveal(phase, appearDelayMs)
+                if (nextReveal > 0f) {
+                    reveal = nextReveal
+                    invalidateDraw()
+                } else {
+                    if (reveal != 0f) {
+                        reveal = 0f
+                        invalidateDraw()
+                    }
+                    delay(millisUntilGridVisible(phase, appearDelayMs))
+                }
+            }
+        }
+    }
+
+    override fun ContentDrawScope.draw() {
+        if (reveal <= 0f) return
+        with(painter) {
+            draw(
+                size = size,
+                alpha = reveal,
+                colorFilter = ColorFilter.tint(color),
+            )
+        }
+    }
+}
+
+/**
+ * Linear fade-in, short hold, then a linear fade-out.
+ * The whole window shifts by [appearDelayMs], so the center leaves before the edges.
+ */
+private fun gridReveal(phaseMs: Long, appearDelayMs: Long): Float {
+    val windowEnd = appearDelayMs + GRID_VISIBLE_MS
+    if (phaseMs >= windowEnd || phaseMs < appearDelayMs) return 0f
+    val fadeOutStart = windowEnd - GRID_FADE_MS
+    val fadeIn = ((phaseMs - appearDelayMs) / GRID_FADE_MS.toFloat()).coerceIn(0f, 1f)
+    val fadeOut = if (phaseMs < fadeOutStart) {
+        1f
+    } else {
+        1f - ((phaseMs - fadeOutStart) / GRID_FADE_MS.toFloat()).coerceIn(0f, 1f)
+    }
+    return minOf(fadeIn, fadeOut)
+}
+
+private fun millisUntilGridVisible(phaseMs: Long, appearDelayMs: Long): Long {
+    val wait = if (phaseMs < appearDelayMs) {
+        appearDelayMs - phaseMs
+    } else {
+        GRID_APPEAR_PERIOD_MS - phaseMs + appearDelayMs
+    }
+    return wait.coerceAtLeast(1L)
+}
+
+private const val GRID_APPEAR_PERIOD_MS = 8_000L
+private const val GRID_VISIBLE_MS = 2_000L
+private const val GRID_FADE_MS = 250L
+private const val GRID_EDGE_APPEAR_DELAY_MS = 250L
+
+private val RcHudRevealIconSize = 24.dp
+
+/** Collapsed top/center target. The icon stands for the hidden feature. */
 @Composable
 internal fun RcHudSwipeRevealStrip(
+    icon: ImageVector,
     contentDescription: String,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
@@ -143,10 +269,6 @@ internal fun RcHudSwipeRevealStrip(
 ) {
     Box(
         modifier = modifier
-            .size(
-                width = RcVehicleProLayout.HudSwipeRevealWidth,
-                height = RcVehicleProLayout.HudSwipeRevealHeight,
-            )
             .hudVerticalSwipe(
                 expanded = false,
                 onExpandedChange = { shown -> if (shown) onExpand() },
@@ -157,7 +279,10 @@ internal fun RcHudSwipeRevealStrip(
                 this.role = Role.Button
                 this.contentDescription = contentDescription
             },
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        RcHudRevealIcon(icon = icon)
+    }
 }
 
 /** Icon-only chevron; no glass container so the camera stays clear. */
@@ -185,65 +310,14 @@ internal fun RcHudBareChevronHandle(
     )
 }
 
-/** Collapsed peek: panel identity plus a small expand chevron. */
-@Composable
-internal fun RcHudCollapsedIdentityHandle(
-    icon: ImageVector,
-    expandDirection: RcHudChevronDirection,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(role = Role.Button, onClick = onClick)
-                } else {
-                    Modifier
-                },
-            )
-            .then(expandDirection.handlePadding()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        if (expandDirection == RcHudChevronDirection.Up) {
-            Icon(
-                imageVector = expandDirection.chevronIcon(),
-                contentDescription = null,
-                tint = brandPrimary(),
-                modifier = Modifier.size(14.dp),
-            )
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = brandPrimary(),
-                modifier = Modifier.size(18.dp),
-            )
-        } else {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = brandPrimary(),
-                modifier = Modifier.size(18.dp),
-            )
-            Icon(
-                imageVector = expandDirection.chevronIcon(),
-                contentDescription = null,
-                tint = brandPrimary(),
-                modifier = Modifier.size(14.dp),
-            )
-        }
-    }
-}
-
 /**
- * Slides [content] off the start or end edge. When hidden, a related identity
- * icon (or a bare chevron) remains — no glass container.
+ * Slides [content] off the start or end edge. When hidden, [icon] remains so
+ * the feature can be shown again.
  */
 @Composable
 internal fun RcHudCollapsibleToEdge(
     towardEnd: Boolean,
+    icon: ImageVector,
     showContentDescription: String,
     hideContentDescription: String,
     expanded: Boolean,
@@ -252,13 +326,11 @@ internal fun RcHudCollapsibleToEdge(
     fillWidth: Boolean = true,
     fillHeight: Boolean = false,
     swipeEntireContent: Boolean = false,
-    collapsedIcon: ImageVector? = null,
     content: @Composable () -> Unit,
 ) {
     val edgeAlignment = if (towardEnd) Alignment.CenterEnd else Alignment.CenterStart
     val expandFrom = if (towardEnd) Alignment.End else Alignment.Start
     val hideDirection = if (towardEnd) RcHudChevronDirection.End else RcHudChevronDirection.Start
-    val showDirection = if (towardEnd) RcHudChevronDirection.Start else RcHudChevronDirection.End
     val chromeEnter = expandHorizontally(
         expandFrom = expandFrom,
         animationSpec = tween(RcVehicleProLayout.HUD_CHROME_ANIM_MS),
@@ -327,27 +399,21 @@ internal fun RcHudCollapsibleToEdge(
             enter = chromeEnter,
             exit = chromeExit,
         ) {
-            val collapsedModifier = Modifier.hudHorizontalSwipe(
-                expanded = false,
-                onExpandedChange = onExpandedChange,
-                hideTowardEnd = towardEnd,
+            RcHudRevealIcon(
+                icon = icon,
+                appearDelayMs = GRID_EDGE_APPEAR_DELAY_MS,
+                modifier = Modifier
+                    .hudHorizontalSwipe(
+                        expanded = false,
+                        onExpandedChange = onExpandedChange,
+                        hideTowardEnd = towardEnd,
+                    )
+                    .clickable(role = Role.Button, onClick = { onExpandedChange(true) })
+                    .semantics {
+                        this.role = Role.Button
+                        this.contentDescription = showContentDescription
+                    },
             )
-            if (collapsedIcon != null) {
-                RcHudCollapsedIdentityHandle(
-                    icon = collapsedIcon,
-                    expandDirection = showDirection,
-                    contentDescription = showContentDescription,
-                    onClick = { onExpandedChange(true) },
-                    modifier = collapsedModifier,
-                )
-            } else {
-                RcHudBareChevronHandle(
-                    direction = showDirection,
-                    contentDescription = showContentDescription,
-                    onClick = { onExpandedChange(true) },
-                    modifier = collapsedModifier,
-                )
-            }
         }
     }
 }

@@ -282,10 +282,13 @@ class ApplicationProtocolSupportTest {
             ),
         )
         assertEquals(
-            ApplicationId.CONTROL_PANEL.availableConnectionModes(Esp32Board.DEV_KIT),
+            listOf(
+                BluetoothConnectionMode.WIFI_CAM_STARTER,
+                BluetoothConnectionMode.WIFI_BINARY,
+            ),
             ApplicationId.CONTROL_PANEL.availableConnectionModes(Esp32Board.CAM),
         )
-        assertTrue(
+        assertFalse(
             ApplicationId.CONTROL_PANEL.isConnectionModeAvailable(
                 Esp32Board.CAM,
                 BluetoothConnectionMode.CLASSIC_SIMPLE,

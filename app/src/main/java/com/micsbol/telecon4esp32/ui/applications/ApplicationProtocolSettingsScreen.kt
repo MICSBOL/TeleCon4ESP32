@@ -41,7 +41,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.flow.first
-import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
@@ -86,7 +85,7 @@ fun ApplicationProtocolSettingsScreen(
     val advancedSettingsRevealed by viewModel.advancedSettingsRevealed.collectAsStateWithLifecycle()
     val entitlement = LocalEntitlement.current
     val wallet = LocalWallet.current
-    val requiresCoinEntry = entitlement.usesCoinEconomy() || BuildConfig.DEBUG
+    val requiresCoinEntry = entitlement.usesCoinEconomy()
     val canUseAdvanced = entitlement.canUseAdvancedProtocol(
         applicationId = applicationId,
         wallet = wallet,

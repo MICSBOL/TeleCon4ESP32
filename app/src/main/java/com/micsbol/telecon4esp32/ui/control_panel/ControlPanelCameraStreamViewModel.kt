@@ -112,14 +112,14 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             initialValue = ControlPanelCenterMode.PLOTS,
         )
 
-    private val board: StateFlow<Esp32Board> = getApplicationBoard(applicationId)
+    val board: StateFlow<Esp32Board> = getApplicationBoard(applicationId)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = Esp32Board.defaultFor(applicationId),
         )
 
-    private val connectionMode: StateFlow<BluetoothConnectionMode> =
+    val connectionMode: StateFlow<BluetoothConnectionMode> =
         getApplicationConnectionMode(applicationId)
             .map { stored -> stored ?: BluetoothConnectionMode.CLASSIC_SIMPLE }
             .stateIn(
@@ -127,6 +127,21 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = BluetoothConnectionMode.CLASSIC_SIMPLE,
             )
+
+    /**
+     * False until board and connection mode have been read. Those StateFlows
+     * start as DevKit + Classic, which looks like Wi‑Fi control-only and must
+     * not be written back over a saved one-CAM link.
+     */
+    val controlLinkReady: StateFlow<Boolean> = combine(
+        getApplicationBoard(applicationId),
+        getApplicationConnectionMode(applicationId),
+    ) { _, _ -> true }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 
     private val useSoftApCamera: StateFlow<Boolean> =
         getUseSoftApCamera(applicationId)
@@ -302,8 +317,12 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             if (next != current) {
                 saveControlPanelCenterMode(next)
             }
+            if (!controlLinkReady.value) return@launch
             val enableCamera = engageCameraHardware && next == ControlPanelCenterMode.CAMERA
             val storedRole = resolveCameraHardwareRole(board.value, useSoftApCamera.value)
+            // One ESP32-CAM is the Wi‑Fi connection itself. Opening, locking, or
+            // leaving the camera pane must not rewrite it as DevKit control-only.
+            if (storedRole == CameraHardwareRole.ONE_CAM) return@launch
             val nextRole = if (enableCamera) {
                 if (storedRole == CameraHardwareRole.NO_CAM) {
                     CameraHardwareRole.TWO_DEVICES

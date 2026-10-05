@@ -13,7 +13,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.micsbol.emitterapp"
+        applicationId = "com.micsbol.telecon4esp32"
         minSdk = 27
         targetSdk = 36
         versionCode = 1
@@ -23,6 +23,9 @@ android {
 
         // Keep only app-supported languages (default English + Spanish).
         resourceConfigurations += listOf("en", "es")
+
+        // Release stays locked. Debug and closedTest override this.
+        buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "false")
     }
 
     // Ensure Spanish resources are always in the install (no Play language splits).
@@ -33,12 +36,21 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "true")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // Play closed-testing bundle only. Same application id as release.
+        create("closedTest") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "true")
         }
     }
     compileOptions {
@@ -91,6 +103,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.10.1")
 
     implementation("com.google.android.gms:play-services-ads:23.1.0")
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
 
     val media3 = "1.4.1"
     implementation("androidx.media3:media3-exoplayer:$media3")
