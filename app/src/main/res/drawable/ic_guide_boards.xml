@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two boards: DevKit for Bluetooth control, ESP32-CAM for video -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="200dp"
+    android:viewportWidth="160"
+    android:viewportHeight="200">
+    <path
+        android:fillColor="#90CAF9"
+        android:fillAlpha="0.35"
+        android:pathData="M28,58h104c6,0 10,4 10,10v96c0,6 -4,10 -10,10H28c-6,0 -10,-4 -10,-10V68c0,-6 4,-10 10,-10z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,36h70c5,0 8,3 8,8v78c0,5 -3,8 -8,8H22c-5,0 -8,-3 -8,-8V44c0,-5 3,-8 8,-8z" />
+    <path
+        android:fillColor="#263238"
+        android:pathData="M30,48h54c2,0 4,2 4,4v6H26v-6c0,-2 2,-4 4,-4z" />
+    <path
+        android:fillColor="#43A047"
+        android:pathData="M32,70h8v8H32zM44,70h28v4H44zM44,78h20v3H44z" />
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M32,96h48v3H32zM32,104h40v3H32zM32,112h44v3H32z" />
+    <path
+        android:fillColor="#FF8A4C"
+        android:pathData="M78,78h52c4,0 7,3 7,7v62c0,4 -3,7 -7,7H78c-4,0 -7,-3 -7,-7V85c0,-4 3,-7 7,-7z" />
+    <path
+        android:fillColor="#263238"
+        android:pathData="M92,92a12,12 0 1,0 0.1,0z" />
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M92,92a6,6 0 1,0 0.1,0z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M86,116h28v4H86zM86,124h22v3H86z" />
+</vector>

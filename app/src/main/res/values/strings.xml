@@ -672,6 +672,17 @@
     <string name="codes_document_general_hint">Full setup and module reference</string>
     <string name="codes_document_protocol">Control protocol</string>
     <string name="codes_document_protocol_hint">Wire format for your own ESP32 firmware</string>
+    <string name="codes_document_firmware_sketches">Firmware sketches</string>
+    <string name="codes_document_firmware_sketches_hint">Which file to flash for Bluetooth and the camera</string>
+    <string name="firmware_sketches_title">Firmware sketches</string>
+    <string name="firmware_sketches_subtitle">Every sketch ZIP the app can download</string>
+    <string name="firmware_sketches_bluetooth_title">ESP32 over Bluetooth</string>
+    <string name="firmware_sketches_bluetooth_body">Classic Simple, Classic Binary, and BLE Binary run on a DevKit with no camera. The guide names each .ino, the Bluetooth name, and the phone setting that matches it.</string>
+    <string name="firmware_sketches_cam_pair_title">Camera only, plus a Bluetooth board</string>
+    <string name="firmware_sketches_cam_pair_body">Flash TeleCon_CAM_SoftAP_Video on the ESP32-CAM. It only serves the picture. Sticks stay on a second ESP32 running one of the Bluetooth sketches.</string>
+    <string name="firmware_sketches_cam_one_title">Control and camera on one ESP32-CAM</string>
+    <string name="firmware_sketches_cam_one_body">TeleCon_CAM_WiFi_Simple and TeleCon_CAM_WiFi_Binary put video and stick control on the same board. There is no separate Bluetooth DevKit.</string>
+    <string name="firmware_sketches_open_pdf">Open the sketch guide</string>
     <string name="codes_documents_desk_title">Documentation</string>
     <string name="codes_documents_swipe_hint">Swipe left or right to switch guides · tap the front card to open</string>
     <string name="codes_documents_swipe_content_description">Swipe left or right to switch documentation cards</string>

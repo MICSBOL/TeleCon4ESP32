@@ -67,6 +67,7 @@ import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.cyber.screens.homeModuleFanPose
 import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckNext
 import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckPrevious
@@ -195,6 +196,10 @@ fun CodesScreen(
                 DocumentationCardDeck(
                     assets = documentationAssets,
                     onAssetClick = { asset ->
+                        if (asset.id == FIRMWARE_SKETCHES_DOC_ID) {
+                            navController.navigate(Screen.FirmwareSketches.route)
+                            return@DocumentationCardDeck
+                        }
                         val result = when {
                             asset.remoteUrlRes != null ->
                                 openPdfUrlExternally(

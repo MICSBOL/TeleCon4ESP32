@@ -80,7 +80,9 @@ data class CodeAssetInfo(
         get() = assetFileName != null || remoteUrlRes != null || !remoteZipUrl.isNullOrBlank()
 }
 
-/** Fast guide, user guide, and control protocol for the module docs button. */
+const val FIRMWARE_SKETCHES_DOC_ID = "FIRMWARE_SKETCHES"
+
+/** Fast guide, user guide, control protocol, and firmware-sketch guide. */
 fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
     val isSpanish = language == "es"
     return listOf(
@@ -115,6 +117,19 @@ fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
             type = CodeAssetType.Pdf,
             illustrationRes = R.drawable.ic_guide_protocol,
             subtitleRes = R.string.codes_document_protocol_hint,
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_firmware_sketches,
+            icon = Icons.Default.Dock,
+            assetFileName = if (isSpanish) {
+                "firmware_sketches_esp.pdf"
+            } else {
+                "firmware_sketches_eng.pdf"
+            },
+            type = CodeAssetType.Pdf,
+            illustrationRes = R.drawable.ic_guide_boards,
+            subtitleRes = R.string.codes_document_firmware_sketches_hint,
+            id = FIRMWARE_SKETCHES_DOC_ID,
         ),
     )
 }

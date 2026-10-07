@@ -33,6 +33,7 @@ import com.micsbol.telecon4esp32.ui.bluetooth.BluetoothViewModel
 import com.micsbol.telecon4esp32.ui.bluetooth.rememberEnsureBluetoothReady
 import com.micsbol.telecon4esp32.ui.codes.CodesHubScreen
 import com.micsbol.telecon4esp32.ui.codes.CodesScreen
+import com.micsbol.telecon4esp32.ui.codes.FirmwareSketchesScreen
 import com.micsbol.telecon4esp32.ui.components.LocalHudGlassDialog
 import com.micsbol.telecon4esp32.ui.components.LocalHudSystemBarsHidden
 import com.micsbol.telecon4esp32.ui.control_panel.ControlPanelCameraStreamViewModel
@@ -266,6 +267,9 @@ fun AppNavGraph(
                 navController = navController,
                 applicationId = applicationId,
             )
+        }
+        composable(Screen.FirmwareSketches.route) {
+            FirmwareSketchesScreen(navController = navController)
         }
         composable(Screen.About.route) {
             AboutScreen(navController = navController)
