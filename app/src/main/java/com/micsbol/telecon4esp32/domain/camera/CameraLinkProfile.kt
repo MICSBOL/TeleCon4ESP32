@@ -49,11 +49,8 @@ fun resolveCameraLinkProfile(
     if (!applicationId.usesCamera()) {
         return CameraLinkProfile.CONTROL_ONLY
     }
-    if (board == Esp32Board.CAM) {
-        return CameraLinkProfile.WIFI_SOFTAP
-    }
-    val overlay = useSoftApCamera || board.isKitBDual
-    if (overlay && mode.isBluetoothLink) {
+    val overlay = useSoftApCamera || board.isKitBDual || board == Esp32Board.CAM
+    if (overlay) {
         return CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT
     }
     return CameraLinkProfile.CONTROL_ONLY

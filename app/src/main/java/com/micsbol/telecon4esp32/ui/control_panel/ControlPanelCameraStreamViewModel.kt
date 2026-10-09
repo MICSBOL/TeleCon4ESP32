@@ -26,12 +26,8 @@ import com.micsbol.telecon4esp32.domain.camera.resolveSoftApHudPreviewOptions
 import com.micsbol.telecon4esp32.domain.camera.shouldPreferCapturePollingForLowLatency
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
-import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
-import com.micsbol.telecon4esp32.domain.model.coerceForApplication
-import com.micsbol.telecon4esp32.domain.model.resolveCameraHardwareRole
-import com.micsbol.telecon4esp32.domain.use_case.ApplyCameraHardwareRoleUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ApplySoftApCamConfigUseCase
 import com.micsbol.telecon4esp32.domain.use_case.EnsureSoftApStreamQualityDefaultsUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
@@ -68,7 +64,6 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     getUseSoftApCamera: GetUseSoftApCameraUseCase,
     getControlPanelCenterMode: GetControlPanelCenterModeUseCase,
     private val saveControlPanelCenterMode: SaveControlPanelCenterModeUseCase,
-    private val applyCameraHardwareRole: ApplyCameraHardwareRoleUseCase,
     getSoftApPerformancePreset: GetSoftApPerformancePresetUseCase,
     private val saveSoftApPerformancePreset: SaveSoftApPerformancePresetUseCase,
     getSoftApHudProcessingRate: GetSoftApHudProcessingRateUseCase,
@@ -109,7 +104,7 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ControlPanelCenterMode.PLOTS,
+            initialValue = ControlPanelCenterMode.TERMINAL,
         )
 
     val board: StateFlow<Esp32Board> = getApplicationBoard(applicationId)
@@ -205,18 +200,11 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(cameraPaneVisible, cameraLinkProfile) { visible, profile ->
-                visible to profile.shouldStartCameraStream
-            }
-                .distinctUntilChanged()
-                .collect { (visible, shouldStream) ->
-                    if (!visible) return@collect
-                    if (shouldStream) {
-                        startCameraWifiConnect()
-                    } else {
-                        stopCameraConnectWithoutLeavingPane()
-                    }
+            cameraPaneVisible.collect { visible ->
+                if (visible && !sessionArmed.value) {
+                    startCameraWifiConnect()
                 }
+            }
         }
         viewModelScope.launch {
             combine(
@@ -226,18 +214,18 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
                 sessionArmed,
                 cameraPaneVisible,
             ) { selectedBoard, mode, overlay, armed, visible ->
-                val profile = if (armed && visible) {
+                val profile = if (armed) {
                     resolveSessionCameraLinkProfile(applicationId, selectedBoard, mode, overlay)
                 } else {
                     resolveCameraLinkProfile(applicationId, selectedBoard, mode, overlay)
                 }
-                Triple(profile, armed && visible, visible)
+                Triple(profile, armed, visible)
             }
                 .distinctUntilChanged()
                 .collect { (profile, armed, visible) ->
                     cameraSession.setCameraEnabled(armed)
                     cameraSession.setProfile(profile)
-                    if (visible && armed) {
+                    if (armed && visible) {
                         cameraSession.onVisible()
                     }
                 }
@@ -247,10 +235,9 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
                 sessionArmed,
                 softApPerformancePreset,
                 softApHudProcessingRate,
-                cameraPaneVisible,
-            ) { armed, preset, rate, visible ->
+            ) { armed, preset, rate ->
                 Triple(
-                    visible && armed && !runningOnEmulator,
+                    armed && !runningOnEmulator,
                     preset,
                     rate,
                 )
@@ -278,10 +265,10 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
         }
         viewModelScope.launch {
             combine(
-                showStreamQualityPanel,
+                sessionArmed,
                 softApPerformancePreset,
-            ) { showPanel, preset ->
-                showPanel to preset
+            ) { armed, preset ->
+                (armed && !runningOnEmulator) to preset
             }
                 .distinctUntilChanged()
                 .collect { (armed, preset) ->
@@ -300,7 +287,6 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
 
     fun onCenterModeSelected(
         mode: ControlPanelCenterMode,
-        engageCameraHardware: Boolean = true,
         toggleCamera: Boolean = true,
     ) {
         viewModelScope.launch {
@@ -310,49 +296,33 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
                 mode == ControlPanelCenterMode.CAMERA &&
                 current == ControlPanelCenterMode.CAMERA
             ) {
-                ControlPanelCenterMode.PLOTS
+                ControlPanelCenterMode.TERMINAL
             } else {
                 mode
             }
             if (next != current) {
                 saveControlPanelCenterMode(next)
             }
-            if (!controlLinkReady.value) return@launch
-            val enableCamera = engageCameraHardware && next == ControlPanelCenterMode.CAMERA
-            val storedRole = resolveCameraHardwareRole(board.value, useSoftApCamera.value)
-            // One ESP32-CAM is the Wi‑Fi connection itself. Opening, locking, or
-            // leaving the camera pane must not rewrite it as DevKit control-only.
-            if (storedRole == CameraHardwareRole.ONE_CAM) return@launch
-            val nextRole = if (enableCamera) {
-                if (storedRole == CameraHardwareRole.NO_CAM) {
-                    CameraHardwareRole.TWO_DEVICES
-                } else {
-                    storedRole.coerceForApplication(applicationId)
-                }
-            } else {
-                CameraHardwareRole.NO_CAM
-            }
-            if (nextRole != storedRole) {
-                applyCameraHardwareRole(applicationId, nextRole)
-            }
         }
     }
 
+    /**
+     * The camera pane can leave the center display while the user looks at the
+     * terminal, plots, stick, or radar. The SoftAP link stays up until the
+     * Control Panel route itself is left.
+     */
     fun onCameraPaneVisible(visible: Boolean) {
         cameraPaneVisible.value = visible
         if (!visible) {
             stopVideoRecording()
-            connectJob?.cancel()
-            connectJob = null
-            sessionArmed.value = false
-            _cameraConnectUi.value = ControlPanelCameraConnectUi.Idle
-            applySoftApCamConfig.clearSession(applicationId)
-            cameraStreamRepository.setPreferCapturePolling(false)
-            cameraStreamRepository.setHudPreviewOptions(HudPreviewOptions.FULL_QUALITY)
-            cameraSession.onHidden()
             return
         }
-        if (cameraLinkProfile.value.shouldStartCameraStream) {
+        if (!sessionArmed.value) {
+            val target = resolveCameraVideoSoftApTarget(board.value, connectionMode.value)
+            _cameraConnectUi.value = ControlPanelCameraConnectUi.Connecting(
+                ssid = target.ssid,
+                password = target.password,
+            )
             viewModelScope.launch {
                 ensureSoftApStreamQualityDefaults(applicationId)
             }
@@ -435,18 +405,11 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             val selectedBoard = board.value
             val mode = connectionMode.value
             val overlay = useSoftApCamera.value
-            val profile = resolveCameraLinkProfile(
-                applicationId,
-                selectedBoard,
-                mode,
-                overlay,
-            )
-            if (!profile.shouldStartCameraStream) {
-                sessionArmed.value = false
-                _cameraConnectUi.value = ControlPanelCameraConnectUi.Disabled
-                return@launch
-            }
             val target = resolveCameraVideoSoftApTarget(selectedBoard, mode)
+            _cameraConnectUi.value = ControlPanelCameraConnectUi.Connecting(
+                ssid = target.ssid,
+                password = target.password,
+            )
             if (cameraVideoSoftApConflictsWithControlLink(selectedBoard, mode)) {
                 sessionArmed.value = false
                 _cameraConnectUi.value = ControlPanelCameraConnectUi.ControlWifiConflict(target.ssid)
@@ -462,7 +425,10 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             }
             val wasArmed = sessionArmed.value
             sessionArmed.value = false
-            _cameraConnectUi.value = ControlPanelCameraConnectUi.Connecting
+            _cameraConnectUi.value = ControlPanelCameraConnectUi.Connecting(
+                ssid = target.ssid,
+                password = target.password,
+            )
 
             val alreadyOnCameraAp = isAlreadyOnCameraVideoSoftAp(target.ssid)
             if (alreadyOnCameraAp) {
@@ -512,18 +478,6 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
         }
     }
 
-    private fun stopCameraConnectWithoutLeavingPane() {
-        connectJob?.cancel()
-        connectJob = null
-        sessionArmed.value = false
-        _cameraConnectUi.value = ControlPanelCameraConnectUi.Disabled
-        applySoftApCamConfig.clearSession(applicationId)
-        cameraStreamRepository.setPreferCapturePolling(false)
-        cameraStreamRepository.setHudPreviewOptions(HudPreviewOptions.FULL_QUALITY)
-        cameraSession.setCameraEnabled(false)
-        cameraSession.onHidden()
-    }
-
     private fun armVideoSession(
         selectedBoard: Esp32Board,
         mode: BluetoothConnectionMode,
@@ -566,13 +520,21 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        releaseCameraLink()
+        super.onCleared()
+    }
+
+    private fun releaseCameraLink() {
         stopVideoRecording()
         connectJob?.cancel()
+        connectJob = null
         cameraPaneVisible.value = false
         sessionArmed.value = false
+        _cameraConnectUi.value = ControlPanelCameraConnectUi.Idle
         applySoftApCamConfig.clearSession(applicationId)
+        cameraStreamRepository.setPreferCapturePolling(false)
+        cameraStreamRepository.setHudPreviewOptions(HudPreviewOptions.FULL_QUALITY)
         cameraSession.stop()
-        super.onCleared()
     }
 
 sealed interface CameraVideoExport {

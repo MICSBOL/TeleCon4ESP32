@@ -18,8 +18,9 @@ enum class BluetoothProtocolMode {
             entries.firstOrNull { it.name == value } ?: SIMPLE
 
         fun defaultFor(applicationId: ApplicationId): BluetoothProtocolMode = when (applicationId) {
-            ApplicationId.CONTROL_PANEL -> ADVANCED
-            else -> SIMPLE
+            ApplicationId.CONTROL_PANEL,
+            ApplicationId.RC_VEHICLE_PRO,
+            -> SIMPLE
         }
     }
 }

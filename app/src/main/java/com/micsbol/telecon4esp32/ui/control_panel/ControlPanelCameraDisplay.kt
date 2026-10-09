@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
+import com.micsbol.telecon4esp32.domain.camera.Esp32CameraDefaults
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.ui.bluetooth.LocalApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.bluetooth.openSystemWifiSettings
@@ -28,8 +29,9 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcCameraPreview
 /**
  * Control Panel center camera pane.
  * On enter, joins the ESP32-CAM SoftAP (if previously connected, HTTP starts immediately)
- * and streams SoftAP video. Bluetooth protocol is unchanged and SoftAP TCP `:3333`
- * is not opened for DevKit overlay video.
+ * and streams SoftAP video. Leaving this pane for the terminal, plots, stick, or
+ * radar keeps that link. It closes when the Control Panel screen is left.
+ * Bluetooth protocol is unchanged and SoftAP TCP `:3333` is not opened.
  */
 @Composable
 fun ControlPanelCameraDisplay(
@@ -66,13 +68,6 @@ fun ControlPanelCameraDisplay(
             .background(Color(0xFF0A1018)),
     ) {
         when {
-            !profile.shouldStartCameraStream -> {
-                ControlPanelCameraPreviewShell(
-                    modifier = Modifier.fillMaxSize(),
-                    message = stringResource(R.string.control_panel_camera_disabled),
-                    grayedOut = true,
-                )
-            }
             cameraState is CameraStreamState.Frame -> {
                 RcCameraPreview(
                     cameraState = cameraState,
@@ -118,24 +113,34 @@ private fun ControlPanelCameraConnectContent(
     val connecting = connectUi is ControlPanelCameraConnectUi.Connecting ||
         (connectUi is ControlPanelCameraConnectUi.Ready && cameraState is CameraStreamState.Connecting) ||
         (connectUi is ControlPanelCameraConnectUi.Ready && cameraState is CameraStreamState.Idle)
+    val connectSsid = (connectUi as? ControlPanelCameraConnectUi.Connecting)?.ssid
+        ?: (connectUi as? ControlPanelCameraConnectUi.Ready)?.ssid
+        ?: Esp32CameraDefaults.STARTER_SOFTAP_SSID
+    val connectPassword = (connectUi as? ControlPanelCameraConnectUi.Connecting)?.password
+        ?: (connectUi as? ControlPanelCameraConnectUi.Ready)?.password
+        ?: Esp32CameraDefaults.SOFTAP_PASSWORD
     when (connectUi) {
         ControlPanelCameraConnectUi.Idle,
-        ControlPanelCameraConnectUi.Connecting,
+        is ControlPanelCameraConnectUi.Connecting,
+        ControlPanelCameraConnectUi.Disabled,
         -> ControlPanelCameraPreviewShell(
             modifier = modifier,
-            message = stringResource(R.string.control_panel_camera_connecting),
+            message = stringResource(
+                R.string.control_panel_camera_connecting,
+                connectSsid,
+                connectPassword,
+            ),
             showProgress = true,
-        )
-        ControlPanelCameraConnectUi.Disabled -> ControlPanelCameraPreviewShell(
-            modifier = modifier,
-            message = stringResource(R.string.control_panel_camera_disabled),
-            grayedOut = true,
         )
         is ControlPanelCameraConnectUi.Ready -> {
             if (connecting) {
                 ControlPanelCameraPreviewShell(
                     modifier = modifier,
-                    message = stringResource(R.string.control_panel_camera_connecting),
+                    message = stringResource(
+                        R.string.control_panel_camera_connecting,
+                        connectUi.ssid,
+                        connectUi.password,
+                    ),
                     showProgress = true,
                 )
             } else {

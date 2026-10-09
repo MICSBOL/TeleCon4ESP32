@@ -107,13 +107,13 @@ class CameraHardwareRoleTest {
     }
 
     @Test
-    fun `one cam stays one cam for control panel and rc vehicle`() {
+    fun `one cam is withdrawn and becomes the two device overlay`() {
         assertEquals(
-            CameraHardwareRole.ONE_CAM,
+            CameraHardwareRole.TWO_DEVICES,
             CameraHardwareRole.ONE_CAM.coerceForApplication(ApplicationId.CONTROL_PANEL),
         )
         assertEquals(
-            CameraHardwareRole.ONE_CAM,
+            CameraHardwareRole.TWO_DEVICES,
             CameraHardwareRole.ONE_CAM.coerceForApplication(ApplicationId.RC_VEHICLE_PRO),
         )
     }

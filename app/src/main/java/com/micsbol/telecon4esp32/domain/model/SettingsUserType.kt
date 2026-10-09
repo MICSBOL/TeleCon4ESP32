@@ -31,15 +31,14 @@ val BluetoothConnectionMode.settingsUserType: SettingsUserType
 fun ApplicationId.availableConnectionModes(
     board: Esp32Board,
     userType: SettingsUserType,
-): List<BluetoothConnectionMode> =
-    availableConnectionModes(board).filter { it.settingsUserType == userType }
+): List<BluetoothConnectionMode> = availableConnectionModes(board)
 
 fun ApplicationId.connectionModesForFamily(
     board: Esp32Board,
     family: ConnectionLinkFamily,
     userType: SettingsUserType,
 ): List<BluetoothConnectionMode> =
-    connectionModesForFamily(board, family).filter { it.settingsUserType == userType }
+    connectionModesForFamily(board, family)
 
 /**
  * Prefers the first usable mode for [family] and [userType], falling back across families

@@ -37,7 +37,8 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "true")
+            // Free coin economy so unlocks can be tested. Closed testing stays unlocked.
+            buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "false")
         }
         release {
             isMinifyEnabled = false

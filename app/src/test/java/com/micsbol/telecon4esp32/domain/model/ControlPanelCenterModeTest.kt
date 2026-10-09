@@ -8,9 +8,14 @@ import org.junit.Test
 class ControlPanelCenterModeTest {
 
     @Test
-    fun `plots is free stick camera and radar unlock independently`() {
-        assertTrue(ControlPanelCenterMode.PLOTS.isFree)
+    fun `terminal is free and the other center views unlock independently`() {
+        assertTrue(ControlPanelCenterMode.TERMINAL.isFree)
+        assertFalse(ControlPanelCenterMode.PLOTS.isFree)
         assertFalse(ControlPanelCenterMode.STICK.isFree)
+        assertEquals(
+            PremiumFeature.CONTROL_PANEL_PLOTS,
+            ControlPanelCenterMode.PLOTS.premiumFeature,
+        )
         assertEquals(
             PremiumFeature.CONTROL_PANEL_STICK,
             ControlPanelCenterMode.STICK.premiumFeature,
@@ -24,10 +29,27 @@ class ControlPanelCenterModeTest {
             ControlPanelCenterMode.RADAR.premiumFeature,
         )
         assertTrue(
+            ControlPanelCenterMode.TERMINAL.isUnlocked(
+                cameraUnlocked = false,
+                radarUnlocked = false,
+                stickUnlocked = false,
+                plotsUnlocked = false,
+            ),
+        )
+        assertFalse(
             ControlPanelCenterMode.PLOTS.isUnlocked(
                 cameraUnlocked = false,
                 radarUnlocked = false,
                 stickUnlocked = false,
+                plotsUnlocked = false,
+            ),
+        )
+        assertTrue(
+            ControlPanelCenterMode.PLOTS.isUnlocked(
+                cameraUnlocked = false,
+                radarUnlocked = false,
+                stickUnlocked = false,
+                plotsUnlocked = true,
             ),
         )
         assertFalse(
@@ -35,6 +57,7 @@ class ControlPanelCenterModeTest {
                 cameraUnlocked = true,
                 radarUnlocked = true,
                 stickUnlocked = false,
+                plotsUnlocked = true,
             ),
         )
         assertTrue(
@@ -42,6 +65,7 @@ class ControlPanelCenterModeTest {
                 cameraUnlocked = false,
                 radarUnlocked = false,
                 stickUnlocked = true,
+                plotsUnlocked = false,
             ),
         )
         assertFalse(
@@ -49,6 +73,7 @@ class ControlPanelCenterModeTest {
                 cameraUnlocked = false,
                 radarUnlocked = true,
                 stickUnlocked = true,
+                plotsUnlocked = true,
             ),
         )
         assertTrue(
@@ -56,6 +81,7 @@ class ControlPanelCenterModeTest {
                 cameraUnlocked = true,
                 radarUnlocked = false,
                 stickUnlocked = false,
+                plotsUnlocked = false,
             ),
         )
         assertFalse(
@@ -63,6 +89,7 @@ class ControlPanelCenterModeTest {
                 cameraUnlocked = true,
                 radarUnlocked = false,
                 stickUnlocked = true,
+                plotsUnlocked = true,
             ),
         )
         assertTrue(
@@ -70,14 +97,15 @@ class ControlPanelCenterModeTest {
                 cameraUnlocked = false,
                 radarUnlocked = true,
                 stickUnlocked = false,
+                plotsUnlocked = false,
             ),
         )
     }
 
     @Test
-    fun `fromStored defaults to plots`() {
-        assertEquals(ControlPanelCenterMode.PLOTS, ControlPanelCenterMode.fromStored(null))
-        assertEquals(ControlPanelCenterMode.PLOTS, ControlPanelCenterMode.fromStored("NOPE"))
+    fun `fromStored defaults to terminal`() {
+        assertEquals(ControlPanelCenterMode.TERMINAL, ControlPanelCenterMode.fromStored(null))
+        assertEquals(ControlPanelCenterMode.TERMINAL, ControlPanelCenterMode.fromStored("NOPE"))
         assertEquals(
             ControlPanelCenterMode.CAMERA,
             ControlPanelCenterMode.fromStored("CAMERA"),
@@ -109,6 +137,9 @@ class ControlPanelCenterModeTest {
 
     @Test
     fun `camera hardware roles only when center pane is camera`() {
+        assertFalse(
+            ControlPanelCenterMode.TERMINAL.enablesCameraHardwareRoles(extrasUnlocked = true),
+        )
         assertFalse(
             ControlPanelCenterMode.PLOTS.enablesCameraHardwareRoles(extrasUnlocked = true),
         )

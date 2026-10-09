@@ -291,6 +291,7 @@ fun RcTelemetryPlotPanel(
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     chrome: RcHudPlotChrome = RcHudPlotChrome(),
     onChromeChange: (RcHudPlotChrome) -> Unit = {},
+    showRadarSettings: Boolean = false,
 ) {
     RcHudCollapsibleToEdge(
         towardEnd = false,
@@ -330,6 +331,7 @@ fun RcTelemetryPlotPanel(
                 rightStickXy = rightStickXy,
                 chrome = chrome,
                 onChromeChange = onChromeChange,
+                showRadarSettings = showRadarSettings,
             )
         }
     }
@@ -352,6 +354,7 @@ private fun RcTelemetryPlotBody(
     rightStickXy: Pair<Float, Float>,
     chrome: RcHudPlotChrome,
     onChromeChange: (RcHudPlotChrome) -> Unit,
+    showRadarSettings: Boolean,
 ) {
     val mode = chrome.mode
     val modeBarVisible = chrome.modeBarVisible
@@ -473,6 +476,7 @@ private fun RcTelemetryPlotBody(
                     series = displayRadar,
                     settings = radarUiSettings,
                     onSettingsChange = commitRadarSettings,
+                    showSettingsLauncher = showRadarSettings,
                 )
                 RcTelemetryPlotMode.ENVELOPE -> {
                     val lastU8: (TelemetryChannel) -> Float? = { channel ->
@@ -1113,6 +1117,7 @@ private fun RcHudRadarPlot(
     series: List<PlotData>,
     settings: RadarDisplaySettings,
     onSettingsChange: (RadarDisplaySettings) -> Unit,
+    showSettingsLauncher: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ControlPanelRadarDisplay(
@@ -1120,7 +1125,7 @@ private fun RcHudRadarPlot(
         settings = settings,
         onSettingsChange = onSettingsChange,
         accent = PlotNeon,
-        showSettingsLauncher = false,
+        showSettingsLauncher = showSettingsLauncher,
         modifier = modifier.fillMaxSize(),
     )
 }

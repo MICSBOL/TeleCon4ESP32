@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +50,7 @@ import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.PremiumFeature
 import com.micsbol.telecon4esp32.domain.model.canUseAdvancedProtocol
+import com.micsbol.telecon4esp32.domain.model.coerceForApplication
 import com.micsbol.telecon4esp32.domain.model.coerceForUserType
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
@@ -81,7 +81,6 @@ fun ApplicationProtocolSettingsScreen(
     val selectedBoard by viewModel.board.collectAsStateWithLifecycle()
     val useSoftApCamera by viewModel.useSoftApCamera.collectAsStateWithLifecycle()
     val userTypeOverride by viewModel.settingsUserTypeOverride.collectAsStateWithLifecycle()
-    val configurationResetEpoch by viewModel.configurationResetEpoch.collectAsStateWithLifecycle()
     val advancedSettingsRevealed by viewModel.advancedSettingsRevealed.collectAsStateWithLifecycle()
     val entitlement = LocalEntitlement.current
     val wallet = LocalWallet.current
@@ -121,15 +120,8 @@ fun ApplicationProtocolSettingsScreen(
             viewModel.onConnectionModeChanged(preferred)
         }
     }
-    val allowTwoDevices = true
-    val showCamSoftApHardwareInfo = cameraRole == CameraHardwareRole.ONE_CAM
-    val showOverlayCameraCredentials = cameraRole == CameraHardwareRole.TWO_DEVICES
-    val showDevKitSoftApCredentials =
-        cameraRole == CameraHardwareRole.NO_CAM &&
-            (
-                connectionMode == BluetoothConnectionMode.WIFI_SIMPLE ||
-                    connectionMode == BluetoothConnectionMode.WIFI_BINARY
-                )
+    val showOverlayCameraCredentials =
+        cameraRole.coerceForApplication(applicationId) == CameraHardwareRole.TWO_DEVICES
 
     if (showAdvancedInfo) {
         AdvancedSettingsInfoDialog(
@@ -166,26 +158,8 @@ fun ApplicationProtocolSettingsScreen(
         title = stringResource(applicationSettingsTitleRes(applicationId)),
         subtitle = stringResource(R.string.app_settings_communication_subtitle),
         onNavigateBack = { navController.navigateUp() },
-        actions = {
-            if (!showAdvancedUi) {
-                AdvancedSettingsTitleLockAction(
-                    onClick = {
-                        if (canUseAdvanced) {
-                            viewModel.revealAdvancedSettings()
-                        } else {
-                            showAdvancedInfo = true
-                        }
-                    },
-                )
-            } else {
-                ResetDefaultConfigurationTitleAction(
-                    onReset = viewModel::resetToDefaultConfiguration,
-                )
-            }
-        },
     ) { paddingValues ->
-        key(configurationResetEpoch) {
-            LazyColumn(
+        LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
                     .fillMaxSize()
@@ -196,37 +170,8 @@ fun ApplicationProtocolSettingsScreen(
             if (applicationId.usesCamera() && applicationId != ApplicationId.CONTROL_PANEL) {
                 item {
                     CameraHardwareRoleSettingsSection(
-                        selected = storedRole,
+                        selected = cameraRole.coerceForApplication(applicationId),
                         onRoleSelected = viewModel::onCameraHardwareRoleSelected,
-                        allowTwoDevices = allowTwoDevices,
-                        userType = userType,
-                    )
-                }
-            }
-            if (showAdvancedUi) {
-                item {
-                    SettingsUserTypeSection(
-                        selected = userType,
-                        canUseAdvanced = canUseAdvanced,
-                        onRequestAdvancedUnlock = { unlockAdvanced = true },
-                        onSelected = { type ->
-                            if (type == userType) return@SettingsUserTypeSection
-                            viewModel.onSettingsUserTypeSelected(type)
-                            val family = if (cameraRole == CameraHardwareRole.TWO_DEVICES) {
-                                ConnectionLinkFamily.BLUETOOTH
-                            } else {
-                                connectionMode.linkFamily
-                            }
-                            val preferred = applicationId.preferredConnectionMode(
-                                board = selectedBoard,
-                                family = family,
-                                userType = type,
-                                canUseAdvanced = canUseAdvanced,
-                            )
-                            if (preferred != null && preferred != connectionMode) {
-                                viewModel.onConnectionModeChanged(preferred)
-                            }
-                        },
                     )
                 }
             }
@@ -241,18 +186,9 @@ fun ApplicationProtocolSettingsScreen(
                     allowWifiControl = cameraRole != CameraHardwareRole.TWO_DEVICES,
                 )
             }
-            when {
-                showCamSoftApHardwareInfo -> item {
-                    RcVehicleCameraWifiSettingsSection(connectionMode = connectionMode)
-                }
-                showOverlayCameraCredentials -> item {
+            if (showOverlayCameraCredentials) {
+                item {
                     SoftApCameraOverlayWifiSettingsSection()
-                }
-                showDevKitSoftApCredentials -> item {
-                    DevKitWifiSoftApSettingsSection(
-                        applicationId = applicationId,
-                        connectionMode = connectionMode,
-                    )
                 }
             }
             item {
@@ -263,7 +199,6 @@ fun ApplicationProtocolSettingsScreen(
                     useSoftApCamera = useSoftApCamera,
                 )
             }
-        }
         }
     }
 }

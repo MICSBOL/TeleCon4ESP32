@@ -18,10 +18,9 @@ import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.SettingsUserType
 import com.micsbol.telecon4esp32.domain.model.canUseConnectionMode
 import com.micsbol.telecon4esp32.domain.model.coerceConnectionModeForBoard
-import com.micsbol.telecon4esp32.domain.model.effectiveConnectionMode
 import com.micsbol.telecon4esp32.domain.model.effectiveProtocolMode
+import com.micsbol.telecon4esp32.domain.model.orDefaultClassicSimple
 import com.micsbol.telecon4esp32.domain.model.isConnectionModeAvailable
-import com.micsbol.telecon4esp32.domain.model.originalDefaultConnectionMode
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
 import com.micsbol.telecon4esp32.domain.model.WifiLinkChoice
@@ -51,7 +50,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -192,13 +190,6 @@ class ApplicationSettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Bumped after [resetToDefaultConfiguration] finishes writing storage so the
-     * settings form can rebuild against Default / No CAM / Classic Simple.
-     */
-    private val _configurationResetEpoch = MutableStateFlow(0)
-    val configurationResetEpoch: StateFlow<Int> = _configurationResetEpoch.asStateFlow()
-
     private val centerModeLoaded = MutableStateFlow(false)
 
     val centerMode: StateFlow<ControlPanelCenterMode> = getControlPanelCenterMode()
@@ -206,7 +197,7 @@ class ApplicationSettingsViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = ControlPanelCenterMode.PLOTS,
+            initialValue = ControlPanelCenterMode.TERMINAL,
         )
 
     val isCenterModeLoaded: StateFlow<Boolean> = centerModeLoaded.asStateFlow()
@@ -229,26 +220,16 @@ class ApplicationSettingsViewModel @Inject constructor(
 
     val connectionMode: StateFlow<BluetoothConnectionMode> = combine(
         combine(
-            transportType,
-            storedProtocolMode,
             storedConnectionMode,
             entitlement,
             board,
-        ) { transport, storedProtocol, storedMode, access, selectedBoard ->
-            ConnectionModeInputs(transport, storedProtocol, storedMode, access, selectedBoard)
+        ) { storedMode, access, selectedBoard ->
+            ConnectionModeInputs(storedMode, access, selectedBoard)
         },
         wallet,
     ) { inputs, coinWallet ->
         val coinEntry = requiresCoinEntry(inputs.access)
-        val candidate = inputs.storedMode
-            ?: inputs.access.effectiveConnectionMode(
-                applicationId = applicationId,
-                transport = inputs.transport,
-                storedProtocol = inputs.storedProtocol,
-                board = inputs.selectedBoard,
-                wallet = coinWallet,
-                requiresCoinEntry = coinEntry,
-            )
+        val candidate = inputs.storedMode.orDefaultClassicSimple()
         inputs.access.coerceConnectionModeForBoard(
             applicationId = applicationId,
             board = inputs.selectedBoard,
@@ -322,15 +303,7 @@ class ApplicationSettingsViewModel @Inject constructor(
             val access = entitlement.value
             val coinWallet = wallet.value
             val coinEntry = requiresCoinEntry(access)
-            val current = storedConnectionMode.value
-                ?: access.effectiveConnectionMode(
-                    applicationId = applicationId,
-                    transport = transportType.value,
-                    storedProtocol = storedProtocolMode.value,
-                    board = board,
-                    wallet = coinWallet,
-                    requiresCoinEntry = coinEntry,
-                )
+            val current = storedConnectionMode.value.orDefaultClassicSimple()
             val coerced = access.coerceConnectionModeForBoard(
                 applicationId = applicationId,
                 board = board,
@@ -367,26 +340,9 @@ class ApplicationSettingsViewModel @Inject constructor(
             saveSoftApHudProcessingRate(applicationId, rate)
         }
     }
-
-    fun resetToDefaultConfiguration() {
-        _settingsUserTypeOverride.value = SettingsUserType.NORMAL
-        _advancedSettingsRevealedOverride.value = false
-        viewModelScope.launch {
-            saveAdvancedSettingsRevealed(applicationId, false)
-            val board = Esp32Board.defaultFor(applicationId)
-            saveApplicationBoard(applicationId, board)
-            saveUseSoftApCamera(applicationId, false)
-            saveApplicationConnectionMode(applicationId, applicationId.originalDefaultConnectionMode())
-            saveSoftApPerformancePreset(applicationId, SoftApPerformancePreset.DEFAULT)
-            saveSoftApHudProcessingRate(applicationId, SoftApHudProcessingRate.DEFAULT)
-            _configurationResetEpoch.update { it + 1 }
-        }
-    }
 }
 
 private data class ConnectionModeInputs(
-    val transport: BluetoothTransportType,
-    val storedProtocol: BluetoothProtocolMode,
     val storedMode: BluetoothConnectionMode?,
     val access: Entitlement,
     val selectedBoard: Esp32Board,

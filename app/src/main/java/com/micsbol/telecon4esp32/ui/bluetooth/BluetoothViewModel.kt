@@ -17,6 +17,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.RcPacketEncoder
 import com.micsbol.telecon4esp32.domain.bluetooth.SimpleProtocolEncoder
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.domain.bluetooth.TeleConBondMismatch
@@ -115,6 +116,8 @@ open class BluetoothViewModel @Inject constructor(
     private val sessionCsvRepository: ISessionCsvRepository,
     private val saveSettings: SaveSettingsUseCases,
 ) : ViewModel() {
+
+    val linkTraffic: StateFlow<List<LinkTrafficEntry>> = remoteController.linkTraffic
 
     val controlPanelProtocolMode: StateFlow<BluetoothProtocolMode> =
         getApplicationProtocolMode(ApplicationId.CONTROL_PANEL)
@@ -609,28 +612,10 @@ open class BluetoothViewModel @Inject constructor(
         viewModelScope.launch {
             val mode = getApplicationProtocolMode(applicationId).first()
             val transport = getApplicationTransportType(applicationId).first()
-            val board = getApplicationBoard(applicationId).first()
             val storedConnectionMode = getApplicationConnectionMode(applicationId).first()
             requestApplicationConnection(applicationId, mode, transport, storedConnectionMode)
             saveLastApplication(applicationId)
             onNavigate(applicationId.mainRoute())
-            // CAM SoftAP starter / SoftAP Binary — DevKit Wi‑Fi connects from the app screen.
-            if (
-                transport == BluetoothTransportType.WIFI &&
-                applicationId.usesCamera() &&
-                board == Esp32Board.CAM
-            ) {
-                val softApMode = storedConnectionMode
-                    ?.takeIf { it.isSoftApTcp }
-                    ?: BluetoothConnectionMode.WIFI_BINARY
-                requestApplicationConnection(
-                    applicationId = applicationId,
-                    protocolMode = softApMode.protocolMode,
-                    transport = BluetoothTransportType.WIFI,
-                    connectionMode = softApMode,
-                )
-                connectToWifiSoftAp()
-            }
         }
     }
 
@@ -1528,34 +1513,6 @@ open class BluetoothViewModel @Inject constructor(
     fun sendButtonEvent(event: ButtonEvent) {
         viewModelScope.launch {
             remoteController.sendRcButton(event, currentRcProtocolMode())
-        }
-    }
-
-    /**
-     * Persist steering mechanical center on the ESP32.
-     * Simple / SoftAP text: `RC:SET,steer_center,1,rx,<n>`
-     * Binary / BLE: also `BB 66` [STEER_CENTER_SAVE], while live `rx` already carries trim.
-     */
-    fun saveSteerCenter() {
-        viewModelScope.launch {
-            if (!remoteController.isConnected.value) return@launch
-            val rxChannel = (_rcControlState.value.rightStickPosition.first * 100).toInt()
-                .coerceIn(-100, 100)
-            val mode = currentRcProtocolMode()
-            when (mode) {
-                BluetoothProtocolMode.SIMPLE -> {
-                    remoteController.sendLine(
-                        SimpleProtocolEncoder.buildSteerCenterSaveLine(rxChannel),
-                    )
-                }
-                BluetoothProtocolMode.ADVANCED -> {
-                    // Text SET still works on SoftAP Simple-capable bridges; binary peers use BB 66.
-                    remoteController.sendLine(
-                        SimpleProtocolEncoder.buildSteerCenterSaveLine(rxChannel),
-                    )
-                    remoteController.sendRcButton(ButtonEvent.STEER_CENTER_SAVE, mode)
-                }
-            }
         }
     }
 

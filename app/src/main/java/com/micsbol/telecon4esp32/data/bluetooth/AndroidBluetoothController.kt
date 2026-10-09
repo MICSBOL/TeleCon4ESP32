@@ -19,6 +19,10 @@ import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
 import com.micsbol.telecon4esp32.domain.bluetooth.EspMessage
 import com.micsbol.telecon4esp32.domain.bluetooth.LineProtocolCodec
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficDirection
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficLog
+import com.micsbol.telecon4esp32.domain.bluetooth.formatLinkBinary
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
@@ -67,6 +71,8 @@ class AndroidBluetoothController @Inject constructor(
 
     private val _messages = MutableSharedFlow<EspMessage>(extraBufferCapacity = 64)
     override val messages: SharedFlow<EspMessage> = _messages.asSharedFlow()
+    private val linkTrafficLog = LinkTrafficLog()
+    override val linkTraffic: StateFlow<List<LinkTrafficEntry>> = linkTrafficLog.entries
     // Internal state flows using the generic RemoteDevice interface
     private val _discoveredDevices = MutableStateFlow<List<RemoteDevice>>(emptyList())
     override val discoveredDevices: StateFlow<List<RemoteDevice>> = _discoveredDevices.asStateFlow()
@@ -197,6 +203,7 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     private fun parseIncomingPacket(bytes: ByteArray) {
+        linkTrafficLog.record(LinkTrafficDirection.RECEIVED, formatLinkBinary(bytes))
         if (bytes.size < 3) return
 
         when {
@@ -214,6 +221,7 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     private fun parseIncomingLine(line: String) {
+        linkTrafficLog.record(LinkTrafficDirection.RECEIVED, line)
         val message = LineProtocolCodec.decode(line) ?: return
         if (activeTransport == BluetoothTransportType.WIFI &&
             message.app == SimpleProtocolEncoder.RC_APP
@@ -918,6 +926,7 @@ class AndroidBluetoothController @Inject constructor(
         if (activeTransport == BluetoothTransportType.WIFI) {
             logSoftApBinaryTx(data)
         }
+        linkTrafficLog.record(LinkTrafficDirection.SENT, formatLinkBinary(data))
         return dataTransferService?.sendPacket(data)
     }
 
@@ -931,6 +940,7 @@ class AndroidBluetoothController @Inject constructor(
             logSoftApTx(line)
         }
         val payload = if (line.endsWith("\n")) line else "$line\n"
+        linkTrafficLog.record(LinkTrafficDirection.SENT, payload)
         return dataTransferService?.sendPacket(payload.toByteArray(Charsets.UTF_8))
     }
 

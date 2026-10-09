@@ -187,7 +187,6 @@ private fun firmwareCodePackages(): List<CodeAssetInfo> {
         BluetoothConnectionMode.BLE_BINARY,
     )
     val devKitBoards = setOf(Esp32Board.DEV_KIT, Esp32Board.CAM_AND_DEV_KIT)
-    val camBoards = setOf(Esp32Board.CAM)
 
     return listOf(
         sketchZip(
@@ -215,14 +214,6 @@ private fun firmwareCodePackages(): List<CodeAssetInfo> {
             targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
         ),
         sketchZip(
-            titleRes = R.string.codes_esp32_wifi_binary,
-            fileName = "TeleCon_WiFi_Binary.zip",
-            boards = devKitBoards,
-            modes = setOf(BluetoothConnectionMode.WIFI_BINARY),
-            id = ControlPanelCodePackageId.DEVKIT_WIFI_BINARY,
-            targetDeviceLabelRes = R.string.app_settings_device_dev_kit,
-        ),
-        sketchZip(
             titleRes = R.string.codes_esp32_cam_softap_video,
             fileName = "TeleCon_CAM_SoftAP_Video.zip",
             boards = devKitBoards,
@@ -230,27 +221,6 @@ private fun firmwareCodePackages(): List<CodeAssetInfo> {
             id = ControlPanelCodePackageId.CAM_SOFTAP_VIDEO,
             targetDeviceLabelRes = R.string.app_settings_device_cam,
             roleAVideoOnly = true,
-        ),
-        sketchZip(
-            titleRes = R.string.codes_esp32_cam_wifi_simple,
-            fileName = "TeleCon_CAM_WiFi_Simple.zip",
-            boards = camBoards,
-            modes = setOf(
-                BluetoothConnectionMode.WIFI_CAM_STARTER,
-                BluetoothConnectionMode.WIFI_SOFTAP,
-            ),
-            id = ControlPanelCodePackageId.CAM_WIFI_SIMPLE,
-            targetDeviceLabelRes = R.string.app_settings_device_cam,
-            roleBCamTcpOnly = true,
-        ),
-        sketchZip(
-            titleRes = R.string.codes_esp32_cam_wifi_binary,
-            fileName = "TeleCon_CAM_WiFi_Binary.zip",
-            boards = camBoards,
-            modes = setOf(BluetoothConnectionMode.WIFI_BINARY),
-            id = ControlPanelCodePackageId.CAM_WIFI_BINARY,
-            targetDeviceLabelRes = R.string.app_settings_device_cam,
-            roleBCamTcpOnly = true,
         ),
     )
 }
@@ -283,9 +253,3 @@ fun currentCodeAssetLanguage(): String = Locale.getDefault().language
 /** Role A video-only CAM sketch. Works with every DevKit Bluetooth control mode. */
 fun controlPanelSoftApVideoCodeAsset(): CodeAssetInfo =
     firmwareCodePackages().first { it.id == ControlPanelCodePackageId.CAM_SOFTAP_VIDEO }
-
-/**
- * Role B one-CAM sketch: video and control on the same board over Wi‑Fi.
- */
-fun controlPanelOneCamCodeAsset(): CodeAssetInfo =
-    firmwareCodePackages().first { it.id == ControlPanelCodePackageId.CAM_WIFI_SIMPLE }

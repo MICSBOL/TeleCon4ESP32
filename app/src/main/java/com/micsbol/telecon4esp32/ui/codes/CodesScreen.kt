@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.codes
 
+import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -67,6 +68,7 @@ import com.micsbol.telecon4esp32.ui.components.NeoDialogTitle
 import com.micsbol.telecon4esp32.ui.components.NeoPillButton
 import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
+import com.micsbol.telecon4esp32.ui.control_panel.LockScreenOrientation
 import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.ui.cyber.screens.homeModuleFanPose
 import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckNext
@@ -86,6 +88,7 @@ fun CodesScreen(
     navController: NavController,
     applicationId: ApplicationId,
 ) {
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
     val context = LocalContext.current
     var pdfDialogKind by remember { mutableStateOf<PdfDialogKind?>(null) }
     val documentationAssets = remember { documentationAssetsFor(currentCodeAssetLanguage()) }
@@ -353,7 +356,6 @@ private fun DocumentationCardDeck(
                             rotationZ = rotation + if (isFront) dragPx / 28f else 0f
                             scaleX = scale
                             scaleY = scale
-                            alpha = if (isFront) 1f else 0.68f
                             shadowElevation = elevation
                             cameraDistance = 14f * density
                         },

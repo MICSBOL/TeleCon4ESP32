@@ -92,6 +92,7 @@ private val ProGoldDeep = Color(0xFFFFB300)
 
 /** Swappable center views below the fixed Back / Cable / Bluetooth / Record column. */
 private enum class ControlPanelOverlayTool {
+    TERMINAL,
     PLOTS,
     STICK,
     CAMERA,
@@ -100,6 +101,7 @@ private enum class ControlPanelOverlayTool {
 
     val centerMode: ControlPanelCenterMode
         get() = when (this) {
+            TERMINAL -> ControlPanelCenterMode.TERMINAL
             PLOTS -> ControlPanelCenterMode.PLOTS
             STICK -> ControlPanelCenterMode.STICK
             CAMERA -> ControlPanelCenterMode.CAMERA
@@ -108,6 +110,7 @@ private enum class ControlPanelOverlayTool {
 
     companion object {
         fun fromCenterMode(mode: ControlPanelCenterMode): ControlPanelOverlayTool = when (mode) {
+            ControlPanelCenterMode.TERMINAL -> TERMINAL
             ControlPanelCenterMode.PLOTS -> PLOTS
             ControlPanelCenterMode.STICK -> STICK
             ControlPanelCenterMode.CAMERA -> CAMERA
@@ -270,6 +273,8 @@ fun ControlPanelCenterModeButton(
             stringResource(R.string.control_panel_center_radar_locked_content_description)
         mode == ControlPanelCenterMode.STICK ->
             stringResource(R.string.control_panel_center_stick_locked_content_description)
+        mode == ControlPanelCenterMode.PLOTS ->
+            stringResource(R.string.control_panel_center_plots_locked_content_description)
         else -> stringResource(R.string.control_panel_center_extras_locked_content_description)
     }
 
@@ -647,6 +652,7 @@ private fun ControlPanelOverlayToolDeck(
                         },
                 ) {
                     when (tool) {
+                        ControlPanelOverlayTool.TERMINAL,
                         ControlPanelOverlayTool.PLOTS,
                         ControlPanelOverlayTool.STICK,
                         ControlPanelOverlayTool.CAMERA,

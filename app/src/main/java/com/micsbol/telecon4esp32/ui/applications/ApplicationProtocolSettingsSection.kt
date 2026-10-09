@@ -56,7 +56,6 @@ import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.SettingsUserType
 import com.micsbol.telecon4esp32.domain.model.availableConnectionModes
-import com.micsbol.telecon4esp32.domain.model.coerceForSettings
 import com.micsbol.telecon4esp32.domain.model.connectionModesForFamily
 import com.micsbol.telecon4esp32.domain.model.preferredConnectionMode
 import com.micsbol.telecon4esp32.domain.model.protocolPrefix
@@ -130,101 +129,59 @@ fun ApplicationDeviceSettingsSection(
 fun CameraHardwareRoleSettingsSection(
     selected: CameraHardwareRole,
     onRoleSelected: (CameraHardwareRole) -> Unit,
-    allowTwoDevices: Boolean = false,
-    allowOneCam: Boolean = true,
-    allowCameraRoles: Boolean = true,
-    userType: SettingsUserType = SettingsUserType.NORMAL,
 ) {
     val context = LocalContext.current
     val atRisk = remember(context) { context.isCameraStreamAtRisk() }
-    var pendingRole by remember { mutableStateOf<CameraHardwareRole?>(null) }
-    val visibleSelected = selected.coerceForSettings(
-        userType = userType,
-        centerCameraEnabled = allowCameraRoles,
-    )
-    val useAdvancedCamLabels = userType == SettingsUserType.ADVANCED
-    val options = buildList {
-        if (allowCameraRoles) {
-            if (allowOneCam) {
-                add(
-                    SettingsMenuOption(
-                        value = CameraHardwareRole.ONE_CAM,
-                        label = stringResource(
-                            if (useAdvancedCamLabels) {
-                                R.string.app_settings_cam_role_one_device_advanced
-                            } else {
-                                R.string.app_settings_cam_role_one_device
-                            },
-                        ),
-                        description = stringResource(
-                            if (useAdvancedCamLabels) {
-                                R.string.app_settings_cam_role_one_device_advanced_description
-                            } else {
-                                R.string.app_settings_cam_role_one_device_description
-                            },
-                        ),
-                    ),
-                )
-            }
-            if (allowTwoDevices) {
-                add(
-                    SettingsMenuOption(
-                        value = CameraHardwareRole.TWO_DEVICES,
-                        label = stringResource(
-                            if (useAdvancedCamLabels) {
-                                R.string.app_settings_cam_role_two_devices
-                            } else {
-                                R.string.app_settings_cam_role_two_devices_simple
-                            },
-                        ),
-                        description = stringResource(
-                            if (useAdvancedCamLabels) {
-                                R.string.app_settings_cam_role_two_devices_description
-                            } else {
-                                R.string.app_settings_cam_role_two_devices_simple_description
-                            },
-                        ),
-                    ),
-                )
-            }
-        }
-        add(
-            SettingsMenuOption(
-                value = CameraHardwareRole.NO_CAM,
-                label = stringResource(R.string.app_settings_cam_role_no_cam),
-                description = stringResource(R.string.app_settings_cam_role_no_cam_description),
-            ),
-        )
-    }
-    val onSelect: (CameraHardwareRole) -> Unit = { role ->
-        if (role.usesSoftApCamera && atRisk && !visibleSelected.usesSoftApCamera) {
-            pendingRole = role
+    var pendingEnable by remember { mutableStateOf(false) }
+    val enabled = selected.usesSoftApCamera
+    val onChecked: (Boolean) -> Unit = { checked ->
+        if (checked && atRisk && !enabled) {
+            pendingEnable = true
         } else {
-            onRoleSelected(role)
+            onRoleSelected(
+                if (checked) CameraHardwareRole.TWO_DEVICES else CameraHardwareRole.NO_CAM,
+            )
         }
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        SettingsOptionDropdown(
-            options = options,
-            selected = visibleSelected,
-            onSelected = onSelect,
-            label = stringResource(R.string.app_settings_cam_role_section_title),
-            sectionInfo = stringResource(R.string.app_settings_cam_role_section_description),
-        )
-        if (visibleSelected.usesSoftApCamera && atRisk) {
+        NeoSectionTitle(text = stringResource(R.string.app_settings_cam_role_section_title))
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.app_settings_cam_role_switch_label),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Neo.TextPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.app_settings_cam_role_section_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Neo.TextSecondary,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            NeoToggle(
+                checked = enabled,
+                onCheckedChange = onChecked,
+            )
+        }
+        if (enabled && atRisk) {
             Spacer(modifier = Modifier.height(12.dp))
             CamBoardPerformanceWarningBanner()
         }
     }
-    if (pendingRole != null) {
+    if (pendingEnable) {
         CamBoardPerformanceWarningDialog(
             onConfirm = {
-                val role = pendingRole
-                pendingRole = null
-                if (role != null) onRoleSelected(role)
+                pendingEnable = false
+                onRoleSelected(CameraHardwareRole.TWO_DEVICES)
             },
-            onDismiss = { pendingRole = null },
+            onDismiss = { pendingEnable = false },
         )
     }
 }
@@ -408,20 +365,14 @@ fun ApplicationProtocolSettingsSection(
     onBluetoothFamilySelected: (() -> Unit)? = null,
     belowConnectionTypeContent: (@Composable () -> Unit)? = null,
 ) {
-    val availableModes = applicationId.availableConnectionModes(selectedBoard, userType)
-    val camModesOnly =
-        applicationId.supportsCamVideoControl() && selectedBoard == Esp32Board.CAM
-    // Wi‑Fi choices stay on this picker after one-CAM is saved. Otherwise a CAM
-    // board would replace Bluetooth / Wi‑Fi with the raw SoftAP mode list.
-    val useDevKitLinkPicker = onWifiChoiceSelected != null || !camModesOnly
-    val connectionSectionInfo = stringResource(
-        when {
-            useDevKitLinkPicker -> R.string.app_settings_connection_section_description_devkit
-            camModesOnly -> R.string.app_settings_connection_section_description_cam
-            else -> R.string.app_settings_connection_section_description
-        },
-    )
-
+    val options = applicationId.availableConnectionModes(selectedBoard).map { mode ->
+        connectionModeMenuOption(
+            mode = mode,
+            canUseAdvanced = true,
+            camKitLabels = false,
+        )
+    }
+    val connectionSectionInfo = stringResource(R.string.app_settings_connection_section_description_devkit)
     val connectionTitle = stringResource(R.string.app_settings_connection_section_title_general)
 
     Column(
@@ -438,41 +389,16 @@ fun ApplicationProtocolSettingsSection(
             color = Neo.TextSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
-
-        if (useDevKitLinkPicker) {
-            DevKitConnectionSettings(
-                applicationId = applicationId,
-                selectedBoard = selectedBoard,
-                selectedMode = selectedMode,
-                userType = userType,
-                onModeSelected = onModeSelected,
-                canUseAdvanced = canUseAdvanced,
-                connectionLabel = connectionTitle,
-                connectionSectionInfo = connectionSectionInfo,
-                allowWifiControl = allowWifiControl,
-                onWifiChoiceSelected = onWifiChoiceSelected,
-                onBluetoothFamilySelected = onBluetoothFamilySelected,
-                belowConnectionTypeContent = belowConnectionTypeContent,
-            )
-        } else {
-            val options = availableModes.map { mode ->
-                connectionModeMenuOption(
-                    mode = mode,
-                    canUseAdvanced = canUseAdvanced,
-                    camKitLabels = camModesOnly,
-                )
-            }
-            SettingsOptionDropdown(
-                options = options,
-                selected = selectedMode,
-                onSelected = onModeSelected,
-                label = connectionTitle,
-                sectionInfo = connectionSectionInfo,
-            )
-            if (belowConnectionTypeContent != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                belowConnectionTypeContent()
-            }
+        SettingsOptionDropdown(
+            options = options,
+            selected = selectedMode,
+            onSelected = onModeSelected,
+            label = connectionTitle,
+            sectionInfo = connectionSectionInfo,
+        )
+        if (belowConnectionTypeContent != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            belowConnectionTypeContent()
         }
     }
 }
@@ -874,22 +800,12 @@ fun connectionModeMenuOption(
     BluetoothConnectionMode.CLASSIC_BINARY -> SettingsMenuOption(
         value = mode,
         label = stringResource(R.string.app_settings_connection_classic_binary),
-        description = if (canUseAdvanced) {
-            stringResource(R.string.app_settings_connection_classic_binary_description)
-        } else {
-            stringResource(R.string.app_settings_protocol_advanced_premium_required)
-        },
-        enabled = canUseAdvanced,
+        description = stringResource(R.string.app_settings_connection_classic_binary_description),
     )
     BluetoothConnectionMode.BLE_BINARY -> SettingsMenuOption(
         value = mode,
         label = stringResource(R.string.app_settings_connection_ble_binary),
-        description = if (canUseAdvanced) {
-            stringResource(R.string.app_settings_connection_ble_binary_description)
-        } else {
-            stringResource(R.string.app_settings_protocol_advanced_premium_required)
-        },
-        enabled = canUseAdvanced,
+        description = stringResource(R.string.app_settings_connection_ble_binary_description),
     )
 }
 

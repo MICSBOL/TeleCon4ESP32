@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
+import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamRepository
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
@@ -18,7 +19,10 @@ import com.micsbol.telecon4esp32.domain.camera.HudPreviewOptions
 import com.micsbol.telecon4esp32.domain.camera.SoftApHudProcessingRate
 import com.micsbol.telecon4esp32.domain.camera.SoftApPerformancePreset
 import com.micsbol.telecon4esp32.domain.camera.isCameraStreamAtRisk
+import com.micsbol.telecon4esp32.data.camera.SoftApNetworkResolver
+import com.micsbol.telecon4esp32.data.wifi.SoftApWifiSession
 import com.micsbol.telecon4esp32.domain.camera.resolveCameraLinkProfile
+import com.micsbol.telecon4esp32.domain.camera.resolveCameraVideoSoftApTarget
 import com.micsbol.telecon4esp32.domain.camera.resolveSoftApHudPreviewOptions
 import com.micsbol.telecon4esp32.domain.camera.shouldPreferCapturePollingForLowLatency
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
@@ -77,6 +81,8 @@ class RcVehicleProViewModel @Inject constructor(
     private val saveSoftApHudProcessingRate: SaveSoftApHudProcessingRateUseCase,
     private val ensureSoftApStreamQualityDefaults: EnsureSoftApStreamQualityDefaultsUseCase,
     private val applySoftApCamConfig: ApplySoftApCamConfigUseCase,
+    private val softApWifiSession: SoftApWifiSession,
+    private val softApNetworkResolver: SoftApNetworkResolver,
 ) : ViewModel() {
 
     private val runningOnEmulator = isLikelyEmulator()
@@ -270,26 +276,43 @@ class RcVehicleProViewModel @Inject constructor(
         // HUD chrome (online / telemetry / link) — exclude Frame bitmaps so stick UI stays quiet.
         viewModelScope.launch {
             combine(
-                cameraStreamRepository.streamState
-                    .map { it is CameraStreamState.Frame }
-                    .distinctUntilChanged(),
-                remoteController.isConnected,
-                remoteController.telemetryState,
-                cameraLinkProfile,
-                screenVisibleFlow,
-            ) { hasFrame, connected, telemetry, profile, visible ->
-                val streaming = visible && profile.shouldStartCameraStream && !runningOnEmulator
-                val telemetrySpeed = if (connected && telemetry.panelState.leftValue > 0) {
-                    telemetry.panelState.leftValue / 10f
+                combine(
+                    cameraStreamRepository.streamState
+                        .map { it is CameraStreamState.Frame }
+                        .distinctUntilChanged(),
+                    remoteController.isConnected,
+                    remoteController.telemetryState,
+                    cameraLinkProfile,
+                    screenVisibleFlow,
+                ) { hasFrame, connected, telemetry, profile, visible ->
+                    HudChromeInputs(hasFrame, connected, telemetry, profile, visible)
+                },
+                _controlSettings,
+            ) { inputs, settings ->
+                val streaming = inputs.visible &&
+                    inputs.profile.shouldStartCameraStream &&
+                    !runningOnEmulator
+                val telemetrySpeed = if (inputs.connected) {
+                    RcHudMetricReading.speedKmh(settings.speedChannel, inputs.telemetry)
                 } else {
                     null
                 }
                 SoftApHudChromeSnapshot(
-                    profile = profile,
-                    connected = connected,
-                    isCameraOnline = streaming && hasFrame,
-                    batteryPercent = normalizeBatteryPercent(telemetry.indicatorState.batteryLevel),
-                    motorTempCelsius = mapAnalogToMotorTemp(telemetry.indicatorState.analogValue),
+                    profile = inputs.profile,
+                    connected = inputs.connected,
+                    isCameraOnline = streaming && inputs.hasFrame,
+                    batteryPercent = RcHudMetricReading.batteryPercent(
+                        settings.batteryChannel,
+                        inputs.telemetry,
+                    ),
+                    motorTempCelsius = RcHudMetricReading.tempCelsius(
+                        settings.tempChannel,
+                        inputs.telemetry,
+                    ),
+                    currentAmps = RcHudMetricReading.currentAmps(
+                        settings.currentChannel,
+                        inputs.telemetry,
+                    ),
                     telemetrySpeed = telemetrySpeed,
                 )
             }
@@ -303,6 +326,7 @@ class RcVehicleProViewModel @Inject constructor(
                             isCameraOnline = snapshot.isCameraOnline,
                             batteryPercent = snapshot.batteryPercent,
                             motorTempCelsius = snapshot.motorTempCelsius,
+                            currentAmps = snapshot.currentAmps,
                             speedKmh = snapshot.telemetrySpeed ?: current.speedKmh,
                             speedFromTelemetry = snapshot.telemetrySpeed != null,
                         )
@@ -332,6 +356,24 @@ class RcVehicleProViewModel @Inject constructor(
                         },
                     )
                 }
+        }
+    }
+
+    /** Joins the ESP32-CAM SoftAP and starts video. No-ops while CAM is off in settings. */
+    fun connectCamera() {
+        val profile = cameraLinkProfile.value
+        if (!profile.shouldStartCameraStream || runningOnEmulator) return
+        viewModelScope.launch {
+            val target = resolveCameraVideoSoftApTarget(board.value, connectionMode.value)
+            val alreadyOnAp = softApWifiSession.currentSsid()
+                ?.equals(target.ssid, ignoreCase = true) == true ||
+                softApNetworkResolver.hasEsp32SoftApLinkAddress()
+            if (!alreadyOnAp) {
+                softApWifiSession.join(target.ssid, target.password)
+            }
+            cameraSession.setCameraEnabled(true)
+            cameraSession.setProfile(profile)
+            cameraSession.onVisible()
         }
     }
 
@@ -486,16 +528,13 @@ class RcVehicleProViewModel @Inject constructor(
         }
     }
 
-    /** ESP32 may send battery as 0–100 % or 0–255 gauge; normalize to percent. */
-    private fun normalizeBatteryPercent(raw: Int): Int {
-        val value = raw.coerceAtLeast(0)
-        return if (value <= 100) value else ((value / 255f) * 100f).roundToInt().coerceIn(0, 100)
-    }
-
-    /** Maps RC analog gauge (0–255) to a plausible motor temperature °C. */
-    private fun mapAnalogToMotorTemp(analogValue: Int): Int {
-        return (25 + (analogValue.coerceIn(0, 255) * 0.2f)).roundToInt()
-    }
+    private data class HudChromeInputs(
+        val hasFrame: Boolean,
+        val connected: Boolean,
+        val telemetry: TelemetryState,
+        val profile: CameraLinkProfile,
+        val visible: Boolean,
+    )
 
     private data class SoftApHudOptionsSnapshot(
         val streaming: Boolean,
@@ -509,6 +548,7 @@ class RcVehicleProViewModel @Inject constructor(
         val isCameraOnline: Boolean,
         val batteryPercent: Int,
         val motorTempCelsius: Int,
+        val currentAmps: Float,
         val telemetrySpeed: Float?,
     )
 

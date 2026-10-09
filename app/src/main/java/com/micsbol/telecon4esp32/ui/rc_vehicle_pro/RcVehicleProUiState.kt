@@ -25,10 +25,11 @@ data class RcVehicleProUiState(
     val isCameraStreamArmed: Boolean = false,
     val isEmulatorPreview: Boolean = false,
     val speedKmh: Float = 0f,
-    /** True when HUD speed comes from ESP32 `RC:DATA` / `CC 11` left panel (speed×10). */
+    /** True when HUD speed comes from the channel bound to the speed badge. */
     val speedFromTelemetry: Boolean = false,
     val batteryPercent: Int = 0,
     val motorTempCelsius: Int = 0,
+    val currentAmps: Float = 0f,
     val isRecording: Boolean = false,
     val lightsOn: Boolean = false,
     val photoFeedback: PhotoFeedback = PhotoFeedback.None,

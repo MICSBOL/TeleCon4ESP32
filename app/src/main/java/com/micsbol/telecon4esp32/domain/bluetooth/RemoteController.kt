@@ -11,6 +11,7 @@ interface RemoteController {
     val error: SharedFlow<String>
     val telemetryState: StateFlow<TelemetryState>
     val messages: SharedFlow<EspMessage>
+    val linkTraffic: StateFlow<List<LinkTrafficEntry>>
 
     fun startDiscovery(transport: BluetoothTransportType = BluetoothTransportType.CLASSIC)
     fun stopDiscovery()

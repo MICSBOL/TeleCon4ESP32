@@ -151,20 +151,6 @@ fun FirmwareSketchesScreen(navController: NavController) {
                     fontSize = 13.sp,
                 )
             }
-            NeoCard(modifier = Modifier.fillMaxWidth(), contentPadding = 14.dp) {
-                Text(
-                    text = stringResource(R.string.firmware_sketches_cam_one_title),
-                    color = Neo.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.firmware_sketches_cam_one_body),
-                    color = Neo.TextSecondary,
-                    fontSize = 13.sp,
-                )
-            }
             NeoPillButton(
                 text = stringResource(R.string.firmware_sketches_open_pdf),
                 onClick = {

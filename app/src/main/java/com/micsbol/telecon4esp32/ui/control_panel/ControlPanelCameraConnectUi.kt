@@ -3,7 +3,10 @@ package com.micsbol.telecon4esp32.ui.control_panel
 /** Join / stream status for the Control Panel camera pane. */
 sealed interface ControlPanelCameraConnectUi {
     data object Idle : ControlPanelCameraConnectUi
-    data object Connecting : ControlPanelCameraConnectUi
+    data class Connecting(
+        val ssid: String,
+        val password: String,
+    ) : ControlPanelCameraConnectUi
     data class Ready(
         val ssid: String,
         val password: String,
@@ -15,6 +18,6 @@ sealed interface ControlPanelCameraConnectUi {
     data class ControlWifiConflict(
         val ssid: String,
     ) : ControlPanelCameraConnectUi
-    /** Settings CAM feature is No camera — do not join SoftAP or start HTTP video. */
+    /** Camera link is not being joined. */
     data object Disabled : ControlPanelCameraConnectUi
 }

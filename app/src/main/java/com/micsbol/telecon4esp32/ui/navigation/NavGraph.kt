@@ -23,6 +23,7 @@ import com.micsbol.telecon4esp32.domain.model.isApplicationCatalogVisible
 import com.micsbol.telecon4esp32.domain.model.isShipped
 import com.micsbol.telecon4esp32.ui.bluetooth.WrapApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.about.AboutScreen
+import com.micsbol.telecon4esp32.ui.home.HomeHelpTopicsScreen
 import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
@@ -42,6 +43,10 @@ import com.micsbol.telecon4esp32.ui.control_panel.HideHudSystemBars
 import com.micsbol.telecon4esp32.ui.entitlement.EntitlementViewModel
 import com.micsbol.telecon4esp32.ui.entitlement.LocalEntitlement
 import com.micsbol.telecon4esp32.ui.cyber.screens.CyberHomeScreen
+import com.micsbol.telecon4esp32.ui.feature_tour.FeaturePracticeScreen
+import com.micsbol.telecon4esp32.ui.feature_tour.ModuleFeatureId
+import com.micsbol.telecon4esp32.ui.feature_tour.ModuleFeatureMenuScreen
+import com.micsbol.telecon4esp32.ui.feature_tour.moduleFeatures
 import com.micsbol.telecon4esp32.ui.home.FirstConnectionTutorialOverlay
 import com.micsbol.telecon4esp32.ui.home.FirstConnectionTutorialViewModel
 import com.micsbol.telecon4esp32.ui.home.LocalFirstConnectionTutorial
@@ -271,11 +276,51 @@ fun AppNavGraph(
         composable(Screen.FirmwareSketches.route) {
             FirmwareSketchesScreen(navController = navController)
         }
+        composable(Screen.HomeHelpTopics.route) {
+            HomeHelpTopicsScreen(navController = navController)
+        }
         composable(Screen.About.route) {
             AboutScreen(navController = navController)
         }
         composable(Screen.PrivacyPolicy.route) {
             PrivacyPolicyScreen(navController = navController)
+        }
+        composable(
+            route = Screen.ModuleFeatureMenu.route,
+            arguments = listOf(
+                navArgument("applicationId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val applicationId = backStackEntry.arguments
+                ?.getString("applicationId")
+                ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+                ?.takeIf { moduleFeatures(it).isNotEmpty() }
+                ?: return@composable
+            ModuleFeatureMenuScreen(
+                applicationId = applicationId,
+                navController = navController,
+            )
+        }
+        composable(
+            route = Screen.FeaturePractice.route,
+            arguments = listOf(
+                navArgument("applicationId") { type = NavType.StringType },
+                navArgument("featureId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val applicationId = backStackEntry.arguments
+                ?.getString("applicationId")
+                ?.let { runCatching { ApplicationId.valueOf(it) }.getOrNull() }
+                ?: return@composable
+            val featureId = backStackEntry.arguments
+                ?.getString("featureId")
+                ?.let { runCatching { ModuleFeatureId.valueOf(it) }.getOrNull() }
+                ?: return@composable
+            FeaturePracticeScreen(
+                applicationId = applicationId,
+                featureId = featureId,
+                navController = navController,
+            )
         }
     }
         if (tutorialActive) {

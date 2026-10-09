@@ -2,9 +2,10 @@ package com.micsbol.telecon4esp32.domain.model
 
 /**
  * What the Control Panel center pane shows.
- * [PLOTS] is free; [STICK], [CAMERA], and [RADAR] each need their own unlock.
+ * [TERMINAL] is free. [PLOTS], [STICK], [CAMERA], and [RADAR] each need their own unlock.
  */
 enum class ControlPanelCenterMode {
+    TERMINAL,
     PLOTS,
     STICK,
     CAMERA,
@@ -13,7 +14,8 @@ enum class ControlPanelCenterMode {
 
     val premiumFeature: PremiumFeature?
         get() = when (this) {
-            PLOTS -> null
+            TERMINAL -> null
+            PLOTS -> PremiumFeature.CONTROL_PANEL_PLOTS
             STICK -> PremiumFeature.CONTROL_PANEL_STICK
             CAMERA -> PremiumFeature.CONTROL_PANEL_CENTER_EXTRAS
             RADAR -> PremiumFeature.CONTROL_PANEL_RADAR
@@ -24,7 +26,7 @@ enum class ControlPanelCenterMode {
 
     companion object {
         fun fromStored(value: String?): ControlPanelCenterMode =
-            entries.firstOrNull { it.name == value } ?: PLOTS
+            entries.firstOrNull { it.name == value } ?: TERMINAL
     }
 }
 
@@ -32,8 +34,10 @@ fun ControlPanelCenterMode.isUnlocked(
     cameraUnlocked: Boolean,
     radarUnlocked: Boolean,
     stickUnlocked: Boolean,
+    plotsUnlocked: Boolean,
 ): Boolean = when (this) {
-    ControlPanelCenterMode.PLOTS -> true
+    ControlPanelCenterMode.TERMINAL -> true
+    ControlPanelCenterMode.PLOTS -> plotsUnlocked
     ControlPanelCenterMode.STICK -> stickUnlocked
     ControlPanelCenterMode.CAMERA -> cameraUnlocked
     ControlPanelCenterMode.RADAR -> radarUnlocked

@@ -98,7 +98,7 @@ class ControlPanelCameraSoftApTest {
             BluetoothConnectionMode.WIFI_CAM_STARTER,
             useSoftApCamera = false,
         )
-        assertEquals(CameraLinkProfile.WIFI_SOFTAP, profile)
-        assertTrue(profile.autoConnectSoftApControlWhenCameraOnline)
+        assertEquals(CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT, profile)
+        assertFalse(profile.autoConnectSoftApControlWhenCameraOnline)
     }
 }

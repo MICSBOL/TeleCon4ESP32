@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
@@ -38,6 +41,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -140,7 +144,19 @@ fun ControlPanelRadarDisplay(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val padPx = with(density) { RadarCanvasPadding.toPx() }
+        val canvasWidth = (constraints.maxWidth.toFloat() - padPx * 2f).coerceAtLeast(1f)
+        val canvasHeight = (constraints.maxHeight.toFloat() - padPx * 2f).coerceAtLeast(1f)
+        val chipAnchor = computeRadarViewProjection(
+            width = canvasWidth,
+            height = canvasHeight,
+            spanDegrees = span,
+            padding = 0f,
+        )
+        val arcTop = chipAnchor.project(0f, 1f)
+        val arcRight = chipAnchor.project(span / 2f, 1f)
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -249,7 +265,20 @@ fun ControlPanelRadarDisplay(
             } else {
                 null
             },
-            modifier = Modifier.align(Alignment.TopEnd),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset {
+                    val chipWidth = 96.dp.roundToPx()
+                    val chipHeight = 40.dp.roundToPx()
+                    val gap = 6.dp.roundToPx()
+                    val x = (padPx + arcRight.x - chipWidth)
+                        .roundToInt()
+                        .coerceIn(0, (constraints.maxWidth - chipWidth).coerceAtLeast(0))
+                    val y = (padPx + arcTop.y - chipHeight - gap)
+                        .roundToInt()
+                        .coerceAtLeast(0)
+                    IntOffset(x, y)
+                },
         )
 
         if (series.isEmpty() || series.all { it.dataPoints.isEmpty() }) {

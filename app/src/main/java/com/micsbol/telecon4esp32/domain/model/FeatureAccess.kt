@@ -59,6 +59,17 @@ fun Entitlement.canUseControlPanelRadar(
     requiresCoinEntry = requiresCoinEntry,
 )
 
+/** Control Panel live plots. The Bluetooth terminal stays free. */
+fun Entitlement.canUseControlPanelPlots(
+    wallet: CoinWalletState = CoinWalletState.Empty,
+    requiresCoinEntry: Boolean = usesCoinEconomy(),
+): Boolean = hasFeatureAccess(
+    entitlement = this,
+    feature = PremiumFeature.CONTROL_PANEL_PLOTS,
+    wallet = wallet,
+    requiresCoinEntry = requiresCoinEntry,
+)
+
 /** Control Panel stick XY graph. Independent of camera, radar, and Advanced. */
 fun Entitlement.canUseControlPanelStick(
     wallet: CoinWalletState = CoinWalletState.Empty,

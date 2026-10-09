@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.micsbol.telecon4esp32.BuildConfig
 import com.micsbol.telecon4esp32.domain.model.CoinUnlockOption
 import com.micsbol.telecon4esp32.domain.model.CoinWalletState
 import com.micsbol.telecon4esp32.domain.model.Entitlement
@@ -34,10 +35,14 @@ private object WalletPreferencesKeys {
     val COIN_BALANCE = intPreferencesKey("coin_balance")
     val TIMED_GRANTS = stringPreferencesKey("timed_grants")
     val DEBUG_COIN_SEED_RETIRED = booleanPreferencesKey("debug_coin_seed_retired")
+    val DEBUG_COIN_BALANCE_SEEDED = booleanPreferencesKey("debug_coin_balance_seeded_5200")
 }
 
 /** Balance written on every debug launch before Play testing. Cleared once. */
 private const val RETIRED_DEBUG_COIN_BALANCE = 10_000
+
+/** Starting balance for a debug install so coin unlocks can be exercised. */
+private const val DEBUG_COIN_BALANCE = 5_200
 
 private val Context.walletDataStore: DataStore<Preferences> by preferencesDataStore(name = "coin_wallet")
 
@@ -61,11 +66,19 @@ class DataStoreWalletRepository @Inject constructor(
     init {
         scope.launch {
             context.walletDataStore.edit { preferences ->
-                if (preferences[WalletPreferencesKeys.DEBUG_COIN_SEED_RETIRED] == true) return@edit
-                if (preferences[WalletPreferencesKeys.COIN_BALANCE] == RETIRED_DEBUG_COIN_BALANCE) {
-                    preferences[WalletPreferencesKeys.COIN_BALANCE] = 0
+                if (preferences[WalletPreferencesKeys.DEBUG_COIN_SEED_RETIRED] != true) {
+                    if (preferences[WalletPreferencesKeys.COIN_BALANCE] == RETIRED_DEBUG_COIN_BALANCE) {
+                        preferences[WalletPreferencesKeys.COIN_BALANCE] = 0
+                    }
+                    preferences[WalletPreferencesKeys.DEBUG_COIN_SEED_RETIRED] = true
                 }
-                preferences[WalletPreferencesKeys.DEBUG_COIN_SEED_RETIRED] = true
+                if (
+                    BuildConfig.DEBUG &&
+                    preferences[WalletPreferencesKeys.DEBUG_COIN_BALANCE_SEEDED] != true
+                ) {
+                    preferences[WalletPreferencesKeys.COIN_BALANCE] = DEBUG_COIN_BALANCE
+                    preferences[WalletPreferencesKeys.DEBUG_COIN_BALANCE_SEEDED] = true
+                }
             }
             combine(persistedWallet, sessionGrants) { (balance, timedGrants), sessions ->
                 CoinWalletState(balance = balance, grants = timedGrants + sessions)

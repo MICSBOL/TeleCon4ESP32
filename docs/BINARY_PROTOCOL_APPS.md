@@ -10,9 +10,9 @@ Control Panel and RC Vehicle Pro share the same RC wire protocol.
 CAM Role B SoftAP Binary (`TeleCon_CAM_WiFi_Binary`) is **RC Vehicle Pro only**.
 
 RC Control Panel keeps its legacy layouts (`AA 55`, `CC 11/22/33`) — see existing RC firmware.
-Plot packets (`CC 33`) should send **count = 4 or 8** sample bytes (0–255). The phone
+Plot packets (`CC 33`) should send **count = 8** sample bytes (0–255). The phone
 treats them as numbered analog channels **CH1…CH8**; the Control Panel still has four
-plot widgets (defaults CH1–CH4). Four-byte frames remain valid. Do **not** send legacy
+plot widgets (defaults CH1–CH4). Stock Bluetooth sketches send eight. Four-byte frames remain valid. Do **not** send legacy
 `CC 44` label-config packets; plot/panel/indicator
 labels come from Android RC settings. The phone can remap `CC 33` samples and `CC 11`/`CC 22`
 fields onto plots, radar, gauges, panels, or LEDs; firmware does not send a channel-map packet.

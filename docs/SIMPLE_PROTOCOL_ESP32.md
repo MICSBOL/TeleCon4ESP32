@@ -100,24 +100,10 @@ RC:BTN,id,1
 | 2  | Center top right    |
 | 3  | Center bottom left  |
 | 4  | Center bottom right |
-| 16 | Steer center save (`0x10`) — RC Vehicle Pro trim lock |
 
-#### `RC:SET` — steering center save (RC Vehicle Pro)
-
-```
-RC:SET,steer_center,1,rx,-3
-```
-
-| Key | Description |
-|-----|-------------|
-| `steer_center` | `1` = store current steering output as mechanical zero |
-| `rx` | Live right-stick X (−100…100) including phone trim |
-
-Firmware should persist the PWM/mix that corresponds to that output in NVS so later
-`rx = 0` drives straight.
-
-Phone-side **drive assist** (dual-rate, expo, reverse, deadzone) reshapes sticks
-*before* `RC:CTRL` / binary TX. Firmware must not re-apply those curves.
+Phone-side **drive assist** (dual-rate, expo, reverse, deadzone) and steering trim
+reshape sticks *before* `RC:CTRL` / binary TX. Firmware must not re-apply those curves.
+Stock sketches do not store a steering center. `rx = 0` is 1500 µs.
 
 ---
 
@@ -139,7 +125,7 @@ RC:DATA,left,1234,right,5678,analog,42,batt,88,led,0F
 
 Panel **on/off** and **green/red** color are configured in the Android Panel settings screen, not in firmware. Optional legacy keys (`lo`, `ro`, `lg`, `rg`, `lt`, `rt`, `at`, `bt`) are ignored for appearance.
 
-**Android channel map:** the phone can retarget these fields (and `RC:PLOT` `v0`…`v7` = CH1…CH8) onto plots, radar, gauges, panels, or LEDs. Firmware keeps sending the same keys; do **not** add `RC:RADAR` / `RC:CH` packets. Four-sample sketches (`v0`…`v3`) remain valid; unused CH5–CH8 stay at 0 on the phone.
+**Android channel map:** the phone can retarget these fields (and `RC:PLOT` `v0`…`v7` = CH1…CH8) onto plots, radar, gauges, panels, or LEDs. Firmware keeps sending the same keys; do **not** add `RC:RADAR` / `RC:CH` packets. Stock Bluetooth sketches send all eight samples. Four-sample sketches (`v0`…`v3`) remain valid; channels they omit stay at 0 on the phone.
 
 #### `RC:PLOT` — live analog samples (send periodically, e.g. 10–30 Hz)
 

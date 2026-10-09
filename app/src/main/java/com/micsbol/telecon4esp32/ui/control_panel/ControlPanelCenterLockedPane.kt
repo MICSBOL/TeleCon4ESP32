@@ -160,7 +160,8 @@ private val ControlPanelCenterMode.lockedDetailRes: Int?
         ControlPanelCenterMode.STICK -> R.string.control_panel_center_locked_stick_message
         ControlPanelCenterMode.CAMERA -> R.string.control_panel_center_locked_camera_message
         ControlPanelCenterMode.RADAR -> R.string.control_panel_center_locked_radar_message
-        ControlPanelCenterMode.PLOTS -> null
+        ControlPanelCenterMode.PLOTS -> R.string.control_panel_center_locked_plots_message
+        ControlPanelCenterMode.TERMINAL -> null
     }
 
 @Composable
@@ -173,6 +174,7 @@ private fun FeaturePreview(
         ControlPanelCenterMode.CAMERA -> CameraScenePreview(modifier)
         ControlPanelCenterMode.RADAR -> RadarSweepPreview(modifier)
         ControlPanelCenterMode.PLOTS -> Unit
+        ControlPanelCenterMode.TERMINAL -> Unit
     }
 }
 

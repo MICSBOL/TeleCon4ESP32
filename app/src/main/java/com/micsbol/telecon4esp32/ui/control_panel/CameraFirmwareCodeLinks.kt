@@ -30,32 +30,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micsbol.telecon4esp32.R
-import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothConnectionMode
-import com.micsbol.telecon4esp32.domain.model.Esp32Board
+import com.micsbol.telecon4esp32.ui.codes.controlPanelSoftApVideoCodeAsset
 import com.micsbol.telecon4esp32.ui.codes.CodeAssetInfo
 import com.micsbol.telecon4esp32.ui.codes.ZipSharePrepareResult
-import com.micsbol.telecon4esp32.ui.codes.controlPanelOneCamCodeAsset
-import com.micsbol.telecon4esp32.ui.codes.controlPanelSoftApVideoCodeAsset
 import com.micsbol.telecon4esp32.ui.codes.materializeZip
 import com.micsbol.telecon4esp32.ui.codes.shareZipFile
 import kotlinx.coroutines.launch
 import com.micsbol.telecon4esp32.ui.theme.HudCyanBright
-import com.micsbol.telecon4esp32.ui.theme.PlotOrange
 
-/** Video-only SoftAP sketch, and the one-CAM sketch that carries video plus control. */
+/** Video-only SoftAP sketch for a second ESP32-CAM. Control stays on Bluetooth. */
 @Composable
 fun CameraFirmwareCodeLinks(
     modifier: Modifier = Modifier,
 ) {
-    val viewModel: ControlPanelCameraStreamViewModel = hiltViewModel()
-    val board by viewModel.board.collectAsStateWithLifecycle()
-    val connectionMode by viewModel.connectionMode.collectAsStateWithLifecycle()
-    val oneCamReady = isOneEsp32CamWifiSimpleReady(board, connectionMode)
     val videoCode = remember { controlPanelSoftApVideoCodeAsset() }
-    val oneCamCode = remember { controlPanelOneCamCodeAsset() }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -82,16 +71,6 @@ fun CameraFirmwareCodeLinks(
             asset = videoCode,
             captionRes = R.string.control_panel_camera_softap_video_link_body,
             linkColor = HudCyanBright,
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        CameraCodeLink(
-            titleRes = R.string.control_panel_camera_one_cam_title,
-            sketchRes = R.string.codes_esp32_cam_wifi_simple,
-            asset = oneCamCode,
-            captionRes = R.string.control_panel_camera_one_cam_link_body,
-            linkColor = PlotOrange,
-            blinkDelayMs = 320,
-            enabled = oneCamReady,
         )
     }
 }
@@ -174,14 +153,7 @@ private fun CameraCodeLink(
     }
 }
 
-/** Lets long sketch names wrap after each underscore instead of mid-word. */
 private fun String.breakAfterUnderscores(): String = replace("_", "_\u200b")
-
-/** One ESP32-CAM sketch matches Wi‑Fi Simple on that board, not a Bluetooth control link. */
-private fun isOneEsp32CamWifiSimpleReady(
-    board: Esp32Board,
-    mode: BluetoothConnectionMode,
-): Boolean = board == Esp32Board.CAM && mode == BluetoothConnectionMode.WIFI_CAM_STARTER
 
 @Composable
 private fun rememberLinkBlinkAlpha(startDelayMs: Int): Float {

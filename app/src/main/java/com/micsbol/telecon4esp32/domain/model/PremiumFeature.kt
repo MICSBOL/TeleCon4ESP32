@@ -31,6 +31,12 @@ enum class PremiumFeature {
     CONTROL_PANEL_STICK,
 
     /**
+     * Control Panel live plots in the center pane.
+     * The Bluetooth terminal stays free.
+     */
+    CONTROL_PANEL_PLOTS,
+
+    /**
      * Control Panel session CSV recording and export.
      * Independent of camera, radar, and [ADVANCED_PROTOCOL].
      */

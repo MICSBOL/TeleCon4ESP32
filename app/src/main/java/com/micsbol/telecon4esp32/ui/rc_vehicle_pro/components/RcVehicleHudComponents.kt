@@ -28,15 +28,26 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +69,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
+import com.micsbol.telecon4esp32.domain.model.TelemetryChannel
+import com.micsbol.telecon4esp32.ui.control_panel.components.onDoubleTapAction
+import com.micsbol.telecon4esp32.ui.rc_settings.labelRes
 import com.micsbol.telecon4esp32.domain.camera.isBluetoothControlWithCamera
 import com.micsbol.telecon4esp32.domain.camera.isSoftApControl
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
@@ -70,6 +84,8 @@ import com.micsbol.telecon4esp32.ui.components.safeHudPadding
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProGlass
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProUiState
+import com.micsbol.telecon4esp32.ui.theme.StatusConnected
+import com.micsbol.telecon4esp32.ui.theme.StatusDisconnected
 
 @Composable
 fun RcVehicleHudTopBar(
@@ -272,22 +288,117 @@ private fun RcVehicleHudHideHandle(
 fun RcHudMetricsRow(
     uiState: RcVehicleProUiState,
     modifier: Modifier = Modifier,
+    speedChannel: TelemetryChannel = TelemetryChannel.PANEL_LEFT,
+    tempChannel: TelemetryChannel = TelemetryChannel.ANALOG,
+    currentChannel: TelemetryChannel = TelemetryChannel.CH_5,
+    onSpeedChannelChange: ((TelemetryChannel) -> Unit)? = null,
+    onTempChannelChange: ((TelemetryChannel) -> Unit)? = null,
+    onCurrentChannelChange: ((TelemetryChannel) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RcHudMetricBadge(
-            icon = Icons.Default.Speed,
-            value = stringResource(R.string.rc_vehicle_speed_value, uiState.speedKmh),
-            contentDescription = stringResource(R.string.rc_vehicle_metric_speed),
+        RcHudChannelBadge(channel = speedChannel, onChannelChange = onSpeedChannelChange) { tap ->
+            RcHudMetricBadge(
+                icon = Icons.Default.Speed,
+                value = stringResource(R.string.rc_vehicle_speed_value, uiState.speedKmh),
+                contentDescription = stringResource(R.string.rc_vehicle_metric_speed),
+                modifier = tap,
+            )
+        }
+        RcHudChannelBadge(channel = tempChannel, onChannelChange = onTempChannelChange) { tap ->
+            RcHudMetricBadge(
+                icon = Icons.Default.Thermostat,
+                value = stringResource(R.string.rc_vehicle_motor_temp_value, uiState.motorTempCelsius),
+                contentDescription = stringResource(R.string.rc_vehicle_metric_motor_temp),
+                modifier = tap,
+            )
+        }
+        RcHudChannelBadge(channel = currentChannel, onChannelChange = onCurrentChannelChange) { tap ->
+            RcHudMetricBadge(
+                icon = Icons.Default.Bolt,
+                value = stringResource(R.string.rc_vehicle_current_value, uiState.currentAmps),
+                contentDescription = stringResource(R.string.rc_vehicle_metric_current),
+                modifier = tap,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RcHudChannelBadge(
+    channel: TelemetryChannel,
+    onChannelChange: ((TelemetryChannel) -> Unit)?,
+    badge: @Composable (Modifier) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        badge(Modifier.onDoubleTapAction(onChannelChange?.let { { open = true } }))
+        if (onChannelChange != null) {
+            RcHudMetricChannelMenu(
+                expanded = open,
+                selected = channel,
+                onSelected = {
+                    onChannelChange(it)
+                    open = false
+                },
+                onDismiss = { open = false },
+            )
+        }
+    }
+}
+
+@Composable
+fun RcHudMetricChannelMenu(
+    expanded: Boolean,
+    selected: TelemetryChannel,
+    onSelected: (TelemetryChannel) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val labelColor = Color.White
+    val accent = brandPrimary()
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1A2433),
+    ) {
+        Text(
+            text = stringResource(R.string.rc_vehicle_metric_channel),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFB7C4D4),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         )
-        RcHudMetricBadge(
-            icon = Icons.Default.Thermostat,
-            value = stringResource(R.string.rc_vehicle_motor_temp_value, uiState.motorTempCelsius),
-            contentDescription = stringResource(R.string.rc_vehicle_metric_motor_temp),
-        )
+        (TelemetryChannel.U8_SOURCES + TelemetryChannel.I32_SOURCES).forEach { channel ->
+            val isSelected = channel == selected
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(channel.labelRes()),
+                        color = if (isSelected) accent else labelColor,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    )
+                },
+                onClick = { onSelected(channel) },
+                colors = MenuDefaults.itemColors(
+                    textColor = labelColor,
+                    trailingIconColor = accent,
+                ),
+                trailingIcon = if (isSelected) {
+                    {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = accent,
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
+        }
     }
 }
 
@@ -422,6 +533,36 @@ private fun RcMetricTile(
 }
 
 @Composable
+fun RcHudCameraConnectIcon(
+    cameraEnabled: Boolean,
+    isCameraOnline: Boolean,
+    onConnectClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val description = when {
+        !cameraEnabled -> stringResource(R.string.rc_vehicle_camera_icon_off)
+        isCameraOnline -> stringResource(R.string.rc_vehicle_cam_online)
+        else -> stringResource(R.string.rc_vehicle_camera_icon_connect)
+    }
+    val tint = when {
+        !cameraEnabled -> brandPrimary().copy(alpha = 0.35f)
+        isCameraOnline -> StatusConnected
+        else -> StatusDisconnected
+    }
+    IconButton(
+        onClick = onConnectClick,
+        enabled = cameraEnabled,
+        modifier = modifier,
+    ) {
+        Icon(
+            imageVector = if (cameraEnabled) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
+            contentDescription = description,
+            tint = tint,
+        )
+    }
+}
+
+@Composable
 fun RcHudLinkStatusIcons(
     profile: CameraLinkProfile,
     isControlConnected: Boolean,
@@ -476,15 +617,22 @@ fun RcHudLinkStatusIcons(
 fun RcHudTopBarStatusRow(
     uiState: RcVehicleProUiState,
     modifier: Modifier = Modifier,
+    batteryChannel: TelemetryChannel = TelemetryChannel.BATT,
+    onBatteryChannelChange: ((TelemetryChannel) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        RcHudChannelBadge(
+            channel = batteryChannel,
+            onChannelChange = onBatteryChannelChange,
+        ) { tap ->
         RcHudTopBarStatusBadge(
             backgroundColor = brandPrimary().copy(alpha = 0.15f),
             contentDescription = stringResource(R.string.rc_vehicle_battery_value, uiState.batteryPercent),
+            modifier = tap,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -501,6 +649,7 @@ fun RcHudTopBarStatusRow(
                     color = brandPrimary(),
                 )
             }
+        }
         }
     }
 }

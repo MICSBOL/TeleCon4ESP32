@@ -54,37 +54,5 @@ class CodeAssetModelsTest {
         )
         assertTrue(ControlPanelCodePackageId.DEVKIT_CLASSIC in ids)
         assertFalse(ControlPanelCodePackageId.CAM_SOFTAP_VIDEO in ids)
-        assertFalse(ControlPanelCodePackageId.CAM_WIFI_SIMPLE in ids)
-    }
-
-    @Test
-    fun `one cam starter lists the simple sketch zip`() {
-        val ids = controlPanelCodePackageIds(
-            Esp32Board.CAM,
-            BluetoothConnectionMode.WIFI_CAM_STARTER,
-        )
-        assertTrue(ControlPanelCodePackageId.CAM_WIFI_SIMPLE in ids)
-        assertFalse(ControlPanelCodePackageId.CAM_WIFI_BINARY in ids)
-        assertFalse(ControlPanelCodePackageId.CAM_SOFTAP_VIDEO in ids)
-    }
-
-    @Test
-    fun `one cam binary lists the binary sketch zip`() {
-        val ids = controlPanelCodePackageIds(
-            Esp32Board.CAM,
-            BluetoothConnectionMode.WIFI_BINARY,
-        )
-        assertTrue(ControlPanelCodePackageId.CAM_WIFI_BINARY in ids)
-        assertFalse(ControlPanelCodePackageId.CAM_WIFI_SIMPLE in ids)
-    }
-
-    @Test
-    fun `devkit wifi binary lists the devkit sketch zip`() {
-        val ids = controlPanelCodePackageIds(
-            Esp32Board.DEV_KIT,
-            BluetoothConnectionMode.WIFI_BINARY,
-        )
-        assertTrue(ControlPanelCodePackageId.DEVKIT_WIFI_BINARY in ids)
-        assertFalse(ControlPanelCodePackageId.CAM_WIFI_BINARY in ids)
     }
 }

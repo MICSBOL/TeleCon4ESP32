@@ -25,10 +25,15 @@ import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.model.KnobChannelLink
 import com.micsbol.telecon4esp32.domain.model.StickChannelLink
 import com.micsbol.telecon4esp32.domain.model.UserSettings
+import com.micsbol.telecon4esp32.domain.model.orDefaultClassicSimple
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -93,6 +98,10 @@ private object PreferencesKeys {
     val RC_VP_LEFT_STICK_CHANNELS = stringPreferencesKey("rc_vehicle_pro_left_stick_channels")
     val RC_VP_RIGHT_STICK_CHANNELS = stringPreferencesKey("rc_vehicle_pro_right_stick_channels")
     val RC_VP_CAMERA_KNOB_CHANNEL = stringPreferencesKey("rc_vehicle_pro_camera_knob_channel")
+    val RC_VP_SPEED_CHANNEL = stringPreferencesKey("rc_vehicle_pro_speed_channel")
+    val RC_VP_TEMP_CHANNEL = stringPreferencesKey("rc_vehicle_pro_temp_channel")
+    val RC_VP_BATTERY_CHANNEL = stringPreferencesKey("rc_vehicle_pro_battery_channel")
+    val RC_VP_CURRENT_CHANNEL = stringPreferencesKey("rc_vehicle_pro_current_channel")
     val RC_VP_HUD_PLOT_CHROME = stringPreferencesKey("rc_vehicle_pro_hud_plot_chrome")
     val CONTROL_PANEL_PLOT_DISPLAY = stringPreferencesKey("control_panel_plot_display")
 }
@@ -128,6 +137,29 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) : ISettingsRepository {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        // Classic Simple is the factory default. A saved Classic Binary or BLE
+        // Binary choice is left in place so it comes back when the app reopens.
+        scope.launch {
+            context.dataStore.edit { preferences ->
+                ApplicationId.entries.forEach { applicationId ->
+                    val stored = BluetoothConnectionMode.fromStored(
+                        preferences[connectionModeKey(applicationId)],
+                    )
+                    if (stored != null && stored.orDefaultClassicSimple() == stored) {
+                        return@forEach
+                    }
+                    val mode = BluetoothConnectionMode.CLASSIC_SIMPLE
+                    preferences[connectionModeKey(applicationId)] = mode.name
+                    preferences[transportTypeKey(applicationId)] = mode.transport.name
+                    preferences[protocolModeKey(applicationId)] = mode.protocolMode.name
+                }
+            }
+        }
+    }
 
     override val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { preferences ->
         val leftModeString = preferences[PreferencesKeys.LEFT_STICK_MODE]
@@ -583,6 +615,22 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 cameraKnobChannel = KnobChannelLink.decode(
                     preferences[PreferencesKeys.RC_VP_CAMERA_KNOB_CHANNEL],
                 ),
+                speedChannel = RcVehicleProControlSettings.metricChannel(
+                    preferences[PreferencesKeys.RC_VP_SPEED_CHANNEL],
+                    defaults.speedChannel,
+                ),
+                tempChannel = RcVehicleProControlSettings.metricChannel(
+                    preferences[PreferencesKeys.RC_VP_TEMP_CHANNEL],
+                    defaults.tempChannel,
+                ),
+                batteryChannel = RcVehicleProControlSettings.metricChannel(
+                    preferences[PreferencesKeys.RC_VP_BATTERY_CHANNEL],
+                    defaults.batteryChannel,
+                ),
+                currentChannel = RcVehicleProControlSettings.metricChannel(
+                    preferences[PreferencesKeys.RC_VP_CURRENT_CHANNEL],
+                    defaults.currentChannel,
+                ),
             ).withExclusiveChannels()
         }
 
@@ -622,6 +670,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 settings.rightStickChannels.encode()
             preferences[PreferencesKeys.RC_VP_CAMERA_KNOB_CHANNEL] =
                 settings.cameraKnobChannel.encode()
+            preferences[PreferencesKeys.RC_VP_SPEED_CHANNEL] = settings.speedChannel.name
+            preferences[PreferencesKeys.RC_VP_TEMP_CHANNEL] = settings.tempChannel.name
+            preferences[PreferencesKeys.RC_VP_BATTERY_CHANNEL] = settings.batteryChannel.name
+            preferences[PreferencesKeys.RC_VP_CURRENT_CHANNEL] = settings.currentChannel.name
         }
     }
 

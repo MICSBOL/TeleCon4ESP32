@@ -41,16 +41,8 @@ class SimpleProtocolEncoderTest {
     }
 
     @Test
-    fun `buildSteerCenterSaveLine encodes center flag and rx`() {
-        val line = SimpleProtocolEncoder.buildSteerCenterSaveLine(rxChannel = -3)
-        assertTrue(line.startsWith("RC:SET,"))
-        assertTrue(line.contains("steer_center,1"))
-        assertTrue(line.contains("rx,-3"))
-    }
-
-    @Test
-    fun `buildRcButtonLine encodes steer center save id`() {
-        val line = SimpleProtocolEncoder.buildRcButtonLine(ButtonEvent.STEER_CENTER_SAVE)
-        assertEquals("RC:BTN,id,16", line)
+    fun `buildRcButtonLine encodes center top right`() {
+        val line = SimpleProtocolEncoder.buildRcButtonLine(ButtonEvent.CENTER_TOP_RIGHT)
+        assertEquals("RC:BTN,id,2", line)
     }
 }

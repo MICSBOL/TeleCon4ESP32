@@ -87,6 +87,8 @@ import com.micsbol.telecon4esp32.domain.model.UserSettings
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelCenterExtras
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelRadar
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelSessionCsv
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry
+import com.micsbol.telecon4esp32.domain.model.canUseControlPanelPlots
 import com.micsbol.telecon4esp32.domain.model.canUseControlPanelStick
 import com.micsbol.telecon4esp32.domain.model.isUnlocked
 import com.micsbol.telecon4esp32.domain.model.usesCoinEconomy
@@ -232,7 +234,7 @@ fun ControlPanelScreen(
             var csvSaveFailed by remember { mutableStateOf(false) }
             val entitlement = LocalEntitlement.current
             val wallet = LocalWallet.current
-            val localCenterMode = remember { MutableStateFlow(ControlPanelCenterMode.PLOTS) }
+            val localCenterMode = remember { MutableStateFlow(ControlPanelCenterMode.TERMINAL) }
             val centerMode by (cameraStreamViewModel?.centerMode ?: localCenterMode).collectAsState()
             val onCenterModeSelected: (ControlPanelCenterMode) -> Unit = { mode ->
                 cameraStreamViewModel?.onCenterModeSelected(mode)
@@ -269,6 +271,12 @@ fun ControlPanelScreen(
                     requiresCoinEntry = requiresCoinEntry,
                 )
             }
+            val plotsUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
+                entitlement.canUseControlPanelPlots(
+                    wallet = wallet,
+                    requiresCoinEntry = requiresCoinEntry,
+                )
+            }
             val stickUnlocked = remember(entitlement, wallet, requiresCoinEntry) {
                 entitlement.canUseControlPanelStick(
                     wallet = wallet,
@@ -282,29 +290,28 @@ fun ControlPanelScreen(
                 )
             }
             val isCenterModeUnlocked: (ControlPanelCenterMode) -> Boolean =
-                remember(cameraUnlocked, radarUnlocked, stickUnlocked) {
+                remember(cameraUnlocked, radarUnlocked, stickUnlocked, plotsUnlocked) {
                     { mode ->
                         mode.isUnlocked(
                             cameraUnlocked = cameraUnlocked,
                             radarUnlocked = radarUnlocked,
                             stickUnlocked = stickUnlocked,
+                            plotsUnlocked = plotsUnlocked,
                         )
                     }
                 }
             LaunchedEffect(centerMode, cameraUnlocked, cameraBlockedByWifiControl) {
                 if (centerMode == ControlPanelCenterMode.CAMERA && cameraBlockedByWifiControl) {
                     cameraStreamViewModel?.onCenterModeSelected(
-                        mode = ControlPanelCenterMode.PLOTS,
-                        engageCameraHardware = false,
+                        mode = ControlPanelCenterMode.TERMINAL,
                         toggleCamera = false,
-                    ) ?: onCenterModeSelected(ControlPanelCenterMode.PLOTS)
+                    ) ?: onCenterModeSelected(ControlPanelCenterMode.TERMINAL)
                 } else if (
                     centerMode == ControlPanelCenterMode.CAMERA &&
                     !cameraUnlocked
                 ) {
                     cameraStreamViewModel?.onCenterModeSelected(
                         mode = centerMode,
-                        engageCameraHardware = false,
                         toggleCamera = false,
                     )
                 }
@@ -341,6 +348,8 @@ fun ControlPanelScreen(
                                 R.string.control_panel_center_radar_title
                             PremiumFeature.CONTROL_PANEL_STICK ->
                                 R.string.control_panel_center_stick_title
+                            PremiumFeature.CONTROL_PANEL_PLOTS ->
+                                R.string.control_panel_center_plots_title
                             PremiumFeature.CONTROL_PANEL_SESSION_CSV ->
                                 R.string.control_panel_session_csv_unlock_title
                             else -> R.string.app_control_panel_title
@@ -751,13 +760,12 @@ fun ControlPanelScreen(
                                                 mode == ControlPanelCenterMode.CAMERA &&
                                                 cameraBlockedByWifiControl
                                             ) {
-                                                ControlPanelCenterMode.PLOTS
+                                                ControlPanelCenterMode.TERMINAL
                                             } else {
                                                 mode
                                             }
                                             cameraStreamViewModel?.onCenterModeSelected(
                                                 mode = target,
-                                                engageCameraHardware = isCenterModeUnlocked(target),
                                                 toggleCamera = false,
                                             ) ?: run { onCenterModeSelected(target) }
                                         },
@@ -834,7 +842,7 @@ private fun ControlPanelCenterPlotHost(
     plotCalibrations: List<PlotCalibration>,
     channelRouting: ChannelRouting,
     settingsSyncGeneration: Int = 0,
-    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.TERMINAL,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
     leftStickMode: JoystickMode = JoystickMode.Spring(),
@@ -843,6 +851,8 @@ private fun ControlPanelCenterPlotHost(
     topStartOverlay: @Composable () -> Unit = {},
 ) {
     val rcState by rcControlState.collectAsState()
+    val linkTraffic by (bluetoothViewModel?.linkTraffic
+        ?: remember { MutableStateFlow(emptyList<LinkTrafficEntry>()) }).collectAsState()
     // Center display is two panes × two traces = four plot widgets.
     // Analog bus on the wire is CH1…CH8 (`v0`…`v7` / CC 33 count up to 8).
     if (bluetoothViewModel != null) {
@@ -865,6 +875,7 @@ private fun ControlPanelCenterPlotHost(
             centerMode = centerMode,
             centerModeUnlocked = centerModeUnlocked,
             onUnlockCenterMode = onUnlockCenterMode,
+            linkTraffic = linkTraffic,
             leftStickXy = rcState.leftStickPosition,
             rightStickXy = rcState.rightStickPosition,
             leftStickMode = leftStickMode,
@@ -902,6 +913,7 @@ private fun ControlPanelCenterPlotHost(
             centerMode = centerMode,
             centerModeUnlocked = centerModeUnlocked,
             onUnlockCenterMode = onUnlockCenterMode,
+            linkTraffic = linkTraffic,
             leftStickXy = rcState.leftStickPosition,
             rightStickXy = rcState.rightStickPosition,
             leftStickMode = leftStickMode,
@@ -938,9 +950,10 @@ private fun ControlPanelCenterPlot(
     onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
     onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
-    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.TERMINAL,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
+    linkTraffic: List<com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry> = emptyList(),
     leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     leftStickMode: JoystickMode = JoystickMode.Spring(),
@@ -967,6 +980,7 @@ private fun ControlPanelCenterPlot(
         centerMode = centerMode,
         centerModeUnlocked = centerModeUnlocked,
         onUnlockCenterMode = onUnlockCenterMode,
+        linkTraffic = linkTraffic,
         leftStickXy = leftStickXy,
         rightStickXy = rightStickXy,
         leftStickMode = leftStickMode,
@@ -990,9 +1004,10 @@ private fun PersistedControlPanelCenterPlot(
     onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
     onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
-    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.TERMINAL,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
+    linkTraffic: List<com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry> = emptyList(),
     leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     leftStickMode: JoystickMode = JoystickMode.Spring(),
@@ -1017,6 +1032,7 @@ private fun PersistedControlPanelCenterPlot(
         centerMode = centerMode,
         centerModeUnlocked = centerModeUnlocked,
         onUnlockCenterMode = onUnlockCenterMode,
+        linkTraffic = linkTraffic,
         leftStickXy = leftStickXy,
         rightStickXy = rightStickXy,
         leftStickMode = leftStickMode,

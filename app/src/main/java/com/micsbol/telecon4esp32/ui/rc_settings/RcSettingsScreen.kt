@@ -17,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,6 +35,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionLinkFamily
 import com.micsbol.telecon4esp32.domain.bluetooth.linkFamily
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
 import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
+import com.micsbol.telecon4esp32.domain.model.coerceForApplication
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
@@ -60,7 +60,6 @@ import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsViewModel
 import com.micsbol.telecon4esp32.ui.applications.DevKitWifiSoftApSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.RcVehicleCameraWifiSettingsSection
-import com.micsbol.telecon4esp32.ui.applications.ResetDefaultConfigurationTitleAction
 import com.micsbol.telecon4esp32.ui.applications.SettingsUserTypeSection
 import com.micsbol.telecon4esp32.ui.applications.SoftApCameraOverlayWifiSettingsSection
 import com.micsbol.telecon4esp32.ui.applications.applicationSettingsTitleRes
@@ -103,17 +102,12 @@ fun RcSettingsScreen(
         ?.settingsUserTypeOverride
         ?.collectAsStateWithLifecycle()
         ?.value
-    val configurationResetEpoch = applicationSettingsViewModel
-        ?.configurationResetEpoch
-        ?.collectAsStateWithLifecycle()
-        ?.value
-        ?: 0
     val advancedSettingsRevealed = applicationSettingsViewModel
         ?.advancedSettingsRevealed
         ?.collectAsStateWithLifecycle()
         ?.value
         ?: true
-    val fallbackCenterMode = remember { MutableStateFlow(ControlPanelCenterMode.PLOTS) }
+    val fallbackCenterMode = remember { MutableStateFlow(ControlPanelCenterMode.TERMINAL) }
     val fallbackCenterModeLoaded = remember { MutableStateFlow(true) }
     val centerMode by (applicationSettingsViewModel?.centerMode ?: fallbackCenterMode)
         .collectAsStateWithLifecycle()
@@ -165,25 +159,6 @@ fun RcSettingsScreen(
         title = screenTitle,
         subtitle = screenSubtitle,
         onNavigateBack = { navController.navigateUp() },
-        actions = {
-            if (settingsSection == ApplicationSettingsSection.CONNECTION) {
-                if (!showAdvancedUi) {
-                    AdvancedSettingsTitleLockAction(
-                        onClick = {
-                            if (canUseAdvanced) {
-                                applicationSettingsViewModel?.revealAdvancedSettings()
-                            } else {
-                                showAdvancedInfo = true
-                            }
-                        },
-                    )
-                } else if (applicationSettingsViewModel != null) {
-                    ResetDefaultConfigurationTitleAction(
-                        onReset = applicationSettingsViewModel::resetToDefaultConfiguration,
-                    )
-                }
-            }
-        },
     ) { paddingValues ->
         when (val state = state) {
             is SettingsUiState.Loading -> {
@@ -211,8 +186,7 @@ fun RcSettingsScreen(
                 }
             }
             is SettingsUiState.Success -> {
-                key(configurationResetEpoch) {
-                    SettingsContent(
+                SettingsContent(
                         modifier = Modifier.padding(paddingValues),
                         applicationId = applicationId,
                         settingsSection = settingsSection,
@@ -241,7 +215,6 @@ fun RcSettingsScreen(
                             { type -> vm.onSettingsUserTypeSelected(type) }
                         },
                     )
-                }
             }
         }
     }
@@ -255,7 +228,7 @@ private fun SettingsContent(
     connectionMode: BluetoothConnectionMode? = null,
     selectedBoard: Esp32Board = Esp32Board.DEV_KIT,
     useSoftApCamera: Boolean = false,
-    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.TERMINAL,
     centerModeLoaded: Boolean = true,
     centerExtrasUnlocked: Boolean = false,
     canUseAdvanced: Boolean = true,
@@ -288,22 +261,10 @@ private fun SettingsContent(
         centerCameraEnabled = centerCameraEnabled,
     )
     val settingsConnectionMode = connectionMode?.let { mode ->
-        if (
-            applicationId.isConnectionModeAvailable(selectedBoard, mode) &&
-            mode.settingsUserType == userType
-        ) {
+        if (applicationId.isConnectionModeAvailable(selectedBoard, mode)) {
             mode
         } else {
-            applicationId.preferredConnectionMode(
-                board = selectedBoard,
-                family = if (storedRole == CameraHardwareRole.TWO_DEVICES) {
-                    ConnectionLinkFamily.BLUETOOTH
-                } else {
-                    mode.linkFamily
-                },
-                userType = userType,
-                canUseAdvanced = canUseAdvanced,
-            ) ?: BluetoothConnectionMode.CLASSIC_SIMPLE
+            BluetoothConnectionMode.CLASSIC_SIMPLE
         }
     }
     LaunchedEffect(cameraRole, connectionMode, settingsConnectionMode) {
@@ -332,33 +293,6 @@ private fun SettingsContent(
             settingsConnectionMode != null &&
             onConnectionModeChanged != null
         ) {
-            if (showAdvancedUi) {
-                item {
-                    SettingsUserTypeSection(
-                        selected = userType,
-                        canUseAdvanced = canUseAdvanced,
-                        onRequestAdvancedUnlock = onRequestAdvancedUnlock,
-                        onSelected = { type ->
-                            if (type == userType) return@SettingsUserTypeSection
-                            onSettingsUserTypeSelected?.invoke(type)
-                            val family = if (cameraRole == CameraHardwareRole.TWO_DEVICES) {
-                                ConnectionLinkFamily.BLUETOOTH
-                            } else {
-                                settingsConnectionMode.linkFamily
-                            }
-                            val preferred = applicationId.preferredConnectionMode(
-                                board = selectedBoard,
-                                family = family,
-                                userType = type,
-                                canUseAdvanced = canUseAdvanced,
-                            )
-                            if (preferred != null && preferred != settingsConnectionMode) {
-                                onConnectionModeChanged(preferred)
-                            }
-                        },
-                    )
-                }
-            }
             item {
                 ApplicationProtocolSettingsSection(
                     applicationId = applicationId,
@@ -367,33 +301,12 @@ private fun SettingsContent(
                     userType = userType,
                     canUseAdvanced = canUseAdvanced,
                     selectedBoard = selectedBoard,
-                    allowWifiControl = true,
-                    onWifiChoiceSelected = onWifiChoiceSelected?.let { select ->
-                        { choice -> select(choice, userType, canUseAdvanced) }
-                    },
-                    onBluetoothFamilySelected = onBluetoothFamilySelected?.let { select ->
-                        { select(userType, canUseAdvanced) }
-                    },
+                    allowWifiControl = false,
                 )
             }
             when {
-                storedRole == CameraHardwareRole.ONE_CAM -> item {
-                    RcVehicleCameraWifiSettingsSection(
-                        connectionMode = settingsConnectionMode,
-                    )
-                }
-                storedRole == CameraHardwareRole.TWO_DEVICES -> item {
+                storedRole.coerceForApplication(applicationId) == CameraHardwareRole.TWO_DEVICES -> item {
                     SoftApCameraOverlayWifiSettingsSection()
-                }
-                storedRole == CameraHardwareRole.NO_CAM &&
-                    (
-                        settingsConnectionMode == BluetoothConnectionMode.WIFI_SIMPLE ||
-                            settingsConnectionMode == BluetoothConnectionMode.WIFI_BINARY
-                        ) -> item {
-                    DevKitWifiSoftApSettingsSection(
-                        applicationId = applicationId,
-                        connectionMode = settingsConnectionMode,
-                    )
                 }
             }
             item {

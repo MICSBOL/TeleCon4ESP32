@@ -4,6 +4,7 @@ import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothProtocolMode
 import com.micsbol.telecon4esp32.domain.bluetooth.BluetoothTransportType
 import com.micsbol.telecon4esp32.domain.bluetooth.ConnectionResult
 import com.micsbol.telecon4esp32.domain.bluetooth.EspMessage
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteController
 import com.micsbol.telecon4esp32.domain.bluetooth.RemoteDevice
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState
@@ -39,6 +40,8 @@ class FakeRemoteController : RemoteController {
     override val telemetryState: StateFlow<TelemetryState> = _telemetryState.asStateFlow()
     private val _messages = MutableSharedFlow<EspMessage>(extraBufferCapacity = 16)
     override val messages: SharedFlow<EspMessage> = _messages.asSharedFlow()
+    private val _linkTraffic = MutableStateFlow<List<LinkTrafficEntry>>(emptyList())
+    override val linkTraffic: StateFlow<List<LinkTrafficEntry>> = _linkTraffic.asStateFlow()
 
     var discoveryStarted = false
     var discoveryStopped = false

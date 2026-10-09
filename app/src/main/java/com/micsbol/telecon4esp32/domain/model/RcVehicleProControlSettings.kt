@@ -33,6 +33,14 @@ data class RcVehicleProControlSettings(
     val rightStickChannels: StickChannelLink = StickChannelLink.DEFAULT_RIGHT,
     /** Optional CH1…CH8 link for the camera pan knob. */
     val cameraKnobChannel: KnobChannelLink = KnobChannelLink.DEFAULT,
+    /** Top-bar speed. Panel values are km/h × 10. */
+    val speedChannel: TelemetryChannel = TelemetryChannel.PANEL_LEFT,
+    /** Top-bar motor temperature. */
+    val tempChannel: TelemetryChannel = TelemetryChannel.ANALOG,
+    /** Top-bar battery percent. */
+    val batteryChannel: TelemetryChannel = TelemetryChannel.BATT,
+    /** Top-bar motor current. */
+    val currentChannel: TelemetryChannel = TelemetryChannel.CH_5,
 ) {
     fun occupiedChannels(
         exceptLeftStick: Boolean = false,
@@ -77,6 +85,11 @@ data class RcVehicleProControlSettings(
             } else {
                 JoystickMode.VerticalSpring(JoystickMode.CENTER)
             }
+        }
+
+        fun metricChannel(stored: String?, default: TelemetryChannel): TelemetryChannel {
+            val parsed = TelemetryChannel.fromStored(stored) ?: return default
+            return if (parsed.kind == TelemetryChannelKind.BIT) default else parsed
         }
 
         fun rightStickModeFromPersisted(

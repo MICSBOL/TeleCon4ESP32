@@ -53,15 +53,10 @@ fun Entitlement.effectiveProtocolMode(
     wallet: CoinWalletState = CoinWalletState.Empty,
     requiresCoinEntry: Boolean = usesCoinEconomy(),
 ): BluetoothProtocolMode {
-    if (stored == BluetoothProtocolMode.SIMPLE) return BluetoothProtocolMode.SIMPLE
-    return if (
-        applicationId.supportsBinaryProtocol() &&
-        canUseAdvancedProtocol(applicationId, wallet, requiresCoinEntry)
-    ) {
-        BluetoothProtocolMode.ADVANCED
-    } else {
-        BluetoothProtocolMode.SIMPLE
+    if (!applicationId.supportsBinaryProtocol() && stored == BluetoothProtocolMode.ADVANCED) {
+        return BluetoothProtocolMode.SIMPLE
     }
+    return stored
 }
 
 fun Entitlement.effectiveConnectionMode(
@@ -72,61 +67,22 @@ fun Entitlement.effectiveConnectionMode(
     wallet: CoinWalletState = CoinWalletState.Empty,
     requiresCoinEntry: Boolean = usesCoinEconomy(),
 ): BluetoothConnectionMode {
-    if (transport == BluetoothTransportType.WIFI) {
-        // CAM SoftAP: Default / Simple stays starter. Advanced protocol may pick SoftAP Binary.
-        if (
-            applicationId.supportsCamVideoControl() &&
-            board == Esp32Board.CAM
-        ) {
-            return if (
-                storedProtocol == BluetoothProtocolMode.ADVANCED &&
-                canUseConnectionMode(
-                    applicationId,
-                    BluetoothConnectionMode.WIFI_BINARY,
-                    wallet,
-                    requiresCoinEntry,
-                )
-            ) {
-                BluetoothConnectionMode.WIFI_BINARY
-            } else {
-                BluetoothConnectionMode.WIFI_CAM_STARTER
-            }
-        }
-        val protocol = effectiveProtocolMode(
-            applicationId,
-            storedProtocol,
-            wallet,
-            requiresCoinEntry,
-        )
-        return if (protocol == BluetoothProtocolMode.ADVANCED) {
-            BluetoothConnectionMode.WIFI_BINARY
-        } else {
-            // DevKit SoftAP Simple is withdrawn; Default Wi‑Fi falls back to Classic Simple.
-            BluetoothConnectionMode.CLASSIC_SIMPLE
-        }
-    }
     val protocol = effectiveProtocolMode(
         applicationId,
         storedProtocol,
         wallet,
         requiresCoinEntry,
     )
-    val mode = BluetoothConnectionMode.from(transport, protocol)
-    // BLE always implies binary when the user is allowed to use advanced.
-    if (
-        transport == BluetoothTransportType.BLE &&
-        canUseAdvancedProtocol(applicationId, wallet, requiresCoinEntry)
-    ) {
-        return BluetoothConnectionMode.BLE_BINARY
+    return when (transport) {
+        BluetoothTransportType.BLE -> BluetoothConnectionMode.BLE_BINARY
+        BluetoothTransportType.CLASSIC -> when (protocol) {
+            BluetoothProtocolMode.ADVANCED -> BluetoothConnectionMode.CLASSIC_BINARY
+            BluetoothProtocolMode.SIMPLE -> BluetoothConnectionMode.CLASSIC_SIMPLE
+        }
+        // DevKit Wi-Fi control and one-board CAM control are withdrawn.
+        // A fresh or leftover Wi-Fi transport starts on Classic Simple.
+        BluetoothTransportType.WIFI -> BluetoothConnectionMode.CLASSIC_SIMPLE
     }
-    // BLE without premium falls back to Classic Simple for the UI selection.
-    if (
-        transport == BluetoothTransportType.BLE &&
-        !canUseAdvancedProtocol(applicationId, wallet, requiresCoinEntry)
-    ) {
-        return BluetoothConnectionMode.CLASSIC_SIMPLE
-    }
-    return mode
 }
 
 fun Entitlement.canUseConnectionMode(
@@ -134,18 +90,7 @@ fun Entitlement.canUseConnectionMode(
     mode: BluetoothConnectionMode,
     wallet: CoinWalletState = CoinWalletState.Empty,
     requiresCoinEntry: Boolean = usesCoinEconomy(),
-): Boolean = when (mode) {
-    BluetoothConnectionMode.CLASSIC_SIMPLE,
-    BluetoothConnectionMode.WIFI_CAM_STARTER,
-    -> true
-    BluetoothConnectionMode.WIFI_SIMPLE,
-    -> false
-    BluetoothConnectionMode.WIFI_SOFTAP,
-    BluetoothConnectionMode.CLASSIC_BINARY,
-    BluetoothConnectionMode.BLE_BINARY,
-    BluetoothConnectionMode.WIFI_BINARY,
-    -> canUseAdvancedProtocol(applicationId, wallet, requiresCoinEntry)
-}
+): Boolean = mode in applicationId.availableConnectionModes(Esp32Board.DEV_KIT)
 
 /**
  * Connection modes offered in app settings for the selected board.
@@ -166,28 +111,14 @@ fun Entitlement.canUseConnectionMode(
  * DevKit / non-camera apps: Classic Simple/Binary, BLE Binary, and Advanced
  * Wi‑Fi SoftAP Binary (no camera). DevKit Wi‑Fi Simple is withdrawn.
  */
-/** One-CAM video + SoftAP TCP. Both modules can use one ESP32-CAM for control and camera. */
-fun ApplicationId.supportsCamVideoControl(): Boolean = true
+/** One-board ESP32-CAM control is withdrawn. Camera video uses the SoftAP overlay. */
+fun ApplicationId.supportsCamVideoControl(): Boolean = false
 
 fun ApplicationId.availableConnectionModes(board: Esp32Board): List<BluetoothConnectionMode> {
-    if (usesCamera() && board.isKitBDual) {
-        return listOf(
-            BluetoothConnectionMode.CLASSIC_SIMPLE,
-            BluetoothConnectionMode.CLASSIC_BINARY,
-            BluetoothConnectionMode.BLE_BINARY,
-        )
-    }
-    if (supportsCamVideoControl() && board == Esp32Board.CAM) {
-        return listOf(
-            BluetoothConnectionMode.WIFI_CAM_STARTER,
-            BluetoothConnectionMode.WIFI_BINARY,
-        )
-    }
     return listOf(
         BluetoothConnectionMode.CLASSIC_SIMPLE,
         BluetoothConnectionMode.CLASSIC_BINARY,
         BluetoothConnectionMode.BLE_BINARY,
-        BluetoothConnectionMode.WIFI_BINARY,
     )
 }
 
@@ -203,39 +134,34 @@ fun ApplicationId.isConnectionModeAvailable(
 ): Boolean = mode in availableConnectionModes(board)
 
 /**
- * Connection mode for live connect buttons (Bluetooth vs Wi‑Fi).
+ * Last saved Bluetooth mode, or Classic Simple when nothing selectable is stored.
  *
- * Settings already coerce withdrawn DevKit SoftAP Simple to Classic Simple.
- * Live screens must use the same rule: a stored Classic Simple pick wins even if
- * an older transport key is still WIFI.
+ * Classic Simple, Classic Binary, and BLE Binary are restored as saved.
+ * A missing value or a withdrawn Wi-Fi mode starts on Classic Simple, even if an
+ * older transport or protocol key still says binary.
  */
+fun BluetoothConnectionMode?.orDefaultClassicSimple(): BluetoothConnectionMode = when (this) {
+    BluetoothConnectionMode.CLASSIC_SIMPLE,
+    BluetoothConnectionMode.CLASSIC_BINARY,
+    BluetoothConnectionMode.BLE_BINARY,
+    -> this
+    else -> BluetoothConnectionMode.CLASSIC_SIMPLE
+}
+
+/**
+ * Connection mode for live connect buttons.
+ *
+ * A saved Classic Simple, Classic Binary, or BLE Binary pick wins over older
+ * transport and protocol keys.
+ */
+@Suppress("UNUSED_PARAMETER")
 fun liveControlConnectionMode(
     applicationId: ApplicationId,
     board: Esp32Board,
     storedMode: BluetoothConnectionMode?,
     transport: BluetoothTransportType,
     protocol: BluetoothProtocolMode,
-): BluetoothConnectionMode {
-    val candidate = storedMode ?: BluetoothConnectionMode.from(transport, protocol)
-    if (board == Esp32Board.CAM && applicationId.supportsCamVideoControl()) {
-        return when (candidate) {
-            BluetoothConnectionMode.WIFI_SIMPLE,
-            BluetoothConnectionMode.WIFI_SOFTAP,
-            -> if (protocol == BluetoothProtocolMode.ADVANCED) {
-                BluetoothConnectionMode.WIFI_BINARY
-            } else {
-                BluetoothConnectionMode.WIFI_CAM_STARTER
-            }
-            else -> candidate
-        }
-    }
-    return when (candidate) {
-        BluetoothConnectionMode.WIFI_SIMPLE,
-        BluetoothConnectionMode.WIFI_CAM_STARTER,
-        -> BluetoothConnectionMode.CLASSIC_SIMPLE
-        else -> candidate
-    }
-}
+): BluetoothConnectionMode = storedMode.orDefaultClassicSimple()
 
 /**
  * Maps a stored mode onto one valid for [board], preferring SoftAP on CAM and
@@ -254,81 +180,11 @@ fun Entitlement.coerceConnectionModeForBoard(
     val visible = applicationId.availableConnectionModes(board)
     if (mode in visible && allowed(mode)) return mode
 
-    // Legacy Kit A text SoftAP / stale BLE on CAM → SoftAP Binary or Starter.
-    if (
-        applicationId.supportsCamVideoControl() &&
-        board == Esp32Board.CAM &&
-        (
-            mode.transport == BluetoothTransportType.WIFI ||
-                mode == BluetoothConnectionMode.BLE_BINARY
-            )
-    ) {
-        val preferred = when {
-            mode == BluetoothConnectionMode.WIFI_CAM_STARTER -> mode
-            mode == BluetoothConnectionMode.WIFI_BINARY -> mode
-            mode.settingsUserType == SettingsUserType.NORMAL ->
-                BluetoothConnectionMode.WIFI_CAM_STARTER
-            mode == BluetoothConnectionMode.WIFI_SOFTAP ||
-                mode == BluetoothConnectionMode.BLE_BINARY -> {
-                if (allowed(BluetoothConnectionMode.WIFI_BINARY)) {
-                    BluetoothConnectionMode.WIFI_BINARY
-                } else {
-                    BluetoothConnectionMode.WIFI_CAM_STARTER
-                }
-            }
-            else -> BluetoothConnectionMode.WIFI_CAM_STARTER
-        }
-        if (preferred in visible && allowed(preferred)) {
-            return preferred
-        }
-    }
-
-    // Stored DevKit Wi‑Fi Simple (withdrawn) → Classic Simple.
-    if (board == Esp32Board.DEV_KIT && mode == BluetoothConnectionMode.WIFI_SIMPLE) {
-        val classic = BluetoothConnectionMode.CLASSIC_SIMPLE
-        if (classic in visible && allowed(classic)) {
-            return classic
-        }
-    }
-
-    // SoftAP kit / starter mode while on DevKit → Binary SoftAP if Advanced, else Classic Simple.
-    if (
-        board == Esp32Board.DEV_KIT &&
-        (
-            mode == BluetoothConnectionMode.WIFI_SOFTAP ||
-                mode == BluetoothConnectionMode.WIFI_CAM_STARTER
-            )
-    ) {
-        val wifi = if (allowed(BluetoothConnectionMode.WIFI_BINARY) &&
-            mode == BluetoothConnectionMode.WIFI_SOFTAP
-        ) {
-            BluetoothConnectionMode.WIFI_BINARY
-        } else {
-            BluetoothConnectionMode.CLASSIC_SIMPLE
-        }
-        if (wifi in visible && allowed(wifi)) {
-            return wifi
-        }
-    }
-
-    // On CAM, keep Default on SoftAP starter; only Advanced modes pick SoftAP Binary.
-    if (applicationId.supportsCamVideoControl() && board == Esp32Board.CAM) {
-        if (mode.settingsUserType == SettingsUserType.NORMAL) {
-            val starter = BluetoothConnectionMode.WIFI_CAM_STARTER
-            if (starter in visible && allowed(starter)) {
-                return starter
-            }
-        }
-        val binary = BluetoothConnectionMode.WIFI_BINARY
-        if (binary in visible && allowed(binary)) {
-            return binary
-        }
-        val starter = BluetoothConnectionMode.WIFI_CAM_STARTER
-        if (starter in visible && allowed(starter)) {
-            return starter
-        }
-    }
-
-    return visible.firstOrNull { allowed(it) }
-        ?: BluetoothConnectionMode.CLASSIC_SIMPLE
+    return liveControlConnectionMode(
+        applicationId = applicationId,
+        board = board,
+        storedMode = mode,
+        transport = mode.transport,
+        protocol = mode.protocolMode,
+    )
 }

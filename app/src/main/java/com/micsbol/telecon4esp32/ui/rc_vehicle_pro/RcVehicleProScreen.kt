@@ -39,11 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.micsbol.telecon4esp32.ui.navigation.Screen
 import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.camera.CameraLinkProfile
 import com.micsbol.telecon4esp32.domain.camera.CameraStreamState
 import com.micsbol.telecon4esp32.domain.camera.autoConnectSoftApControlWhenCameraOnline
 import com.micsbol.telecon4esp32.domain.camera.isSoftApControl
+import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.domain.bluetooth.AnalogChannelHistory
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.bluetooth.TelemetryChannelRouter
@@ -78,6 +80,7 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcGlassAccentEdge
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudLinkStatusIcons
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudMetricsRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudNoticeBanner
+import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudCameraConnectIcon
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudTopBarStatusRow
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcHudPlotChrome
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcTelemetryPlotPanel
@@ -231,13 +234,24 @@ fun RcVehicleProScreen(
             onBluetoothDisconnectedClick = { onBluetoothConnect?.invoke() },
             settingsAction = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { rcTutorial?.start() }) {
+                    IconButton(
+                        onClick = {
+                            navController.navigate(
+                                Screen.ModuleFeatureMenu.createRoute(ApplicationId.RC_VEHICLE_PRO),
+                            )
+                        },
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                            contentDescription = stringResource(R.string.rc_vehicle_tutorial_open),
+                            contentDescription = stringResource(R.string.feature_menu_open),
                             tint = brandPrimary(),
                         )
                     }
+                    RcHudCameraConnectIcon(
+                        cameraEnabled = linkProfile.shouldStartCameraStream,
+                        isCameraOnline = uiState.isCameraOnline,
+                        onConnectClick = viewModel::connectCamera,
+                    )
                     RcHudLinkStatusIcons(
                         profile = linkProfile,
                         isControlConnected = uiState.isBluetoothConnected,
@@ -284,7 +298,6 @@ fun RcVehicleProScreen(
             onStopClick = {
                 viewModel.onEmergencyStop()
             },
-            onSaveSteerCenter = bluetoothViewModel::saveSteerCenter,
         )
         }
     }
@@ -342,7 +355,6 @@ fun RcVehicleProContent(
     cameraKnobValue: Float,
     onCameraKnobChange: (Float) -> Unit,
     onStopClick: () -> Unit,
-    onSaveSteerCenter: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // Camera stays full-bleed; HUD/controls clear status, cutouts, and side nav
@@ -499,10 +511,30 @@ fun RcVehicleProContent(
             expanded = topBarExpanded,
             onExpandedChange = { topBarExpanded = it },
             metricsContent = {
-                RcHudMetricsRow(uiState = uiState)
+                RcHudMetricsRow(
+                    uiState = uiState,
+                    speedChannel = controlSettings.speedChannel,
+                    tempChannel = controlSettings.tempChannel,
+                    currentChannel = controlSettings.currentChannel,
+                    onSpeedChannelChange = { channel ->
+                        onControlSettingsChange { it.copy(speedChannel = channel) }
+                    },
+                    onTempChannelChange = { channel ->
+                        onControlSettingsChange { it.copy(tempChannel = channel) }
+                    },
+                    onCurrentChannelChange = { channel ->
+                        onControlSettingsChange { it.copy(currentChannel = channel) }
+                    },
+                )
             },
             statusContent = {
-                RcHudTopBarStatusRow(uiState = uiState)
+                RcHudTopBarStatusRow(
+                    uiState = uiState,
+                    batteryChannel = controlSettings.batteryChannel,
+                    onBatteryChannelChange = { channel ->
+                        onControlSettingsChange { it.copy(batteryChannel = channel) }
+                    },
+                )
             },
             actions = settingsAction,
             hideRowStartContent = {
@@ -812,9 +844,6 @@ fun RcVehicleProContent(
                         },
                         onTrimNudge = { axis, steps -> nudgeStickTrim(isLeft = false, axis, steps) },
                         onTrimConfirm = {
-                            if (rightStickMode.axis != JoystickAxis.VERTICAL) {
-                                onSaveSteerCenter()
-                            }
                             rightTrimMode = false
                             publishRightAtRest()
                         },

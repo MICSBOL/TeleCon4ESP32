@@ -16,7 +16,7 @@ class CameraLinkProfileTest {
     @Test
     fun `cam wifi binary resolves to softap video plus tcp profile`() {
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
@@ -32,7 +32,7 @@ class CameraLinkProfileTest {
     @Test
     fun `cam starter softap uses same softap video plus tcp profile`() {
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
@@ -44,7 +44,7 @@ class CameraLinkProfileTest {
     @Test
     fun `legacy wifi softap still maps to softap video plus tcp`() {
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
@@ -56,7 +56,7 @@ class CameraLinkProfileTest {
     @Test
     fun `cam ble binary on single cam coerces to softap not dual radio`() {
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
@@ -111,8 +111,8 @@ class CameraLinkProfileTest {
             Esp32Board.CAM,
             BluetoothConnectionMode.WIFI_CAM_STARTER,
         )
-        assertEquals(CameraLinkProfile.WIFI_SOFTAP, roleB)
-        assertTrue(roleB.autoConnectSoftApControlWhenCameraOnline)
+        assertEquals(CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT, roleB)
+        assertFalse(roleB.autoConnectSoftApControlWhenCameraOnline)
     }
 
     @Test
@@ -129,9 +129,9 @@ class CameraLinkProfileTest {
     }
 
     @Test
-    fun `dev kit overlay does not arm camera when wifi is the control link`() {
+    fun `dev kit overlay keeps the video camera even if a withdrawn wifi mode is stored`() {
         assertEquals(
-            CameraLinkProfile.CONTROL_ONLY,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.DEV_KIT,
@@ -144,7 +144,7 @@ class CameraLinkProfileTest {
     @Test
     fun `stale classic on cam coerces to softap video not dual radio`() {
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
@@ -152,7 +152,7 @@ class CameraLinkProfileTest {
             ),
         )
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.RC_VEHICLE_PRO,
                 Esp32Board.CAM,
@@ -177,7 +177,7 @@ class CameraLinkProfileTest {
     @Test
     fun `control panel cam board uses softap video plus tcp`() {
         assertEquals(
-            CameraLinkProfile.WIFI_SOFTAP,
+            CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
             resolveCameraLinkProfile(
                 ApplicationId.CONTROL_PANEL,
                 Esp32Board.CAM,
@@ -260,14 +260,14 @@ class CameraLinkProfileTest {
         assertEquals(
             CameraJoinMissingLinks(camera = true, control = true),
             cameraJoinMissingLinks(
-                CameraLinkProfile.WIFI_SOFTAP,
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = false,
                 isControlConnected = false,
             ),
         )
         assertTrue(
             shouldShowCameraJoinWarning(
-                CameraLinkProfile.WIFI_SOFTAP,
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = false,
                 isControlConnected = false,
             ),
@@ -275,14 +275,14 @@ class CameraLinkProfileTest {
         assertEquals(
             CameraJoinMissingLinks(camera = true, control = false),
             cameraJoinMissingLinks(
-                CameraLinkProfile.WIFI_SOFTAP,
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = false,
                 isControlConnected = true,
             ),
         )
         assertTrue(
             shouldShowCameraJoinWarning(
-                CameraLinkProfile.WIFI_SOFTAP,
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = false,
                 isControlConnected = true,
             ),
@@ -290,14 +290,14 @@ class CameraLinkProfileTest {
         assertEquals(
             CameraJoinMissingLinks(camera = false, control = true),
             cameraJoinMissingLinks(
-                CameraLinkProfile.WIFI_SOFTAP,
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = true,
                 isControlConnected = false,
             ),
         )
         assertTrue(
             shouldShowCameraJoinWarning(
-                CameraLinkProfile.WIFI_SOFTAP,
+                CameraLinkProfile.WIFI_CAMERA_DEVKIT_BT,
                 hasLiveFrame = true,
                 isControlConnected = false,
             ),

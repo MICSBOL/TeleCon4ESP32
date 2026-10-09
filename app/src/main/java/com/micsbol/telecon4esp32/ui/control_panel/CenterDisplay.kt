@@ -73,6 +73,7 @@ import com.micsbol.telecon4esp32.R
 import com.micsbol.telecon4esp32.domain.bluetooth.ControlAnalogHistory
 import com.micsbol.telecon4esp32.domain.bluetooth.PlotData
 import com.micsbol.telecon4esp32.domain.model.ChannelRouting
+import com.micsbol.telecon4esp32.domain.bluetooth.LinkTrafficEntry
 import com.micsbol.telecon4esp32.domain.model.ControlPanelCenterMode
 import com.micsbol.telecon4esp32.domain.model.JoystickMode
 import com.micsbol.telecon4esp32.domain.model.PlotCalibration
@@ -122,9 +123,10 @@ fun CenterDisplay(
     onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
     onPlotCalibrationChange: (Int, PlotCalibration) -> Unit = { _, _ -> },
-    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.PLOTS,
+    centerMode: ControlPanelCenterMode = ControlPanelCenterMode.TERMINAL,
     centerModeUnlocked: Boolean = true,
     onUnlockCenterMode: () -> Unit = {},
+    linkTraffic: List<LinkTrafficEntry> = emptyList(),
     leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
     rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     leftStickMode: JoystickMode = JoystickMode.Spring(),
@@ -280,8 +282,30 @@ fun CenterDisplay(
                             .weight(1f)
                             .fillMaxWidth(),
                     ) {
+                        var terminalTraffic by rememberSaveable {
+                            mutableStateOf(TerminalTrafficFilter.BOTH)
+                        }
+                        var terminalTextSize by rememberSaveable {
+                            mutableStateOf(TerminalTextSize.MEDIUM)
+                        }
+                        var terminalPalette by rememberSaveable {
+                            mutableStateOf(TerminalPalette.CLASSIC)
+                        }
                         when (centerMode) {
+                            ControlPanelCenterMode.TERMINAL -> {
+                                ControlPanelLinkTerminal(
+                                    lines = linkTraffic,
+                                    traffic = terminalTraffic,
+                                    onTrafficChange = { terminalTraffic = it },
+                                    textSize = terminalTextSize,
+                                    onTextSizeChange = { terminalTextSize = it },
+                                    palette = terminalPalette,
+                                    onPaletteChange = { terminalPalette = it },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                             ControlPanelCenterMode.PLOTS -> {
+                                if (centerModeUnlocked) {
                                 CartesianPlot(
                                     modifier = Modifier.fillMaxSize(),
                                     series = plotSeries,
@@ -308,6 +332,13 @@ fun CenterDisplay(
                                         updatePlotDisplay(plotDisplay.copy(plotOnTop = it))
                                     },
                                 )
+                                } else {
+                                    ControlPanelCenterLockedPane(
+                                        mode = centerMode,
+                                        onUnlockClick = onUnlockCenterMode,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
                             }
                             ControlPanelCenterMode.STICK -> {
                                 if (centerModeUnlocked) {
