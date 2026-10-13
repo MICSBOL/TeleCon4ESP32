@@ -859,12 +859,14 @@
     <string name="codes_document_protocol_hint">Wire format for your own ESP32 firmware</string>
     <string name="codes_document_firmware_sketches">Firmware sketches</string>
     <string name="codes_document_firmware_sketches_hint">Which file to flash for Bluetooth and the camera</string>
+    <string name="codes_document_classic_simple_code">Classic Simple code</string>
+    <string name="codes_document_classic_simple_code_hint">What each function in TeleCon_Classic_Simple does</string>
     <string name="firmware_sketches_title">Firmware sketches</string>
     <string name="firmware_sketches_subtitle">Every sketch ZIP the app can download</string>
     <string name="firmware_sketches_bluetooth_title">ESP32 over Bluetooth</string>
     <string name="firmware_sketches_bluetooth_body">Classic Simple, Classic Binary, and BLE Binary run on a DevKit with no camera. The guide names each .ino, the Bluetooth name, and the phone setting that matches it.</string>
-    <string name="firmware_sketches_cam_pair_title">Camera only, plus a Bluetooth board</string>
-    <string name="firmware_sketches_cam_pair_body">Flash TeleCon_CAM_SoftAP_Video on the ESP32-CAM. It only serves the picture. Sticks stay on a second ESP32 running one of the Bluetooth sketches.</string>
+    <string name="firmware_sketches_cam_pair_title">The only way to connect the camera</string>
+    <string name="firmware_sketches_cam_pair_body">Picture comes only from a separate ESP32-CAM running TeleCon_CAM_SoftAP_Video. The phone joins TeleCon-RC-CAM-Starter, password telecon1234, for video. Sticks stay on Bluetooth to a DevKit running Classic Simple, Classic Binary, or BLE Binary. One ESP32-CAM does not carry the sticks.</string>
     <string name="firmware_sketches_open_pdf">Open the sketch guide</string>
     <string name="codes_documents_desk_title">Documentation</string>
     <string name="codes_documents_swipe_hint">Swipe left or right to switch guides · tap the front card to open</string>

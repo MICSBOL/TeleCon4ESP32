@@ -82,7 +82,7 @@ data class CodeAssetInfo(
 
 const val FIRMWARE_SKETCHES_DOC_ID = "FIRMWARE_SKETCHES"
 
-/** Fast guide, user guide, control protocol, and firmware-sketch guide. */
+/** Fast guide, user guide, control protocol, firmware sketches, and Classic Simple code. */
 fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
     val isSpanish = language == "es"
     return listOf(
@@ -130,6 +130,18 @@ fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
             illustrationRes = R.drawable.ic_guide_boards,
             subtitleRes = R.string.codes_document_firmware_sketches_hint,
             id = FIRMWARE_SKETCHES_DOC_ID,
+        ),
+        CodeAssetInfo(
+            titleRes = R.string.codes_document_classic_simple_code,
+            icon = Icons.Default.Code,
+            assetFileName = if (isSpanish) {
+                "telecon_classic_simple_code_esp.pdf"
+            } else {
+                "telecon_classic_simple_code_eng.pdf"
+            },
+            type = CodeAssetType.Pdf,
+            illustrationRes = R.drawable.ic_guide_protocol,
+            subtitleRes = R.string.codes_document_classic_simple_code_hint,
         ),
     )
 }

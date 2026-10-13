@@ -36,6 +36,7 @@ private object WalletPreferencesKeys {
     val TIMED_GRANTS = stringPreferencesKey("timed_grants")
     val DEBUG_COIN_SEED_RETIRED = booleanPreferencesKey("debug_coin_seed_retired")
     val DEBUG_COIN_BALANCE_SEEDED = booleanPreferencesKey("debug_coin_balance_seeded_5200")
+    val TESTER_COIN_BALANCE_SEEDED = booleanPreferencesKey("tester_coin_balance_seeded_1000")
 }
 
 /** Balance written on every debug launch before Play testing. Cleared once. */
@@ -78,6 +79,13 @@ class DataStoreWalletRepository @Inject constructor(
                 ) {
                     preferences[WalletPreferencesKeys.COIN_BALANCE] = DEBUG_COIN_BALANCE
                     preferences[WalletPreferencesKeys.DEBUG_COIN_BALANCE_SEEDED] = true
+                }
+                if (
+                    BuildConfig.TESTER_COIN_SEED > 0 &&
+                    preferences[WalletPreferencesKeys.TESTER_COIN_BALANCE_SEEDED] != true
+                ) {
+                    preferences[WalletPreferencesKeys.COIN_BALANCE] = BuildConfig.TESTER_COIN_SEED
+                    preferences[WalletPreferencesKeys.TESTER_COIN_BALANCE_SEEDED] = true
                 }
             }
             combine(persistedWallet, sessionGrants) { (balance, timedGrants), sessions ->

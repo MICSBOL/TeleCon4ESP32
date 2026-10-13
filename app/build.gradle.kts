@@ -24,8 +24,10 @@ android {
         // Keep only app-supported languages (default English + Spanish).
         resourceConfigurations += listOf("en", "es")
 
-        // Release stays locked. Debug and closedTest override this.
+        // Coin shop stays on. The closed-test build grants a stipend instead of unlocking Premium.
         buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "false")
+        // Production installs start at 0. closedTest overrides this with the tester stipend.
+        buildConfigField("int", "TESTER_COIN_SEED", "0")
     }
 
     // Ensure Spanish resources are always in the install (no Play language splits).
@@ -37,7 +39,7 @@ android {
 
     buildTypes {
         debug {
-            // Free coin economy so unlocks can be tested. Closed testing stays unlocked.
+            // Free coin economy so unlocks can be tested. The debug wallet seeds its own balance.
             buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "false")
         }
         release {
@@ -51,7 +53,9 @@ android {
         create("closedTest") {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
-            buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "true")
+            // Testers spend coins. Production does not receive this stipend.
+            buildConfigField("boolean", "CLOSED_TEST_UNLOCK", "false")
+            buildConfigField("int", "TESTER_COIN_SEED", "1000")
         }
     }
     compileOptions {
