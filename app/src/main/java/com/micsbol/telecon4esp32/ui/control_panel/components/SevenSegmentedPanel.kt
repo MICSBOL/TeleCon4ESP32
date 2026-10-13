@@ -1,7 +1,6 @@
 package com.micsbol.telecon4esp32.ui.control_panel.components
 
 import android.annotation.SuppressLint
-import android.graphics.BlurMaskFilter
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -24,7 +23,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -110,27 +108,21 @@ fun SevenSegmentedPanel(
                         on = on && !isLeadingZero,
                         onColor = onColor,
                         offColor = offColor,
-                        blurRadius = 20f
                     )
                 }
 
                 val pointRadius = digitWidth / 14f
                 val pointY = startY + digitHeight - pointRadius
-                val glowPointPaint = Paint().asFrameworkPaint().apply {
-                    isAntiAlias = true
-                    style = android.graphics.Paint.Style.FILL
-                    this.color = onColor.toArgb()
-                    maskFilter = BlurMaskFilter(pointRadius * 2, BlurMaskFilter.Blur.NORMAL)
-                }
 
                 autoDecimalPoints.forEachIndexed { index, isPointOn ->
                     if (isPointOn && on) {
                         val pointX = startX + (index + 1) * digitWidth + (index * digitSpacing) + (digitSpacing / 2)
                         val pointCenter = Offset(pointX, pointY)
-
-                        drawIntoCanvas { canvas ->
-                            canvas.nativeCanvas.drawCircle(pointCenter.x, pointCenter.y, pointRadius, glowPointPaint)
-                        }
+                        drawCircle(
+                            color = onColor.copy(alpha = 0.35f),
+                            radius = pointRadius * 2.2f,
+                            center = pointCenter,
+                        )
                         drawCircle(color = onColor, radius = pointRadius, center = pointCenter)
                     }
                 }
@@ -158,20 +150,9 @@ private fun DrawScope.drawDigit(
     on: Boolean,
     onColor: Color,
     offColor: Color,
-    blurRadius: Float
 ) {
     val segmentsToDraw = digitToSegment[digit] ?: emptyList()
     val strokeWidth = width / 7f
-
-    val glowPaint = Paint().asFrameworkPaint().apply {
-        isAntiAlias = true
-        style = android.graphics.Paint.Style.STROKE
-        strokeJoin = android.graphics.Paint.Join.ROUND
-        strokeCap = android.graphics.Paint.Cap.ROUND
-        this.strokeWidth = strokeWidth
-        this.color = onColor.toArgb()
-        maskFilter = BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL)
-    }
 
     val segmentPaths = getSegmentPaths(topLeft, width, height, strokeWidth)
     segmentPaths.values.forEach { path ->
@@ -181,10 +162,11 @@ private fun DrawScope.drawDigit(
     if (on) {
         segmentsToDraw.forEach { segment ->
             val path = segmentPaths[segment] ?: return@forEach
-
-            drawIntoCanvas { canvas ->
-                canvas.nativeCanvas.drawPath(path.asAndroidPath(), glowPaint)
-            }
+            drawPath(
+                path = path,
+                color = onColor.copy(alpha = 0.35f),
+                style = Stroke(width = strokeWidth * 2.4f),
+            )
             drawPath(path = path, color = onColor, style = Stroke(width = strokeWidth))
         }
     }
@@ -302,9 +284,8 @@ fun UnitDisplay(
                     style = android.graphics.Paint.Style.FILL
                     textAlign = android.graphics.Paint.Align.LEFT
                     textSize = size.height * 0.6f
-                    color = currentColor.toArgb()
+                    color = currentColor.copy(alpha = 0.35f).toArgb()
                     typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-                    maskFilter = BlurMaskFilter(textSize * 0.4f, BlurMaskFilter.Blur.NORMAL)
                 }
 
                 val textPaint = Paint().asFrameworkPaint().apply {

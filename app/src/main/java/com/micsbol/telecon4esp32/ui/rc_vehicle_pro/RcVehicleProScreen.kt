@@ -37,6 +37,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.micsbol.telecon4esp32.ui.navigation.Screen
@@ -156,7 +159,26 @@ fun RcVehicleProScreen(
 
     LaunchedEffect(Unit) {
         bluetoothViewModel.onRcVehicleProEntered()
-        viewModel.onScreenVisible()
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.onScreenVisible()
+                Lifecycle.Event.ON_STOP -> viewModel.onScreenHidden()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            viewModel.onScreenVisible()
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.onScreenHidden()
+            bluetoothViewModel.stopSendingRcData()
+        }
     }
 
     LaunchedEffect(uiState.isBluetoothConnected) {
@@ -167,13 +189,6 @@ fun RcVehicleProScreen(
 
     LaunchedEffect(leftStickPosition.second) {
         viewModel.updateDriveMetricsFromThrottle(leftStickPosition.second)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.onScreenHidden()
-            bluetoothViewModel.stopSendingRcData()
-        }
     }
 
     BackHandler {

@@ -1,7 +1,5 @@
 package com.micsbol.telecon4esp32.ui.control_panel.components
 
-import android.graphics.BlurMaskFilter
-import androidx.compose.animation.core.copy
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,14 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.text.color
 
 /**
  * A composable that displays a circular LED-style indicator.
@@ -57,23 +50,11 @@ fun LedIndicator(
             center = center
         )
 
-        drawIntoCanvas {
-            val paint = Paint().asFrameworkPaint().apply {
-                isAntiAlias = true
-                style = android.graphics.Paint.Style.FILL
-                this.color = color.copy(alpha = 0.5f).toArgb()
-                maskFilter = BlurMaskFilter(
-                    radius * 1.5f, // The radius of the glow
-                    BlurMaskFilter.Blur.NORMAL
-                )
-            }
-            it.nativeCanvas.drawCircle(
-                center.x,
-                center.y,
-                radius - borderWidth,
-                paint
-            )
-        }
+        drawCircle(
+            color = color.copy(alpha = 0.28f),
+            radius = radius * 0.92f,
+            center = center,
+        )
 
         drawCircle(
             color = color,

@@ -1,5 +1,6 @@
 package com.micsbol.telecon4esp32.ui.bluetooth
 
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -214,7 +215,7 @@ open class BluetoothViewModel @Inject constructor(
 
     private val _rcPlotUiState = MutableStateFlow(RcPlotUiState())
 
-    /** Plot series throttled for RC UI (~30 fps) so BT flood does not starve switch/knob animations. */
+    /** Plot series throttled for RC UI (~10 fps) so BT flood does not starve switch/knob animations. */
     val rcPlotUiState: StateFlow<RcPlotUiState> = _rcPlotUiState
 
     /** Always kept in sync with DataStore; updated immediately when labels are applied in settings. */
@@ -433,7 +434,10 @@ open class BluetoothViewModel @Inject constructor(
     val sessionRecording: StateFlow<SessionRecordingUiState> = _sessionRecording
 
     companion object {
-        private const val RC_PLOT_UI_PERIOD_MS = 33L
+        private const val RC_PLOT_UI_PERIOD_MS = 100L
+        /** Idle binary sticks still need a link heartbeat, slower than the moving-stick rate. */
+        private const val ADVANCED_RC_HEARTBEAT_MS = 200L
+        private const val ADVANCED_RC_POLL_MS = 50L
         private const val SESSION_CSV_PERIOD_MS = 50L
         private const val HANDSHAKE_TIMEOUT_MS = 2_500L
         private const val RC_WIFI_TAG = "RcWifiSoftAp"
@@ -820,7 +824,11 @@ open class BluetoothViewModel @Inject constructor(
                 while (isActive) {
                     delay(RC_PLOT_UI_PERIOD_MS)
                     if (hasPending) {
-                        _rcPlotUiState.value = latest
+                        val next = latest
+                        val current = _rcPlotUiState.value
+                        if (next.series != current.series || next.radarSeries != current.radarSeries) {
+                            _rcPlotUiState.value = next
+                        }
                         hasPending = false
                     }
                 }
@@ -1232,12 +1240,18 @@ open class BluetoothViewModel @Inject constructor(
 
     private fun startAdvancedRcSendingLoop(): Job = viewModelScope.launch {
         Log.d("BluetoothViewModel", "Starting advanced RC data sending loop.")
+        var lastSent: RcState? = null
+        var lastSentAtMs = 0L
         while (isActive) {
-            remoteController.sendRcControl(
-                rcControlState.value.toRcState(),
-                BluetoothProtocolMode.ADVANCED,
-            )
-            delay(50L)
+            val state = rcControlState.value.toRcState()
+            val now = SystemClock.elapsedRealtime()
+            val changed = state != lastSent
+            if (changed || now - lastSentAtMs >= ADVANCED_RC_HEARTBEAT_MS) {
+                remoteController.sendRcControl(state, BluetoothProtocolMode.ADVANCED)
+                lastSent = state
+                lastSentAtMs = now
+            }
+            delay(ADVANCED_RC_POLL_MS)
         }
     }
 

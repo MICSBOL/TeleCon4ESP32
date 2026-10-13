@@ -1,7 +1,5 @@
 package com.micsbol.telecon4esp32.ui.control_panel
 
-import android.graphics.BlurMaskFilter
-import android.graphics.Paint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
@@ -52,11 +50,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -1101,27 +1097,16 @@ fun GlowingBar(
     modifier: Modifier = Modifier,
     color: Color
 ) {
-    val glowColor = color.copy(alpha = 0.3f)
-    val cornerRadius = CornerRadius(x = 2.dp.value, y = 2.dp.value)
-
     Box(
         modifier = modifier
             .drawBehind {
-                drawIntoCanvas { canvas ->
-                    val paint = Paint().apply {
-                        this.color = glowColor.toArgb()
-                        maskFilter = BlurMaskFilter(12.dp.toPx(), BlurMaskFilter.Blur.NORMAL)
-                    }
-                    canvas.nativeCanvas.drawRoundRect(
-                        0f,
-                        0f,
-                        size.width,
-                        size.height,
-                        cornerRadius.x,
-                        cornerRadius.y,
-                        paint
-                    )
-                }
+                val spread = 3.dp.toPx()
+                drawRoundRect(
+                    color = color.copy(alpha = 0.35f),
+                    topLeft = Offset(-spread / 2f, -spread / 2f),
+                    size = Size(size.width + spread, size.height + spread),
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+                )
             }
             .background(color, shape = RoundedCornerShape(2.dp))
     )

@@ -24,8 +24,14 @@ import androidx.compose.material.icons.filled.Rocket
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,18 +57,7 @@ import com.micsbol.telecon4esp32.ui.cyber.theme.CyberType
  * intense animated cyan glow pulse, moving sweep highlight, and press feedback.
  */
 @Composable
-fun StartControlButton(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    icon: ImageVector = Icons.Filled.Rocket,
-    enabled: Boolean = true,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.98f else 1f, label = "ctaScale")
-
+private fun StartControlMotionActive(): Pair<Float, Float> {
     val pulse = rememberInfiniteTransition(label = "ctaPulse")
     val glowPulse by pulse.animateFloat(
         initialValue = 0.7f,
@@ -82,6 +77,45 @@ fun StartControlButton(
         ),
         label = "ctaSweep",
     )
+    return glowPulse to sweep
+}
+
+@Composable
+private fun StartControlMotionIdle(): Pair<Float, Float> = 1f to 0.5f
+
+@Composable
+fun StartControlButton(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Filled.Rocket,
+    enabled: Boolean = true,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.98f else 1f, label = "ctaScale")
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var screenStarted by remember {
+        mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+    }
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> screenStarted = true
+                Lifecycle.Event.ON_STOP -> screenStarted = false
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    val (glowPulse, sweep) = if (screenStarted) {
+        StartControlMotionActive()
+    } else {
+        StartControlMotionIdle()
+    }
 
     val chamfer = 18.dp
     val shape = remember(chamfer) { ChamferShape(chamfer) }

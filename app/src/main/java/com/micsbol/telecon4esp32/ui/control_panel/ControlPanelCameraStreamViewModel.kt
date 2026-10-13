@@ -223,10 +223,13 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
             }
                 .distinctUntilChanged()
                 .collect { (profile, armed, visible) ->
-                    cameraSession.setCameraEnabled(armed)
+                    val showVideo = armed && visible
+                    cameraSession.setCameraEnabled(showVideo)
                     cameraSession.setProfile(profile)
-                    if (armed && visible) {
+                    if (showVideo) {
                         cameraSession.onVisible()
+                    } else {
+                        cameraSession.onHidden()
                     }
                 }
         }
@@ -308,8 +311,8 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
 
     /**
      * The camera pane can leave the center display while the user looks at the
-     * terminal, plots, stick, or radar. The SoftAP link stays up until the
-     * Control Panel route itself is left.
+     * terminal, plots, stick, or radar. JPEG decode and the Wi-Fi lock stop
+     * until this pane is visible again.
      */
     fun onCameraPaneVisible(visible: Boolean) {
         cameraPaneVisible.value = visible
@@ -486,11 +489,16 @@ class ControlPanelCameraStreamViewModel @Inject constructor(
         restartIfAlreadyStreaming: Boolean,
     ) {
         val profile = resolveSessionCameraLinkProfile(applicationId, selectedBoard, mode, overlay)
-        cameraSession.setCameraEnabled(true)
+        val showVideo = cameraPaneVisible.value
+        cameraSession.setCameraEnabled(showVideo)
         cameraSession.setProfile(profile)
-        cameraSession.onVisible()
-        if (restartIfAlreadyStreaming) {
-            cameraSession.restartIfStreaming()
+        if (showVideo) {
+            cameraSession.onVisible()
+            if (restartIfAlreadyStreaming) {
+                cameraSession.restartIfStreaming()
+            }
+        } else {
+            cameraSession.onHidden()
         }
         sessionArmed.value = true
         _cameraConnectUi.value = ControlPanelCameraConnectUi.Ready(

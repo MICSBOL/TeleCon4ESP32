@@ -8,14 +8,21 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
 /** Match slow turntable pace (~18s / revolution with 36 frames). */
 private const val HOLO_FRAME_DELAY_MS = 500L
@@ -54,38 +61,66 @@ fun HoloTurntableFlipbook(
             ?.takeIf { it > 0 }
             ?: HOLO_DEFAULT_FRAME_COUNT
     }
-    val frames = remember(assetDir, resolvedFrameCount) {
-        val opts = BitmapFactory.Options().apply {
-            inPreferredConfig = Bitmap.Config.ARGB_8888
-            inSampleSize = HOLO_IN_SAMPLE_SIZE
-        }
-        List(resolvedFrameCount) { index ->
-            val path = "$assetDir/${index.toString().padStart(4, '0')}.webp"
-            context.assets.open(path).use { stream ->
-                requireNotNull(BitmapFactory.decodeStream(stream, null, opts)) {
-                    "Missing hologram frame $path"
+    var frames by remember(assetDir) { mutableStateOf<List<Bitmap>>(emptyList()) }
+    LaunchedEffect(assetDir, resolvedFrameCount) {
+        val decoded = withContext(Dispatchers.IO) {
+            val opts = BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.RGB_565
+                inSampleSize = HOLO_IN_SAMPLE_SIZE
+            }
+            List(resolvedFrameCount) { index ->
+                val path = "$assetDir/${index.toString().padStart(4, '0')}.webp"
+                context.assets.open(path).use { stream ->
+                    requireNotNull(BitmapFactory.decodeStream(stream, null, opts)) {
+                        "Missing hologram frame $path"
+                    }
                 }
             }
         }
+        if (!isActive) {
+            decoded.forEach { it.recycle() }
+            return@LaunchedEffect
+        }
+        frames = decoded
     }
     DisposableEffect(frames) {
-        onDispose { frames.forEach { it.recycle() } }
+        val held = frames
+        onDispose { held.forEach { it.recycle() } }
+    }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var screenStarted by remember {
+        mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+    }
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> screenStarted = true
+                Lifecycle.Event.ON_STOP -> screenStarted = false
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 
     var frameIndex by remember(assetDir) { mutableIntStateOf(0) }
-    LaunchedEffect(frames, frameDelayMs, resolvedFrameCount) {
+    LaunchedEffect(frames, frameDelayMs, screenStarted) {
+        if (!screenStarted || frames.isEmpty()) return@LaunchedEffect
         while (true) {
             delay(frameDelayMs)
-            frameIndex = (frameIndex + 1) % resolvedFrameCount
+            frameIndex = (frameIndex + 1) % frames.size
         }
     }
 
-    Image(
-        bitmap = frames[frameIndex].asImageBitmap(),
-        contentDescription = contentDescription,
-        contentScale = contentScale,
-        modifier = modifier,
-    )
+    if (frames.isNotEmpty()) {
+        Image(
+            bitmap = frames[frameIndex.coerceIn(0, frames.lastIndex)].asImageBitmap(),
+            contentDescription = contentDescription,
+            contentScale = contentScale,
+            modifier = modifier,
+        )
+    }
 }
 
 @Composable

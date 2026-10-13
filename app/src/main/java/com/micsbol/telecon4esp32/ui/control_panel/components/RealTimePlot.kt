@@ -1,6 +1,5 @@
 package com.micsbol.telecon4esp32.ui.control_panel.components
 
-import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -16,10 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -332,25 +331,28 @@ private fun DrawScope.drawGlowPath(
     glowWidth: Float,
     glowBlur: Float,
 ) {
-    // Soft outer blur to emulate light-emitter trails.
-    drawIntoCanvas { canvas ->
-        val glowPaint = Paint().asFrameworkPaint().apply {
-            isAntiAlias = true
-            style = android.graphics.Paint.Style.STROKE
-            strokeJoin = android.graphics.Paint.Join.ROUND
-            strokeCap = android.graphics.Paint.Cap.ROUND
-            strokeWidth = glowWidth
-            this.color = color.copy(alpha = 0.45f).toArgb()
-            maskFilter = BlurMaskFilter(glowBlur, BlurMaskFilter.Blur.NORMAL)
-        }
-        canvas.nativeCanvas.drawPath(path.asAndroidPath(), glowPaint)
-    }
-
-    // Crisp core line above the glow.
+    drawPath(
+        path = path,
+        color = color.copy(alpha = 0.22f),
+        style = Stroke(
+            width = coreWidth + glowBlur,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round,
+        ),
+    )
+    drawPath(
+        path = path,
+        color = color.copy(alpha = 0.40f),
+        style = Stroke(
+            width = glowWidth,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round,
+        ),
+    )
     drawPath(
         path = path,
         color = color,
-        style = Stroke(width = coreWidth)
+        style = Stroke(width = coreWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
     )
 }
 

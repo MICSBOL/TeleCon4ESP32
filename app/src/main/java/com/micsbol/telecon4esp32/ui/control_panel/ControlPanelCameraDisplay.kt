@@ -11,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,9 +32,9 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.components.RcCameraPreview
 /**
  * Control Panel center camera pane.
  * On enter, joins the ESP32-CAM SoftAP (if previously connected, HTTP starts immediately)
- * and streams SoftAP video. Leaving this pane for the terminal, plots, stick, or
- * radar keeps that link. It closes when the Control Panel screen is left.
- * Bluetooth protocol is unchanged and SoftAP TCP `:3333` is not opened.
+ * and streams SoftAP video. Leaving this pane, or leaving the app, stops JPEG decode
+ * and releases the Wi-Fi lock. Bluetooth protocol is unchanged and SoftAP TCP `:3333`
+ * is not opened.
  */
 @Composable
 fun ControlPanelCameraDisplay(
@@ -39,9 +42,26 @@ fun ControlPanelCameraDisplay(
     isActive: Boolean = true,
     viewModel: ControlPanelCameraStreamViewModel = hiltViewModel(),
 ) {
-    DisposableEffect(isActive) {
-        viewModel.onCameraPaneVisible(isActive)
-        onDispose { viewModel.onCameraPaneVisible(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(isActive, lifecycleOwner) {
+        fun publish(started: Boolean) {
+            viewModel.onCameraPaneVisible(isActive && started)
+        }
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> publish(started = true)
+                Lifecycle.Event.ON_STOP -> publish(started = false)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        publish(
+            started = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+        )
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.onCameraPaneVisible(false)
+        }
     }
 
     val profile by viewModel.cameraLinkProfile.collectAsStateWithLifecycle()

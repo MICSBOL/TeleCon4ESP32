@@ -670,7 +670,7 @@ private fun HomeModuleHeroSlot(
         onExplorerSparkleClick = { onExplorerSparkleClick(item) },
         enabledProHighlight = isRecent ||
             (!item.id.isFree() && !item.comingSoon && isUnlocked),
-        animateHologram = true,
+        animateHologram = isFront,
         isFront = isFront,
         modifier = modifier.then(
             if (item.id == ApplicationId.CONTROL_PANEL) {
