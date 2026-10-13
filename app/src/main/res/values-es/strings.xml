@@ -438,7 +438,7 @@
     <string name="app_settings_selection_guide_code_cam_video">Código — TeleCon_CAM_SoftAP_Video (solo HTTP /stream)</string>
     <string name="app_settings_selection_guide_code_devkit_wifi">Código — TeleCon_WiFi_Binary (ESP32-TC-RC-WiFi-Binary)</string>
     <string name="app_settings_selection_guide_docs_link">Documentación</string>
-    <string name="app_settings_selection_guide_links_placeholder_note">Toca un enlace para compartir o guardar el ZIP del sketch correspondiente cuando esté publicado.</string>
+    <string name="app_settings_selection_guide_links_placeholder_note">Toca un enlace para compartir o guardar el ZIP del sketch correspondiente.</string>
     <string name="app_settings_selection_guide_links_coming_soon">El código de esta opción estará disponible pronto.</string>
     <string name="app_settings_connection_classic_simple">Classic + Simple (líneas de texto)</string>
     <string name="app_settings_connection_classic_simple_description">Bluetooth Classic SPP con líneas legibles como RC:DATA,batt,82. La opción más fácil para sketches de Arduino.</string>
