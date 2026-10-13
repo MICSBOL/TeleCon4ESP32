@@ -36,6 +36,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +76,7 @@ import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckNext
 import com.micsbol.telecon4esp32.ui.cyber.screens.rotateHomeModuleDeckPrevious
 import com.micsbol.telecon4esp32.ui.theme.AppGlass
 import com.micsbol.telecon4esp32.ui.theme.Neo
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 private enum class PdfDialogKind {
@@ -90,6 +92,8 @@ fun CodesScreen(
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var openingPdf by remember { mutableStateOf(false) }
     var pdfDialogKind by remember { mutableStateOf<PdfDialogKind?>(null) }
     val documentationAssets = remember { documentationAssetsFor(currentCodeAssetLanguage()) }
 
@@ -203,25 +207,33 @@ fun CodesScreen(
                             navController.navigate(Screen.FirmwareSketches.route)
                             return@DocumentationCardDeck
                         }
-                        val result = when {
-                            asset.remoteUrlRes != null ->
-                                openPdfUrlExternally(
-                                    context,
-                                    context.getString(asset.remoteUrlRes),
-                                )
+                        if (openingPdf) return@DocumentationCardDeck
+                        scope.launch {
+                            openingPdf = true
+                            val result = try {
+                                when {
+                                    asset.assetFileName != null ->
+                                        openPublishedPdf(context, asset)
 
-                            asset.assetFileName != null ->
-                                openPdfAssetExternally(context, asset.assetFileName)
+                                    asset.remoteUrlRes != null ->
+                                        openPdfUrlExternally(
+                                            context,
+                                            context.getString(asset.remoteUrlRes),
+                                        )
 
-                            else -> PdfOpenResult.CopyFailed
-                        }
-                        when (result) {
-                            PdfOpenResult.Success -> Unit
-                            PdfOpenResult.NoActivity ->
-                                pdfDialogKind = PdfDialogKind.NoReader
+                                    else -> PdfOpenResult.CopyFailed
+                                }
+                            } finally {
+                                openingPdf = false
+                            }
+                            when (result) {
+                                PdfOpenResult.Success -> Unit
+                                PdfOpenResult.NoActivity ->
+                                    pdfDialogKind = PdfDialogKind.NoReader
 
-                            PdfOpenResult.CopyFailed ->
-                                pdfDialogKind = PdfDialogKind.CopyFailed
+                                PdfOpenResult.CopyFailed ->
+                                    pdfDialogKind = PdfDialogKind.CopyFailed
+                            }
                         }
                     },
                     modifier = Modifier

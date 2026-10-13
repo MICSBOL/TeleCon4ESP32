@@ -18,6 +18,8 @@ import java.util.Locale
 private const val FIRMWARE_ZIP_BASE =
     "https://raw.githubusercontent.com/MICSBOL/TeleCon_ESP32/main/zips/"
 
+private const val DOCS_SITE = "https://micsbol.github.io/TeleCon_ESP32/"
+
 object ControlPanelCodePackageId {
     const val DEVKIT_CLASSIC = "DEVKIT_CLASSIC"
     const val DEVKIT_CLASSIC_BINARY = "DEVKIT_CLASSIC_BINARY"
@@ -47,6 +49,8 @@ data class CodeAssetInfo(
     val type: CodeAssetType,
     val assetFileName: String? = null,
     @StringRes val remoteUrlRes: Int? = null,
+    /** GitHub Pages PDF. The app downloads it only when the phone copy is older. */
+    val remotePdfUrl: String? = null,
     /** Direct download of a sketch ZIP hosted in MICSBOL/TeleCon_ESP32 `zips/`. */
     val remoteZipUrl: String? = null,
     val outputFileName: String = assetFileName ?: "document.pdf",
@@ -77,19 +81,31 @@ data class CodeAssetInfo(
     }
 
     val isPublished: Boolean
-        get() = assetFileName != null || remoteUrlRes != null || !remoteZipUrl.isNullOrBlank()
+        get() = assetFileName != null || remoteUrlRes != null ||
+            !remotePdfUrl.isNullOrBlank() || !remoteZipUrl.isNullOrBlank()
 }
+
+private fun guidePdfUrl(languageFolder: String, fileName: String): String =
+    "${DOCS_SITE}General_Documentation/$languageFolder/build/$fileName"
+
+private fun protocolPdfUrl(languageFolder: String): String =
+    "${DOCS_SITE}Protocol_Documentation/$languageFolder/build/telecon_control_protocol.pdf"
 
 const val FIRMWARE_SKETCHES_DOC_ID = "FIRMWARE_SKETCHES"
 
 /** Fast guide, user guide, control protocol, firmware sketches, and Classic Simple code. */
 fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
     val isSpanish = language == "es"
+    val folder = if (isSpanish) "es" else "en"
     return listOf(
         CodeAssetInfo(
             titleRes = R.string.codes_document_fast_guide,
             icon = Icons.Default.Dock,
             assetFileName = if (isSpanish) "fast_guide_esp.pdf" else "fast_guide_eng.pdf",
+            remotePdfUrl = guidePdfUrl(
+                folder,
+                if (isSpanish) "fast_guide_esp.pdf" else "fast_guide_eng.pdf",
+            ),
             type = CodeAssetType.Pdf,
             illustrationRes = R.drawable.ic_guide_clipboard,
             subtitleRes = R.string.codes_document_fast_guide_hint,
@@ -102,6 +118,7 @@ fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
             } else {
                 "telecon_user_guide_eng.pdf"
             },
+            remotePdfUrl = guidePdfUrl(folder, "telecon_user_guide.pdf"),
             type = CodeAssetType.Pdf,
             illustrationRes = R.drawable.ic_guide_documents,
             subtitleRes = R.string.codes_document_general_hint,
@@ -114,6 +131,7 @@ fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
             } else {
                 "telecon_control_protocol_eng.pdf"
             },
+            remotePdfUrl = protocolPdfUrl(folder),
             type = CodeAssetType.Pdf,
             illustrationRes = R.drawable.ic_guide_protocol,
             subtitleRes = R.string.codes_document_protocol_hint,
@@ -126,6 +144,10 @@ fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
             } else {
                 "firmware_sketches_eng.pdf"
             },
+            remotePdfUrl = guidePdfUrl(
+                folder,
+                if (isSpanish) "firmware_sketches_esp.pdf" else "firmware_sketches_eng.pdf",
+            ),
             type = CodeAssetType.Pdf,
             illustrationRes = R.drawable.ic_guide_boards,
             subtitleRes = R.string.codes_document_firmware_sketches_hint,
@@ -139,6 +161,7 @@ fun documentationAssetsFor(language: String): List<CodeAssetInfo> {
             } else {
                 "telecon_classic_simple_code_eng.pdf"
             },
+            remotePdfUrl = guidePdfUrl(folder, "telecon_classic_simple_code.pdf"),
             type = CodeAssetType.Pdf,
             illustrationRes = R.drawable.ic_guide_protocol,
             subtitleRes = R.string.codes_document_classic_simple_code_hint,

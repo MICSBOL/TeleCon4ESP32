@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,17 +37,19 @@ import com.micsbol.telecon4esp32.ui.components.NeoScaffold
 import com.micsbol.telecon4esp32.ui.components.NeoSecondaryButton
 import com.micsbol.telecon4esp32.ui.control_panel.LockScreenOrientation
 import com.micsbol.telecon4esp32.ui.theme.Neo
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FirmwareSketchesScreen(navController: NavController) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var openingPdf by remember { mutableStateOf(false) }
     var pdfDialogKind by remember { mutableStateOf<PdfOpenResult?>(null) }
-    val assetName = remember {
+    val sketchGuide = remember {
         documentationAssetsFor(currentCodeAssetLanguage())
             .first { it.id == FIRMWARE_SKETCHES_DOC_ID }
-            .assetFileName
     }
     val navigateBack: () -> Unit = { navController.navigateUp() }
     BackHandler(onBack = navigateBack)
@@ -154,11 +157,19 @@ fun FirmwareSketchesScreen(navController: NavController) {
             NeoPillButton(
                 text = stringResource(R.string.firmware_sketches_open_pdf),
                 onClick = {
-                    val name = assetName ?: return@NeoPillButton
-                    when (val result = openPdfAssetExternally(context, name)) {
-                        PdfOpenResult.Success -> Unit
-                        PdfOpenResult.NoActivity -> pdfDialogKind = PdfOpenResult.NoActivity
-                        PdfOpenResult.CopyFailed -> pdfDialogKind = PdfOpenResult.CopyFailed
+                    if (openingPdf || sketchGuide.assetFileName == null) return@NeoPillButton
+                    scope.launch {
+                        openingPdf = true
+                        val result = try {
+                            openPublishedPdf(context, sketchGuide)
+                        } finally {
+                            openingPdf = false
+                        }
+                        when (result) {
+                            PdfOpenResult.Success -> Unit
+                            PdfOpenResult.NoActivity -> pdfDialogKind = PdfOpenResult.NoActivity
+                            PdfOpenResult.CopyFailed -> pdfDialogKind = PdfOpenResult.CopyFailed
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
