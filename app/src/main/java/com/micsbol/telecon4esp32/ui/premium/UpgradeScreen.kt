@@ -15,7 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,10 +50,10 @@ import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 fun UpgradeScreen(navController: NavController) {
     val entitlement = LocalEntitlement.current
     val upgradeViewModel = hiltViewModel<UpgradeViewModel>()
-    val billingStatus by upgradeViewModel.billingStatus.collectAsState()
-    val premiumProductAvailable by upgradeViewModel.premiumProductAvailable.collectAsState()
+    val billingStatus by upgradeViewModel.billingStatus.collectAsStateWithLifecycle()
+    val premiumProductAvailable by upgradeViewModel.premiumProductAvailable.collectAsStateWithLifecycle()
     val walletViewModel = hiltViewModel<WalletViewModel>()
-    val wallet by walletViewModel.wallet.collectAsState()
+    val wallet by walletViewModel.wallet.collectAsStateWithLifecycle()
     val rewardedAdManager = LocalRewardedAdManager.current
     val activity = LocalContext.current as? Activity
     var coinMessage by remember { mutableStateOf<String?>(null) }

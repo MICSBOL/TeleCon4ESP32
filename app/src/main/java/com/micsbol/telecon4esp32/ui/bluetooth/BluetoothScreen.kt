@@ -24,7 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,7 +74,7 @@ fun BluetoothScreen(
     val showAdBanner = AdPolicy.hasBanner(Screen.Bluetooth.route, entitlement)
     val tutorial = LocalFirstConnectionTutorial.current
     val tutorialStep = if (tutorial != null) {
-        val step by tutorial.step.collectAsState()
+        val step by tutorial.step.collectAsStateWithLifecycle()
         step
     } else {
         null
@@ -207,7 +207,7 @@ fun BluetoothDeviceList(
                 )
             }
         }
-        items(pairedDevices) { device ->
+        items(pairedDevices, key = { "paired-${it.address}" }) { device ->
             DeviceListItem(device = device, onClick = onClick)
         }
         item {
@@ -226,7 +226,7 @@ fun BluetoothDeviceList(
                 )
             }
         }
-        items(scannedDevices) { device ->
+        items(scannedDevices, key = { "scanned-${it.address}" }) { device ->
             DeviceListItem(device = device, onClick = onClick)
         }
     }

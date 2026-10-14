@@ -42,7 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -145,8 +145,8 @@ fun CyberHomeScreen(
     val activity = context as? Activity
     val entitlement = LocalEntitlement.current
     val walletViewModel = hiltViewModel<WalletViewModel>()
-    val wallet by walletViewModel.wallet.collectAsState()
-    val explorerGiftAvailable by walletViewModel.explorerGiftAvailable.collectAsState()
+    val wallet by walletViewModel.wallet.collectAsStateWithLifecycle()
+    val explorerGiftAvailable by walletViewModel.explorerGiftAvailable.collectAsStateWithLifecycle()
     val rewardedAdManager = LocalRewardedAdManager.current
     val requiresCoinEntry = entitlement.usesCoinEconomy()
 

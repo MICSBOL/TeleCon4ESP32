@@ -50,7 +50,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -161,13 +161,13 @@ fun ControlPanelScreen(
         )
     }
 
-    val collectedUserSettings by actualUserSettings.collectAsState()
+    val collectedUserSettings by actualUserSettings.collectAsStateWithLifecycle()
     val settingsSyncGeneration by (bluetoothViewModel?.rcSettingsSyncGeneration
-        ?: MutableStateFlow(0)).collectAsState()
+        ?: MutableStateFlow(0)).collectAsStateWithLifecycle()
     val bluetoothConnectionState by (bluetoothViewModel?.state
-        ?: MutableStateFlow(BluetoothUiState())).collectAsState()
+        ?: MutableStateFlow(BluetoothUiState())).collectAsStateWithLifecycle()
     val controlPanelConnectionMode by (bluetoothViewModel?.controlPanelConnectionMode
-        ?: MutableStateFlow(BluetoothConnectionMode.CLASSIC_SIMPLE)).collectAsState()
+        ?: MutableStateFlow(BluetoothConnectionMode.CLASSIC_SIMPLE)).collectAsStateWithLifecycle()
     val controlPanelTransportType = controlPanelConnectionMode.transport
     val isConnectedForControlPanel =
         bluetoothConnectionState.isConnected &&
@@ -208,34 +208,34 @@ fun ControlPanelScreen(
 
         is SettingsUiState.Success -> {
             val plotLabels by (bluetoothViewModel?.rcPlotDisplayLabels
-                ?: MutableStateFlow(state.settings.plotLabels)).collectAsState()
+                ?: MutableStateFlow(state.settings.plotLabels)).collectAsStateWithLifecycle()
             val plotCalibrations by (bluetoothViewModel?.rcPlotCalibrations
                 ?: MutableStateFlow(PlotCalibration.padded(state.settings.plotCalibrations)))
-                .collectAsState()
+                .collectAsStateWithLifecycle()
             val channelRouting by (bluetoothViewModel?.rcChannelRouting
-                ?: MutableStateFlow(state.settings.channelRouting)).collectAsState()
+                ?: MutableStateFlow(state.settings.channelRouting)).collectAsStateWithLifecycle()
             val sessionRecording by (bluetoothViewModel?.sessionRecording
-                ?: MutableStateFlow(SessionRecordingUiState())).collectAsState()
+                ?: MutableStateFlow(SessionRecordingUiState())).collectAsStateWithLifecycle()
             val isVideoRecording by (cameraStreamViewModel?.isVideoRecording
-                ?: remember { MutableStateFlow(false) }).collectAsState()
+                ?: remember { MutableStateFlow(false) }).collectAsStateWithLifecycle()
             val videoExport by (
                 cameraStreamViewModel?.videoExport
                     ?: remember {
                         MutableStateFlow<ControlPanelCameraStreamViewModel.CameraVideoExport?>(null)
                     }
-                ).collectAsState()
+                ).collectAsStateWithLifecycle()
             val stillResult by (
                 cameraStreamViewModel?.stillResult
                     ?: remember {
                         MutableStateFlow<ControlPanelCameraStreamViewModel.CameraStillResult?>(null)
                     }
-                ).collectAsState()
+                ).collectAsStateWithLifecycle()
             var csvShareFailed by remember { mutableStateOf(false) }
             var csvSaveFailed by remember { mutableStateOf(false) }
             val entitlement = LocalEntitlement.current
             val wallet = LocalWallet.current
             val localCenterMode = remember { MutableStateFlow(ControlPanelCenterMode.TERMINAL) }
-            val centerMode by (cameraStreamViewModel?.centerMode ?: localCenterMode).collectAsState()
+            val centerMode by (cameraStreamViewModel?.centerMode ?: localCenterMode).collectAsStateWithLifecycle()
             val onCenterModeSelected: (ControlPanelCenterMode) -> Unit = { mode ->
                 cameraStreamViewModel?.onCenterModeSelected(mode)
                     ?: run { localCenterMode.value = mode }
@@ -245,15 +245,15 @@ fun ControlPanelScreen(
             val cameraBoard by (
                 cameraStreamViewModel?.board
                     ?: MutableStateFlow(Esp32Board.DEV_KIT)
-                ).collectAsState()
+                ).collectAsStateWithLifecycle()
             val cameraConnectionMode by (
                 cameraStreamViewModel?.connectionMode
                     ?: MutableStateFlow(controlPanelConnectionMode)
-                ).collectAsState()
+                ).collectAsStateWithLifecycle()
             val controlLinkReady by (
                 cameraStreamViewModel?.controlLinkReady
                     ?: MutableStateFlow(true)
-            ).collectAsState()
+            ).collectAsStateWithLifecycle()
             val cameraBlockedByWifiControl = controlLinkReady &&
                 cameraVideoSoftApConflictsWithControlLink(
                     cameraBoard,
@@ -850,13 +850,25 @@ private fun ControlPanelCenterPlotHost(
     modifier: Modifier = Modifier,
     topStartOverlay: @Composable () -> Unit = {},
 ) {
-    val rcState by rcControlState.collectAsState()
-    val linkTraffic by (bluetoothViewModel?.linkTraffic
-        ?: remember { MutableStateFlow(emptyList<LinkTrafficEntry>()) }).collectAsState()
+    val needsLivePlots = centerMode == ControlPanelCenterMode.PLOTS ||
+        centerMode == ControlPanelCenterMode.RADAR ||
+        centerMode == ControlPanelCenterMode.STICK
+    val linkTraffic = if (centerMode == ControlPanelCenterMode.TERMINAL) {
+        (bluetoothViewModel?.linkTraffic
+            ?: remember { MutableStateFlow(emptyList<LinkTrafficEntry>()) })
+            .collectAsStateWithLifecycle().value
+    } else {
+        emptyList()
+    }
+    val rcState = if (centerMode == ControlPanelCenterMode.STICK) {
+        rcControlState.collectAsStateWithLifecycle().value
+    } else {
+        null
+    }
     // Center display is two panes × two traces = four plot widgets.
     // Analog bus on the wire is CH1…CH8 (`v0`…`v7` / CC 33 count up to 8).
-    if (bluetoothViewModel != null) {
-        val plotUi by bluetoothViewModel.rcPlotUiState.collectAsState()
+    if (bluetoothViewModel != null && needsLivePlots) {
+        val plotUi by bluetoothViewModel.rcPlotUiState.collectAsStateWithLifecycle()
         val displaySeries = remember(plotUi.series, plotLabels, settingsSyncGeneration) {
             fourPlotSeriesForDisplay(plotUi.series, plotLabels)
         }
@@ -876,17 +888,17 @@ private fun ControlPanelCenterPlotHost(
             centerModeUnlocked = centerModeUnlocked,
             onUnlockCenterMode = onUnlockCenterMode,
             linkTraffic = linkTraffic,
-            leftStickXy = rcState.leftStickPosition,
-            rightStickXy = rcState.rightStickPosition,
+            leftStickXy = rcState?.leftStickPosition ?: Pair(0f, 0f),
+            rightStickXy = rcState?.rightStickPosition ?: Pair(0f, 0f),
             leftStickMode = leftStickMode,
             rightStickMode = rightStickMode,
-            leftKnobValue = rcState.leftKnobValue,
-            rightKnobValue = rcState.rightKnobValue,
+            leftKnobValue = rcState?.leftKnobValue ?: 0.5f,
+            rightKnobValue = rcState?.rightKnobValue ?: 0.5f,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
-    } else {
-        val telemetry by telemetryState.collectAsState()
+    } else if (needsLivePlots) {
+        val telemetry by telemetryState.collectAsStateWithLifecycle()
         val analogHistory = remember { AnalogChannelHistory() }
         val routed = remember(telemetry, channelRouting, plotLabels, settingsSyncGeneration) {
             analogHistory.ingest(telemetry)
@@ -914,12 +926,27 @@ private fun ControlPanelCenterPlotHost(
             centerModeUnlocked = centerModeUnlocked,
             onUnlockCenterMode = onUnlockCenterMode,
             linkTraffic = linkTraffic,
-            leftStickXy = rcState.leftStickPosition,
-            rightStickXy = rcState.rightStickPosition,
+            leftStickXy = rcState?.leftStickPosition ?: Pair(0f, 0f),
+            rightStickXy = rcState?.rightStickPosition ?: Pair(0f, 0f),
             leftStickMode = leftStickMode,
             rightStickMode = rightStickMode,
-            leftKnobValue = rcState.leftKnobValue,
-            rightKnobValue = rcState.rightKnobValue,
+            leftKnobValue = rcState?.leftKnobValue ?: 0.5f,
+            rightKnobValue = rcState?.rightKnobValue ?: 0.5f,
+            modifier = modifier,
+            topStartOverlay = topStartOverlay,
+        )
+    } else {
+        ControlPanelCenterPlot(
+            series = emptyList(),
+            plotRevision = 0L,
+            plotCalibrations = plotCalibrations,
+            channelRouting = channelRouting,
+            centerMode = centerMode,
+            centerModeUnlocked = centerModeUnlocked,
+            onUnlockCenterMode = onUnlockCenterMode,
+            linkTraffic = linkTraffic,
+            leftStickMode = leftStickMode,
+            rightStickMode = rightStickMode,
             modifier = modifier,
             topStartOverlay = topStartOverlay,
         )
@@ -1018,7 +1045,7 @@ private fun PersistedControlPanelCenterPlot(
     topStartOverlay: @Composable () -> Unit = {},
 ) {
     val displayVm: ControlPanelPlotDisplayViewModel = hiltViewModel()
-    val displaySettings by displayVm.settings.collectAsState()
+    val displaySettings by displayVm.settings.collectAsStateWithLifecycle()
     ControlPanelCenterPlot(
         series = series,
         radarSeries = radarSeries,
@@ -1073,8 +1100,8 @@ private fun ControlPanelLeftControllerHost(
             onBottomPress = onBottomPress,
         )
     } else {
-        val rcState by rcControlState.collectAsState()
-        val telemetry by telemetryState.collectAsState()
+        val rcState by rcControlState.collectAsStateWithLifecycle()
+        val telemetry by telemetryState.collectAsStateWithLifecycle()
         val sideTelemetry = telemetry.toLeftSideTelemetry().copy(
             panelNumber = TelemetryChannelRouter.panelLeft(telemetry, settings.channelRouting),
             panelOn = settings.leftPanelOn,
@@ -1189,8 +1216,8 @@ private fun ControlPanelRightControllerHost(
             onBottomPress = onBottomPress,
         )
     } else {
-        val rcState by rcControlState.collectAsState()
-        val telemetry by telemetryState.collectAsState()
+        val rcState by rcControlState.collectAsStateWithLifecycle()
+        val telemetry by telemetryState.collectAsStateWithLifecycle()
         val sideTelemetry = telemetry.toRightSideTelemetry().copy(
             panelNumber = TelemetryChannelRouter.panelRight(telemetry, settings.channelRouting),
             panelOn = settings.rightPanelOn,
@@ -1283,9 +1310,9 @@ private fun ControlPanelLeftTelemetryLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
 ) {
-    val sideTelemetry by bluetoothViewModel.rcLeftSideTelemetry.collectAsState()
-    val indicator by bluetoothViewModel.rcLeftIndicator.collectAsState()
-    val routing by bluetoothViewModel.rcChannelRouting.collectAsState()
+    val sideTelemetry by bluetoothViewModel.rcLeftSideTelemetry.collectAsStateWithLifecycle()
+    val indicator by bluetoothViewModel.rcLeftIndicator.collectAsStateWithLifecycle()
+    val routing by bluetoothViewModel.rcChannelRouting.collectAsStateWithLifecycle()
     var panelMenu by remember { mutableStateOf(false) }
     var analogMenu by remember { mutableStateOf(false) }
     ControllerSideTelemetryRow(
@@ -1413,9 +1440,9 @@ private fun ControlPanelRightTelemetryLayer(
     metrics: ControllerSideLayoutMetrics,
     bluetoothViewModel: BluetoothViewModel,
 ) {
-    val sideTelemetry by bluetoothViewModel.rcRightSideTelemetry.collectAsState()
-    val indicator by bluetoothViewModel.rcRightIndicator.collectAsState()
-    val routing by bluetoothViewModel.rcChannelRouting.collectAsState()
+    val sideTelemetry by bluetoothViewModel.rcRightSideTelemetry.collectAsStateWithLifecycle()
+    val indicator by bluetoothViewModel.rcRightIndicator.collectAsStateWithLifecycle()
+    val routing by bluetoothViewModel.rcChannelRouting.collectAsStateWithLifecycle()
     var panelMenu by remember { mutableStateOf(false) }
     var batteryMenu by remember { mutableStateOf(false) }
     ControllerSideTelemetryRow(
@@ -1546,7 +1573,7 @@ private fun BoxScope.ControlPanelStickSlot(
     rangeShape: JoystickRangeShape,
     onRangeShapeChange: (JoystickRangeShape) -> Unit,
 ) {
-    val position by stickPosition.collectAsState()
+    val position by stickPosition.collectAsStateWithLifecycle()
     val joystickSize = metrics.joystickSize
     var menuExpanded by remember { mutableStateOf(false) }
     val tutorial = LocalFirstConnectionTutorial.current
@@ -1614,7 +1641,7 @@ private fun ControlPanelStickOptionsMenuHost(
         return
     }
     val displayVm: ControlPanelPlotDisplayViewModel = hiltViewModel()
-    val displaySettings by displayVm.settings.collectAsState()
+    val displaySettings by displayVm.settings.collectAsStateWithLifecycle()
     val channelLink = if (side == ButtonSide.RIGHT) {
         displaySettings.rightStickLink
     } else {
@@ -1650,7 +1677,7 @@ private fun BoxScope.ControlPanelSwitchesSlot(
     onSwitchStateChange: (Int, Boolean) -> Unit,
     metrics: ControllerSideLayoutMetrics,
 ) {
-    val states by switchStates.collectAsState()
+    val states by switchStates.collectAsStateWithLifecycle()
     ControllerSideSwitches(
         switchStates = states,
         onSwitchStateChange = onSwitchStateChange,
@@ -1667,7 +1694,7 @@ private fun ControlPanelKnobSlot(
     metrics: ControllerSideLayoutMetrics,
     modifier: Modifier = Modifier,
 ) {
-    val value by knobValue.collectAsState()
+    val value by knobValue.collectAsStateWithLifecycle()
     var menuExpanded by remember { mutableStateOf(false) }
     val knobName = stringResource(
         if (side == ButtonSide.RIGHT) {
@@ -1711,7 +1738,7 @@ internal fun ControlPanelKnobOptionsMenuHost(
         return
     }
     val displayVm: ControlPanelPlotDisplayViewModel = hiltViewModel()
-    val displaySettings by displayVm.settings.collectAsState()
+    val displaySettings by displayVm.settings.collectAsStateWithLifecycle()
     val channelLink = if (side == ButtonSide.RIGHT) {
         displaySettings.rightKnobLink
     } else {

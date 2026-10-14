@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,8 +43,8 @@ import com.micsbol.telecon4esp32.ui.wallet.WalletViewModel
 fun ApplicationsScreen(navController: NavController) {
     val entitlement = LocalEntitlement.current
     val walletViewModel = hiltViewModel<WalletViewModel>()
-    val wallet by walletViewModel.wallet.collectAsState()
-    val explorerGiftAvailable by walletViewModel.explorerGiftAvailable.collectAsState()
+    val wallet by walletViewModel.wallet.collectAsStateWithLifecycle()
+    val explorerGiftAvailable by walletViewModel.explorerGiftAvailable.collectAsStateWithLifecycle()
     val rewardedAdManager = LocalRewardedAdManager.current
     val activity = LocalContext.current as? Activity
     val catalog = remember { defaultApplicationCatalog() }

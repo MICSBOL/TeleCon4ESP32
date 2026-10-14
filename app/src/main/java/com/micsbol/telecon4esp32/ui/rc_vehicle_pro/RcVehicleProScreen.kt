@@ -96,6 +96,7 @@ import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout
 import com.micsbol.telecon4esp32.ui.rc_vehicle_pro.RcVehicleProLayout.CAMERA_PAN_CENTER
 import com.micsbol.telecon4esp32.ui.theme.TeleCon4Esp32Theme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -109,44 +110,41 @@ fun RcVehicleProScreen(
     LockHudLandscape()
     HideHudSystemBars()
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Connection and toggles only. Speed, sticks, and telemetry are read in the
+    // badges and plot so a packet does not rebuild the stick layout.
+    val chrome by remember(viewModel.uiState) {
+        viewModel.uiState.map { it.toHudChrome() }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = viewModel.uiState.value.toHudChrome())
     val isBluetoothConnecting by bluetoothViewModel.state
         .map { it.isConnecting }
         .distinctUntilChanged()
         .collectAsStateWithLifecycle(initialValue = false)
-    val cameraKnobValue by bluetoothViewModel.rcRightKnobValue.collectAsStateWithLifecycle()
-    // Mapped throttle Y after drive-assist pipeline (for HUD speed estimate).
-    val leftStickPosition by bluetoothViewModel.rcLeftStickPosition.collectAsStateWithLifecycle()
-    val rightStickPosition by bluetoothViewModel.rcRightStickPosition.collectAsStateWithLifecycle()
-    val telemetry by bluetoothViewModel.telemetryState.collectAsStateWithLifecycle()
-    val channelRouting by bluetoothViewModel.rcChannelRouting.collectAsStateWithLifecycle()
-    val plotLabels by bluetoothViewModel.rcPlotDisplayLabels.collectAsStateWithLifecycle()
     val controlSettings by viewModel.controlSettings.collectAsStateWithLifecycle()
     val plotChrome by viewModel.plotChrome.collectAsStateWithLifecycle()
     val rcTutorial = LocalRcVehicleProTutorial.current
     val bluetoothSession = LocalApplicationBluetoothSession.current
     val onBluetoothConnect by rememberUpdatedState(bluetoothSession?.onConnect)
-    val linkProfile = uiState.cameraLinkProfile
+    val linkProfile = chrome.cameraLinkProfile
     val usesWifiLink = linkProfile.isSoftApControl
 
     // SoftAP-only (Kit A): once video works, SoftAP is reachable — open TCP control.
     // Overlay (SoftAP video + DevKit Bluetooth): SoftAP HTTP video only; never SoftAP TCP.
     LaunchedEffect(
         linkProfile,
-        uiState.isCameraOnline,
-        uiState.isBluetoothConnected,
+        chrome.isCameraOnline,
+        chrome.isBluetoothConnected,
     ) {
         if (
             linkProfile.autoConnectSoftApControlWhenCameraOnline &&
-            uiState.isCameraOnline &&
-            !uiState.isBluetoothConnected
+            chrome.isCameraOnline &&
+            !chrome.isBluetoothConnected
         ) {
             bluetoothViewModel.ensureWifiSoftApConnected(ApplicationId.RC_VEHICLE_PRO)
         }
     }
 
-    LaunchedEffect(uiState.photoFeedback) {
-        when (uiState.photoFeedback) {
+    LaunchedEffect(chrome.photoFeedback) {
+        when (chrome.photoFeedback) {
             PhotoFeedback.None -> Unit
             PhotoFeedback.Saved,
             PhotoFeedback.NoFrame,
@@ -181,15 +179,16 @@ fun RcVehicleProScreen(
         }
     }
 
-    LaunchedEffect(uiState.isBluetoothConnected) {
-        if (uiState.isBluetoothConnected) {
+    LaunchedEffect(chrome.isBluetoothConnected) {
+        if (chrome.isBluetoothConnected) {
             bluetoothViewModel.syncRcCameraPanFront()
         }
     }
 
-    LaunchedEffect(leftStickPosition.second) {
-        viewModel.updateDriveMetricsFromThrottle(leftStickPosition.second)
-    }
+    RcThrottleSpeedSampler(
+        leftStick = bluetoothViewModel.rcLeftStickPosition,
+        onThrottleY = viewModel::updateDriveMetricsFromThrottle,
+    )
 
     BackHandler {
         navController.navigateUp()
@@ -200,46 +199,35 @@ fun RcVehicleProScreen(
         RcVehicleProCameraLayer(
             cameraPreviewState = viewModel.cameraPreviewState,
             cameraLinkProfile = viewModel.cameraLinkProfile,
-            isControlConnected = uiState.isBluetoothConnected,
+            isControlConnected = chrome.isBluetoothConnected,
             onConnectControl = { onBluetoothConnect?.invoke() },
         )
 
-        val showStreamQuality = uiState.isCameraStreamArmed
+        val showStreamQuality = chrome.isCameraStreamArmed
         val preset by viewModel.softApPerformancePreset.collectAsStateWithLifecycle()
         val hudRate by viewModel.softApHudProcessingRate.collectAsStateWithLifecycle()
 
         CompositionLocalProvider(LocalHudSystemBarsHidden provides true) {
-        val analogHistory = remember { AnalogChannelHistory() }
-        remember(telemetry, telemetry.plotState.revision) {
-            analogHistory.ingest(telemetry)
-            telemetry.plotState.revision
-        }
-        val plotHudSeries = remember(
-            telemetry,
-            telemetry.plotState.revision,
-            channelRouting,
-            plotLabels,
-        ) {
-            PlotHudSeries(
-                radar = TelemetryChannelRouter.radarSeries(telemetry, analogHistory),
-                plots = TelemetryChannelRouter.plotSeries(
-                    telemetry = telemetry,
-                    routing = channelRouting,
-                    analogHistory = analogHistory,
-                    plotLabels = plotLabels,
-                ),
-            )
-        }
         RcVehicleProContent(
-            uiState = uiState,
+            uiState = RcVehicleProUiState(
+                cameraLinkProfile = chrome.cameraLinkProfile,
+                isBluetoothConnected = chrome.isBluetoothConnected,
+                isCameraOnline = chrome.isCameraOnline,
+                isCameraStreamArmed = chrome.isCameraStreamArmed,
+                isRecording = chrome.isRecording,
+                lightsOn = chrome.lightsOn,
+                photoFeedback = chrome.photoFeedback,
+            ),
+            liveUiState = viewModel.uiState,
+            telemetryState = bluetoothViewModel.telemetryState,
+            leftStickPosition = bluetoothViewModel.rcLeftStickPosition,
+            rightStickPosition = bluetoothViewModel.rcRightStickPosition,
+            cameraKnob = bluetoothViewModel.rcRightKnobValue,
+            channelRoutingState = bluetoothViewModel.rcChannelRouting,
+            plotLabelsState = bluetoothViewModel.rcPlotDisplayLabels,
             controlSettings = controlSettings,
             plotChrome = plotChrome,
             onPlotChromeChange = viewModel::updatePlotChrome,
-            leftStickXy = leftStickPosition,
-            rightStickXy = rightStickPosition,
-            radarSeries = plotHudSeries.radar,
-            plotSeries = plotHudSeries.plots,
-            channelRouting = channelRouting,
             onRadarSourceChange = bluetoothViewModel::saveChannelBinding,
             onPlotLabelChange = bluetoothViewModel::savePlotLabel,
             onPlotChannelChange = { index, channel ->
@@ -264,14 +252,14 @@ fun RcVehicleProScreen(
                     }
                     RcHudCameraConnectIcon(
                         cameraEnabled = linkProfile.shouldStartCameraStream,
-                        isCameraOnline = uiState.isCameraOnline,
+                        isCameraOnline = chrome.isCameraOnline,
                         onConnectClick = viewModel::connectCamera,
                     )
                     RcHudLinkStatusIcons(
                         profile = linkProfile,
-                        isControlConnected = uiState.isBluetoothConnected,
+                        isControlConnected = chrome.isBluetoothConnected,
                         isControlConnecting = isBluetoothConnecting,
-                        isCameraOnline = uiState.isCameraOnline,
+                        isCameraOnline = chrome.isCameraOnline,
                         usesWifiControl = usesWifiLink,
                         onDisconnectedClick = { onBluetoothConnect?.invoke() },
                     )
@@ -298,7 +286,7 @@ fun RcVehicleProScreen(
             onPhotoClick = viewModel::onCapturePhoto,
             onRecordClick = viewModel::onToggleRecording,
             onLightsClick = {
-                bluetoothViewModel.onLeftSwitchChanged(0, !uiState.lightsOn)
+                bluetoothViewModel.onLeftSwitchChanged(0, !chrome.lightsOn)
                 viewModel.onToggleLights()
             },
             onBuzzerClick = {
@@ -308,7 +296,6 @@ fun RcVehicleProScreen(
                 bluetoothViewModel.onRightKnobChanged(CAMERA_PAN_CENTER)
                 bluetoothViewModel.sendButtonEvent(ButtonEvent.CENTER_BOTTOM_RIGHT)
             },
-            cameraKnobValue = cameraKnobValue,
             onCameraKnobChange = bluetoothViewModel::onRightKnobChanged,
             onStopClick = {
                 viewModel.onEmergencyStop()
@@ -354,11 +341,13 @@ fun RcVehicleProContent(
     onControlSettingsChange: ((RcVehicleProControlSettings) -> RcVehicleProControlSettings) -> Unit = {},
     onCycleThrottleTravel: () -> Unit = {},
     onCycleSteerTravel: () -> Unit = {},
-    leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
-    rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
-    radarSeries: List<PlotData> = emptyList(),
-    plotSeries: List<PlotData> = emptyList(),
-    channelRouting: ChannelRouting = ChannelRouting.defaults(),
+    liveUiState: StateFlow<RcVehicleProUiState>? = null,
+    telemetryState: StateFlow<com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState>? = null,
+    leftStickPosition: StateFlow<Pair<Float, Float>>? = null,
+    rightStickPosition: StateFlow<Pair<Float, Float>>? = null,
+    cameraKnob: StateFlow<Float>? = null,
+    channelRoutingState: StateFlow<ChannelRouting>? = null,
+    plotLabelsState: StateFlow<List<String>>? = null,
     onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit = { _, _ -> },
     onPlotLabelChange: (Int, String) -> Unit = { _, _ -> },
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit = { _, _ -> },
@@ -367,7 +356,6 @@ fun RcVehicleProContent(
     onLightsClick: () -> Unit,
     onBuzzerClick: () -> Unit,
     onCameraFrontClick: () -> Unit,
-    cameraKnobValue: Float,
     onCameraKnobChange: (Float) -> Unit,
     onStopClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -410,31 +398,18 @@ fun RcVehicleProContent(
         }
     }
     val radarScanSpan = plotChrome.radarSettings.scanSpan
-    val telemetryPlotSession = rememberTelemetryPlotSession(
-        speedKmh = uiState.speedKmh,
-        batteryPercent = uiState.batteryPercent,
-        motorTempCelsius = uiState.motorTempCelsius,
-        leftStickXy = leftStickXy,
-        rightStickXy = rightStickXy,
-        fromTelemetry = uiState.speedFromTelemetry,
-        controlValues = StickChannelLink.merge(
-            controlSettings.leftStickChannels.samples(
-                x = leftStickXy.first,
-                y = leftStickXy.second,
-                axis = controlSettings.leftStickMode.axis,
-                restX = controlSettings.leftStickMode.initialPositionNormalized().first,
-                restY = controlSettings.leftStickMode.initialPositionNormalized().second,
-            ),
-            controlSettings.rightStickChannels.samples(
-                x = rightStickXy.first,
-                y = rightStickXy.second,
-                axis = controlSettings.rightStickMode.axis,
-                restX = controlSettings.rightStickMode.initialPositionNormalized().first,
-                restY = controlSettings.rightStickMode.initialPositionNormalized().second,
-            ),
-            controlSettings.cameraKnobChannel.sample(cameraKnobValue),
-        ),
-    )
+    val uiFlow = liveUiState ?: remember { MutableStateFlow(uiState) }
+    val telemetryFlow = telemetryState ?: remember {
+        MutableStateFlow(com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState())
+    }
+    val leftStickFlow = leftStickPosition ?: remember { MutableStateFlow(0f to 0f) }
+    val rightStickFlow = rightStickPosition ?: remember { MutableStateFlow(0f to 0f) }
+    val cameraKnobFlow = cameraKnob ?: remember { MutableStateFlow(0.5f) }
+    val routingFlow = channelRoutingState ?: remember { MutableStateFlow(ChannelRouting.defaults()) }
+    val labelsFlow = plotLabelsState ?: remember { MutableStateFlow(emptyList<String>()) }
+    val chrome by remember(uiFlow) {
+        uiFlow.map { it.toHudChrome() }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = uiFlow.value.toHudChrome())
     val disconnectedBannerInsets = LocalDisconnectedBannerInsets.current
     DisposableEffect(disconnectedBannerInsets) {
         disconnectedBannerInsets.suppressHostOverlay = true
@@ -526,8 +501,8 @@ fun RcVehicleProContent(
             expanded = topBarExpanded,
             onExpandedChange = { topBarExpanded = it },
             metricsContent = {
-                RcHudMetricsRow(
-                    uiState = uiState,
+                RcLiveHudMetrics(
+                    uiState = uiFlow,
                     speedChannel = controlSettings.speedChannel,
                     tempChannel = controlSettings.tempChannel,
                     currentChannel = controlSettings.currentChannel,
@@ -543,8 +518,8 @@ fun RcVehicleProContent(
                 )
             },
             statusContent = {
-                RcHudTopBarStatusRow(
-                    uiState = uiState,
+                RcLiveHudStatus(
+                    uiState = uiFlow,
                     batteryChannel = controlSettings.batteryChannel,
                     onBatteryChannelChange = { channel ->
                         onControlSettingsChange { it.copy(batteryChannel = channel) }
@@ -555,10 +530,14 @@ fun RcVehicleProContent(
             hideRowStartContent = {
                 if (!plotExpanded) {
                     RcVehicleHudPlotPanel(
-                        session = telemetryPlotSession,
-                        radarSeries = radarSeries,
-                        plotSeries = plotSeries,
-                        channelRouting = channelRouting,
+                        uiState = uiFlow,
+                        telemetryState = telemetryFlow,
+                        leftStick = leftStickFlow,
+                        rightStick = rightStickFlow,
+                        cameraKnob = cameraKnobFlow,
+                        channelRoutingState = routingFlow,
+                        plotLabelsState = labelsFlow,
+                        controlSettings = controlSettings,
                         onRadarSourceChange = onRadarSourceChange,
                         onPlotLabelChange = onPlotLabelChange,
                         onPlotChannelChange = onPlotChannelChange,
@@ -569,8 +548,6 @@ fun RcVehicleProContent(
                         onExpandedChange = { plotExpanded = it },
                         scanSpan = radarScanSpan,
                         onScanSpanChange = ::commitScanSpan,
-                        leftStickXy = leftStickXy,
-                        rightStickXy = rightStickXy,
                         chrome = plotChrome,
                         onChromeChange = onPlotChromeChange,
                     )
@@ -578,13 +555,13 @@ fun RcVehicleProContent(
             },
             hideRowEndContent = {
                 if (!panExpanded) {
-                    RcCameraPanPanel(
+                    RcLiveCameraPanPanel(
                         modifier = Modifier
                             .wrapContentWidth()
                             .reportTutorialAnchor(TutorialAnchor.RC_CAMERA_PAN),
                         expanded = false,
                         onExpandedChange = { panExpanded = it },
-                        value = cameraKnobValue,
+                        valueFlow = cameraKnobFlow,
                         onValueChange = onCameraKnobChange,
                         onFrontClick = onCameraFrontClick,
                         channelLink = controlSettings.cameraKnobChannel,
@@ -682,10 +659,14 @@ fun RcVehicleProContent(
             Box(modifier = Modifier.fillMaxSize()) {
                 if (plotExpanded && bothSticksVisible) {
                     RcVehicleHudPlotPanel(
-                        session = telemetryPlotSession,
-                        radarSeries = radarSeries,
-                        plotSeries = plotSeries,
-                        channelRouting = channelRouting,
+                        uiState = uiFlow,
+                        telemetryState = telemetryFlow,
+                        leftStick = leftStickFlow,
+                        rightStick = rightStickFlow,
+                        cameraKnob = cameraKnobFlow,
+                        channelRoutingState = routingFlow,
+                        plotLabelsState = labelsFlow,
+                        controlSettings = controlSettings,
                         onRadarSourceChange = onRadarSourceChange,
                         onPlotLabelChange = onPlotLabelChange,
                         onPlotChannelChange = onPlotChannelChange,
@@ -700,8 +681,6 @@ fun RcVehicleProContent(
                         plotHeight = fittedPlotHeight,
                         scanSpan = radarScanSpan,
                         onScanSpanChange = ::commitScanSpan,
-                        leftStickXy = leftStickXy,
-                        rightStickXy = rightStickXy,
                         chrome = plotChrome,
                         onChromeChange = onPlotChromeChange,
                     )
@@ -886,8 +865,8 @@ fun RcVehicleProContent(
                         fillWidth = false,
                         expanded = centerExpanded,
                         onExpandedChange = { centerExpanded = it },
-                        isRecording = uiState.isRecording,
-                        lightsOn = uiState.lightsOn,
+                        isRecording = chrome.isRecording,
+                        lightsOn = chrome.lightsOn,
                         onPhotoClick = onPhotoClick,
                         onRecordClick = onRecordClick,
                         onLightsClick = onLightsClick,
@@ -908,10 +887,14 @@ fun RcVehicleProContent(
                         Alignment.TopStart
                     }
                     RcVehicleHudPlotPanel(
-                        session = telemetryPlotSession,
-                        radarSeries = radarSeries,
-                        plotSeries = plotSeries,
-                        channelRouting = channelRouting,
+                        uiState = uiFlow,
+                        telemetryState = telemetryFlow,
+                        leftStick = leftStickFlow,
+                        rightStick = rightStickFlow,
+                        cameraKnob = cameraKnobFlow,
+                        channelRoutingState = routingFlow,
+                        plotLabelsState = labelsFlow,
+                        controlSettings = controlSettings,
                         onRadarSourceChange = onRadarSourceChange,
                         onPlotLabelChange = onPlotLabelChange,
                         onPlotChannelChange = onPlotChannelChange,
@@ -926,8 +909,6 @@ fun RcVehicleProContent(
                         plotHeight = fittedPlotHeight,
                         scanSpan = radarScanSpan,
                         onScanSpanChange = ::commitScanSpan,
-                        leftStickXy = leftStickXy,
-                        rightStickXy = rightStickXy,
                         chrome = plotChrome,
                         onChromeChange = onPlotChromeChange,
                     )
@@ -941,7 +922,7 @@ fun RcVehicleProContent(
                         scale = controlSettings.cameraPanScale,
                         maxScale = cameraPanMaxScale,
                     )
-                    RcCameraPanPanel(
+                    RcLiveCameraPanPanel(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .wrapContentWidth()
@@ -950,7 +931,7 @@ fun RcVehicleProContent(
                             .reportTutorialAnchor(TutorialAnchor.RC_CAMERA_PAN),
                         expanded = panExpanded,
                         onExpandedChange = { panExpanded = it },
-                        value = cameraKnobValue,
+                        valueFlow = cameraKnobFlow,
                         onValueChange = onCameraKnobChange,
                         onFrontClick = onCameraFrontClick,
                         resizeMode = panResizeMode,
@@ -970,7 +951,7 @@ fun RcVehicleProContent(
                 }
             }
         }
-        val photoNotice = when (uiState.photoFeedback) {
+        val photoNotice = when (chrome.photoFeedback) {
             PhotoFeedback.Saved -> stringResource(R.string.rc_vehicle_photo_saved)
             PhotoFeedback.NoFrame -> stringResource(R.string.rc_vehicle_photo_no_frame)
             PhotoFeedback.Failed -> stringResource(R.string.rc_vehicle_photo_failed)
@@ -987,12 +968,146 @@ private data class PlotHudSeries(
     val plots: List<PlotData>,
 )
 
+private data class RcHudChrome(
+    val cameraLinkProfile: CameraLinkProfile = CameraLinkProfile.CONTROL_ONLY,
+    val isBluetoothConnected: Boolean = false,
+    val isCameraOnline: Boolean = false,
+    val isCameraStreamArmed: Boolean = false,
+    val isRecording: Boolean = false,
+    val lightsOn: Boolean = false,
+    val photoFeedback: PhotoFeedback = PhotoFeedback.None,
+)
+
+private fun RcVehicleProUiState.toHudChrome() = RcHudChrome(
+    cameraLinkProfile = cameraLinkProfile,
+    isBluetoothConnected = isBluetoothConnected,
+    isCameraOnline = isCameraOnline,
+    isCameraStreamArmed = isCameraStreamArmed,
+    isRecording = isRecording,
+    lightsOn = lightsOn,
+    photoFeedback = photoFeedback,
+)
+
+private data class RcHudMetricValues(
+    val speedKmh: Float = 0f,
+    val speedFromTelemetry: Boolean = false,
+    val batteryPercent: Int = 0,
+    val motorTempCelsius: Int = 0,
+    val currentAmps: Float = 0f,
+)
+
+private fun RcVehicleProUiState.toMetricValues() = RcHudMetricValues(
+    speedKmh = speedKmh,
+    speedFromTelemetry = speedFromTelemetry,
+    batteryPercent = batteryPercent,
+    motorTempCelsius = motorTempCelsius,
+    currentAmps = currentAmps,
+)
+
+@Composable
+private fun RcThrottleSpeedSampler(
+    leftStick: StateFlow<Pair<Float, Float>>,
+    onThrottleY: (Float) -> Unit,
+) {
+    val throttleY by remember(leftStick) {
+        leftStick.map { it.second }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = leftStick.value.second)
+    LaunchedEffect(throttleY) {
+        onThrottleY(throttleY)
+    }
+}
+
+@Composable
+private fun RcLiveHudMetrics(
+    uiState: StateFlow<RcVehicleProUiState>,
+    speedChannel: TelemetryChannel,
+    tempChannel: TelemetryChannel,
+    currentChannel: TelemetryChannel,
+    onSpeedChannelChange: (TelemetryChannel) -> Unit,
+    onTempChannelChange: (TelemetryChannel) -> Unit,
+    onCurrentChannelChange: (TelemetryChannel) -> Unit,
+) {
+    val metrics by remember(uiState) {
+        uiState.map { it.toMetricValues() }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = uiState.value.toMetricValues())
+    RcHudMetricsRow(
+        uiState = RcVehicleProUiState(
+            speedKmh = metrics.speedKmh,
+            motorTempCelsius = metrics.motorTempCelsius,
+            currentAmps = metrics.currentAmps,
+            batteryPercent = metrics.batteryPercent,
+        ),
+        speedChannel = speedChannel,
+        tempChannel = tempChannel,
+        currentChannel = currentChannel,
+        onSpeedChannelChange = onSpeedChannelChange,
+        onTempChannelChange = onTempChannelChange,
+        onCurrentChannelChange = onCurrentChannelChange,
+    )
+}
+
+@Composable
+private fun RcLiveHudStatus(
+    uiState: StateFlow<RcVehicleProUiState>,
+    batteryChannel: TelemetryChannel,
+    onBatteryChannelChange: (TelemetryChannel) -> Unit,
+) {
+    val batteryPercent by remember(uiState) {
+        uiState.map { it.batteryPercent }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = uiState.value.batteryPercent)
+    RcHudTopBarStatusRow(
+        uiState = RcVehicleProUiState(batteryPercent = batteryPercent),
+        batteryChannel = batteryChannel,
+        onBatteryChannelChange = onBatteryChannelChange,
+    )
+}
+
+@Composable
+private fun RcLiveCameraPanPanel(
+    valueFlow: StateFlow<Float>,
+    onValueChange: (Float) -> Unit,
+    onFrontClick: () -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    resizeMode: Boolean = false,
+    panelScale: Float = 1f,
+    onResizeModeChange: (Boolean) -> Unit = {},
+    onPanelScaleChange: (Float) -> Unit = {},
+    maxScale: Float = RcVehicleProLayout.STICK_GROUP_SCALE_MAX,
+    channelLink: com.micsbol.telecon4esp32.domain.model.KnobChannelLink,
+    occupiedChannels: Set<TelemetryChannel>,
+    onChannelLinkChange: (com.micsbol.telecon4esp32.domain.model.KnobChannelLink) -> Unit,
+) {
+    val value by valueFlow.collectAsStateWithLifecycle()
+    RcCameraPanPanel(
+        modifier = modifier,
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        value = value,
+        onValueChange = onValueChange,
+        onFrontClick = onFrontClick,
+        resizeMode = resizeMode,
+        panelScale = panelScale,
+        onResizeModeChange = onResizeModeChange,
+        onPanelScaleChange = onPanelScaleChange,
+        maxScale = maxScale,
+        channelLink = channelLink,
+        occupiedChannels = occupiedChannels,
+        onChannelLinkChange = onChannelLinkChange,
+    )
+}
+
 @Composable
 private fun RcVehicleHudPlotPanel(
-    session: RcTelemetryPlotSession,
-    radarSeries: List<PlotData>,
-    plotSeries: List<PlotData>,
-    channelRouting: ChannelRouting,
+    uiState: StateFlow<RcVehicleProUiState>,
+    telemetryState: StateFlow<com.micsbol.telecon4esp32.domain.bluetooth.TelemetryState>,
+    leftStick: StateFlow<Pair<Float, Float>>,
+    rightStick: StateFlow<Pair<Float, Float>>,
+    cameraKnob: StateFlow<Float>,
+    channelRoutingState: StateFlow<ChannelRouting>,
+    plotLabelsState: StateFlow<List<String>>,
+    controlSettings: RcVehicleProControlSettings,
     onRadarSourceChange: (TelemetrySink, TelemetryChannel) -> Unit,
     onPlotLabelChange: (Int, String) -> Unit,
     onPlotChannelChange: (Int, TelemetryChannel) -> Unit,
@@ -1003,11 +1118,64 @@ private fun RcVehicleHudPlotPanel(
     plotHeight: Dp = RcVehicleProLayout.TelemetryPlotHeight,
     scanSpan: RadarScanSpan = RadarScanSpan.DEGREES_180,
     onScanSpanChange: (RadarScanSpan) -> Unit = {},
-    leftStickXy: Pair<Float, Float> = Pair(0f, 0f),
-    rightStickXy: Pair<Float, Float> = Pair(0f, 0f),
     chrome: RcHudPlotChrome = RcHudPlotChrome(),
     onChromeChange: (RcHudPlotChrome) -> Unit = {},
 ) {
+    val telemetry by telemetryState.collectAsStateWithLifecycle()
+    val leftStickXy by leftStick.collectAsStateWithLifecycle()
+    val rightStickXy by rightStick.collectAsStateWithLifecycle()
+    val cameraKnobValue by cameraKnob.collectAsStateWithLifecycle()
+    val channelRouting by channelRoutingState.collectAsStateWithLifecycle()
+    val plotLabels by plotLabelsState.collectAsStateWithLifecycle()
+    val metrics by remember(uiState) {
+        uiState.map { it.toMetricValues() }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = uiState.value.toMetricValues())
+    val analogHistory = remember { AnalogChannelHistory() }
+    remember(telemetry, telemetry.plotState.revision) {
+        analogHistory.ingest(telemetry)
+        telemetry.plotState.revision
+    }
+    val plotHudSeries = remember(
+        telemetry,
+        telemetry.plotState.revision,
+        channelRouting,
+        plotLabels,
+    ) {
+        PlotHudSeries(
+            radar = TelemetryChannelRouter.radarSeries(telemetry, analogHistory),
+            plots = TelemetryChannelRouter.plotSeries(
+                telemetry = telemetry,
+                routing = channelRouting,
+                analogHistory = analogHistory,
+                plotLabels = plotLabels,
+            ),
+        )
+    }
+    val session = rememberTelemetryPlotSession(
+        speedKmh = metrics.speedKmh,
+        batteryPercent = metrics.batteryPercent,
+        motorTempCelsius = metrics.motorTempCelsius,
+        leftStickXy = leftStickXy,
+        rightStickXy = rightStickXy,
+        fromTelemetry = metrics.speedFromTelemetry,
+        controlValues = StickChannelLink.merge(
+            controlSettings.leftStickChannels.samples(
+                x = leftStickXy.first,
+                y = leftStickXy.second,
+                axis = controlSettings.leftStickMode.axis,
+                restX = controlSettings.leftStickMode.initialPositionNormalized().first,
+                restY = controlSettings.leftStickMode.initialPositionNormalized().second,
+            ),
+            controlSettings.rightStickChannels.samples(
+                x = rightStickXy.first,
+                y = rightStickXy.second,
+                axis = controlSettings.rightStickMode.axis,
+                restX = controlSettings.rightStickMode.initialPositionNormalized().first,
+                restY = controlSettings.rightStickMode.initialPositionNormalized().second,
+            ),
+            controlSettings.cameraKnobChannel.sample(cameraKnobValue),
+        ),
+    )
     RcTelemetryPlotPanel(
         session = session,
         modifier = modifier,
@@ -1015,8 +1183,8 @@ private fun RcVehicleHudPlotPanel(
         onExpandedChange = onExpandedChange,
         plotWidth = plotWidth,
         plotHeight = plotHeight,
-        radarSeries = radarSeries,
-        plotSeries = plotSeries,
+        radarSeries = plotHudSeries.radar,
+        plotSeries = plotHudSeries.plots,
         channelRouting = channelRouting,
         onRadarSourceChange = onRadarSourceChange,
         onPlotLabelChange = onPlotLabelChange,
@@ -1058,7 +1226,6 @@ private fun RcVehicleProContentPreview() {
                 onLightsClick = {},
                 onBuzzerClick = {},
                 onCameraFrontClick = {},
-                cameraKnobValue = 0.5f,
                 onCameraKnobChange = {},
                 onStopClick = {},
             )
