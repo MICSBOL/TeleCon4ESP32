@@ -232,6 +232,15 @@ internal fun resolveClampedSafeHudInsets(
         }
     }
 
+    // Hidden bars: a landscape side inset this large is the portrait status bar
+    // (or OEM cutout safe zone), not a control the user still needs to avoid.
+    // Keep a few dp so a punch-hole does not sit under a stick.
+    if (includeHorizontal && isLandscape && systemBarsHidden) {
+        val cutoutCapPx = with(density) { LandscapeOppositeSideCap.roundToPx() }
+        left = left.coerceAtMost(cutoutCapPx)
+        right = right.coerceAtMost(cutoutCapPx)
+    }
+
     val totalHorizontal = left + right
     if (totalHorizontal > maxTotalHorizontalPx && totalHorizontal > 0) {
         left = (left * maxTotalHorizontalPx) / totalHorizontal

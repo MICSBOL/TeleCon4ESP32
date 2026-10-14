@@ -19,6 +19,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.micsbol.telecon4esp32.R
+import com.micsbol.telecon4esp32.ui.control_panel.isHudSystemBarsHidden
 
 /**
  * Dark glassmorphism design tokens for shared app screens.
@@ -89,7 +90,7 @@ fun AppGlassBackground(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window
-            if (window != null) {
+            if (window != null && !isHudSystemBarsHidden()) {
                 window.statusBarColor = AppGlass.BackgroundTop.toArgb()
                 window.navigationBarColor = AppGlass.BackgroundBottom.toArgb()
                 WindowCompat.getInsetsController(window, view).apply {

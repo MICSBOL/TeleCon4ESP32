@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.os.Build
 import android.view.View
 import android.view.ViewTreeObserver
+import android.view.Window
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -49,6 +50,25 @@ internal fun resolveHudLandscapeOrientation(
  */
 private val hudSystemBarsHideCount = AtomicInteger(0)
 
+internal fun isHudSystemBarsHidden(): Boolean = hudSystemBarsHideCount.get() > 0
+
+/**
+ * Landscape HUDs that must draw into the cutout. Nested callers (RC Vehicle
+ * locks orientation and also hides bars) share one restore.
+ */
+private val hudCutoutFillCount = AtomicInteger(0)
+private var savedCutoutMode: Int = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+private var contentFillWatcher: View.OnLayoutChangeListener? = null
+
+/** MIUI/HyperOS extra flags so the window may use the notch / status-bar side. */
+private const val XIAOMI_NOTCH_EXTRA_FLAGS = 0x00000100 or 0x00000200 or 0x00000400
+
+@Suppress("DEPRECATION")
+private const val HUD_LAYOUT_FULLSCREEN_FLAGS =
+    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+
 /**
  * Hides the status bar and navigation bar while a HUD is visible.
  * A swipe from the screen edge shows them briefly, then they hide again.
@@ -67,10 +87,14 @@ fun HideHudSystemBars() {
         }
 
         fun hideBars() {
+            activity.applyHudCutoutFill()
+            window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
             (activity as? ComponentActivity)?.enableEdgeToEdge(
                 statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
                 navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             )
+            window.statusBarColor = Color.TRANSPARENT
+            window.navigationBarColor = Color.TRANSPARENT
             WindowCompat.getInsetsController(window, view).apply {
                 hide(WindowInsetsCompat.Type.systemBars())
                 systemBarsBehavior =
@@ -79,6 +103,7 @@ fun HideHudSystemBars() {
         }
 
         hudSystemBarsHideCount.incrementAndGet()
+        activity.acquireHudCutoutFill()
         hideBars()
         val lifecycleObserver = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) hideBars()
@@ -97,9 +122,25 @@ fun HideHudSystemBars() {
             if (decorView.viewTreeObserver.isAlive) {
                 decorView.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
             }
+            activity.releaseHudCutoutFill()
             if (hudSystemBarsHideCount.decrementAndGet() <= 0) {
                 hudSystemBarsHideCount.set(0)
+                window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
                 restoreVisibleSystemBars(activity, view)
+            }
+        }
+    }
+
+    SideEffect {
+        if (activity != null && hudSystemBarsHideCount.get() > 0) {
+            activity.applyHudCutoutFill()
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            activity.window.statusBarColor = Color.TRANSPARENT
+            activity.window.navigationBarColor = Color.TRANSPARENT
+            WindowCompat.getInsetsController(activity.window, view).apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
     }
@@ -181,6 +222,7 @@ fun LockHudLandscape() {
             }
         }
         applyLock()
+        activity.acquireHudCutoutFill()
         // IME resize can make height > width and report portrait. Keep the window size.
         activity.window.setSoftInputMode(
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING or
@@ -190,10 +232,12 @@ fun LockHudLandscape() {
         val decorView = activity.window.decorView
         val focusListener = ViewTreeObserver.OnWindowFocusChangeListener { _ ->
             applyLock()
+            activity.applyHudCutoutFill()
         }
         val lifecycleObserver = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                 applyLock()
+                activity.applyHudCutoutFill()
             }
         }
         if (decorView.viewTreeObserver.isAlive) {
@@ -206,6 +250,7 @@ fun LockHudLandscape() {
                 decorView.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
             }
             lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
+            activity.releaseHudCutoutFill()
             activity.window.setSoftInputMode(originalSoftInputMode)
             activity.requestedOrientation = originalOrientation
         }
@@ -214,6 +259,9 @@ fun LockHudLandscape() {
     SideEffect {
         if (activity != null && activity.requestedOrientation != orientation) {
             activity.requestedOrientation = orientation
+        }
+        if (hudCutoutFillCount.get() > 0) {
+            activity?.applyHudCutoutFill()
         }
     }
 }
@@ -262,6 +310,100 @@ fun LockScreenOrientation(orientation: Int) {
         if (activity != null && activity.requestedOrientation != orientation) {
             activity.requestedOrientation = orientation
         }
+    }
+}
+
+/**
+ * Lets a landscape HUD use the whole display, including the column where the
+ * portrait status bar sits on Xiaomi/Poco and other notched or curved phones.
+ */
+private fun Activity.acquireHudCutoutFill() {
+    if (hudCutoutFillCount.getAndIncrement() == 0 &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+    ) {
+        savedCutoutMode = window.attributes.layoutInDisplayCutoutMode
+    }
+    applyHudCutoutFill()
+}
+
+private fun Activity.releaseHudCutoutFill() {
+    if (hudCutoutFillCount.decrementAndGet() > 0) return
+    hudCutoutFillCount.set(0)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val params = window.attributes
+        params.layoutInDisplayCutoutMode = savedCutoutMode
+        window.attributes = params
+    }
+    window.clearXiaomiNotchFlags()
+    @Suppress("DEPRECATION")
+    window.decorView.systemUiVisibility =
+        window.decorView.systemUiVisibility and HUD_LAYOUT_FULLSCREEN_FLAGS.inv()
+    stopContentFill(window)
+}
+
+private fun Activity.applyHudCutoutFill() {
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        window.isNavigationBarContrastEnforced = false
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        } else {
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        val params = window.attributes
+        if (params.layoutInDisplayCutoutMode != mode) {
+            params.layoutInDisplayCutoutMode = mode
+            window.attributes = params
+        }
+    }
+    window.addXiaomiNotchFlags()
+    @Suppress("DEPRECATION")
+    window.decorView.systemUiVisibility =
+        window.decorView.systemUiVisibility or HUD_LAYOUT_FULLSCREEN_FLAGS
+    ensureContentFillsDisplay(window)
+}
+
+private fun ensureContentFillsDisplay(window: Window) {
+    val content = window.findViewById<View>(android.R.id.content) ?: return
+    window.decorView.setPadding(0, 0, 0, 0)
+    content.setPadding(0, 0, 0, 0)
+    if (contentFillWatcher != null) return
+    val watcher = View.OnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+        if (
+            v.paddingLeft != 0 || v.paddingTop != 0 ||
+            v.paddingRight != 0 || v.paddingBottom != 0
+        ) {
+            v.setPadding(0, 0, 0, 0)
+        }
+    }
+    contentFillWatcher = watcher
+    content.addOnLayoutChangeListener(watcher)
+}
+
+private fun stopContentFill(window: Window) {
+    val content = window.findViewById<View>(android.R.id.content)
+    contentFillWatcher?.let { watcher ->
+        content?.removeOnLayoutChangeListener(watcher)
+    }
+    contentFillWatcher = null
+}
+
+/** No-op on stock Android. MIUI/HyperOS uses these flags to release the notch. */
+private fun Window.addXiaomiNotchFlags() {
+    try {
+        val method = javaClass.getMethod("addExtraFlags", Int::class.javaPrimitiveType)
+        method.invoke(this, XIAOMI_NOTCH_EXTRA_FLAGS)
+    } catch (_: Exception) {
+    }
+}
+
+private fun Window.clearXiaomiNotchFlags() {
+    try {
+        val method = javaClass.getMethod("clearExtraFlags", Int::class.javaPrimitiveType)
+        method.invoke(this, XIAOMI_NOTCH_EXTRA_FLAGS)
+    } catch (_: Exception) {
     }
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.micsbol.telecon4esp32.ui.control_panel.isHudSystemBarsHidden
 
 private val AppDarkColorScheme = darkColorScheme(
     primary = HudCyan,
@@ -84,6 +85,9 @@ fun TeleCon4Esp32Theme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
+            // An immersive HUD owns these colors. Painting the opaque background
+            // here makes some OEMs reserve the portrait status-bar column again.
+            if (isHudSystemBarsHidden()) return@SideEffect
             window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {

@@ -191,6 +191,33 @@ class SafeWindowInsetsTest {
     }
 
     @Test
+    fun hiddenSystemBarsLandscapeDropsRotatedStatusBarColumn() {
+        val statusBarColumn = with(density) { 48.dp.roundToPx() }
+        val base = WindowInsets(
+            left = statusBarColumn,
+            top = 0,
+            right = statusBarColumn,
+            bottom = 0,
+        )
+        val resolved = resolveClampedSafeHudInsets(
+            base = base,
+            density = density,
+            layoutDirection = LayoutDirection.Ltr,
+            screenWidthDp = 800,
+            isLandscape = true,
+            usesThreeButtonNav = false,
+            systemBarsHidden = true,
+            includeTop = true,
+            includeBottom = true,
+            includeHorizontal = true,
+        )
+
+        val cap = with(density) { 8.dp.roundToPx() }
+        assertEquals(cap, resolved.getLeft(density, LayoutDirection.Ltr))
+        assertEquals(cap, resolved.getRight(density, LayoutDirection.Ltr))
+    }
+
+    @Test
     fun hiddenSystemBarsDoNotInventPortraitStatusBarFallback() {
         val base = WindowInsets(left = 0, top = 0, right = 0, bottom = 0)
         val resolved = resolveClampedSafeHudInsets(

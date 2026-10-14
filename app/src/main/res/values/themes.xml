@@ -3,7 +3,11 @@
 
     <style name="Theme.TeleCon4Esp32" parent="Theme.TeleCon4Esp32.Main" />
 
-    <style name="Theme.TeleCon4Esp32.Main" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.TeleCon4Esp32.Main" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Landscape: draw into the short-edge cutout so a portrait status-bar
+             column is not left empty (Xiaomi/Poco and other notched phones). -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
 
     <!-- Shown while the app process starts; hands off to Main once Compose is ready. -->
     <style name="Theme.TeleCon4Esp32.Starting" parent="Theme.SplashScreen">

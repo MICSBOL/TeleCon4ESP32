@@ -368,8 +368,8 @@ fun RcVehicleProContent(
     onStopClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Camera stays full-bleed; HUD/controls clear status, cutouts, and side nav
-    // (including OEM landscape builds that under-report horizontal insets).
+    // Camera stays full-bleed. HUD controls keep a small cutout clearance;
+    // the window itself draws into the portrait status-bar column.
     var leftTrimMode by remember { mutableStateOf(false) }
     var rightTrimMode by remember { mutableStateOf(false) }
     var showDriveAssist by remember { mutableStateOf(false) }
