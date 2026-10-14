@@ -703,6 +703,7 @@ class AndroidBluetoothController @Inject constructor(
             lastSoftApCtrlLogLine = null
             _isConnected.update { false }
         }
+        linkTrafficLog.clear()
         // Keep the app-scoped SoftAP bind. Role A overlay (CAM HTTP + DevKit
         // Bluetooth) joins TeleCon-RC-CAM-Starter for video; dropping it here
         // made Classic SPP fail and asked the user for a different link type.
@@ -923,11 +924,18 @@ class AndroidBluetoothController @Inject constructor(
         }
         // SoftAP TCP carries the same AA 55 / BB 66 / CC frames as Classic/BLE Binary
         // (DevKit WIFI_BINARY). CAM SoftAP stays SIMPLE text and does not use sendData.
+        val service = dataTransferService
+        if (service == null) {
+            linkTrafficLog.clear()
+            return false
+        }
+        val sent = service.sendPacket(data)
+        if (!sent) return false
         if (activeTransport == BluetoothTransportType.WIFI) {
             logSoftApBinaryTx(data)
         }
         linkTrafficLog.record(LinkTrafficDirection.SENT, formatLinkBinary(data))
-        return dataTransferService?.sendPacket(data)
+        return true
     }
 
     override suspend fun sendLine(line: String): Boolean? {
@@ -936,12 +944,19 @@ class AndroidBluetoothController @Inject constructor(
         ) {
             return null
         }
+        val payload = if (line.endsWith("\n")) line else "$line\n"
+        val service = dataTransferService
+        if (service == null) {
+            linkTrafficLog.clear()
+            return false
+        }
+        val sent = service.sendPacket(payload.toByteArray(Charsets.UTF_8))
+        if (!sent) return false
         if (activeTransport == BluetoothTransportType.WIFI) {
             logSoftApTx(line)
         }
-        val payload = if (line.endsWith("\n")) line else "$line\n"
         linkTrafficLog.record(LinkTrafficDirection.SENT, payload)
-        return dataTransferService?.sendPacket(payload.toByteArray(Charsets.UTF_8))
+        return true
     }
 
     private fun logSoftApBinaryTx(data: ByteArray) {

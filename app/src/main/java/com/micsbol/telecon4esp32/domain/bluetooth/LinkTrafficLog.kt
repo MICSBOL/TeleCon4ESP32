@@ -54,6 +54,7 @@ class LinkTrafficLog(
 
     fun clear() {
         synchronized(buffer) {
+            if (buffer.isEmpty()) return
             buffer.clear()
             _entries.value = emptyList()
         }

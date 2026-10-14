@@ -253,7 +253,15 @@ fun RcVehicleProScreen(
                     RcHudCameraConnectIcon(
                         cameraEnabled = linkProfile.shouldStartCameraStream,
                         isCameraOnline = chrome.isCameraOnline,
-                        onConnectClick = viewModel::connectCamera,
+                        onConnectClick = {
+                            when {
+                                !linkProfile.shouldStartCameraStream ->
+                                    viewModel.enableAndConnectCamera()
+                                chrome.isCameraOnline ->
+                                    viewModel.disconnectAndDisableCamera()
+                                else -> viewModel.connectCamera()
+                            }
+                        },
                     )
                     RcHudLinkStatusIcons(
                         profile = linkProfile,

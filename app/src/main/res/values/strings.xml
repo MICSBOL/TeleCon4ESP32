@@ -558,8 +558,9 @@
     <string name="rc_vehicle_battery_value">%1$d%%</string>
     <string name="rc_vehicle_cam_online">Cam online</string>
     <string name="rc_vehicle_cam_offline">Cam offline</string>
-    <string name="rc_vehicle_camera_icon_off">Camera off. Turn on ESP32-CAM in settings.</string>
+    <string name="rc_vehicle_camera_icon_off">Turn on and connect the ESP32-CAM</string>
     <string name="rc_vehicle_camera_icon_connect">Connect to the ESP32-CAM</string>
+    <string name="rc_vehicle_camera_icon_disconnect">Disconnect and turn off the ESP32-CAM</string>
     <string name="rc_vehicle_hud_show_top_bar">Show top bar</string>
     <string name="rc_vehicle_hud_hide_top_bar">Hide top bar</string>
     <string name="rc_vehicle_hud_show_center_controls">Show camera actions</string>

@@ -27,10 +27,12 @@ import com.micsbol.telecon4esp32.domain.camera.resolveSoftApHudPreviewOptions
 import com.micsbol.telecon4esp32.domain.camera.shouldPreferCapturePollingForLowLatency
 import com.micsbol.telecon4esp32.domain.camera.shouldStartCameraStream
 import com.micsbol.telecon4esp32.domain.model.ApplicationId
+import com.micsbol.telecon4esp32.domain.model.CameraHardwareRole
 import com.micsbol.telecon4esp32.domain.model.Esp32Board
 import com.micsbol.telecon4esp32.domain.model.liveControlConnectionMode
 import com.micsbol.telecon4esp32.domain.model.RcVehicleProControlSettings
 import com.micsbol.telecon4esp32.domain.repository.ISettingsRepository
+import com.micsbol.telecon4esp32.domain.use_case.ApplyCameraHardwareRoleUseCase
 import com.micsbol.telecon4esp32.domain.use_case.ApplySoftApCamConfigUseCase
 import com.micsbol.telecon4esp32.domain.use_case.EnsureSoftApStreamQualityDefaultsUseCase
 import com.micsbol.telecon4esp32.domain.use_case.GetApplicationBoardUseCase
@@ -58,6 +60,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -81,6 +85,7 @@ class RcVehicleProViewModel @Inject constructor(
     private val saveSoftApHudProcessingRate: SaveSoftApHudProcessingRateUseCase,
     private val ensureSoftApStreamQualityDefaults: EnsureSoftApStreamQualityDefaultsUseCase,
     private val applySoftApCamConfig: ApplySoftApCamConfigUseCase,
+    private val applyCameraHardwareRole: ApplyCameraHardwareRoleUseCase,
     private val softApWifiSession: SoftApWifiSession,
     private val softApNetworkResolver: SoftApNetworkResolver,
 ) : ViewModel() {
@@ -91,6 +96,9 @@ class RcVehicleProViewModel @Inject constructor(
         skipOnEmulator = runningOnEmulator,
     )
     private val screenVisibleFlow = MutableStateFlow(false)
+    /** Holds the camera off until the saved No CAM profile is applied. */
+    private val cameraSuppressed = MutableStateFlow(false)
+    private val cameraRoleMutex = Mutex()
     private val applicationId = ApplicationId.RC_VEHICLE_PRO
 
     private val board: StateFlow<Esp32Board> = getApplicationBoard(ApplicationId.RC_VEHICLE_PRO)
@@ -164,8 +172,12 @@ class RcVehicleProViewModel @Inject constructor(
         cameraStreamRepository.streamState,
         cameraLinkProfile,
         screenVisibleFlow,
-    ) { streamState, profile, visible ->
-        val streaming = visible && profile.shouldStartCameraStream && !runningOnEmulator
+        cameraSuppressed,
+    ) { streamState, profile, visible, suppressed ->
+        val streaming = visible &&
+            profile.shouldStartCameraStream &&
+            !suppressed &&
+            !runningOnEmulator
         if (streaming) streamState else CameraStreamState.Idle
     }.stateIn(
         scope = viewModelScope,
@@ -230,13 +242,17 @@ class RcVehicleProViewModel @Inject constructor(
         }
         viewModelScope.launch {
             cameraLinkProfile.collect { profile ->
+                if (!profile.shouldStartCameraStream) {
+                    cameraSuppressed.value = false
+                }
+                val cameraOn = profile.shouldStartCameraStream && !cameraSuppressed.value
                 // SoftAP video auto-arms for Kit A and DevKit Bluetooth + overlay whenever the profile expects a camera.
-                cameraSession.setCameraEnabled(profile.shouldStartCameraStream)
-                cameraSession.setProfile(profile)
+                cameraSession.setCameraEnabled(cameraOn)
+                cameraSession.setProfile(if (cameraOn) profile else CameraLinkProfile.CONTROL_ONLY)
                 _uiState.update {
                     it.copy(
-                        cameraLinkProfile = profile,
-                        isCameraStreamArmed = profile.shouldStartCameraStream,
+                        cameraLinkProfile = if (cameraOn) profile else CameraLinkProfile.CONTROL_ONLY,
+                        isCameraStreamArmed = cameraOn,
                     )
                 }
             }
@@ -318,12 +334,13 @@ class RcVehicleProViewModel @Inject constructor(
             }
                 .distinctUntilChanged()
                 .collect { snapshot ->
+                    val cameraOn = snapshot.profile.shouldStartCameraStream && !cameraSuppressed.value
                     _uiState.update { current ->
                         current.copy(
-                            cameraLinkProfile = snapshot.profile,
-                            isCameraStreamArmed = snapshot.profile.shouldStartCameraStream,
+                            cameraLinkProfile = if (cameraOn) snapshot.profile else CameraLinkProfile.CONTROL_ONLY,
+                            isCameraStreamArmed = cameraOn,
                             isBluetoothConnected = snapshot.connected,
-                            isCameraOnline = snapshot.isCameraOnline,
+                            isCameraOnline = cameraOn && snapshot.isCameraOnline,
                             batteryPercent = snapshot.batteryPercent,
                             motorTempCelsius = snapshot.motorTempCelsius,
                             currentAmps = snapshot.currentAmps,
@@ -335,13 +352,18 @@ class RcVehicleProViewModel @Inject constructor(
         }
         // Phase 2: push SoftAP preset to firmware `/camconfig` when SoftAP HUD is armed.
         viewModelScope.launch {
-            combine(cameraLinkProfile, softApPerformancePreset, screenVisibleFlow) { profile, preset, visible ->
-                Triple(profile, preset, visible)
+            combine(
+                cameraLinkProfile,
+                softApPerformancePreset,
+                screenVisibleFlow,
+                cameraSuppressed,
+            ) { profile, preset, visible, suppressed ->
+                val armed = visible &&
+                    profile.shouldStartCameraStream &&
+                    !suppressed &&
+                    !runningOnEmulator
+                armed to preset
             }
-                .map { (profile, preset, visible) ->
-                    val armed = visible && profile.shouldStartCameraStream && !runningOnEmulator
-                    armed to preset
-                }
                 .distinctUntilChanged()
                 .collect { (armed, preset) ->
                     if (!armed) {
@@ -359,31 +381,87 @@ class RcVehicleProViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Stops video, leaves the camera SoftAP, and stores No CAM so the stream
+     * does not start again. Bluetooth control is left as it is.
+     */
+    fun disconnectAndDisableCamera() {
+        val profile = cameraLinkProfile.value
+        if (!profile.shouldStartCameraStream || cameraSuppressed.value) return
+        cameraSuppressed.value = true
+        cameraSession.setCameraEnabled(false)
+        cameraSession.setProfile(CameraLinkProfile.CONTROL_ONLY)
+        applySoftApCamConfig.clearSession(applicationId)
+        softApWifiSession.release()
+        _uiState.update {
+            it.copy(
+                cameraLinkProfile = CameraLinkProfile.CONTROL_ONLY,
+                isCameraOnline = false,
+                isCameraStreamArmed = false,
+                isRecording = false,
+            )
+        }
+        viewModelScope.launch {
+            cameraRoleMutex.withLock {
+                applyCameraHardwareRole(applicationId, CameraHardwareRole.NO_CAM)
+            }
+        }
+    }
+
+    /** Turns the ESP32-CAM feature back on and joins its SoftAP. */
+    fun enableAndConnectCamera() {
+        if (runningOnEmulator) return
+        viewModelScope.launch {
+            cameraRoleMutex.withLock {
+                cameraSuppressed.value = true
+                applyCameraHardwareRole(applicationId, CameraHardwareRole.TWO_DEVICES)
+                val profile = cameraLinkProfile.first { it.shouldStartCameraStream }
+                joinCameraSoftAp()
+                cameraSuppressed.value = false
+                cameraSession.setCameraEnabled(true)
+                cameraSession.setProfile(profile)
+                cameraSession.onVisible()
+                _uiState.update {
+                    it.copy(
+                        cameraLinkProfile = profile,
+                        isCameraStreamArmed = true,
+                        isCameraOnline = false,
+                    )
+                }
+            }
+        }
+    }
+
     /** Joins the ESP32-CAM SoftAP and starts video. No-ops while CAM is off in settings. */
     fun connectCamera() {
         val profile = cameraLinkProfile.value
-        if (!profile.shouldStartCameraStream || runningOnEmulator) return
+        if (!profile.shouldStartCameraStream || cameraSuppressed.value || runningOnEmulator) return
         viewModelScope.launch {
-            val target = resolveCameraVideoSoftApTarget(board.value, connectionMode.value)
-            val alreadyOnAp = softApWifiSession.currentSsid()
-                ?.equals(target.ssid, ignoreCase = true) == true ||
-                softApNetworkResolver.hasEsp32SoftApLinkAddress()
-            if (!alreadyOnAp) {
-                softApWifiSession.join(target.ssid, target.password)
-            }
+            joinCameraSoftAp()
             cameraSession.setCameraEnabled(true)
             cameraSession.setProfile(profile)
             cameraSession.onVisible()
         }
     }
 
+    private suspend fun joinCameraSoftAp() {
+        val target = resolveCameraVideoSoftApTarget(board.value, connectionMode.value)
+        val alreadyOnAp = softApWifiSession.currentSsid()
+            ?.equals(target.ssid, ignoreCase = true) == true ||
+            softApNetworkResolver.hasEsp32SoftApLinkAddress()
+        if (!alreadyOnAp) {
+            softApWifiSession.join(target.ssid, target.password)
+        }
+    }
+
     fun onScreenVisible() {
         screenVisibleFlow.value = true
-        cameraSession.setCameraEnabled(cameraLinkProfile.value.shouldStartCameraStream)
+        val cameraOn = cameraLinkProfile.value.shouldStartCameraStream && !cameraSuppressed.value
+        cameraSession.setCameraEnabled(cameraOn)
         cameraSession.onVisible()
         viewModelScope.launch {
             ensureSoftApStreamQualityDefaults(applicationId)
-            if (cameraLinkProfile.value.shouldStartCameraStream && !runningOnEmulator) {
+            if (cameraOn && !runningOnEmulator) {
                 applySoftApCamConfig(
                     applicationId = applicationId,
                     preset = softApPerformancePreset.value,

@@ -541,7 +541,7 @@ fun RcHudCameraConnectIcon(
 ) {
     val description = when {
         !cameraEnabled -> stringResource(R.string.rc_vehicle_camera_icon_off)
-        isCameraOnline -> stringResource(R.string.rc_vehicle_cam_online)
+        isCameraOnline -> stringResource(R.string.rc_vehicle_camera_icon_disconnect)
         else -> stringResource(R.string.rc_vehicle_camera_icon_connect)
     }
     val tint = when {
@@ -551,7 +551,6 @@ fun RcHudCameraConnectIcon(
     }
     IconButton(
         onClick = onConnectClick,
-        enabled = cameraEnabled,
         modifier = modifier,
     ) {
         Icon(

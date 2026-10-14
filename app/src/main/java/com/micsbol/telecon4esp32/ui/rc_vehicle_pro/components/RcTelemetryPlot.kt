@@ -62,7 +62,9 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.micsbol.telecon4esp32.R
@@ -684,17 +686,15 @@ private fun RcHudPlotLegendRow(
                             .background(color, RoundedCornerShape(1.dp)),
                     )
                     Text(
-                        text = buildString {
-                            append(label)
-                            plotData.dataPoints.lastOrNull()?.let { sample ->
-                                append("  ")
-                                append(style.formatSample(sample))
-                            }
-                        },
+                        text = label,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = color,
                         maxLines = 1,
+                    )
+                    RcHudLegendValue(
+                        text = plotData.dataPoints.lastOrNull()?.let(style::formatSample).orEmpty(),
+                        color = color,
                     )
                 }
             }
@@ -703,6 +703,36 @@ private fun RcHudPlotLegendRow(
             expand = false,
             contentDescription = hideContentDescription,
             onClick = onHide,
+        )
+    }
+}
+
+/** Widest reading the legend reserves: sign, six digits, or a short decimal. */
+private const val RC_HUD_LEGEND_VALUE_SLOT = "-000000"
+
+@Composable
+private fun RcHudLegendValue(
+    text: String,
+    color: Color,
+) {
+    val style = MaterialTheme.typography.labelSmall.copy(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = TextAlign.Start,
+    )
+    Box {
+        Text(
+            text = RC_HUD_LEGEND_VALUE_SLOT,
+            style = style,
+            color = Color.Transparent,
+            maxLines = 1,
+        )
+        Text(
+            text = text,
+            style = style,
+            color = color,
+            maxLines = 1,
+            modifier = Modifier.align(Alignment.CenterStart),
         )
     }
 }
