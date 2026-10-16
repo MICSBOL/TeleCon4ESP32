@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -76,6 +77,7 @@ fun HomeHelpDialog(
     onPlayRcVehicleTutorial: () -> Unit,
     onOpenFeatureMenu: (ApplicationId) -> Unit,
     onOpenHelpTopics: () -> Unit,
+    onOpenDevices: () -> Unit,
 ) {
     NeoDialog(
         onDismissRequest = onDismissRequest,
@@ -117,6 +119,14 @@ fun HomeHelpDialog(
                     hint = stringResource(R.string.home_help_open_topics_hint),
                     featured = true,
                     onClick = onOpenHelpTopics,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                HelpMenuSection(text = stringResource(R.string.home_help_section_hardware))
+                HelpMenuRow(
+                    icon = Icons.Filled.DeveloperBoard,
+                    title = stringResource(R.string.home_help_devices),
+                    hint = stringResource(R.string.home_help_devices_hint),
+                    onClick = onOpenDevices,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 HelpMenuSection(text = stringResource(R.string.home_help_section_guides))

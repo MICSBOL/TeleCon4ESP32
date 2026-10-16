@@ -31,6 +31,7 @@ sealed class Screen(val route: String) {
             "application_codes/${applicationId.name}"
     }
     object HomeHelpTopics : Screen("home_help_topics")
+    object HomeHelpDevices : Screen("home_help_devices")
     object FirmwareSketches : Screen("firmware_sketches")
     object About : Screen("about")
     object PrivacyPolicy : Screen("privacy_policy")

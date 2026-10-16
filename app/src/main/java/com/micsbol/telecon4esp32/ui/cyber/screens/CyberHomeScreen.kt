@@ -194,6 +194,7 @@ fun CyberHomeScreen(
             navController.navigate(Screen.ModuleFeatureMenu.createRoute(applicationId))
         },
         onOpenHelpTopics = { navController.navigate(Screen.HomeHelpTopics.route) },
+        onOpenHelpDevices = { navController.navigate(Screen.HomeHelpDevices.route) },
         onPlayRcVehicleTutorial = {
             val item = defaultApplicationCatalog()
                 .first { it.id == ApplicationId.RC_VEHICLE_PRO }
@@ -264,6 +265,7 @@ fun CyberHomeScreenContent(
     onPlayRcVehicleTutorial: () -> Unit = {},
     onOpenFeatureMenu: (ApplicationId) -> Unit = {},
     onOpenHelpTopics: () -> Unit = {},
+    onOpenHelpDevices: () -> Unit = {},
 ) {
     LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)
     EnsureVisibleSystemBars()
@@ -379,6 +381,10 @@ fun CyberHomeScreenContent(
                 onOpenHelpTopics = {
                     showHelpDialog = false
                     onOpenHelpTopics()
+                },
+                onOpenDevices = {
+                    showHelpDialog = false
+                    onOpenHelpDevices()
                 },
             )
         }

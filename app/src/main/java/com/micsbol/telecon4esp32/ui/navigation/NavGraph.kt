@@ -23,6 +23,7 @@ import com.micsbol.telecon4esp32.domain.model.isApplicationCatalogVisible
 import com.micsbol.telecon4esp32.domain.model.isShipped
 import com.micsbol.telecon4esp32.ui.bluetooth.WrapApplicationBluetoothSession
 import com.micsbol.telecon4esp32.ui.about.AboutScreen
+import com.micsbol.telecon4esp32.ui.home.HomeHelpDevicesScreen
 import com.micsbol.telecon4esp32.ui.home.HomeHelpTopicsScreen
 import com.micsbol.telecon4esp32.ui.about.PrivacyPolicyScreen
 import com.micsbol.telecon4esp32.ui.applications.ApplicationSettingsHostScreen
@@ -278,6 +279,9 @@ fun AppNavGraph(
         }
         composable(Screen.HomeHelpTopics.route) {
             HomeHelpTopicsScreen(navController = navController)
+        }
+        composable(Screen.HomeHelpDevices.route) {
+            HomeHelpDevicesScreen(navController = navController)
         }
         composable(Screen.About.route) {
             AboutScreen(navController = navController)
